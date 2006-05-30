@@ -1,0 +1,538 @@
+<refentry id="dvdauthor">
+
+<refmeta>
+<refentrytitle>dvdauthor</refentrytitle>
+<manvolnum>1</manvolnum>
+</refmeta>
+
+<refnamediv>
+<refname>dvdauthor</refname>
+<refpurpose>assembles multiple mpeg program streams into a suitable DVD filesystem</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>dvdauthor</command>
+<arg>-o <replaceable>output-dir</replaceable></arg>
+<arg choice="req">-x <replaceable>xml-config-file</replaceable></arg>
+</cmdsynopsis>
+<cmdsynopsis>
+<command>dvdauthor</command>
+<arg>-o <replaceable>output-dir</replaceable></arg>
+<group><arg>-j</arg><arg>--jumppad</arg><arg>-g</arg><arg>--allgprm</arg></group>
+<group><arg>-T</arg><arg>--toc</arg></group>
+<arg><replaceable>menu or title options</replaceable></arg>
+</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1><title>DVD Background</title>
+<para>
+
+At a high level, a DVD is a collection of menus and titles.
+Conceptually, a menu contains buttons which can be assigned actions
+and provides a list of choices to the end user, while a title contains
+the main content of the DVD.  However, in reality many of the features
+available in menus (including buttons, pausing, and looping) are also
+available in titles.
+
+</para>
+<para>
+
+The menus and titles are divided into titlesets and the VMGM menu set.
+A titleset can contain a number of menus and titles which are meant to
+act together.  The "menu", "audio", "subtitle", and "angle" buttons on
+the DVD player's remote control will all access menus in the same
+titleset as the title which is being played.  All the titles and menus
+of a given titleset have the same video, audio, and subtitle settings
+(the definitions for the menus are independent from the definitions
+for the titles), so if you want to have different settings (for
+example widescreen vs standard aspect ratios), then you need separate
+titlesets.  Titlesets are not meant to jump to one another, so the
+VMGM menu domain is used.  It is a collection of menus (no titles)
+that can access the menus and titles of all the titlesets.
+
+</para>
+<para>
+
+One of the most frusterating things when deciding how to author a DVD
+is that there are often many ways to accomplish the same task.  For
+example, you must decide whether to locate menus at the VMGM level or
+the titleset level.  A typical setup is to locate the high level menus
+at the VMGM level, and the low level configuration menus (scene /
+audio / subtitle selection) at the titleset.  If there are DVD extras,
+perhaps with a lower quality audio track and a 4:3 aspect ratio, then
+they would be in a separate titleset with a menu to select among the
+extras located at the titleset level.
+
+</para>
+</refsect1>
+<refsect1><title>dvdauthor Description</title>
+
+<para><command>dvdauthor</command> works in discrete operations.  It
+authors each titleset one at a time, and then finally authors the VMGM
+to complete the disc.  At that point the contents can be written out
+to a DVD.  If you are controlling <command>dvdauthor</command> with
+command line arguments, then each step will occur independently;
+however if you are using the XML configuration file, then you have the
+option of combining some or all the steps into one.</para>
+
+<para>The VOBs passed to <command>dvdauthor</command> must have DVD
+NAV (VOBU) packets multiplexed in at the correct locations.  Many
+tools can do this, including <command>mplex</command> from mjpegtools
+1.6.0 or later.  <command>dvdauthor</command> will then fill these
+packets in with the correct data.  Special care has been taken to
+ensure <command>dvdauthor</command> is fifo compliant; that is every
+source VOB can be the output of another program (such as
+<command>mplex</command>).  This can make execution faster on many
+systems by avoiding extra filesystem accesses.</para>
+
+</refsect1>
+
+<refsect1><title>Command Line Description</title>
+
+<variablelist>
+
+<varlistentry><term><literal>-o <replaceable>output-dir</replaceable></literal></term>
+<listitem><para>The destination directory to store the DVD-Video file structure in.</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-j</literal></term><term><literal>--jumppad</literal></term>
+<listitem><para>foo</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-g</literal></term><term><literal>--allgprm</literal></term>
+<listitem><para>Enable the use of all 16 general purpose registers.  Prohibits the use of jumppad and some complex expressions that require temporary registers.</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-m</literal></term>
+<listitem><para>Creates a menu.</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-t</literal></term>
+<listitem><para>Creates a title.</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-v <replaceable>video-opts</replaceable></literal></term><term><literal>--video=<replaceable>video-opts</replaceable></literal></term>
+<listitem><para>A plus (+) separated list of video options.  Dvdauthor
+will try to infer any unspecified options.  pal, ntsc, 4:3, 16:9,
+720xfull, 720x576, 720x480, 704xfull, 704x576, 704x480, 352xfull,
+352x576, 352x480, 352xhalf, 352x288, 352x240, nopanscan, noletterbox, crop.
+Default is ntsc, 4:3, 720xfull</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-a <replaceable>audio-opts</replaceable></literal></term><term><literal>--audio=<replaceable>audio-opts</replaceable></literal></term>
+<listitem><para>A plus (+) separated list of options for an audio
+track, with each track separated by a comma (,).  For example -a
+ac3+en,mp2+de specifies two audio tracks: the first is an English
+track encoded in AC3, the second is a German track encoded using
+MPEG-1 layer 2 compression.  ac3, mp2, pcm, dts, 16bps, 20bps, 24bps,
+drc, surround, nolang, 1ch, 2ch, 3ch, 4ch, 5ch, 6ch, 7ch, 8ch, and any
+two letter ISO 639 language abbreviation.  Default is 1 track, mp2,
+20bps, nolang, 2ch.  'ac3' implies drc, 6ch.
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-s <replaceable>subpicture-opts</replaceable></literal></term><term><literal>--subpictures=<replaceable>subpicture-opts</replaceable></literal></term>
+<listitem><para>foo</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-e <replaceable>entry(s)</replaceable></literal></term><term><literal>--entry=<replaceable>entry(s)</replaceable></literal></term>
+<listitem><para>foo</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-p <replaceable>palette-file</replaceable></literal></term><term><literal>--palette=<replaceable>palette-file</replaceable></literal></term>
+<listitem><para>foo</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-i <replaceable>commandlist</replaceable></literal></term><term><literal>--instructions=<replaceable>commandlist</replaceable></literal></term>
+<listitem><para>foo</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-c <replaceable>chapterpts</replaceable></literal></term><term><literal>--chapters=<replaceable>chapterpts</replaceable></literal></term>
+<listitem><para>foo</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-f <replaceable>mpeg-file</replaceable></literal></term><term><literal>--file=<replaceable>mpeg-file</replaceable></literal></term><term><literal><replaceable>mpeg-file</replaceable></literal></term>
+<listitem><para>foo</para></listitem></varlistentry>
+
+<varlistentry><term><literal>-b <replaceable>buttondef</replaceable></literal></term><term><literal>--button=<replaceable>buttondef</replaceable></literal></term>
+<listitem><para>foo</para></listitem></varlistentry>
+
+</variablelist>
+
+</refsect1>
+
+<refsect1><title>XML Description</title>
+<para>
+Here is the basic structure of the configuration file:
+</para>
+<synopsis>
+&lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"]&gt;
+   &lt;vmgm&gt;
+      [&lt;fpc&gt;<replaceable>commands;</replaceable>&lt;/fpc&gt;]
+      &lt;menus [lang="<replaceable>language-code</replaceable>"] &gt;
+         &lt;video [format="ntsc|pal"] [aspect="4:3|16:9"]
+                [resolution="<replaceable>XxY</replaceable>"] [caption="field1|field2"]
+                [widescreen="nopanscan|noletterbox|crop"] /&gt;
+         &lt;audio [format="mp2|ac3|dts|pcm"] [channels="<replaceable>numchannels</replaceable>"]
+                [quant="16bps|20bps|24bps|drc"] [dolby="surround"]
+                [samplerate="48khz|96khz"] [lang="<replaceable>language</replaceable>"] /&gt;
+         [&lt;audio ... /&gt;]
+         &lt;subpicture lang="<replaceable>language</replaceable>" /&gt;
+         &lt;pgc [entry="title"] [palette="<replaceable>yuvfile|rgbfile</replaceable>"]
+              [pause="<replaceable>seconds</replaceable>|inf"]&gt;
+            &lt;pre&gt; <replaceable>commands;</replaceable> &lt;/pre&gt;
+            &lt;vob file="<replaceable>file.mpg</replaceable>" [chapters="<replaceable>chapter-list</replaceable>"]
+                 [pause="<replaceable>seconds</replaceable>|inf"] /&gt;
+            [&lt;vob ... /&gt;]
+            &lt;button [name="<replaceable>buttonname</replaceable>"]&gt; <replaceable>commands;</replaceable> &lt;/button&gt;
+            [&lt;button ... /&gt;]
+            &lt;post&gt; <replaceable>commands;</replaceable> &lt;/post&gt;
+         &lt;/pgc&gt;
+         [&lt;pgc ... /&gt;]
+      &lt;/menus&gt;
+   &lt;/vmgm&gt;
+   &lt;titleset&gt;
+      &lt;menus&gt;
+         [&lt;video ... /&gt;]
+         [&lt;audio ... /&gt;]
+         &lt;pgc [entry="<replaceable>entries</replaceable>"]
+              [palette="<replaceable>yuvfile|rgbfile</replaceable>"] [pause="<replaceable>seconds</replaceable>|inf"]&gt;
+            [...]
+         &lt;/pgc&gt;
+         [&lt;pgc ... /&gt;]
+      &lt;/menus&gt;
+      &lt;titles&gt;
+         [&lt;video ... /&gt;]
+         [&lt;audio ... /&gt;]
+         &lt;pgc [palette="<replaceable>yuvfile|rgbfile</replaceable>"] [pause="<replaceable>seconds</replaceable>|inf"]&gt;
+            [...]
+         &lt;/pgc&gt;
+         [&lt;pgc ... /&gt;]
+      &lt;/titles&gt;
+   &lt;/titleset&gt;
+   [&lt;titleset ... /&gt;]
+&lt;/dvdauthor&gt;
+</synopsis>
+
+<para>
+A breakdown of the config file:
+</para>
+
+<variablelist>
+
+<varlistentry><term><literal>&lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"]&gt;</literal></term>
+<listitem><para>
+Initiates dvdauthor.  <literal>dest</literal> denotes the directory where <command>dvdauthor</command> will write the files.  It overrides the <literal>-o</literal> option.  Contains up to one <literal>&lt;vmgm&gt;</literal> tag and any number of <literal>&lt;titleset&gt;</literal>'s.
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;vmgm&gt;</literal></term><term><literal>&lt;titleset&gt;</literal></term>
+<listitem><para>Constructs of a VMGM level menu set or a title set.
+Contains up to one <literal>&lt;menus&gt;</literal> tag and if a
+titleset, up to one <literal>&lt;titles&gt;</literal> tag.
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;menus
+[lang="<replaceable>language-code</replaceable>"]
+&gt;</literal></term><term><literal>&lt;titles&gt;</literal></term>
+<listitem><para>Marks the list of menus or titles for this VMGM menu
+set or titleset, called in <command>dvdauthor</command> terminology a
+"pgcgroup."  Contains up to one <literal>&lt;video&gt;</literal> tag,
+up to eight <literal>&lt;audio&gt;</literal> tags, up to 32
+<literal>&lt;subpicture&gt;</literal> tags, and any number of
+<literal>&lt;pgc&gt;</literal> tags.
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;video [format="ntsc|pal"]
+[aspect="4:3|16:9"] [resolution="<replaceable>XxY</replaceable>"]
+[caption="field1|field2"] [widescreen="nopanscan|noletterbox|crop"]
+/&gt;</literal></term> <listitem><para> Manually configures the video
+parameters for this pgcgroup.  If any of these are not set, then they
+will be inferred from the source stream.  Note that the DVD format
+only specifically supports 720x480, 704x480, 352x480, and 352x240
+resolutions for NTSC, and 720x576, 704x576, 352x576, and 352x288
+resolutions for PAL, but DVD author will accept a wider range of
+inputs and round up to the nearest size.
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;audio [format="mp2|ac3|dts|pcm"]
+[channels="<replaceable>numchannels</replaceable>"]
+[dolby="surround"] [quant="16bps|20bps|24bps|drc"] [samplerate="48khz|96khz"]
+[lang="<replaceable>language</replaceable>"] /&gt;</literal></term>
+<listitem><para>Manually configures an audio channel for this
+pgcgroup.  List once for each channel.  Most parameters are inferred
+automatically from the source VOBs except for PCM parameters.
+However, language must be manually specified.  Note that it is
+possible to just list the language attribute and let
+<command>dvdauthor</command> fill in the rest.
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;subpicture
+lang="<replaceable>language</replaceable>" /&gt;</literal></term>
+<listitem><para>foo</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;pgc
+[entry="<replaceable>entries</replaceable>"]
+[palette="<replaceable>yuvfile|rgbfile</replaceable>"]
+[pause="<replaceable>seconds</replaceable>|inf"]&gt;</literal></term>
+<listitem><para>A PGC is just a fancy term for either a menu or a
+title.  It has a special meaning in the DVD spec so I have retained
+its use here.  PGC's can have commands that get executed before they
+start playing or after they finish; see <literal>pre</literal> and
+<literal>post</literal> tags below.</para>
+
+<para>If the PGC is a menu, you can specify one or more entries for
+it.  This means that if you press the corresponding button on your DVD
+remote, then it will go to this menu.  For a VMGM level menu, the only
+choice is <literal>title</literal>, which on my remote corresponds to
+the <literal>top menu</literal> button.  For a titleset level menu,
+you can use root, subtitle, audio, angle, and ptt.  If you want more
+than one, separate them by a space or a comma.  Note that
+<literal>root</literal> entry is meant for commands that jump from a
+VMGM level menu to a titleset menu.</para>
+
+<para>All button and menu masks and all subtitles within a PGC must
+share the same 16 color palette.  If you use <command>spumux</command>
+to generate the subtitle/subpicture packets, then the color
+information will be automatically passed to
+<command>dvdauthor</command>; however, if you use another subtitler or
+want to have more control over the palette, you can manually specify
+it with the <literal>palette</literal> attribute.  The first 16
+entries of the file should be the 16 colors of the palette, listed as
+6 digit hexadecimal numbers representing either the RGB breakdown (if
+the filename ends in <literal>.rgb</literal> or the YUV breakdown (if
+the filename does not end in <literal>.rgb</literal>.  After that, the
+button group information can be listed as pairs of 8 digit hexadecimal
+numbers; up to three button groups may be specified.</para>
+
+<para>If you have a short video sequence or just want the video to
+pause at the end, you can use the <literal>pause</literal> attribute
+to set the number of seconds (as an integer) from 1 to 254.  If you
+want the video to pause indefinitely, use
+<literal>inf</literal>.</para>
+
+</listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;pre&gt; <replaceable>commands;</replaceable> &lt;/pre&gt;</literal></term>
+<term><literal>&lt;post&gt; <replaceable>commands;</replaceable> &lt;/post&gt;</literal></term>
+<listitem><para> Sets the commands to execute before or after a PGC
+plays.  It can be used to loop the current video (by having a
+<literal>&lt;post&gt; jump ... &lt;/post&gt</literal> sequence), or to
+conditionally skip certain chapters if a flag has been set.
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;fpc&gt; <replaceable>commands;</replaceable> &lt;/fpc&gt;</literal></term>
+<listitem><para> Sets the commands to execute when the disk is first
+put in the player (FPC = First Program Chain).  It can be used to jump
+to a particular menu or initialize registers on startup.  If not
+specified, an implicit one will be created that jumps to the first
+menu found, or if there is no menu it will jump to the first title..
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;vob file="<replaceable>file.mpg</replaceable>" [chapters="<replaceable>chapter-list</replaceable>"] [pause="<replaceable>seconds</replaceable>|inf"] /&gt;</literal></term>
+<listitem><para>
+foo
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;cell [start="<replaceable>timestamp</replaceable>"] [end="<replaceable>timestamp</replaceable>"] [chapter="1|on|yes" | program="1|on|yes"] [pause="<replaceable>seconds</replaceable>|inf"] /&gt;</literal></term>
+<listitem><para>
+foo
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;button [name="<replaceable>buttonname</replaceable>"]&gt; <replaceable>commands;</replaceable> &lt;/button&gt;</literal></term>
+<listitem><para>
+foo
+</para></listitem></varlistentry>
+
+</variablelist>
+
+</refsect1>
+
+<refsect1><title>Language Description</title>
+<para>
+The language is quite simple and roughly looks like C.
+</para>
+<itemizedlist>
+<listitem><para>Statements are terminated with a semicolon.</para></listitem>
+<listitem><para>Statements can span multiple lines.</para></listitem>
+<listitem><para>Multiple statements can appear on one line.</para></listitem>
+<listitem><para>Whitespace (space, tab, newlines) are not important, except to separate keywords and identifiers.</para></listitem>
+</itemizedlist>
+
+<refsect2><title>Variables</title>
+
+<para>The DVD virtual machine processes 16 bit values.  It supports up
+to 16 general purpose registers; however <command>dvdauthor</command>
+reserves 3 for internal use.  Thus register 0-12 are avaialable for
+use and are referred to as <literal>g0</literal> through
+<literal>g12</literal>.</para>
+
+<para>There are also 24 system registers, which can be referred to as
+<literal>s0</literal> through <literal>s23</literal>.  Not all of
+these can be set.  Many of these have pseodonyms.</para>
+
+<glosslist>
+
+<glossentry><glossterm><literal>audio</literal>
+(<literal>s1</literal>, rw)</glossterm><glossdef><para>Denotes the
+audio channel, ranging from 0-7.</para></glossdef></glossentry>
+
+<glossentry><glossterm><literal>subtitle</literal>
+(<literal>s2</literal>, rw)</glossterm><glossdef><para>The subtitle
+track, ranging from 0-31.  If you want the subtitle to always be
+displayed, then you should add 64 (i.e. choose 64-95).  Simply
+selecting the track (0-31) means that only the forced subtitles will
+be displayed, whereas enabling the track (64-95) means that all the
+subtitles will be displayed.  This allows you to have forced subtitles
+only for the parts of the movie where the actors are speaking a
+foreign (to the viewer) language, but still have normal subtitles for
+the hearing impaired.  The hearing impaired viewers would enable the
+track (64-95) while the other viewers would just select the track
+(0-31) they would be able to share the
+track.</para></glossdef></glossentry>
+
+<glossentry><glossterm><literal>angle</literal>
+(<literal>s3</literal>, rw)</glossterm><glossdef><para>Selects the
+angle (currently untested).</para></glossdef></glossentry>
+
+<glossentry><glossterm><literal>button</literal>
+(<literal>s8</literal>, rw)</glossterm><glossdef><para>Denotes the
+currently highlighted button.  Note that the value is multiplied by
+1024, so the first button is 1024, the second is 2048,
+etc.</para></glossdef></glossentry>
+
+</glosslist>
+
+</refsect2>
+
+<refsect2><title>Expressions</title>
+
+<para>Expressions follow typical C syntax except that booleans are not
+convertible to integers and vice versa.  Operators and comparisons
+are:</para>
+
+<para>
+<simplelist type="inline" columns="6">
+<member><literal>==</literal></>
+<member><literal>!=</literal></>
+<member><literal>&gt;=</literal></>
+<member><literal>&gt;</literal></>
+<member><literal>&lt;=</literal></>
+<member><literal>&lt;</literal></>
+<member><literal>&amp;&amp;</literal></>
+<member><literal>||</literal></>
+<member><literal>!</literal></>
+<member><literal>eq</literal></>
+<member><literal>ne</literal></>
+<member><literal>ge</literal></>
+<member><literal>gt</literal></>
+<member><literal>le</literal></>
+<member><literal>lt</literal></>
+<member><literal>and</literal></>
+<member><literal>or</literal></>
+<member><literal>xor</literal></>
+<member><literal>not</literal></>
+<member><literal>+</literal></>
+<member><literal>-</literal></>
+<member><literal>*</literal></>
+<member><literal>/</literal></>
+<member><literal>%</literal></>
+<member><literal>&</literal></>
+<member><literal>|</literal></>
+<member><literal>^</literal></>
+</simplelist>
+</para>
+
+<para>Since the code is encapsulated in XML, the parser will catch any
+unescaped &lt; characters, thus alphabetic mnemonics have been
+provided for all comparison operators for consistency.</para>
+
+<para>There is also a numerical function:</para>
+
+<variablelist>
+
+<varlistentry><term><literal>random(<replaceable>EXPRESSION</replaceable>)</literal></term>
+<listitem><para>Computes a psuedo-random number, between 1 and the
+supplied number, inclusively.</para> </listitem></varlistentry>
+
+</variablelist>
+
+</refsect2>
+
+<refsect2><title>Blocks</title>
+
+<para>Blocks are either a single statement (terminated by a
+semicolon), or a group of statements wrapped in curly braces.  For
+example:</para>
+
+<itemizedlist>
+
+<listitem><synopsis>g3=s7;</synopsis></listitem>
+<listitem><synopsis>{
+  audio=1;
+  subtitle=65;
+  jump vmgm menu 3;
+}</synopsis></listitem>
+
+</itemizedlist>
+
+</refsect2>
+
+<refsect2><title>Statements</title>
+
+<para>The statements supported are fairly simple at the moment.</para>
+
+<variablelist>
+
+<varlistentry>
+<term><literal><replaceable>VARIABLE</replaceable>=<replaceable>EXPRESSION</replaceable>;</literal></term>
+<listitem><para>Sets a variable equal to the result of an equation.</para></listitem></varlistentry>
+
+<varlistentry>
+<term><literal>if (<replaceable>EXPRESSION</replaceable>) <replaceable>BLOCK;</replaceable></literal></term>
+<term><literal>if (<replaceable>EXPRESSION</replaceable>) <replaceable>BLOCK;</replaceable> else <replaceable>BLOCK;</replaceable></literal></term>
+
+<listitem><para>Calculates the expression; if true, then it executes
+the block of code.</para></listitem></varlistentry>
+
+<varlistentry><term><literal>jump <replaceable>TARGET</replaceable>;</literal></term>
+<term><literal>call <replaceable>TARGET</replaceable> [resume <replaceable>CELL</replaceable>];</literal></term>
+<term><literal>resume;</literal></term>
+
+<listitem><para>Jumps to a particular title or menu, or calls a
+particular menu, or returns to the calling title.  You can only
+execute a call from a title to a menu; all other forms are illegal.
+The purpose of using <literal>call</literal> instead of
+<literal>jump</literal> (besides the fact that they support a mutually
+exclusive list of targets) is to allow the menu to return to the point
+in the title where the call originated using
+<literal>resume</literal>.  You can manually specify the return cell
+by using the <literal>resume</literal> keyword, however if you do not
+specify one and you use the command in a post instruction block, then
+it will presume cell 1.</para>
+
+<para>The following are possible targets:</para>
+<variablelist>
+
+<varlistentry>
+<term><literal>[vmgm | titleset <replaceable>X</replaceable>] menu</literal></term>
+<term><literal>[vmgm | titleset <replaceable>X</replaceable>] menu <replaceable>Y</replaceable></literal></term>
+<term><literal>[vmgm | titleset <replaceable>X</replaceable>] menu entry <replaceable>Z</replaceable></literal></term>
+<listitem><para>Targets either the default menu, a menu number Y, or the menu denoted as the entry for Z.  The menu is in either the VMGM or titleset domain.  If you wish to target a menu in the current domain then you can omit the domain moniker.</para></listitem></varlistentry>
+
+<varlistentry>
+<term><literal>[vmgm | titleset <replaceable>X</replaceable>] title <replaceable>Y</replaceable> [chapter <replaceable>Z</replaceable>]</literal></term>
+<listitem><para>Targets a title, or a chapter in a title.  Numbering
+starts at 1.  All of the titles on the disc are accessible in the VMGM
+domain, or you can access them by titleset
+instead.</para></listitem></varlistentry>
+
+<varlistentry>
+<term><literal>chapter <replaceable>Z</replaceable></literal></term>
+<term><literal>program <replaceable>Z</replaceable></literal></term>
+<term><literal>cell <replaceable>Z</replaceable></literal></term>
+
+<listitem><para>Targets a chapter, program, or cell in the current
+title or menu (note that menus do not have chapters).  You can use
+this to create looping menus: <literal>jump cell
+1;</literal></para></listitem></varlistentry>
+
+</variablelist>
+
+</listitem></varlistentry>
+
+</variablelist>
+
+</refsect2>
+
+</refsect1>
+
+</refentry>

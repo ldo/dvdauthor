@@ -1,0 +1,189 @@
+<chapter id="examples"><title>Examples</title>
+
+<sect1 id="ex-tools"><title>Running the tools</title>
+
+<sect2><title>Creating the DVD filesystem with dvdauthor</title>
+
+<para>In these examples, <command>dvdauthor</command> is run as:</para>
+<programlisting>rm -r test && dvdauthor -o test -x dvdauthor.xml</programlisting>
+
+<para>It will create or append to the directory specified, so it is a
+good idea to remove the directory before running
+<command>dvdauthor</command>, otherwise the resulting structure will
+not be playable.</para>
+
+</sect2>
+
+<sect2><title>Adding subtitles with spumux</title>
+
+<para><command>spumux</command> takes an mpeg2 program stream as input and spits one back out, with subtitles multiplexed in.  It is run as:</para>
+<programlisting>spumux spumux.xml &lt; input.mpg &gt; output.mpg</programlisting>
+
+</sect2>
+
+<sect2><title>Creating a movie source from video and audio with mplex</title>
+
+<para><command>mplex</command> comes from the mjpegtools package,
+available at http://mjpeg.sourceforge.net.  It can take independent
+video and audio streams and create a single mpeg2 stream.</para>
+<programlisting>mplex -f 8 -o output.mpg video.m2v audio.m2a</programlisting>
+
+</sect2>
+
+<sect2><title>Creating video from bitmap images with mpeg2enc</title>
+
+<para>When creating menus, it is necessary to create an mpeg2 video stream from one or more bitmap images.  For NTSC you can do:</para>
+<programlisting>ppmtoy4m | mpeg2enc -a 2 -n n -f 8 -o output.m2v</programlisting>
+<para>and for PAL you can do:</para>
+<programlisting>ppmtoy4m | mpeg2enc -a 2 -n p -f 8 -o output.m2v</programlisting>
+
+</sect2>
+
+<sect2><title>Creating a blank audio track with toolame</title>
+
+<para>When creating menus with no sound, it is necessary to multiplex
+in an empty sound file.  At 48kHz, NTSC has 1601.6 audio samples per
+frame while PAL has 1920 audio samples per frame.  Determine how many
+samples you need, and run:</para>
+<programlisting>dd if=/dev/zero bs=4 count=<replaceable>number-of-samples</replaceable> | toolame -b 128 -s 48 /dev/stdin output.m2a</programlisting>
+
+</sect2>
+
+</sect1>
+
+<sect1 id="ex-title"><title>Creating a title</title>
+
+<sect2><title>One chapter, one source</title>
+<para>This forms the most basic DVD.  THe DVD player will start playing the movie when the disc is inserted and will stop at the end.</para>
+<programlisting><![CDATA[
+<dvdauthor>
+    <vmgm />
+    <titleset>
+        <titles>
+            <pgc>
+                <vob file="video.mpg" />
+            </pgc>
+        </titles>
+    </titleset>
+</dvdauthor>
+]]></programlisting>
+</sect2>
+
+
+<sect2><title>Two chapters, two sources</title>
+<para>Adding a second chapter is quite simple if it is in a separate file.</para>
+<programlisting><![CDATA[
+<dvdauthor>
+    <vmgm />
+    <titleset>
+        <titles>
+            <pgc>
+                <vob file="video1.mpg" />
+                <vob file="video2.mpg" />
+            </pgc>
+        </titles>
+    </titleset>
+</dvdauthor>
+]]></programlisting>
+</sect2>
+
+
+<sect2><title>One chapter, two sources</title>
+<para><application>DVDAuthor</application> normally creates one
+chapter per file.  This can be overridden using
+<literal>chapters="<replaceable>foo</replaceable>"</literal>.  The
+parameter is a comma separated list of timestamps of the form
+<literal>[[<replaceable>HH</replaceable>:]<replaceable>MM</replaceable>:]<replaceable>SS</replaceable></literal>.</para>
+<programlisting><![CDATA[
+<dvdauthor>
+    <vmgm />
+    <titleset>
+        <titles>
+            <pgc>
+                <vob file="video1.mpg" chapters="0" />
+                <vob file="video2.mpg" />
+            </pgc>
+        </titles>
+    </titleset>
+</dvdauthor>
+]]></programlisting>
+</sect2>
+
+
+<sect2><title>Two chapters, one source</title>
+<para>This will create a movie with two chapters, one at the beginning (which is always required) and one five minutes into the video.</para>
+<programlisting><![CDATA[
+<dvdauthor>
+    <vmgm />
+    <titleset>
+        <titles>
+            <pgc>
+                <vob file="video1.mpg" chapters="0,5:00" />
+            </pgc>
+        </titles>
+    </titleset>
+</dvdauthor>
+]]></programlisting>
+</sect2>
+
+
+<sect2><title>Looping</title>
+<para>Having <literal>&lt;post&gt;</literal>commands will alter what happens when playback reaches the end of your title.  You can repeat the current title by jumping to the first chapter.</para>
+<programlisting><![CDATA[
+<dvdauthor>
+    <vmgm />
+    <titleset>
+        <titles>
+            <pgc>
+                <vob file="video1.mpg" />
+                <post>
+                    jump chapter 1;
+                </post>
+            </pgc>
+        </titles>
+    </titleset>
+</dvdauthor>
+]]></programlisting>
+</sect2>
+
+
+<sect2><title>Pausing</title>
+<para>Having <literal>pause="<replaceable>foo</replaceable>"</literal>
+will cause playback to pause for either the specified number of
+seconds or indefinitely (<literal>inf</literal>).  This can be used
+either at the end of the title (by supplying it as an attribute to
+<literal>pgc</literal> or at the end of a particular source, as an
+attribute to <literal>vob</literal>.  The following will pause
+indefinitely at the end of the title:</para>
+<programlisting><![CDATA[
+<dvdauthor>
+    <vmgm />
+    <titleset>
+        <titles>
+            <pgc pause="inf">
+                <vob file="video1.mpg" />
+            </pgc>
+        </titles>
+    </titleset>
+</dvdauthor>
+]]></programlisting>
+
+<para>while the following will pause for 5 seconds after the first chapter:</para>
+<programlisting><![CDATA[
+<dvdauthor>
+    <vmgm />
+    <titleset>
+        <titles>
+            <pgc>
+                <vob file="video1.mpg" pause="5" />
+                <vob file="video2.mpg" />
+            </pgc>
+        </titles>
+    </titleset>
+</dvdauthor>
+]]></programlisting>
+</sect2>
+
+</sect1>
+
+</chapter>

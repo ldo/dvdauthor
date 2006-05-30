@@ -1,0 +1,96 @@
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+
+  <xsd:annotation>
+    <xsd:documentation xml:lang="en">
+     XML Schema Definition for spumux.
+     Author: Alan Canon (acanon@bellsouth.net)
+     Date: 1/8/2005
+     This Schema is made available under the terms of the GNU GPL.
+     See http://www.gnu.org/ for details.
+     // TODO Copy the spumux man page documentation as xsd:annotations to the below.
+    </xsd:documentation>
+  </xsd:annotation>
+
+  <xsd:element name="subpictures" type="SubpicturesType"/>
+
+  <xsd:complexType name="SubpicturesType">
+    <xsd:sequence>
+      <xsd:element name="stream" type="StreamType"/>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <xsd:complexType name="StreamType">
+    <xsd:choice>
+      <xsd:sequence>
+        <xsd:element name="spu" type="SpuType"/>
+      </xsd:sequence>
+      <xsd:element name="textsub" type="TextsubType"/>
+    </xsd:choice>
+  </xsd:complexType>
+
+  <xsd:complexType name="SpuType">
+    <xsd:sequence>
+      <xsd:element name="button" type="ButtonType" minOccurs="0" maxOccurs="unbounded" />
+      <xsd:element name="action" type="ActionType" minOccurs="0" maxOccurs="unbounded" />
+    </xsd:sequence>
+    <!-- HR:MM:SS.HU -->
+    <xsd:attribute name="start" type="xsd:string" use="optional"/>
+    <!-- HR:MM:SS.HU -->
+    <xsd:attribute name="end" type="xsd:string" use="optional"/>
+    <xsd:attribute name="image" type="xsd:string"/>
+    <xsd:attribute name="highlight" type="xsd:string"/>
+    <xsd:attribute name="select" type="xsd:string"/>
+    <xsd:attribute name="transparent" type="xsd:string"/>
+    <xsd:attribute name="force" type="xsd:string"/>
+    <xsd:attribute name="autooutline" type="xsd:string"/>
+    <xsd:attribute name="outlinewidth" type="xsd:string"/>
+    <!-- [ autoorder="rows" | autoorder="columns" ] -->
+    <xsd:attribute name="autoorder" type="xsd:string"/>
+    <xsd:attribute name="xoffset" type="xsd:string"/>
+    <xsd:attribute name="yoffset" type="xsd:string"/>
+  </xsd:complexType>
+
+  <xsd:complexType name="ButtonType">
+    <xsd:attribute name="name" type="xsd:string"/>
+    <xsd:attribute name="x0" type="xsd:string"/>
+    <xsd:attribute name="y0" type="xsd:string"/>
+    <xsd:attribute name="x1" type="xsd:string"/>
+    <xsd:attribute name="y1" type="xsd:string"/>
+    <xsd:attribute name="up" type="xsd:string"/>
+    <xsd:attribute name="down" type="xsd:string"/>
+    <xsd:attribute name="left" type="xsd:string"/>
+    <xsd:attribute name="right" type="xsd:string"/>
+  </xsd:complexType>
+
+  <xsd:complexType name="ActionType">
+    <xsd:attribute name="name" type="xsd:string"/>
+    <xsd:attribute name="x0" type="xsd:string"/>
+    <xsd:attribute name="y0" type="xsd:string"/>
+    <xsd:attribute name="x1" type="xsd:string"/>
+    <xsd:attribute name="y1" type="xsd:string"/>
+    <xsd:attribute name="up" type="xsd:string"/>
+    <xsd:attribute name="down" type="xsd:string"/>
+    <xsd:attribute name="left" type="xsd:string"/>
+    <xsd:attribute name="right" type="xsd:string"/>
+  </xsd:complexType>
+
+
+  <xsd:complexType name="TextsubType">
+    <xsd:attribute name="filename" type="xsd:string"/>
+    <xsd:attribute name="characterset" type="xsd:string"/>
+    <xsd:attribute name="fontsize" type="xsd:string"/>
+    <xsd:attribute name="font" type="xsd:string"/>
+    <xsd:attribute name="horizontal-alignment" type="xsd:string"/>
+    <xsd:attribute name="vertical-alignment" type="xsd:string"/>
+    <xsd:attribute name="left-margin" type="xsd:string"/>
+    <xsd:attribute name="right-margin" type="xsd:string"/>
+    <xsd:attribute name="top-margin" type="xsd:string"/>
+    <xsd:attribute name="bottom-margin" type="xsd:string"/>
+    <xsd:attribute name="subtitle-fps" type="xsd:string"/>
+    <xsd:attribute name="movie-fps" type="xsd:string"/>
+    <xsd:attribute name="movie-width" type="xsd:string"/>
+    <xsd:attribute name="movie-height" type="xsd:string"/>
+  </xsd:complexType>
+
+</xsd:schema>

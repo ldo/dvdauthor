@@ -1,0 +1,241 @@
+<refentry id="spumux">
+
+<refmeta>
+<refentrytitle>spumux</refentrytitle>
+<manvolnum>1</manvolnum>
+</refmeta>
+
+<refnamediv>
+<refname>spumux</refname>
+<refpurpose>generates and multiplexes subtitles into an existing mpeg2 program stream</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>spumux</command>
+<group>
+<arg>-m dvd</arg>
+<arg>-m cvd</arg>
+<arg>-m svcd</arg>
+</group>
+<arg>-s <replaceable>stream</replaceable></arg>
+<arg>-v <replaceable>level</replaceable></arg>
+<arg>-P</arg>
+<arg choice="req"><replaceable>file</replaceable></arg>
+<arg choice="req">&lt <replaceable>mpeg</replaceable></arg>
+<arg choice="req">&gt <replaceable>mpeg-with-subtitles</replaceable></arg>
+</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1><title>Description</title>
+<para>
+<command>spumux</command> encodes the subtitles and multiplexes it into the mpeg2 program stream.
+</para>
+<glosslist>
+<glossentry><glossterm>-m <replaceable>mode</replaceable></glossterm>
+<glossdef><para>
+
+Sets the encoding for the subtitles.  Can be dvd, cvd, or svcd.
+Default is dvd.
+
+</para></glossdef></glossentry>
+<glossentry><glossterm>-s <replaceable>stream</replaceable></glossterm>
+<glossdef><para>
+Sets the subtitle stream id.  Default is 0.
+</para></glossdef></glossentry>
+<glossentry><glossterm>-v <replaceable>level</replaceable></glossterm>
+<glossdef><para>
+Sets the verbosity level.
+</para></glossdef></glossentry>
+<glossentry><glossterm>-P</glossterm>
+<glossdef><para>
+Enables a progress bar.
+</para></glossdef></glossentry>
+</glosslist>
+<para>
+Here's a sample configuration file:
+</para>
+<synopsis>
+&lt;subpictures&gt;
+   &lt;stream&gt;
+      &lt;spu start="<replaceable>start-time</replaceable>" [ end="<replaceable>end-time</replaceable>" ] [ image="<replaceable>picture.png</replaceable>" ]
+           [ highlight="<replaceable>picture.png</replaceable>" ] [ select="<replaceable>picture.png</replaceable>" ]
+           [ transparent="<replaceable>color-code</replaceable>" ] [ force="yes" ]
+           [ autooutline="infer" [ outlinewidth="<replaceable>width</replaceable>" ]
+             [ autoorder="rows" | autoorder="columns" ] ]
+           [ xoffset="<replaceable>x-coord</replaceable>" yoffset="<replaceable>y-coord</replaceable>" ] &gt;
+         &lt;button [ name="<replaceable>name</replaceable>" ] [ x0="<replaceable>x0</replaceable>" ] [ y0="<replaceable>y0</replaceable>" ] [ x1="<replaceable>x1</replaceable>" ]
+                 [ y1="<replaceable>y1</replaceable>" ] [ up="<replaceable>name</replaceable>" ] [ down="<replaceable>name</replaceable>" ]
+                 [ left="<replaceable>name</replaceable>" ] [ right="<replaceable>name</replaceable>" ] /&gt;
+         &lt;action [ name="<replaceable>name</replaceable>" ] /&gt;
+      &lt;/spu&gt;
+   &lt;/stream&gt;
+&lt;/subpictures&gt;
+</synopsis>
+<para>
+
+Each subtitle image is described by an &lt;spu&gt; tag.  The start and
+optional end attributes describe when the subtitle will be displayed
+on the screen, in "HR:MM:SS.HU".  The image attribute describes the
+main subtitle image, which can either be a PNG or BMP file.  If your
+image is not a full screen image, you can use xoffset and yoffset to
+move the picture around.  In the advent that the author is unable to
+use a graphics format with an alpha channel, then the transparent
+attribute can be used to describe which color should become fully
+transparent.  The color is in hexadecimal as "RRGGBB".  If you want to
+force the display of the subtitle, regardless of whether the user has
+enabled subtitles or not, you can use the force tag.  When you are
+making menus, the force tag is required.
+
+</para>
+<para>
+
+The remaining attributes and tags are related to menu creation.  The
+highlight attribute shows what all the buttons look like when they are
+highlighted (i.e. when you are using the arrows in the menu), and the
+select attribute shows what all the buttons look like when the are
+selected (i.e. for the 1-2 seconds after you press enter in the menu).
+If either of these (or the image attribute) are omitted, then spumux
+creates a blank (totally transparent) image.  Obviously at least one
+tag should be specified.
+
+</para>
+<para>
+
+To aid in button creation, the autooutline attribute instructs spumux
+to infer where the buttons are located.  It does this by attempting to
+draw rectangles around a composition of the highlight and select
+images which do not intersect any opaque or semi-opaque pixels.  In
+order to support textual buttons, the attribute outlinewidth allows
+you to specify the width of the rectangle which is tested.  Wider
+rectangles won't be able to squeeze between the letters.  Finally,
+autoorder describes which way to order the automatically detected
+buttons, which is important for numerically selected buttons and for
+mapping buttons to button names or to the implied names.
+
+</para>
+<para>
+
+The button and action tags describe the buttons (visibly selectable
+objects on the screen) and actions (commands that are executed as soon
+as the associated key is pressed on the remote).  If you are using the
+autooutline feature, just designing buttons, are happy with the
+inferred button navigation, and can deal with the simplistic naming
+system, then you actually do not even need to specify any buttons or
+actions.  Otherwise, read on.
+
+</para>
+<para>
+
+The name attribute is used to give a button or action an easy to
+refer to name.  By default they are numbered sequentially starting
+with "1".  The (x0,y0) coordinates describe the upper left hand corner
+inclusively, while the (x1,y1) coordinates describe the lower right
+hand corner EXclusively.  The up, down, left, and right names
+describe which button or action should be tied to the corresponding
+key when the current button is highlighted, though if omitted spumux
+will use a reasonably intelligent algorithm to determine which buttons
+to move to.
+
+</para>
+</refsect1>
+<refsect1><title>Handling text based subtitles</title>
+<para>
+
+Spumux is also able to handle text subtitles, which will be rendered to
+graphics by spumux. A lot of different text (must be non-graphic) formats 
+are supported (.sub, .srt, .ssa, .smi, .rt , .txt, .aqt, .jss, .js, ass).
+Spumux will try to determine the format automatically. 
+
+</para>
+<para>
+
+If processing textbased subtitles no other streams can be defined, buttons 
+or others need to be processed in another pass with spumux, using another 
+xml file.
+
+</para>
+<para>
+
+Following .xml file shows the available tags and their default settings. 
+Only the textsub tag is mandatory, defaults are used if the specific tag 
+is not specified.
+
+</para>
+<synopsis>
+&lt;subpictures&gt;
+   &lt;stream&gt;
+      &lt;textsub filename="demo1.srt" characterset="ISO8859-1" 
+         fontsize="28.0" font="arial.ttf" horizontal-alignment="left" 
+         vertical-alignment="bottom" left-margin="60" right-margin="60" 
+         top-margin="20" bottom-margin="30" subtitle-fps="25" 
+         movie-fps="25" movie-width="720" movie-height="574"
+      /&gt;
+   &lt;/stream&gt;
+&lt;/subpictures&gt;
+</synopsis>
+<para>
+
+The textsub tag defines the settings for the text to graphics rendering. 
+
+</para>
+<para>
+
+The filename attribute defines the path and name of the input text subtitle 
+file, this is the only attribute that is mandatory.
+
+</para>
+<para>
+
+The characterset attribute defines the characterset to be used, available 
+charactersets can be found at http://www.gnu.org/software/libiconv.
+
+</para>
+<para>
+
+The fontsize attribute defines the size of the font in font units.
+The font attribute defines the font used. Spumux will look into the home 
+directory in subdirectory .spumux for fonts on linux systems and will 
+look into the windows/fonts and subdirectory spumux of the cygwin/mingw 
+home directory and into the exucution directory for windows based 
+execution for the specified font. Looking for free fonts? One listing is 
+here http://www.microsoft.com/typography/links/links.asp?type=free&amp;part=1 
+(this is only about fonts, not about operating systems).
+
+</para>
+<para>
+
+The horizontal-alignment attribute defines the horizontal alignment of the 
+subtitles. Options are: "left", "right", "center" and "default".
+The "default" value causes spumux to use the attribute that is in the text 
+subtitle file if the format supports such an attribute.
+
+</para>
+<para>
+
+The vertical-alignment attribute defines the vertical alignment.
+Options are: "top", "center" and "bottom".
+
+</para>
+<para>
+
+The margin attributes define the minimum blank pixel space between the 
+border of the image and the border of the subtitle lines.
+
+</para>
+<para>
+
+Defining the subtitle-fps and movie-fps attributes make it possible for 
+spumux to recalculate the subtitle timing if these are not the same.
+
+</para>
+<para>
+
+The movie-width and movie-height attributes define the maximum size of 
+the subtitle page, these shouldn't be larger than the fram-size of the 
+movie frame, normally they are the same. Some DVD-players more like 
+subtitle frames that are 2 or 4 pixels smaller in height.
+
+</para>
+</refsect1>
+</refentry>

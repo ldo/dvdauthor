@@ -1,0 +1,41 @@
+DVDAUTHOR
+
+. deal with non-18 byte system headers
+
+. allow different subtitles for p&s, lb, etc
+
+. allow different buttons for p&s, lb, etc
+
+. moving buttons
+
+. make it a library
+
+. improve (and test) audio gap detection
+
+. resurrect buttongroup code
+
+. add support for timers (need optimizer: set two variables at once, or just provide 'settimer(X,Y) function)
+
+. add support for counting GPRMS (i.e. 'g3 counter on;' or 'g3 counter off;')
+
+. allow jumppad to span multiple pgc's
+
+
+SPUMUX
+
+. handle multiple scripts in spumux
+
+. deal with 16 color subtitles
+
+. fix output of spumux (INFO:, ERR:, WARN:)
+
+. deal with multiple subtitle formats
+
+. librarify spumux
+
+. add way to map color->color for generating select images
+
+
+DOCUMENTATION
+
+. provide a full example case on the website, buttons, menus, multiple chapters without pauses, etc.

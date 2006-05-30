@@ -1,0 +1,485 @@
+<appendix id="languages"><title>Language Codes</title>
+
+<para>The following are the ISO 639 langauges codes, adapted from
+<computeroutput>http://sunsite.berkeley.edu/amher/iso_639.html</computeroutput>.</para>
+
+<table><title>Sorted By Language Name</title>
+<tgroup cols=3>
+<thead><row><entry>Langauge Name</entry><entry>Code</entry><entry>Language Family</entry></row></thead>
+<tbody>
+<row><entry>ABKHAZIAN</entry><entry>AB</entry><entry>IBERO-CAUCASIAN</entry></row>
+<row><entry>AFAN (OROMO)</entry><entry>OM</entry><entry>HAMITIC</entry></row>
+<row><entry>AFAR</entry><entry>AA</entry><entry>HAMITIC</entry></row>
+<row><entry>AFRIKAANS</entry><entry>AF</entry><entry>GERMANIC</entry></row>
+<row><entry>ALBANIAN</entry><entry>SQ</entry><entry>INDO-EUROPEAN (OTHER)</entry></row>
+<row><entry>AMHARIC</entry><entry>AM</entry><entry>SEMITIC</entry></row>
+<row><entry>ARABIC</entry><entry>AR</entry><entry>SEMITIC</entry></row>
+<row><entry>ARMENIAN</entry><entry>HY</entry><entry>INDO-EUROPEAN (OTHER)</entry></row>
+<row><entry>ASSAMESE</entry><entry>AS</entry><entry>INDIAN</entry></row>
+<row><entry>AYMARA</entry><entry>AY</entry><entry>AMERINDIAN</entry></row>
+<row><entry>AZERBAIJANI</entry><entry>AZ</entry><entry>TURKIC/ALTAIC</entry></row>
+
+<row><entry>BASHKIR</entry><entry>BA</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>BASQUE</entry><entry>EU</entry><entry>BASQUE</entry></row>
+<row><entry>BENGALI;BANGLA</entry><entry>BN</entry><entry>INDIAN</entry></row>
+<row><entry>BHUTANI</entry><entry>DZ</entry><entry>ASIAN</entry></row>
+<row><entry>BIHARI</entry><entry>BH</entry><entry>INDIAN</entry></row>
+<row><entry>BISLAMA</entry><entry>BI</entry><entry>[not given]</entry></row>
+<row><entry>BRETON</entry><entry>BR</entry><entry>CELTIC</entry></row>
+<row><entry>BULGARIAN</entry><entry>BG</entry><entry>SLAVIC</entry></row>
+<row><entry>BURMESE</entry><entry>MY</entry><entry>ASIAN</entry></row>
+<row><entry>BYELORUSSIAN</entry><entry>BE</entry><entry>SLAVIC</entry></row>
+
+<row><entry>CAMBODIAN</entry><entry>KM</entry><entry>ASIAN</entry></row>
+<row><entry>CATALAN</entry><entry>CA</entry><entry>ROMANCE</entry></row>
+<row><entry>CHINESE</entry><entry>ZH</entry><entry>ASIAN</entry></row>
+<row><entry>CORSICAN</entry><entry>CO</entry><entry>ROMANCE</entry></row>
+<row><entry>CROATIAN</entry><entry>HR</entry><entry>SLAVIC</entry></row>
+<row><entry>CZECH</entry><entry>CS</entry><entry>SLAVIC</entry></row>
+
+<row><entry>DANISH</entry><entry>DA</entry><entry>GERMANIC</entry></row>
+<row><entry>DUTCH</entry><entry>NL</entry><entry>GERMANIC</entry></row>
+
+<row><entry>ENGLISH</entry><entry>EN</entry><entry>GERMANIC</entry></row>
+<row><entry>ESPERANTO</entry><entry>EO</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>ESTONIAN</entry><entry>ET</entry><entry>FINNO-UGRIC</entry></row>
+
+<row><entry>FAROESE</entry><entry>FO</entry><entry>GERMANIC</entry></row>
+<row><entry>FIJI</entry><entry>FJ</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>FINNISH</entry><entry>FI</entry><entry>FINNO-UGRIC</entry></row>
+<row><entry>FRENCH</entry><entry>FR</entry><entry>ROMANCE</entry></row>
+<row><entry>FRISIAN</entry><entry>FY</entry><entry>GERMANIC</entry></row>
+
+<row><entry>GALICIAN</entry><entry>GL</entry><entry>ROMANCE</entry></row>
+<row><entry>GEORGIAN</entry><entry>KA</entry><entry>IBERO-CAUCASIAN</entry></row>
+<row><entry>GERMAN</entry><entry>DE</entry><entry>GERMANIC</entry></row>
+<row><entry>GREEK</entry><entry>EL</entry><entry>LATIN/GREEK</entry></row>
+<row><entry>GREENLANDIC</entry><entry>KL</entry><entry>ESKIMO</entry></row>
+<row><entry>GUARANI</entry><entry>GN</entry><entry>AMERINDIAN</entry></row>
+<row><entry>GUJARATI</entry><entry>GU</entry><entry>INDIAN</entry></row>
+
+<row><entry>HAUSA</entry><entry>HA</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>HEBREW</entry><entry>IW</entry><entry>SEMITIC</entry></row>
+<row><entry>HINDI</entry><entry>HI</entry><entry>INDIAN</entry></row>
+<row><entry>HUNGARIAN</entry><entry>HU</entry><entry>FINNO-UGRIC</entry></row>
+
+<row><entry>ICELANDIC</entry><entry>IS</entry><entry>GERMANIC</entry></row>
+<row><entry>INDONESIAN</entry><entry>IN</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>INTERLINGUA</entry><entry>IA</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>INTERLINGUE</entry><entry>IE</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>INUPIAK</entry><entry>IK</entry><entry>ESKIMO</entry></row>
+<row><entry>IRISH</entry><entry>GA</entry><entry>CELTIC</entry></row>
+<row><entry>ITALIAN</entry><entry>IT</entry><entry>ROMANCE</entry></row>
+
+<row><entry>JAPANESE</entry><entry>JA</entry><entry>ASIAN</entry></row>
+<row><entry>JAVANESE</entry><entry>JV</entry><entry>OCEANIC/INDONESIAN</entry></row>
+
+<row><entry>KANNADA</entry><entry>KN</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>KASHMIRI</entry><entry>KS</entry><entry>INDIAN</entry></row>
+<row><entry>KAZAKH</entry><entry>KK</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>KINYARWANDA</entry><entry>RW</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>KIRGHIZ</entry><entry>KY</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>KURUNDI</entry><entry>RN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>KOREAN</entry><entry>KO</entry><entry>ASIAN</entry></row>
+<row><entry>KURDISH</entry><entry>KU</entry><entry>IRANIAN</entry></row>
+
+<row><entry>LAOTHIAN</entry><entry>LO</entry><entry>ASIAN</entry></row>
+<row><entry>LATIN</entry><entry>LA</entry><entry>LATIN/GREEK</entry></row>
+<row><entry>LATVIAN;LETTISH</entry><entry>LV</entry><entry>BALTIC</entry></row>
+<row><entry>LINGALA</entry><entry>LN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>LITHUANIAN</entry><entry>LT</entry><entry>BALTIC</entry></row>
+
+<row><entry>MACEDONIAN</entry><entry>MK</entry><entry>SLAVIC</entry></row>
+<row><entry>MALAGASY</entry><entry>MG</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>MALAY</entry><entry>MS</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>MALAYALAM</entry><entry>ML</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>MALTESE</entry><entry>MT</entry><entry>SEMITIC</entry></row>
+<row><entry>MAORI</entry><entry>MI</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>MARATHI</entry><entry>MR</entry><entry>INDIAN</entry></row>
+<row><entry>MOLDAVIAN</entry><entry>MO</entry><entry>ROMANCE</entry></row>
+<row><entry>MONGOLIAN</entry><entry>MN</entry><entry>[not given]</entry></row>
+
+<row><entry>NAURU</entry><entry>NA</entry><entry>[not given]</entry></row>
+<row><entry>NEPALI</entry><entry>NE</entry><entry>INDIAN</entry></row>
+<row><entry>NORWEGIAN</entry><entry>NO</entry><entry>GERMANIC</entry></row>
+
+<row><entry>OCCITAN</entry><entry>OC</entry><entry>ROMANCE</entry></row>
+<row><entry>ORIYA</entry><entry>OR</entry><entry>INDIAN</entry></row>
+
+<row><entry>PASHTO;PUSHTO</entry><entry>PS</entry><entry>IRANIAN</entry></row>
+<row><entry>PERSIAN (farsi)</entry><entry>FA</entry><entry>IRANIAN</entry></row>
+<row><entry>POLISH</entry><entry>PL</entry><entry>SLAVIC</entry></row>
+<row><entry>PORTUGUESE</entry><entry>PT</entry><entry>ROMANCE</entry></row>
+<row><entry>PUNJABI</entry><entry>PA</entry><entry>INDIAN</entry></row>
+
+<row><entry>QUECHUA</entry><entry>QU</entry><entry>AMERINDIAN</entry></row>
+
+<row><entry>RHAETO-ROMANCE</entry><entry>RM</entry><entry>ROMANCE</entry></row>
+<row><entry>ROMANIAN</entry><entry>RO</entry><entry>ROMANCE</entry></row>
+<row><entry>RUSSIAN</entry><entry>RU</entry><entry>SLAVIC</entry></row>
+
+<row><entry>SAMOAN</entry><entry>SM</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>SANGHO</entry><entry>SG</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SANSKRIT</entry><entry>SA</entry><entry>INDIAN</entry></row>
+<row><entry>SCOTS</entry><entry>GAELIC</entry><entry>GD     CELTIC</entry></row>
+<row><entry>SERBIAN</entry><entry>SR</entry><entry>SLAVIC</entry></row>
+<row><entry>SERBO-CROATIAN</entry><entry>SH</entry><entry>SLAVIC</entry></row>
+<row><entry>SESOTHO</entry><entry>ST</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SETSWANA</entry><entry>TN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SHONA</entry><entry>SN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SINDHI</entry><entry>SD</entry><entry>INDIAN</entry></row>
+<row><entry>SINGHALESE</entry><entry>SI</entry><entry>INDIAN</entry></row>
+<row><entry>SISWATI</entry><entry>SS</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SLOVAK</entry><entry>SK</entry><entry>SLAVIC</entry></row>
+<row><entry>SLOVENIAN</entry><entry>SL</entry><entry>SLAVIC</entry></row>
+<row><entry>SOMALI</entry><entry>SO</entry><entry>HAMITIC</entry></row>
+<row><entry>SPANISH</entry><entry>ES</entry><entry>ROMANCE</entry></row>
+<row><entry>SUNDANESE</entry><entry>SU</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>SWAHILI</entry><entry>SW</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SWEDISH</entry><entry>SV</entry><entry>GERMANIC</entry></row>
+
+<row><entry>TAGALOG</entry><entry>TL</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>TAJIK</entry><entry>TG</entry><entry>IRANIAN</entry></row>
+<row><entry>TAMIL</entry><entry>TA</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>TATAR</entry><entry>TT</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>TELUGU</entry><entry>TE</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>THAI</entry><entry>TH</entry><entry>ASIAN</entry></row>
+<row><entry>TIBETAN</entry><entry>BO</entry><entry>ASIAN</entry></row>
+<row><entry>TIGRINYA</entry><entry>TI</entry><entry>SEMITIC</entry></row>
+<row><entry>TONGA</entry><entry>TO</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>TSONGA</entry><entry>TS</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>TURKISH</entry><entry>TR</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>TURKMEN</entry><entry>TK</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>TWI</entry><entry>TW</entry><entry>NEGRO-AFRICAN</entry></row>
+
+<row><entry>UKRAINIAN</entry><entry>UK</entry><entry>SLAVIC</entry></row>
+<row><entry>URDU</entry><entry>UR</entry><entry>INDIAN</entry></row>
+<row><entry>UZBEK</entry><entry>UZ</entry><entry>TURKIC/ALTAIC</entry></row>
+
+<row><entry>VIETNAMESE</entry><entry>VI</entry><entry>ASIAN</entry></row>
+<row><entry>VOLAPUK</entry><entry>VO</entry><entry>INTERNATIONAL AUX.</entry></row>
+
+<row><entry>WELSH</entry><entry>CY</entry><entry>CELTIC</entry></row>
+<row><entry>WOLOF</entry><entry>WO</entry><entry>NEGRO-AFRICAN</entry></row>
+
+<row><entry>XHOSA</entry><entry>XH</entry><entry>NEGRO-AFRICAN</entry></row>
+
+<row><entry>YIDDISH</entry><entry>JI</entry><entry>GERMANIC</entry></row>
+<row><entry>YORUBA</entry><entry>YO</entry><entry>NEGRO-AFRICAN</entry></row>
+
+<row><entry>ZULU</entry><entry>ZU</entry><entry>NEGRO-AFRICAN</entry></row>
+</tbody>
+</tgroup>
+</table>
+
+<table><title>Sorted By Language Code</title>
+<tgroup cols=3>
+<thead><row><entry>Langauge Name</entry><entry>Code</entry><entry>Language Family</entry></row></thead>
+<tbody>
+<row><entry>AFAR</entry><entry>AA</entry><entry>HAMITIC</entry></row>
+<row><entry>ABKHAZIAN</entry><entry>AB</entry><entry>IBERO-CAUCASIAN</entry></row>
+<row><entry>AFRIKAANS</entry><entry>AF</entry><entry>GERMANIC</entry></row>
+<row><entry>AMHARIC</entry><entry>AM</entry><entry>SEMITIC</entry></row>
+<row><entry>ARABIC</entry><entry>AR</entry><entry>SEMITIC</entry></row>
+<row><entry>ASSAMESE</entry><entry>AS</entry><entry>INDIAN</entry></row>
+<row><entry>AYMARA</entry><entry>AY</entry><entry>AMERINDIAN</entry></row>
+<row><entry>AZERBAIJANI</entry><entry>AZ</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>BASHKIR</entry><entry>BA</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>BYELORUSSIAN</entry><entry>BE</entry><entry>SLAVIC</entry></row>
+<row><entry>BULGARIAN</entry><entry>BG</entry><entry>SLAVIC</entry></row>
+<row><entry>BIHARI</entry><entry>BH</entry><entry>INDIAN</entry></row>
+<row><entry>BISLAMA</entry><entry>BI</entry><entry>[not given]</entry></row>
+<row><entry>BENGALI;BANGLA</entry><entry>BN</entry><entry>INDIAN</entry></row>
+<row><entry>TIBETAN</entry><entry>BO</entry><entry>ASIAN</entry></row>
+<row><entry>BRETON</entry><entry>BR</entry><entry>CELTIC</entry></row>
+<row><entry>CATALAN</entry><entry>CA</entry><entry>ROMANCE</entry></row>
+<row><entry>CORSICAN</entry><entry>CO</entry><entry>ROMANCE</entry></row>
+<row><entry>CZECH</entry><entry>CS</entry><entry>SLAVIC</entry></row>
+<row><entry>WELSH</entry><entry>CY</entry><entry>CELTIC</entry></row>
+<row><entry>DANISH</entry><entry>DA</entry><entry>GERMANIC</entry></row>
+<row><entry>GERMAN</entry><entry>DE</entry><entry>GERMANIC</entry></row>
+<row><entry>BHUTANI</entry><entry>DZ</entry><entry>ASIAN</entry></row>
+<row><entry>GREEK</entry><entry>EL</entry><entry>LATIN/GREEK</entry></row>
+<row><entry>ENGLISH</entry><entry>EN</entry><entry>GERMANIC</entry></row>
+<row><entry>ESPERANTO</entry><entry>EO</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>SPANISH</entry><entry>ES</entry><entry>ROMANCE</entry></row>
+<row><entry>ESTONIAN</entry><entry>ET</entry><entry>FINNO-UGRIC</entry></row>
+<row><entry>BASQUE</entry><entry>EU</entry><entry>BASQUE</entry></row>
+<row><entry>PERSIAN (farsi)</entry><entry>FA</entry><entry>IRANIAN</entry></row>
+<row><entry>FINNISH</entry><entry>FI</entry><entry>FINNO-UGRIC</entry></row>
+<row><entry>FIJI</entry><entry>FJ</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>FAROESE</entry><entry>FO</entry><entry>GERMANIC</entry></row>
+<row><entry>FRENCH</entry><entry>FR</entry><entry>ROMANCE</entry></row>
+<row><entry>FRISIAN</entry><entry>FY</entry><entry>GERMANIC</entry></row>
+<row><entry>IRISH</entry><entry>GA</entry><entry>CELTIC</entry></row>
+<row><entry>SCOTS GAELIC</entry><entry>GD</entry><entry>CELTIC</entry></row>
+<row><entry>GALICIAN</entry><entry>GL</entry><entry>ROMANCE</entry></row>
+<row><entry>GUARANI</entry><entry>GN</entry><entry>AMERINDIAN</entry></row>
+<row><entry>GUJARATI</entry><entry>GU</entry><entry>INDIAN</entry></row>
+<row><entry>HAUSA</entry><entry>HA</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>HINDI</entry><entry>HI</entry><entry>INDIAN</entry></row>
+<row><entry>CROATIAN</entry><entry>HR</entry><entry>SLAVIC</entry></row>
+<row><entry>HUNGARIAN</entry><entry>HU</entry><entry>FINNO-UGRIC</entry></row>
+<row><entry>ARMENIAN</entry><entry>HY</entry><entry>INDO-EUROPEAN (OTHER)</entry></row>
+<row><entry>INTERLINGUA</entry><entry>IA</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>INTERLINGUE</entry><entry>IE</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>INUPIAK</entry><entry>IK</entry><entry>ESKIMO</entry></row>
+<row><entry>INDONESIAN</entry><entry>IN</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>ICELANDIC</entry><entry>IS</entry><entry>GERMANIC</entry></row>
+<row><entry>ITALIAN</entry><entry>IT</entry><entry>ROMANCE</entry></row>
+<row><entry>HEBREW</entry><entry>IW</entry><entry>SEMITIC</entry></row>
+<row><entry>JAPANESE</entry><entry>JA</entry><entry>ASIAN</entry></row>
+<row><entry>YIDDISH</entry><entry>JI</entry><entry>GERMANIC</entry></row>
+<row><entry>JAVANESE</entry><entry>JV</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>GEORGIAN</entry><entry>KA</entry><entry>IBERO-CAUCASIAN</entry></row>
+<row><entry>KAZAKH</entry><entry>KK</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>GREENLANDIC</entry><entry>KL</entry><entry>ESKIMO</entry></row>
+<row><entry>CAMBODIAN</entry><entry>KM</entry><entry>ASIAN</entry></row>
+<row><entry>KANNADA</entry><entry>KN</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>KOREAN</entry><entry>KO</entry><entry>ASIAN</entry></row>
+<row><entry>KASHMIRI</entry><entry>KS</entry><entry>INDIAN</entry></row>
+<row><entry>KURDISH</entry><entry>KU</entry><entry>IRANIAN</entry></row>
+<row><entry>KIRGHIZ</entry><entry>KY</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>LATIN</entry><entry>LA</entry><entry>LATIN/GREEK</entry></row>
+<row><entry>LINGALA</entry><entry>LN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>LAOTHIAN</entry><entry>LO</entry><entry>ASIAN</entry></row>
+<row><entry>LITHUANIAN</entry><entry>LT</entry><entry>BALTIC</entry></row>
+<row><entry>LATVIAN;LETTISH</entry><entry>LV</entry><entry>BALTIC</entry></row>
+<row><entry>MALAGASY</entry><entry>MG</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>MAORI</entry><entry>MI</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>MACEDONIAN</entry><entry>MK</entry><entry>SLAVIC</entry></row>
+<row><entry>MALAYALAM</entry><entry>ML</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>MONGOLIAN</entry><entry>MN</entry><entry>[not given]</entry></row>
+<row><entry>MOLDAVIAN</entry><entry>MO</entry><entry>ROMANCE</entry></row>
+<row><entry>MARATHI</entry><entry>MR</entry><entry>INDIAN</entry></row>
+<row><entry>MALAY</entry><entry>MS</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>MALTESE</entry><entry>MT</entry><entry>SEMITIC</entry></row>
+<row><entry>BURMESE</entry><entry>MY</entry><entry>ASIAN</entry></row>
+<row><entry>NAURU</entry><entry>NA</entry><entry>[not given]</entry></row>
+<row><entry>NEPALI</entry><entry>NE</entry><entry>INDIAN</entry></row>
+<row><entry>DUTCH</entry><entry>NL</entry><entry>GERMANIC</entry></row>
+<row><entry>NORWEGIAN</entry><entry>NO</entry><entry>GERMANIC</entry></row>
+<row><entry>OCCITAN</entry><entry>OC</entry><entry>ROMANCE</entry></row>
+<row><entry>AFAN (OROMO)</entry><entry>OM</entry><entry>HAMITIC</entry></row>
+<row><entry>ORIYA</entry><entry>OR</entry><entry>INDIAN</entry></row>
+<row><entry>PUNJABI</entry><entry>PA</entry><entry>INDIAN</entry></row>
+<row><entry>POLISH</entry><entry>PL</entry><entry>SLAVIC</entry></row>
+<row><entry>PASHTO;PUSHTO</entry><entry>PS</entry><entry>IRANIAN</entry></row>
+<row><entry>PORTUGUESE</entry><entry>PT</entry><entry>ROMANCE</entry></row>
+<row><entry>QUECHUA</entry><entry>QU</entry><entry>AMERINDIAN</entry></row>
+<row><entry>RHAETO-ROMANCE</entry><entry>RM</entry><entry>ROMANCE</entry></row>
+<row><entry>KURUNDI</entry><entry>RN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>ROMANIAN</entry><entry>RO</entry><entry>ROMANCE</entry></row>
+<row><entry>RUSSIAN</entry><entry>RU</entry><entry>SLAVIC</entry></row>
+<row><entry>KINYARWANDA</entry><entry>RW</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SANSKRIT</entry><entry>SA</entry><entry>INDIAN</entry></row>
+<row><entry>SINDHI</entry><entry>SD</entry><entry>INDIAN</entry></row>
+<row><entry>SANGHO</entry><entry>SG</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SERBO-CROATIAN</entry><entry>SH</entry><entry>SLAVIC</entry></row>
+<row><entry>SINGHALESE</entry><entry>SI</entry><entry>INDIAN</entry></row>
+<row><entry>SLOVAK</entry><entry>SK</entry><entry>SLAVIC</entry></row>
+<row><entry>SLOVENIAN</entry><entry>SL</entry><entry>SLAVIC</entry></row>
+<row><entry>SAMOAN</entry><entry>SM</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>SHONA</entry><entry>SN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SOMALI</entry><entry>SO</entry><entry>HAMITIC</entry></row>
+<row><entry>ALBANIAN</entry><entry>SQ</entry><entry>INDO-EUROPEAN (OTHER)</entry></row>
+<row><entry>SERBIAN</entry><entry>SR</entry><entry>SLAVIC</entry></row>
+<row><entry>SISWATI</entry><entry>SS</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SESOTHO</entry><entry>ST</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SUNDANESE</entry><entry>SU</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>SWEDISH</entry><entry>SV</entry><entry>GERMANIC</entry></row>
+<row><entry>SWAHILI</entry><entry>SW</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>TAMIL</entry><entry>TA</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>TELUGU</entry><entry>TE</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>TAJIK</entry><entry>TG</entry><entry>IRANIAN</entry></row>
+<row><entry>THAI</entry><entry>TH</entry><entry>ASIAN</entry></row>
+<row><entry>TIGRINYA</entry><entry>TI</entry><entry>SEMITIC</entry></row>
+<row><entry>TURKMEN</entry><entry>TK</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>TAGALOG</entry><entry>TL</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>SETSWANA</entry><entry>TN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>TONGA</entry><entry>TO</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>TURKISH</entry><entry>TR</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>TSONGA</entry><entry>TS</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>TATAR</entry><entry>TT</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>TWI</entry><entry>TW</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>UKRAINIAN</entry><entry>UK</entry><entry>SLAVIC</entry></row>
+<row><entry>URDU</entry><entry>UR</entry><entry>INDIAN</entry></row>
+<row><entry>UZBEK</entry><entry>UZ</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>VIETNAMESE</entry><entry>VI</entry><entry>ASIAN</entry></row>
+<row><entry>VOLAPUK</entry><entry>VO</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>WOLOF</entry><entry>WO</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>XHOSA</entry><entry>XH</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>YORUBA</entry><entry>YO</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>CHINESE</entry><entry>ZH</entry><entry>ASIAN</entry></row>
+<row><entry>ZULU</entry><entry>ZU</entry><entry>NEGRO-AFRICAN</entry></row>
+</tbody>
+</tgroup>
+</table>
+
+<table><title>Sorted By Language Group</title>
+<tgroup cols=3>
+<thead><row><entry>Langauge Name</entry><entry>Code</entry><entry>Language Family</entry></row></thead>
+<tbody>
+<row><entry>AYMARA</entry><entry>AY</entry><entry>AMERINDIAN</entry></row>
+<row><entry>GUARANI</entry><entry>GN</entry><entry>AMERINDIAN</entry></row>
+<row><entry>QUECHUA</entry><entry>QU</entry><entry>AMERINDIAN</entry></row>
+
+<row><entry>BHUTANI</entry><entry>DZ</entry><entry>ASIAN</entry></row>
+<row><entry>BURMESE</entry><entry>MY</entry><entry>ASIAN</entry></row>
+<row><entry>CAMBODIAN</entry><entry>KM</entry><entry>ASIAN</entry></row>
+<row><entry>CHINESE</entry><entry>ZH</entry><entry>ASIAN</entry></row>
+<row><entry>JAPANESE</entry><entry>JA</entry><entry>ASIAN</entry></row>
+<row><entry>KOREAN</entry><entry>KO</entry><entry>ASIAN</entry></row>
+<row><entry>LAOTHIAN</entry><entry>LO</entry><entry>ASIAN</entry></row>
+<row><entry>THAI</entry><entry>TH</entry><entry>ASIAN</entry></row>
+<row><entry>TIBETAN</entry><entry>BO</entry><entry>ASIAN</entry></row>
+<row><entry>VIETNAMESE</entry><entry>VI</entry><entry>ASIAN</entry></row>
+
+<row><entry>LATVIAN;LETTISH</entry><entry>LV</entry><entry>BALTIC</entry></row>
+<row><entry>LITHUANIAN</entry><entry>LT</entry><entry>BALTIC</entry></row>
+
+<row><entry>BASQUE</entry><entry>EU</entry><entry>BASQUE</entry></row>
+
+<row><entry>BRETON</entry><entry>BR</entry><entry>CELTIC</entry></row>
+<row><entry>IRISH</entry><entry>GA</entry><entry>CELTIC</entry></row>
+<row><entry>SCOTS GAELIC</entry><entry>GD</entry><entry>CELTIC</entry></row>
+<row><entry>WELSH</entry><entry>CY</entry><entry>CELTIC</entry></row>
+
+<row><entry>KANNADA</entry><entry>KN</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>MALAYALAM</entry><entry>ML</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>TAMIL</entry><entry>TA</entry><entry>DRAVIDIAN</entry></row>
+<row><entry>TELUGU</entry><entry>TE</entry><entry>DRAVIDIAN</entry></row>
+
+<row><entry>GREENLANDIC</entry><entry>KL</entry><entry>ESKIMO</entry></row>
+<row><entry>INUPIAK</entry><entry>IK</entry><entry>ESKIMO</entry></row>
+
+<row><entry>ESTONIAN</entry><entry>ET</entry><entry>FINNO-UGRIC</entry></row>
+<row><entry>FINNISH</entry><entry>FI</entry><entry>FINNO-UGRIC</entry></row>
+<row><entry>HUNGARIAN</entry><entry>HU</entry><entry>FINNO-UGRIC</entry></row>
+
+<row><entry>AFRIKAANS</entry><entry>AF</entry><entry>GERMANIC</entry></row>
+<row><entry>DANISH</entry><entry>DA</entry><entry>GERMANIC</entry></row>
+<row><entry>DUTCH</entry><entry>NL</entry><entry>GERMANIC</entry></row>
+<row><entry>ENGLISH</entry><entry>EN</entry><entry>GERMANIC</entry></row>
+<row><entry>FAROESE</entry><entry>FO</entry><entry>GERMANIC</entry></row>
+<row><entry>FRISIAN</entry><entry>FY</entry><entry>GERMANIC</entry></row>
+<row><entry>GERMAN</entry><entry>DE</entry><entry>GERMANIC</entry></row>
+<row><entry>ICELANDIC</entry><entry>IS</entry><entry>GERMANIC</entry></row>
+<row><entry>NORWEGIAN</entry><entry>NO</entry><entry>GERMANIC</entry></row>
+<row><entry>SWEDISH</entry><entry>SV</entry><entry>GERMANIC</entry></row>
+<row><entry>YIDDISH</entry><entry>JI</entry><entry>GERMANIC</entry></row>
+
+<row><entry>AFAN (OROMO)</entry><entry>OM</entry><entry>HAMITIC</entry></row>
+<row><entry>AFAR</entry><entry>AA</entry><entry>HAMITIC</entry></row>
+<row><entry>SOMALI</entry><entry>SO</entry><entry>HAMITIC</entry></row>
+
+<row><entry>ABKHAZIAN</entry><entry>AB</entry><entry>IBERO-CAUCASIAN</entry></row>
+<row><entry>GEORGIAN</entry><entry>KA</entry><entry>IBERO-CAUCASIAN</entry></row>
+
+<row><entry>ASSAMESE</entry><entry>AS</entry><entry>INDIAN</entry></row>
+<row><entry>BENGALI;BANGLA</entry><entry>BN</entry><entry>INDIAN</entry></row>
+<row><entry>BIHARI</entry><entry>BH</entry><entry>INDIAN</entry></row>
+<row><entry>GUJARATI</entry><entry>GU</entry><entry>INDIAN</entry></row>
+<row><entry>HINDI</entry><entry>HI</entry><entry>INDIAN</entry></row>
+<row><entry>KASHMIRI</entry><entry>KS</entry><entry>INDIAN</entry></row>
+<row><entry>MARATHI</entry><entry>MR</entry><entry>INDIAN</entry></row>
+<row><entry>NEPALI</entry><entry>NE</entry><entry>INDIAN</entry></row>
+<row><entry>ORIYA</entry><entry>OR</entry><entry>INDIAN</entry></row>
+<row><entry>PUNJABI</entry><entry>PA</entry><entry>INDIAN</entry></row>
+<row><entry>SANSKRIT</entry><entry>SA</entry><entry>INDIAN</entry></row>
+<row><entry>SINDHI</entry><entry>SD</entry><entry>INDIAN</entry></row>
+<row><entry>SINGHALESE</entry><entry>SI</entry><entry>INDIAN</entry></row>
+<row><entry>URDU</entry><entry>UR</entry><entry>INDIAN</entry></row>
+
+<row><entry>ALBANIAN</entry><entry>SQ</entry><entry>INDO-EUROPEAN (OTHER)</entry></row>
+<row><entry>ARMENIAN</entry><entry>HY</entry><entry>INDO-EUROPEAN (OTHER)</entry></row>
+
+<row><entry>ESPERANTO</entry><entry>EO</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>INTERLINGUA</entry><entry>IA</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>INTERLINGUE</entry><entry>IE</entry><entry>INTERNATIONAL AUX.</entry></row>
+<row><entry>VOLAPUK</entry><entry>VO</entry><entry>INTERNATIONAL AUX.</entry></row>
+
+<row><entry>KURDISH</entry><entry>KU</entry><entry>IRANIAN</entry></row>
+<row><entry>PASHTO;PUSHTO</entry><entry>PS</entry><entry>IRANIAN</entry></row>
+<row><entry>PERSIAN (farsi)</entry><entry>FA</entry><entry>IRANIAN</entry></row>
+<row><entry>TAJIK</entry><entry>TG</entry><entry>IRANIAN</entry></row>
+
+<row><entry>GREEK</entry><entry>EL</entry><entry>LATIN/GREEK</entry></row>
+<row><entry>LATIN</entry><entry>LA</entry><entry>LATIN/GREEK</entry></row>
+
+<row><entry>HAUSA</entry><entry>HA</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>KINYARWANDA</entry><entry>RW</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>KURUNDI</entry><entry>RN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>LINGALA</entry><entry>LN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SANGHO</entry><entry>SG</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SESOTHO</entry><entry>ST</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SETSWANA</entry><entry>TN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SHONA</entry><entry>SN</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SISWATI</entry><entry>SS</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>SWAHILI</entry><entry>SW</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>TSONGA</entry><entry>TS</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>TWI</entry><entry>TW</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>WOLOF</entry><entry>WO</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>XHOSA</entry><entry>XH</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>YORUBA</entry><entry>YO</entry><entry>NEGRO-AFRICAN</entry></row>
+<row><entry>ZULU</entry><entry>ZU</entry><entry>NEGRO-AFRICAN</entry></row>
+
+<row><entry>FIJI</entry><entry>FJ</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>INDONESIAN</entry><entry>IN</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>JAVANESE</entry><entry>JV</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>MALAGASY</entry><entry>MG</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>MALAY</entry><entry>MS</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>MAORI</entry><entry>MI</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>SAMOAN</entry><entry>SM</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>SUNDANESE</entry><entry>SU</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>TAGALOG</entry><entry>TL</entry><entry>OCEANIC/INDONESIAN</entry></row>
+<row><entry>TONGA</entry><entry>TO</entry><entry>OCEANIC/INDONESIAN</entry></row>
+
+<row><entry>CATALAN</entry><entry>CA</entry><entry>ROMANCE</entry></row>
+<row><entry>CORSICAN</entry><entry>CO</entry><entry>ROMANCE</entry></row>
+<row><entry>FRENCH</entry><entry>FR</entry><entry>ROMANCE</entry></row>
+<row><entry>GALICIAN</entry><entry>GL</entry><entry>ROMANCE</entry></row>
+<row><entry>ITALIAN</entry><entry>IT</entry><entry>ROMANCE</entry></row>
+<row><entry>MOLDAVIAN</entry><entry>MO</entry><entry>ROMANCE</entry></row>
+<row><entry>OCCITAN</entry><entry>OC</entry><entry>ROMANCE</entry></row>
+<row><entry>PORTUGUESE</entry><entry>PT</entry><entry>ROMANCE</entry></row>
+<row><entry>RHAETO-ROMANCE</entry><entry>RM</entry><entry>ROMANCE</entry></row>
+<row><entry>ROMANIAN</entry><entry>RO</entry><entry>ROMANCE</entry></row>
+<row><entry>SPANISH</entry><entry>ES</entry><entry>ROMANCE</entry></row>
+
+<row><entry>AMHARIC</entry><entry>AM</entry><entry>SEMITIC</entry></row>
+<row><entry>ARABIC</entry><entry>AR</entry><entry>SEMITIC</entry></row>
+<row><entry>HEBREW</entry><entry>IW</entry><entry>SEMITIC</entry></row>
+<row><entry>MALTESE</entry><entry>MT</entry><entry>SEMITIC</entry></row>
+<row><entry>TIGRINYA</entry><entry>TI</entry><entry>SEMITIC</entry></row>
+
+<row><entry>BULGARIAN</entry><entry>BG</entry><entry>SLAVIC</entry></row>
+<row><entry>BYELORUSSIAN</entry><entry>BE</entry><entry>SLAVIC</entry></row>
+<row><entry>CROATIAN</entry><entry>HR</entry><entry>SLAVIC</entry></row>
+<row><entry>CZECH</entry><entry>CS</entry><entry>SLAVIC</entry></row>
+<row><entry>MACEDONIAN</entry><entry>MK</entry><entry>SLAVIC</entry></row>
+<row><entry>POLISH</entry><entry>PL</entry><entry>SLAVIC</entry></row>
+<row><entry>RUSSIAN</entry><entry>RU</entry><entry>SLAVIC</entry></row>
+<row><entry>SERBIAN</entry><entry>SR</entry><entry>SLAVIC</entry></row>
+<row><entry>SERBO-CROATIAN</entry><entry>SH</entry><entry>SLAVIC</entry></row>
+<row><entry>SLOVAK</entry><entry>SK</entry><entry>SLAVIC</entry></row>
+<row><entry>SLOVENIAN</entry><entry>SL</entry><entry>SLAVIC</entry></row>
+<row><entry>UKRAINIAN</entry><entry>UK</entry><entry>SLAVIC</entry></row>
+
+<row><entry>AZERBAIJANI</entry><entry>AZ</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>BASHKIR</entry><entry>BA</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>KAZAKH</entry><entry>KK</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>KIRGHIZ</entry><entry>KY</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>TATAR</entry><entry>TT</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>TURKISH</entry><entry>TR</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>TURKMEN</entry><entry>TK</entry><entry>TURKIC/ALTAIC</entry></row>
+<row><entry>UZBEK</entry><entry>UZ</entry><entry>TURKIC/ALTAIC</entry></row>
+
+<row><entry>BISLAMA</entry><entry>BI</entry><entry>[not given]</entry></row>
+<row><entry>MONGOLIAN</entry><entry>MN</entry><entry>[not given]</entry></row>
+<row><entry>NAURU</entry><entry>NA</entry><entry>[not given]</entry></row>
+</tbody>
+</tgroup>
+</table>
+
+</appendix>

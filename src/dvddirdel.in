@@ -1,0 +1,41 @@
+#!/bin/sh
+
+if [ -f @sysconfdir@/dvdauthor.conf ]; then
+    . @sysconfdir@/dvdauthor.conf
+fi
+
+if [ -f ~/.dvdauthorrc ]; then
+    . ~/.dvdauthorrc
+fi
+
+help=0
+out=0
+for i in "$@"; do
+    if [ $out = 1 ]; then
+	WORKDIR="$i"
+	out=0
+    elif [ "x$i" = "x-h" ]; then
+	help=1
+    elif [ "x$i" = "x-o" ]; then
+	out=1
+    fi
+done
+
+if [ $help = 1 -o "x$WORKDIR" = "x" ]; then
+    echo "@PACKAGE_NAME@, version @PACKAGE_VERSION@.  Send bugs to <@PACKAGE_BUGREPORT@>"
+    echo "syntax: dvddirdel [-o DIR]"
+    echo "        deletes a previously authored DVD directory structure in DIR"
+    exit 1
+fi
+
+if [ -d "$WORKDIR" ]; then
+    rm -f "$WORKDIR/VIDEO_TS"/VIDEO_TS.VOB
+    rm -f "$WORKDIR/VIDEO_TS"/VIDEO_TS.IFO
+    rm -f "$WORKDIR/VIDEO_TS"/VIDEO_TS.BUP
+    rm -f "$WORKDIR/VIDEO_TS"/VTS_??_?.VOB
+    rm -f "$WORKDIR/VIDEO_TS"/VTS_??_0.IFO
+    rm -f "$WORKDIR/VIDEO_TS"/VTS_??_0.BUP
+    rmdir "$WORKDIR/VIDEO_TS"
+    rmdir "$WORKDIR/AUDIO_TS"
+    rmdir "$WORKDIR"
+fi

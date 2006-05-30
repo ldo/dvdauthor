@@ -1,0 +1,9 @@
+To compile, type
+	./configure
+	make
+
+Then to install, type
+	make install
+
+If you don't want the files installed to /usr/local/bin, then you can
+specify --prefix=/usr or some other dir as a parameter to configure.

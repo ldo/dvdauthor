@@ -1,0 +1,14 @@
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V3.1//EN" [
+<!ENTITY examples SYSTEM "examples.sgml">
+<!ENTITY iso639 SYSTEM "iso639.sgml">
+<!ENTITY dvdauthor SYSTEM "dvdauthor.sgml">
+<!ENTITY spumux SYSTEM "spumux.sgml">
+]>
+<book id="index"><title>DVDAuthor</title>
+&examples;
+&iso639;
+<reference id="manpages"><title>DVDAuthor Man Pages</title>
+&dvdauthor;
+&spumux;
+</reference>
+</book>

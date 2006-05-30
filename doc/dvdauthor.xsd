@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+  <xsd:annotation>
+    <xsd:documentation xml:lang="en">
+     XML Schema Definition for dvdauthor.
+     Author: Alan Canon (acanon@bellsouth.net)
+     Date: Jan 8 2005
+     This Schema is made available under the terms of the GNU GPL.
+     See http://www.gnu.org/ for details.
+     // TODO Copy the dvdauthor man page documentation as xsd:annotations to the below.
+    </xsd:documentation>
+  </xsd:annotation>
+
+  <xsd:element name="dvdauthor" type="DvdauthorType"/>
+
+  <xsd:complexType name="DvdauthorType">
+    <xsd:sequence>
+      <xsd:element name="vmgm" type="VmgmType" minOccurs="0" maxOccurs="1"/>
+      <xsd:element name="titleset" type="TitlesetType" minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:sequence>
+    <xsd:attribute name="dest" type="xsd:string"/>
+    <xsd:attribute name="jumppad" type="xsd:string"/>
+  </xsd:complexType>
+
+  <xsd:complexType name="VmgmType">
+    <xsd:sequence>
+      <xsd:element name="menus" type="MenusType" minOccurs="0" maxOccurs="1"/>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <xsd:complexType name="TitlesetType">
+    <xsd:complexContent>
+      <xsd:extension base="VmgmType">
+        <xsd:sequence>
+          <xsd:element name="titles" type="TitlesType" minOccurs="0" maxOccurs="1"/>
+        </xsd:sequence>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="TitlesType">
+    <xsd:sequence>
+      <xsd:element name="video" type="VideoType" minOccurs="0" maxOccurs="1"/>
+      <xsd:element name="audio" type="AudioType" minOccurs="0" maxOccurs="8"/>
+      <xsd:element name="subpicture" type="SubpictureType" minOccurs="0" maxOccurs="32"/>
+      <xsd:element name="pgc" type="PgcType" minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <xsd:complexType name="MenusType">
+    <xsd:complexContent>
+      <xsd:extension base="TitlesType">
+        <xsd:attribute name="lang" type="xsd:string"/> 
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="VideoType">
+    <xsd:attribute name="format" type="VideoFormatType"/>
+    <xsd:attribute name="aspect" type="VideoAspectType"/>
+    <!-- XxY -->
+    <xsd:attribute name="resolution" type="xsd:string"/>
+    <xsd:attribute name="caption" type="VideoCaptionType"/>
+
+    <xsd:attribute name="widescreen" type="VideoWidescreenType"/>
+  </xsd:complexType>
+
+  <xsd:simpleType name="VideoFormatType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ntsc"/>
+      <xsd:enumeration value="pal"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="VideoAspectType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="4:3"/>
+      <xsd:enumeration value="16:9"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  
+  <xsd:simpleType name="VideoCaptionType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="field1"/>
+      <xsd:enumeration value="field2"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  
+
+  <xsd:simpleType name="VideoWidescreenType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="nopanscan"/>
+      <xsd:enumeration value="noletterbox"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:complexType name="AudioType">
+    <xsd:attribute name="format" type="AudioFormatType"/>
+    <xsd:attribute name="channels" type="xsd:integer"/>
+    <xsd:attribute name="dolby" type="AudioDolbyType"/>
+    <xsd:attribute name="quant" type="AudioQuantType"/> 
+    <xsd:attribute name="samplerate" type="AudioSamplerateType"/> 
+    <xsd:attribute name="lang" type="xsd:string"/> 
+  </xsd:complexType>
+
+  <xsd:simpleType name="AudioSamplerateType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="48khz"/>
+      <xsd:enumeration value="96khz"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="AudioDolbyType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="surround"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="AudioFormatType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="mp2"/>
+      <xsd:enumeration value="ac3"/>
+      <xsd:enumeration value="dts"/>
+      <xsd:enumeration value="pcm"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="AudioQuantType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="16bps"/>
+      <xsd:enumeration value="20bps"/>
+      <xsd:enumeration value="24bps"/>
+      <xsd:enumeration value="drc"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  
+  <xsd:simpleType name="PgcEntryType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="title"/>
+      <xsd:enumeration value="root"/>
+      <xsd:enumeration value="subtitle"/>
+      <xsd:enumeration value="audio"/>
+      <xsd:enumeration value="angle"/>
+      <xsd:enumeration value="ptt"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  
+  <xsd:complexType name="PgcType">
+    <xsd:sequence>
+      <xsd:element name="pre" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+      <xsd:element name="vob" type="VobType" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="button" type="ButtonType" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="post" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+    </xsd:sequence> 
+    <xsd:attribute name="palette" type="xsd:string"/>
+    <xsd:attribute name="pause" type="PauseType"/> 
+    <xsd:attribute name="entry" type="PgcEntryType"/>
+  </xsd:complexType>
+
+  <xsd:simpleType name="PauseType">
+    <xsd:annotation>
+      <xsd:documentation>for pgc {entry} attibute</xsd:documentation>
+    </xsd:annotation>
+    <xsd:union>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:integer">
+          <xsd:minInclusive value="1"/>
+          <xsd:maxInclusive value="254"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:NMTOKEN">
+          <xsd:enumeration value="inf"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:union>
+  </xsd:simpleType>
+
+  <xsd:complexType name="ButtonType">
+	<xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="name" type="xsd:string"/>
+      </xsd:extension>
+    </xsd:simpleContent>    
+  </xsd:complexType>
+
+  <xsd:complexType name="SubpictureType">
+    <xsd:attribute name="lang" type="xsd:string"/>
+  </xsd:complexType>
+
+  <xsd:complexType name="VobType">
+    <xsd:attribute name="file" type="xsd:string"/>
+    <xsd:attribute name="chapters" type="xsd:string"/>
+    <xsd:attribute name="pause" type="PauseType"/>
+  </xsd:complexType>
+  
+</xsd:schema>
