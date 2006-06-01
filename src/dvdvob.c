@@ -65,7 +65,7 @@ static pts_t calcpts(struct vobgroup *va,int cancomplain,int *didcomplain,pts_t 
     // I assume pts should round down?  That seems to be how mplex deals with it
     // also see later comment
 
-    int fpts=getframepts(va);
+    pts_t fpts=getframepts(va);
     int bpframe=(basepts*2-*align+fpts/2)/fpts;
     if( (*align+bpframe*fpts)/2 != basepts ) {
         if( !*didcomplain ) {
