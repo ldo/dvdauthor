@@ -29,7 +29,7 @@
 #include "readxml.h"
 #include "rgb.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdcli.c#52 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdcli.c#57 $";
 
 #define RGB2YCrCb(R,G,B) ((((int)RGB2Y(R,G,B))<<16)|(((int)RGB2Cr(R,G,B))<<8)|(((int)RGB2Cb(R,G,B))))
 
@@ -236,7 +236,7 @@ static void usage()
             "\t    video options.  dvdauthor will try to infer any unspecified options.\n"
             "\t\tpal, ntsc, 4:3, 16:9, 720xfull, 720x576, 720x480, 704xfull,\n"
             "\t\t704x576, 704x480, 352xfull, 352x576, 352x480, 352xhalf,\n"
-            "\t\t352x288, 352x240, nopanscan, noletterbox.\n"
+            "\t\t352x288, 352x240, nopanscan, noletterbox, crop.\n"
             "\t    Default is ntsc, 4:3, 720xfull\n"
             "\n\t" LONGOPT("--audio=AOPTS or ") "-a AOPTS where AOPTS is a plus (+) separated list of\n"
             "\t    options for an audio track, with each track separated by a\n"
@@ -286,19 +286,23 @@ static void usage()
             "\t    inserted.\n"
             "\n\t" LONGOPT("--jumppad or ") "-j enables the creation of jumppads, which allow greater\n"
             "\t    flexibility in choosing jump/call desinations.\n"
+            "\n\t" LONGOPT("--allgprm or ") "-g enables the use of all 16 general purpose registers.\n"
             "\n\t" LONGOPT("--help or ") "-h displays this screen.\n"
         );
     exit(1);
 }
 
 #define MAINDEF                                                      \
+            if( !usedtocflag ) {                                     \
+                fprintf(stderr,"ERR:  Must first specify -t, -m, or -x.\n"); \
+                return 1;                                            \
+            }                                                        \
             if( istoc && curva ) {                                   \
                 fprintf(stderr,"ERR:  TOC cannot have titles\n");    \
                 return 1;                                            \
             }                                                        \
-            usedtocflag=1;                                           \
             if( !vc ) {                                              \
-                va[curva]=vc=pgcgroup_new(istoc+1-curva);             \
+                va[curva]=vc=pgcgroup_new(istoc+1-curva);            \
             }
 
 #define MAINDEFPGC                                                   \
@@ -343,6 +347,7 @@ int main(int argc,char **argv)
         {"entry",1,0,'e'},
         {"fpc",1,0,'F'},
         {"jumppad",0,0,'j'},
+        {"allgprm",0,0,'g'},
         {0,0,0,0}
     };
 #define GETOPTFUNC(x,y,z) getopt_long(x,y,"-" z,longopts,NULL)
@@ -360,7 +365,7 @@ int main(int argc,char **argv)
 
     while(1) {
         struct pgcgroup *vc=va[curva];
-        int c=GETOPTFUNC(argc,argv,"f:o:v:a:s:hc:Cp:Pmtb:Ti:e:x:");
+        int c=GETOPTFUNC(argc,argv,"f:o:v:a:s:hc:Cp:Pmtb:Ti:e:x:jg");
         if( c == -1 )
             break;
         switch(c) {
@@ -377,6 +382,10 @@ int main(int argc,char **argv)
 
         case 'j':
             dvdauthor_enable_jumppad();
+            break;
+
+        case 'g':
+            dvdauthor_enable_allgprm();
             break;
 
         case 'T':
@@ -532,12 +541,24 @@ int main(int argc,char **argv)
     return 0;
 }
 
+enum {
+    DA_BEGIN=0,
+    DA_ROOT,
+    DA_SET,
+    DA_PGCGROUP,
+    DA_PGC,
+    DA_VOB,
+    DA_SUBP,
+    DA_NOSUB
+};
+
 static struct pgcgroup *titles=0, *curgroup=0;
 static struct menugroup *mg=0, *vmgmmenus=0;
 static struct pgc *curpgc=0,*fpc=0;
 static struct source *curvob=0;
 static char *fbase=0,*buttonname=0;
-static int ismenuf=0,istoc=0,setvideo=0,setaudio=0,setsubpicture=0,hadtoc=0;
+static int ismenuf=0,istoc=0,setvideo=0,setaudio=0,setsubpicture=0,subpmode=DA_NOSUB,hadtoc=0,subpstreamid=-1;
+static char *subpstreammode=0;
 static int vobbasic,cell_chapter;
 static double cell_starttime,cell_endtime;
 static char menulang[3];
@@ -566,6 +587,14 @@ static void set_subpic_attr(int attr,char *s,int ch)
         pgcgroup_set_subpic_attr(titles,attr,s,ch);
 }
 
+static void set_subpic_stream(int ch,char *m,int id)
+{
+    if( ismenuf )
+        menugroup_set_subpic_stream(mg,ch,m,id);
+    else
+        pgcgroup_set_subpic_stream(titles,ch,m,id);
+}
+
 static int parse_pause(char *f)
 {
     if( !strcmp(f,"inf") )
@@ -586,6 +615,17 @@ static void dvdauthor_jumppad(char *s)
         dvdauthor_enable_jumppad();
     else if( i==-1 ) {
         fprintf(stderr,"ERR:  Unknown jumppad cmd '%s'\n",s);
+        exit(1);
+    }
+}
+
+static void dvdauthor_allgprm(char *s)
+{
+    int i=xml_ison(s);
+    if( i==1 )
+        dvdauthor_enable_allgprm();
+    else if( i==-1 ) {
+        fprintf(stderr,"ERR:  Unknown allgprm cmd '%s'\n",s);
         exit(1);
     }
 }
@@ -674,6 +714,7 @@ static void pgcgroup_start()
     setvideo=0;
     setaudio=-1;
     setsubpicture=-1;
+    subpmode=DA_PGCGROUP;
 }
 
 static void titles_start()
@@ -793,7 +834,21 @@ static void audio_channels(char *c)
     set_audio_attr(AUDIO_CHANNELS,ch,setaudio);
 }
 
-static void subattr_start()
+static void subattr_group_start()
+{
+    if( subpmode!=DA_PGCGROUP ) {
+        fprintf(stderr,"ERR:  Define all the subpictures before defining PGCs\n");
+        parser_err=1;
+        return;
+    }
+    setsubpicture++;
+    if( setsubpicture>=32 ) {
+        fprintf(stderr,"ERR:  Attempting to define too many subpicture streams for this PGC group\n");
+        parser_err=1;
+    }
+}
+
+static void subattr_pgc_start()
 {
     setsubpicture++;
     if( setsubpicture>=32 ) {
@@ -804,13 +859,53 @@ static void subattr_start()
 
 static void subattr_lang(char *c)
 {
-    set_subpic_attr(SPU_LANG,c,setsubpicture);
+    if( subpmode==DA_PGCGROUP )
+        set_subpic_attr(SPU_LANG,c,setsubpicture);
+    else {
+        fprintf(stderr,"ERR:  Cannot set subpicture language within a pgc; do it within titles or menus\n");
+        parser_err=1;
+    }
 }
+
+static void stream_start()
+{
+    subpstreamid=-1;
+    subpstreammode=0;
+}
+
+static void substream_id(char *c)
+{
+    subpstreamid=atoi(c);
+    if( subpstreamid<0 || subpstreamid>=32 ) {
+        fprintf(stderr,"ERR:  Subpicture stream id must be 0-31: '%s'.\n",c);
+        parser_err=1;
+    }
+}
+
+static void substream_mode(char *c)
+{
+    subpstreammode=strdup(c);
+}
+
+static void stream_end()
+{
+    if( subpstreamid==-1 || !subpstreammode ) {
+        fprintf(stderr,"ERR:  Must define the mode and id for the stream.\n");
+        parser_err=1;
+    } else if( subpmode==DA_PGCGROUP ) {
+        set_subpic_stream(setsubpicture,subpstreammode,subpstreamid);
+    } else
+        pgc_set_subpic_stream(curpgc,setsubpicture,subpstreammode,subpstreamid);
+    free(subpstreammode);
+}
+
 
 static void pgc_start()
 {
     curpgc=pgc_new();
     hadchapter=0;
+    setsubpicture=-1;
+    subpmode=DA_PGC;
 }
 
 static void pgc_entry(char *e)
@@ -834,6 +929,7 @@ static void pgc_end()
 {
     pgcgroup_add_pgc(curgroup,curpgc);
     curpgc=0;
+    subpmode=DA_NOSUB;
 }
 
 static void pre_start()
@@ -966,16 +1062,6 @@ static void button_end()
     if(buttonname) free(buttonname);
 }
 
-enum {
-    DA_BEGIN=0,
-    DA_ROOT,
-    DA_SET,
-    DA_PGCGROUP,
-    DA_PGC,
-    DA_VOB,
-    DA_NOSUB
-};
-
 static struct elemdesc elems[]={
     {"dvdauthor", DA_BEGIN,   DA_ROOT,    0,               dvdauthor_end},
     {"titleset",  DA_ROOT,    DA_SET,     titleset_start,  titleset_end},
@@ -985,19 +1071,22 @@ static struct elemdesc elems[]={
     {"menus",     DA_SET,     DA_PGCGROUP,menus_start,     menus_end},
     {"video",     DA_PGCGROUP,DA_NOSUB,   video_start,     0},
     {"audio",     DA_PGCGROUP,DA_NOSUB,   audio_start,     0},
-    {"subpicture",DA_PGCGROUP,DA_NOSUB,   subattr_start,   0},
+    {"subpicture",DA_PGCGROUP,DA_SUBP,    subattr_group_start, 0},
     {"pgc",       DA_PGCGROUP,DA_PGC,     pgc_start,       pgc_end},
     {"pre",       DA_PGC,     DA_NOSUB,   pre_start,       pre_end},
     {"post",      DA_PGC,     DA_NOSUB,   post_start,      post_end},
     {"button",    DA_PGC,     DA_NOSUB,   button_start,    button_end},
     {"vob",       DA_PGC,     DA_VOB,     vob_start,       vob_end},
+    {"subpicture",DA_PGC,     DA_SUBP,    subattr_pgc_start, 0},
     {"cell",      DA_VOB,     DA_NOSUB,   cell_start,      cell_end},
+    {"stream",    DA_SUBP,    DA_NOSUB,   stream_start,    stream_end},
     {0,0,0,0,0}
 };
 
 static struct elemattr attrs[]={
     {"dvdauthor","dest",dvdauthor_workdir},
     {"dvdauthor","jumppad",dvdauthor_jumppad},
+    {"dvdauthor","allgprm",dvdauthor_allgprm},
 
     {"menus","lang",menus_lang},
 
@@ -1018,13 +1107,18 @@ static struct elemattr attrs[]={
     {"video","resolution",video_resolution},
     {"video","widescreen",video_widescreen},
     {"video","caption",video_caption},
+
     {"audio","format",audio_format},
     {"audio","quant",audio_quant},
     {"audio","dolby",audio_dolby},
     {"audio","lang",audio_lang},
     {"audio","channels",audio_channels},
     {"audio","samplerate",audio_samplerate},
+
     {"subpicture","lang",subattr_lang},
+    {"stream","mode",substream_mode},
+    {"stream","id",substream_id},
+
     {"pgc","entry",pgc_entry},
     {"pgc","palette",pgc_palette},
     {"pgc","pause",pgc_pause},

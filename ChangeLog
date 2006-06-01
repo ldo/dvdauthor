@@ -1,3 +1,21 @@
+alpha:
+	support random(FOO) in vm
+	allow the use of all 16 GPRMS via 'allgprm="yes"' option
+	embed commands within the VOB if only one instruction
+	set entries within the actual PGC instead of creating extra PGCs whenever possible
+	vm_optimize combines set GPRM/SPRM and link command (Michael Kreuzer)
+	warn if the button value is not a multiple of 1024
+	fix CreateCallAdr: first 2 bytes of C_ADT contains number of vobs (Michael Kreuzer)
+	fix TocGen: set frame rate (Michael Kreuzer)
+	fix spuunmux button output to work with spumux (Michael Kreuzer)
+	make counters work; allow hex, kilo, and lang numeric codes (Michael Kreuzer)
+	remove all vestiges of button handling from post if not necessary (Michael Kreuzer)
+	new vm commands added: break, goto (Michael Kreuzer)
+	dvdunauthor uncompiles pre, post, fpc, cell, and button commands
+	add 'crop' keyword for widescreen (crops 4:3 image for 16:9 tvs)
+	if audio extends beyond video, then set sector pts accordingly
+	support separate subpicture streams for normal, widescreen, letterbox, and panscan
+
 0.6.11: February 10, 2005
 	fix compile error on newer gcc compilers
 	ensure a row of a subtitle takes less than 1440 bits

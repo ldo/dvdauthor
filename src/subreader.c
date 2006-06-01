@@ -51,7 +51,7 @@ static int flip_hebrew = 1;
 #endif
 
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subreader.c#6 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/subreader.c#7 $";
 
 
 extern int sub_utf8;
@@ -1018,7 +1018,7 @@ subtitle* subcp_recode (subtitle *sub)
 
 		if (iconv(icdsc, ICONV_CAST &ip, &ileft,
 			  &op,&oleft) == (size_t)(	-1)) {
-			fprintf(stderr,"WARN: Error recoding line (1). *%s* ip:%s il:%d op:%s ol:%d l:%d\n",sub->text[1],ip,ileft,op,oleft,l);
+			fprintf(stderr,"WARN: Error recoding line (1). *%s* ip:%s il:%" PRIdPTR " op:%s ol:%" PRIdPTR " l:%d\n",sub->text[1],ip,ileft,op,oleft,l);
 			l++;
 			break;
 		}

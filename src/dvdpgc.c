@@ -26,7 +26,7 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdpgc.c#20 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdpgc.c#33 $";
 
 
 #define MAXCELLS 4096
@@ -58,7 +58,7 @@ for VTSM root menu:
 
 */
 
-static int jumppgc(unsigned char *buf,int pgc,struct workset *ws)
+static int jumppgc(unsigned char *buf,int pgc,const struct workset *ws,const struct pgcgroup *curgroup)
 {
     int base=0xEC,ncmd,offs,i,j,k;
     offs=base+8;
@@ -87,20 +87,18 @@ static int jumppgc(unsigned char *buf,int pgc,struct workset *ws)
         // set g[15]=0 so we don't leak dirty registers to other PGC's
         write8(buf+offs,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); offs+=8; // g[15]=0;
     } else if( ws && ws->menus && ws->titles ) {
-        struct pgcgroup *mpg=ws->menus->groups[ws->curmenu].pg;
-
         // *** VTSM jumppad
         write8(buf+offs,0x61,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); offs+=8; // g[14]=g[15];
         write8(buf+offs,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); offs+=8; // g[15]=0;
         // menu entry jumptable
         for( i=2; i<8; i++ ) {
-            for( j=0; j<mpg->numpgcs; j++ )
-                if( mpg->pgcs[j]->entries&(1<<i) ) {
+            for( j=0; j<curgroup->numpgcs; j++ )
+                if( curgroup->pgcs[j]->entries&(1<<i) ) {
                     write8(buf+offs,0x20,0xA4,0x00,0x0E,i+120,0x00,0x00,j+1); offs+=8; // if g[14]==0xXX00 then LinkPGCN XX
                 }
         }
         // menu jumptable
-        for( i=0; i<mpg->numpgcs; i++ ) {
+        for( i=0; i<curgroup->numpgcs; i++ ) {
             write8(buf+offs,0x20,0xA4,0x00,0x0E,i+1,0x00,0x00,i+1); offs+=8; // if g[14]==0xXX00 then LinkPGCN XX
         }
         // title/chapter jumptable
@@ -131,10 +129,10 @@ static int jumppgc(unsigned char *buf,int pgc,struct workset *ws)
     return offs;
 }
 
-static int genpgc(unsigned char *buf,struct workset *ws,int pgc,int ismenu)
+static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgroup *group,int pgc,int ismenu)
 {
-    struct vobgroup *va=(ismenu?ws->menus->vg:ws->titles->vg);
-    struct pgc *p=(ismenu?ws->menus->groups[ws->curmenu].pg:ws->titles)->pgcs[pgc];
+    const struct vobgroup *va=(ismenu?ws->menus->vg:ws->titles->vg);
+    const struct pgc *p=group->pgcs[pgc];
     int i,j,d;
 
     // PGC header starts at buf[16]
@@ -146,11 +144,16 @@ static int genpgc(unsigned char *buf,struct workset *ws,int pgc,int ismenu)
             buf[12+i*2]=0x80|(va->ad[i].aid-1);
     }
     for( i=0; i<va->numsubpicturetracks; i++ ) {
-        int id=va->sp[i].sid-1;
-        buf[28+i*4]=0x80|id;
-        buf[29+i*4]=id;
-        buf[30+i*4]=id;
-        buf[31+i*4]=id;
+        int m, e;
+
+        e=0;
+        for( m=0; m<4; m++ )
+            if( p->subpmap[i][m]&128 ) {
+                buf[28+i*4+m]=p->subpmap[i][m]&127;
+                e=1;
+            }
+        if( e )
+            buf[28+i*4]|=0x80;
     }
     buf[163]=p->pauselen; // PGC stilltime
     for( i=0; i<16; i++ )
@@ -164,7 +167,7 @@ static int genpgc(unsigned char *buf,struct workset *ws,int pgc,int ismenu)
 
         preptr=cd;
         if( p->prei ) {
-            cd=vm_compile(preptr,cd,ws,pgc,p->prei,ismenu,COMPILE_PRE);
+            cd=vm_compile(preptr,cd,ws,p->pgcgroup,p,p->prei,ismenu);
             if(!cd) {
                 fprintf(stderr,"ERR:  in %s pgc %d, <pre>\n",pstypes[ismenu],pgc);
                 exit(1);
@@ -174,13 +177,13 @@ static int genpgc(unsigned char *buf,struct workset *ws,int pgc,int ismenu)
         }
 
         postptr=cd;
-        if( p->numbuttons ) {
+        if( p->numbuttons && !allowallreg ) {
             write8(cd,0x61,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00);  // g[14]=g[15]
             write8(cd+8,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); // g[15]=0
             cd+=8*(p->numbuttons+2);
         }
         if( p->posti ) {
-            cd=vm_compile(postptr,cd,ws,pgc,p->posti,ismenu,COMPILE_POST);
+            cd=vm_compile(postptr,cd,ws,p->pgcgroup,p,p->posti,ismenu);
             if(!cd) {
                 fprintf(stderr,"ERR:  in %s pgc %d, <post>\n",pstypes[ismenu],pgc);
                 exit(1);
@@ -189,23 +192,43 @@ static int genpgc(unsigned char *buf,struct workset *ws,int pgc,int ismenu)
             write8(cd,0x30,0x01,0x00,0x00,0x00,0x00,0x00,0x00); // exit
             cd+=8;
         }
-        for( i=0; i<p->numbuttons; i++ ) {
-            struct button *b=&p->buttons[i];
-            
-            write8(postptr+i*8+16,0x00,0xa1,0x00,0x0E,0x00,i+1,0x00,(cd-postptr)/8+1);
-            cd=vm_compile(postptr,cd,ws,pgc,b->cs,ismenu,COMPILE_POST);
-            if(!cd) {
-                fprintf(stderr,"ERR:  in %s pgc %d, button %s\n",pstypes[ismenu],pgc,b->name);
-                exit(1);
+        if( p->numbuttons && !allowallreg ) {
+            unsigned char *buttonptr=cd;
+
+            for( i=0; i<p->numbuttons; i++ ) {
+                const struct button *b=&p->buttons[i];
+                unsigned char *cdd=vm_compile(postptr,cd,ws,p->pgcgroup,p,b->cs,ismenu);
+
+                if(!cdd) {
+                    fprintf(stderr,"ERR:  in %s pgc %d, button %s\n",pstypes[ismenu],pgc,b->name);
+                    exit(1);
+                }
+
+                if( cdd==cd+8 ) {
+                    // the button fits in one command; assume it went in the vob itself
+                    memset(postptr+i*8+16,0,8); // nop
+                } else {
+                    write8(postptr+i*8+16,0x00,0xa1,0x00,0x0E,0x00,i+1,0x00,(cd-postptr)/8+1);
+                    cd=cdd;
+                }
             }
+
+            if( cd==buttonptr )
+                memset(postptr,0,16); // nop the register transfer
         }
+
+        vm_optimize(postptr,postptr,&cd);
 
         cellptr=cd;
         for( i=0; i<p->numsources; i++ )
             for( j=0; j<p->sources[i]->numcells; j++ ) {
-                struct cell *c=&p->sources[i]->cells[j];
+                const struct cell *c=&p->sources[i]->cells[j];
                 if( c->cs ) {
-                    unsigned char *cdd=vm_compile(postptr,cd,ws,pgc,c->cs,ismenu,COMPILE_CELL);
+                    unsigned char *cdd=vm_compile(cellptr,cd,ws,p->pgcgroup,p,c->cs,ismenu);
+                    if( !cdd ) {
+                        fprintf(stderr,"ERR:  in %s pgc %d, <cell>\n",pstypes[ismenu],pgc);
+                        exit(1);
+                    }
                     if( cdd!=cd+8 ) {
                         fprintf(stderr,"ERR:  Cell command can only compile to one VM instruction.\n");
                         exit(1);
@@ -231,7 +254,7 @@ static int genpgc(unsigned char *buf,struct workset *ws,int pgc,int ismenu)
         j=1;
         for( i=0; i<p->numsources; i++ ) {
             int k;
-            struct source *si=p->sources[i];
+            const struct source *si=p->sources[i];
 
             for( k=0; k<si->numcells; k++ ) {
                 if( si->cells[k].scellid==si->cells[k].ecellid )
@@ -250,7 +273,7 @@ static int genpgc(unsigned char *buf,struct workset *ws,int pgc,int ismenu)
         notseamless=1;
         for( i=0; i<p->numsources; i++ ) {
             int k,l,m,firsttime;
-            struct source *s=p->sources[i];
+            const struct source *s=p->sources[i];
 
             for( k=0; k<s->numcells; k++ )
                 for( l=s->cells[k].scellid; l<s->cells[k].ecellid; l++ ) {
@@ -288,7 +311,7 @@ static int genpgc(unsigned char *buf,struct workset *ws,int pgc,int ismenu)
         write2(buf+234,d);
         for( i=0; i<p->numsources; i++ ) {
             int j,k;
-            struct source *s=p->sources[i];
+            const struct source *s=p->sources[i];
 
             for( j=0; j<s->numcells; j++ )
                 for( k=s->cells[j].scellid; k<s->cells[j].ecellid; k++ ) {
@@ -302,11 +325,14 @@ static int genpgc(unsigned char *buf,struct workset *ws,int pgc,int ismenu)
     return d;
 }
 
-static int createpgcgroup(struct workset *ws,int ismenu,struct pgcgroup *va,unsigned char *buf)
+static int createpgcgroup(const struct workset *ws,int ismenu,const struct pgcgroup *va,unsigned char *buf)
 {
     int len,i,pgcidx;
 
     len=va->numpgcs+va->numentries;
+    for( i=0; i<va->numpgcs; i++ )
+        if( va->pgcs[i]->entries )
+            len--;
     write2(buf,len);
     len=len*8+8;
     pgcidx=8;
@@ -316,8 +342,18 @@ static int createpgcgroup(struct workset *ws,int ismenu,struct pgcgroup *va,unsi
             return -1;
         if( !ismenu )
             buf[pgcidx]=0x81+i;
+        else {
+            int j;
+
+            buf[pgcidx]=0;
+            for( j=2; j<8; j++ )
+                if( va->pgcs[i]->entries&(1<<j) ) {
+                    buf[pgcidx]=0x80|j;
+                    break;
+                }
+        }
         write4(buf+pgcidx+4,len);
-        len+=genpgc(buf+len,ws,i,ismenu);
+        len+=genpgc(buf+len,ws,va,i,ismenu);
         pgcidx+=8;
     }
 
@@ -331,17 +367,20 @@ static int createpgcgroup(struct workset *ws,int ismenu,struct pgcgroup *va,unsi
             for( j=0; j<va->numpgcs; j++ )
                 if( va->pgcs[j]->entries&(1<<i) )
                     break;
-            if( j<va->numpgcs )
-                j++;
-            else
-                j=-1;
+            assert(j<va->numpgcs);
+            // is this the first entry for this pgc? if so, it was already
+            // triggered via the PGC itself, so skip writing the extra
+            // entry here
+            if( (va->pgcs[j]->entries & ((1<<i)-1)) == 0 )
+                continue;
+            j++;
             buf[pgcidx]=0x80|i;
             write4(buf+pgcidx+4,len);
             if( jumppad && ((ismenu==1 && i==7) || 
                             (ismenu==2 && i==2) ))
-                len+=jumppgc(buf+len,j,ws);
+                len+=jumppgc(buf+len,j,ws,va);
             else
-                len+=jumppgc(buf+len,j,0);
+                len+=jumppgc(buf+len,j,0,0);
             pgcidx+=8;
         }
     }
@@ -350,7 +389,7 @@ static int createpgcgroup(struct workset *ws,int ismenu,struct pgcgroup *va,unsi
     return len;
 }
 
-int CreatePGC(FILE *h,struct workset *ws,int ismenu)
+int CreatePGC(FILE *h,const struct workset *ws,int ismenu)
 {
     unsigned char *buf;
     int len,ph,i,in_it;
@@ -376,7 +415,7 @@ int CreatePGC(FILE *h,struct workset *ws,int ismenu)
 
         for( i=0; i<ws->menus->numgroups; i++ ) {
             unsigned char *plu=buf+8+8*i;
-            struct langgroup *lg=&ws->menus->groups[i];
+            const struct langgroup *lg=&ws->menus->groups[i];
 
             memcpy(plu,lg->lang,2);
             if( ismenu==1 )
@@ -385,11 +424,10 @@ int CreatePGC(FILE *h,struct workset *ws,int ismenu)
                 plu[3]=0x80; // menu system contains entry for title
             write4(plu+4,ph);
 
-            ws->curmenu=i;
             len=createpgcgroup(ws,ismenu,lg->pg,buf+ph);
             if( len<0 )
                 goto retry;
-            ph+=len;            
+            ph+=len;
         }
         write4(buf+4,ph-1);
     } else {

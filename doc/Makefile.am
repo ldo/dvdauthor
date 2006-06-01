@@ -4,7 +4,9 @@ dist_pkgdata_DATA = dvdauthor.xsd spumux.xsd
 
 EXTRA_DIST = $(man1_MANS)
 
-$(man1_MANS):
+.PHONY: manpages
+
+manpages:
 	rm -f $(man1_MANS)
 	docbook2man root.sgml
 

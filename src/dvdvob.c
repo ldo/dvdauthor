@@ -29,7 +29,7 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvob.c#55 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvob.c#63 $";
 
 
 struct colorremap {
@@ -913,28 +913,38 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                             i+=2;
                             for( j=0; j<k; j++ ) {
                                 struct button *b;
-                                char *st=readpstr(buf,&i);
+                                struct buttoninfo *bi,bitmp;
+                                char *bn=readpstr(buf,&i);
                                     
-                                if( !findbutton(s->p,st,0) ) {
-                                    fprintf(stderr,"ERR:  Cannot find button '%s' as referenced by the subtitle\n",st);
+                                if( !findbutton(s->p,bn,0) ) {
+                                    fprintf(stderr,"ERR:  Cannot find button '%s' as referenced by the subtitle\n",bn);
                                     exit(1);
                                 }
-                                b=&s->p->buttons[findbutton(s->p,st,0)-1];
+                                b=&s->p->buttons[findbutton(s->p,bn,0)-1];
+
+                                if( b->numstream>=MAXBUTTONSTREAM ) {
+                                    fprintf(stderr,"WARN: Too many button streams; ignoring buttons\n");
+                                    bi=&bitmp;
+                                } else {
+                                    bi=&b->stream[b->numstream++];
+                                }
+
+                                bi->st=st;
 
                                 i+=2; // skip modifier
-                                b->autoaction=buf[i++];
-                                if( !b->autoaction ) {
-                                    b->grp=buf[i];
-                                    b->x1=read2(buf+i+1);
-                                    b->y1=read2(buf+i+3);
-                                    b->x2=read2(buf+i+5);
-                                    b->y2=read2(buf+i+7);
+                                bi->autoaction=buf[i++];
+                                if( !bi->autoaction ) {
+                                    bi->grp=buf[i];
+                                    bi->x1=read2(buf+i+1);
+                                    bi->y1=read2(buf+i+3);
+                                    bi->x2=read2(buf+i+5);
+                                    bi->y2=read2(buf+i+7);
                                     i+=9;
                                     // up down left right
-                                    b->up=readpstr(buf,&i);
-                                    b->down=readpstr(buf,&i);
-                                    b->left=readpstr(buf,&i);
-                                    b->right=readpstr(buf,&i);
+                                    bi->up=readpstr(buf,&i);
+                                    bi->down=readpstr(buf,&i);
+                                    bi->left=readpstr(buf,&i);
+                                    bi->right=readpstr(buf,&i);
                                 }
                             }
                             break;
@@ -1260,7 +1270,10 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                             break;
 
                         vi->sectpts[0]=vi->videopts[0];
-                        vi->sectpts[1]=vi->videopts[1];
+                        if( j+1 == s->numvobus && finalaudiopts > vi->videopts[1] )
+                            vi->sectpts[1]=finalaudiopts;
+                        else
+                            vi->sectpts[1]=vi->videopts[1];
                     }
                 }
                 if( !complain )
@@ -1469,10 +1482,10 @@ void MarkChapters(struct vobgroup *va)
         }
 }
 
-static pts_t getcellaudiopts(struct vobgroup *va,int vcid,int ach,int w)
+static pts_t getcellaudiopts(const struct vobgroup *va,int vcid,int ach,int w)
 {
-    struct vob *v=va->vobs[(vcid>>8)-1];
-    struct audchannel *a=&v->audch[ach];
+    const struct vob *v=va->vobs[(vcid>>8)-1];
+    const struct audchannel *a=&v->audch[ach];
     int ai=0;
 
     assert((vcid&255)==(w?v->numcells:1));
@@ -1481,19 +1494,19 @@ static pts_t getcellaudiopts(struct vobgroup *va,int vcid,int ach,int w)
     return a->audpts[ai].pts[w];
 }
 
-static int hasaudio(struct vobgroup *va,int vcid,int ach,int w)
+static int hasaudio(const struct vobgroup *va,int vcid,int ach,int w)
 {
-    struct vob *v=va->vobs[(vcid>>8)-1];
-    struct audchannel *a=&v->audch[ach];
+    const struct vob *v=va->vobs[(vcid>>8)-1];
+    const struct audchannel *a=&v->audch[ach];
 
     assert((vcid&255)==(w?v->numcells:1));
 
     return a->numaudpts!=0;
 }
 
-static pts_t getcellvideopts(struct vobgroup *va,int vcid,int w)
+static pts_t getcellvideopts(const struct vobgroup *va,int vcid,int w)
 {
-    struct vob *v=va->vobs[(vcid>>8)-1];
+    const struct vob *v=va->vobs[(vcid>>8)-1];
     int vi=0;
 
     assert((vcid&255)==(w?v->numcells:1));
@@ -1505,12 +1518,12 @@ static pts_t getcellvideopts(struct vobgroup *va,int vcid,int w)
     return v->vi[vi].sectpts[w];
 }
 
-static pts_t calcaudiodiff(struct vobgroup *va,int vcid,int ach,int w)
+static pts_t calcaudiodiff(const struct vobgroup *va,int vcid,int ach,int w)
 {
     return getcellvideopts(va,vcid,w)-getcellaudiopts(va,vcid,ach,w);
 }
 
-int calcaudiogap(struct vobgroup *va,int vcid0,int vcid1,int ach)
+int calcaudiogap(const struct vobgroup *va,int vcid0,int vcid1,int ach)
 {
     if( vcid0==-1 || vcid1==-1 )
         return 0;
@@ -1537,7 +1550,7 @@ int calcaudiogap(struct vobgroup *va,int vcid0,int vcid1,int ach)
     return 1;
 }
 
-void FixVobus(char *fbase,struct vobgroup *va,int ismenu)
+void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int ismenu)
 {
     int h=-1;
     int i,j,pn,fnum=-2;
@@ -1587,32 +1600,69 @@ void FixVobus(char *fbase,struct vobgroup *va,int ismenu)
                 
             if( p->p->numbuttons ) {
                 struct pgc *pg=p->p;
+                int mask=getsubpmask(&va->vd),ng,grp;
+                char idmap[3];
 
                 write2(buf+0x8d,1);
                 write4(buf+0x8f,p->vi[0].sectpts[0]);
                 write4(buf+0x93,-1);
                 write4(buf+0x97,-1);
-                write2(buf+0x9b,0x1000);
+
+                ng=0;
+                write2(buf+0x9b,0);
+                for( j=0; j<4; j++ )
+                    if( mask&(1<<j) ) {
+                        assert(ng<3);
+                        idmap[ng]=j;
+                        write2(buf+0x9b,read2(buf+0x9b)+0x1000+(((1<<j)>>1)<<(2-ng)*4));
+                        ng++;
+                    }
+                assert(ng>0);
+
                 buf[0x9e]=pg->numbuttons;
                 buf[0x9f]=pg->numbuttons;
                 memcpy(buf+0xa3,p->buttoncoli,24);
-                for( j=0; j<pg->numbuttons; j++ ) {
-                    struct button *b=pg->buttons+j;
-                    if( b->autoaction ) {
-                        buf[0xbb+j*18+3]=64;
-                    } else {
-                        buf[0xbb+j*18+0]=(b->grp*64)|(b->x1>>4);
-                        buf[0xbb+j*18+1]=(b->x1<<4)|(b->x2>>8);
-                        buf[0xbb+j*18+2]=b->x2;
-                        buf[0xbb+j*18+3]=(b->y1>>4);
-                        buf[0xbb+j*18+4]=(b->y1<<4)|(b->y2>>8);
-                        buf[0xbb+j*18+5]=b->y2;
-                        buf[0xbb+j*18+6]=findbutton(pg,b->up,(j==0)?pg->numbuttons:j);
-                        buf[0xbb+j*18+7]=findbutton(pg,b->down,(j+1==pg->numbuttons)?1:j+2);
-                        buf[0xbb+j*18+8]=findbutton(pg,b->left,(j==0)?pg->numbuttons:j);
-                        buf[0xbb+j*18+9]=findbutton(pg,b->right,(j+1==pg->numbuttons)?1:j+2);
+                for( grp=0; grp<ng; grp++ ) {
+                    unsigned char *boffs=buf+0xbb+18*(grp*36/ng);
+                    int sid=pg->subpmap[0][(int)idmap[grp]]&127;
+
+                    for( j=0; j<pg->numbuttons; j++ ) {
+                        static unsigned char compilebuf[128*8],*rbuf;
+                        struct button *b=pg->buttons+j;
+                        struct buttoninfo *bi;
+                        int k;
+
+                        for( k=0; k<b->numstream; k++ )
+                            if( b->stream[k].st==sid )
+                                break;
+                        if( k==b->numstream )
+                            continue;
+                        bi=&b->stream[k];
+
+                        if( bi->autoaction ) {
+                            boffs[3]=64;
+                        } else {
+                            boffs[0]=(bi->grp*64)|(bi->x1>>4);
+                            boffs[1]=(bi->x1<<4)|(bi->x2>>8);
+                            boffs[2]=bi->x2;
+                            boffs[3]=(bi->y1>>4);
+                            boffs[4]=(bi->y1<<4)|(bi->y2>>8);
+                            boffs[5]=bi->y2;
+                            boffs[6]=findbutton(pg,bi->up,(j==0)?pg->numbuttons:j);
+                            boffs[7]=findbutton(pg,bi->down,(j+1==pg->numbuttons)?1:j+2);
+                            boffs[8]=findbutton(pg,bi->left,(j==0)?pg->numbuttons:j);
+                            boffs[9]=findbutton(pg,bi->right,(j+1==pg->numbuttons)?1:j+2);
+                        }
+                        rbuf=vm_compile(compilebuf,compilebuf,ws,pg->pgcgroup,pg,b->cs,ismenu);
+                        if( rbuf-compilebuf==8 ) {
+                            memcpy(boffs+10,compilebuf,8);
+                        } else if( allowallreg ) {
+                            fprintf(stderr,"ERR:  Button command is too complex to fit in one instruction, and allgprm==true.\n");
+                            exit(1);
+                        } else
+                            write8(boffs+10,0x71,0x01,0x00,0x0F,0x00,j+1,0x00,0x0d); // g[15]=j && linktailpgc
+                        boffs+=18;
                     }
-                    write8(buf+0xbb+j*18+10,0x71,0x01,0x00,0x0F,0x00,j+1,0x00,0x0d); // g[0]=j && linktailpgc
                 }
             }
 

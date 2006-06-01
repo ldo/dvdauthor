@@ -21,7 +21,7 @@
 
 #include "dvdvm.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvmy.y#2 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvmy.y#7 $";
 
 #define YYERROR_VERBOSE
 
@@ -37,29 +37,38 @@ static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvmy.y#2 $";
 
 %token ANGLE_TOK
 %token AUDIO_TOK
+%token BREAK_TOK
 %token BUTTON_TOK
 %token CALL_TOK
 %token CELL_TOK
 %token CHAPTER_TOK
 %token CLOSEBRACE_TOK
 %token CLOSEPAREN_TOK
+%token COUNTER_TOK
 %token ELSE_TOK
 %token ENTRY_TOK
 %token EXIT_TOK
 %token FPC_TOK
+%token GOTO_TOK
 %token IF_TOK
 %token JUMP_TOK
 %token MENU_TOK
+%token NEXT_TOK
 %token OPENBRACE_TOK
 %token OPENPAREN_TOK
+%token PREV_TOK
 %token PROGRAM_TOK
 %token PTT_TOK
+%token REGION_TOK
 %token RESUME_TOK
+%token RND_TOK
 %token ROOT_TOK
 %token SET_TOK
 %token SUBTITLE_TOK
+%token TAIL_TOK
 %token TITLE_TOK
 %token TITLESET_TOK
+%token TOP_TOK
 %token VMGM_TOK
 
 
@@ -74,16 +83,17 @@ static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvmy.y#2 $";
 %token ADDSET_TOK SUBSET_TOK MULSET_TOK DIVSET_TOK MODSET_TOK ANDSET_TOK ORSET_TOK XORSET_TOK
 
 %token SEMICOLON_TOK
+%token COLON_TOK
 %token ERROR_TOK
 
 %union {
-    int int_val;
+    unsigned int int_val;
     char *str_val;
     struct vm_statement *statement;
 }
 
 %type <statement> finalparse statements statement callstatement jumpstatement setstatement ifstatement ifelsestatement expression boolexpr
-%type <int_val> jtsl jtml jcl resumel reg regornum
+%type <int_val> jtsl jtml jcl resumel reg regornum regorcounter
 
 %%
 
@@ -114,6 +124,20 @@ statement: jumpstatement {
 | RESUME_TOK SEMICOLON_TOK {
     $$=statement_new();
     $$->op=VM_RESUME;
+}
+| GOTO_TOK ID_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_GOTO;
+    $$->s1=$2;
+}
+| ID_TOK COLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LABEL;
+    $$->s1=$1;
+}
+| BREAK_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_BREAK;
 }
 | setstatement {
     $$=$1;
@@ -235,6 +259,9 @@ reg: G_TOK {
 | BUTTON_TOK {
     $$=0x88;
 }
+| REGION_TOK {
+    $$=0x80+20;
+}
 ;
 
 regornum: reg {
@@ -283,6 +310,11 @@ expression: OPENPAREN_TOK expression CLOSEPAREN_TOK {
 | expression XOR_TOK expression {
     $$=statement_expression($1,VM_XOR,$3);
 }
+| RND_TOK OPENPAREN_TOK expression CLOSEPAREN_TOK {
+    $$=statement_new();
+    $$->op=VM_RND;
+    $$->param=$3;
+}
 ;
 
 boolexpr: OPENPAREN_TOK boolexpr CLOSEPAREN_TOK {
@@ -325,7 +357,15 @@ boolexpr: OPENPAREN_TOK boolexpr CLOSEPAREN_TOK {
 }
 ;
 
-setstatement: reg SET_TOK expression SEMICOLON_TOK {
+regorcounter: reg {
+    $$=$1;
+}
+| COUNTER_TOK G_TOK {
+    $$=$2+0x20;
+}
+;
+
+setstatement: regorcounter SET_TOK expression SEMICOLON_TOK {
     $$=statement_new();
     $$->op=VM_SET;
     $$->i1=$1;

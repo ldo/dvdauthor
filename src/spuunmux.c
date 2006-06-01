@@ -44,7 +44,7 @@
 #define CBUFSIZE 65536
 #define PSBUFSIZE 10
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/spuunmux.c#21 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/spuunmux.c#22 $";
 
 static unsigned int add_offset;
 
@@ -625,9 +625,9 @@ static void write_spu(struct spu *s,struct dispdetails *d)
         for( i=0; i<d->numbuttons; i++ ) {
             struct button *b=d->buttons+i;
             if( b->autoaction ) 
-                fprintf(fdo,"\t\t\t<action label=\"%s\" />\n",b->name);
+                fprintf(fdo,"\t\t\t<action name=\"%s\" />\n",b->name);
             else {
-                fprintf(fdo,"\t\t\t<button label=\"%s\" x0=\"%d\" y0=\"%d\" x1=\"%d\" y1=\"%d\" up=\"%s\" down=\"%s\" left=\"%s\" right=\"%s\" />\n",
+                fprintf(fdo,"\t\t\t<button name=\"%s\" x0=\"%d\" y0=\"%d\" x1=\"%d\" y1=\"%d\" up=\"%s\" down=\"%s\" left=\"%s\" right=\"%s\" />\n",
                         b->name,b->x1,b->y1,b->x2,b->y2,
                         b->up,b->down,b->left,b->right);
             }
@@ -1027,6 +1027,7 @@ int main(int argc, char **argv)
                                         int j;
                                         d->numbuttons=cbuf[i+1];
                                         d->buttons=malloc(d->numbuttons*sizeof(struct button));
+                                        i+=2;
                                         for( j=0; j<d->numbuttons; j++ ) {
                                             struct button *b=&d->buttons[j];
                                             b->name=readpstr(cbuf,&i);

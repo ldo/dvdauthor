@@ -30,7 +30,7 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdauthor.c#73 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdauthor.c#82 $";
 
 
 
@@ -38,11 +38,15 @@ static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdauthor.c#73 $";
 // jumping/calling to a wider number of destinations
 int jumppad=0;
 
+// with this enabled, all 16 general purpose registers can be used, but
+// prohibits certain convenience features
+int allowallreg=0;
+
 static char *vmpegdesc[4]={"","mpeg1","mpeg2",0};
 static char *vresdesc[6]={"","720xfull","704xfull","352xfull","352xhalf",0};
 static char *vformatdesc[4]={"","ntsc","pal",0};
 static char *vaspectdesc[4]={"","4:3","16:9",0};
-static char *vdisallowdesc[4]={"","noletterbox","nopanscan",0};
+static char *vwidescreendesc[5]={"","noletterbox","nopanscan","crop",0};
 // taken from mjpegtools, also GPL
 static char *vratedesc[9]={"",
                            "24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)",
@@ -64,6 +68,8 @@ static char *asampledesc[4]={"","48khz","96khz",0};
 char *entries[9]={"","","title","root","subtitle","audio","angle","ptt",0};
 
 char *pstypes[3]={"VTS","VTSM","VMGM"};
+
+static char *smodedesc[6]={"","normal","widescreen","letterbox","panscan",0};
 
 static const int colors[16]={
     0x1000000,
@@ -90,7 +96,7 @@ static const int colors[16]={
 static int ratedenom[9]={0,90090,90000,90000,90090,90000,90000,90090,90000};
 static int evenrate[9]={0,    24,   24,   25,   30,   30,   50,   60,   60};
 
-static int getratecode(struct vobgroup *va)
+static int getratecode(const struct vobgroup *va)
 {
     if( va->vd.vframerate )
         return va->vd.vframerate;
@@ -98,12 +104,12 @@ static int getratecode(struct vobgroup *va)
         return 4;
 }
 
-int getratedenom(struct vobgroup *va)
+int getratedenom(const struct vobgroup *va)
 {
     return ratedenom[getratecode(va)];
 }
 
-pts_t getframepts(struct vobgroup *va)
+pts_t getframepts(const struct vobgroup *va)
 {
     int rc=getratecode(va);
 
@@ -115,7 +121,7 @@ static int tobcd(int v)
     return (v/10)*16+v%10;
 }
 
-static unsigned int buildtimehelper(struct vobgroup *va,int64_t num,int64_t denom)
+static unsigned int buildtimehelper(const struct vobgroup *va,int64_t num,int64_t denom)
 {
     int hr,min,sec,fr,rc;
     int64_t frate;
@@ -138,14 +144,14 @@ static unsigned int buildtimehelper(struct vobgroup *va,int64_t num,int64_t deno
     return (hr<<24)|(min<<16)|(sec<<8)|fr|(rc<<6);
 }
 
-unsigned int buildtimeeven(struct vobgroup *va,int64_t num)
+unsigned int buildtimeeven(const struct vobgroup *va,int64_t num)
 {
     int rc=getratecode(va);
 
     return buildtimehelper(va,num,ratedenom[rc]);
 }
 
-unsigned int getaudch(struct vobgroup *va,int a)
+unsigned int getaudch(const struct vobgroup *va,int a)
 {
     if( !va->ad[a].aid )
         return -1;
@@ -186,6 +192,16 @@ unsigned int read4(unsigned char *p)
 unsigned int read2(unsigned char *p)
 {
     return (p[0]<<8)|p[1];
+}
+
+static int findsubpmode(const char *m)
+{
+    int i;
+
+    for( i=0; i<4; i++ )
+        if( !strcasecmp(smodedesc[i+1],m) )
+            return i;
+    return -1;
 }
 
 static int warnupdate(int *oldval,int newval,int *warnval,char *desc,char **lookup)
@@ -245,7 +261,7 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,char *s)
     }
 
     if( ATTRMATCH(VIDEO_WIDESCREEN) ) {
-        w=scanandwarnupdate(&va->vd.vdisallow,s,&va->vdwarn.vdisallow,"16:9 disallow",vdisallowdesc);
+        w=scanandwarnupdate(&va->vd.vwidescreen,s,&va->vdwarn.vwidescreen,"widescreen conversion",vwidescreendesc);
         if(w) return w-1;
     }
 
@@ -367,10 +383,49 @@ static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,char *s,int ch)
     exit(1);
 }
 
+static int vobgroup_set_subpic_stream(struct vobgroup *va,int ch,char *m,int id)
+{
+    int mid;
+
+    if( ch>=va->numsubpicturetracks )
+        va->numsubpicturetracks=ch+1;
+
+    mid=findsubpmode(m);
+    if( mid<0 ) {
+        fprintf(stderr,"ERR:  Cannot parse subpicture stream mode '%s'\n",m);
+        exit(1);
+    }
+
+    if( va->sp[ch].idmap[mid] && va->sp[ch].idmap[mid]!=128+id ) {
+        fprintf(stderr,"ERR:  Subpicture stream already defined for subpicture %d mode %s\n",ch,m);
+        exit(1);
+    }
+    va->sp[ch].idmap[mid]=128+id;
+
+    return 0;
+}
+
 static void inferattr(int *a,int def)
 {
     if( a[0]!=0 ) return;
     a[0]=def;
+}
+
+int getsubpmask(const struct videodesc *vd)
+{
+    int mask=0;
+
+    if( vd->vaspect==VA_16x9 )
+        mask|=14;
+    else
+        mask|=1;
+
+    switch( vd->vwidescreen ) {
+    case VW_NOLETTERBOX: mask&=-1-4; break;
+    case VW_NOPANSCAN:   mask&=-1-8; break;
+    case VW_CROP:        mask|=2;    break;
+    }
+    return mask;
 }
 
 static void setattr(struct vobgroup *va,int pstype)
@@ -389,8 +444,18 @@ static void setattr(struct vobgroup *va,int pstype)
     inferattr(&va->vd.vres,   VS_720H);
     inferattr(&va->vd.vformat,VF_NTSC);
     inferattr(&va->vd.vaspect,VA_4x3);
-    if( va->vd.vaspect==VA_4x3 )
-        va->vd.vdisallow=VD_LETTERBOX|VD_PANSCAN; // if you are 4:3 then you don't need letterbox or pan&scan
+
+    if( va->vd.vaspect==VA_4x3 ) {
+        if( va->vd.vwidescreen == VW_NOLETTERBOX || va->vd.vwidescreen == VW_NOPANSCAN ) {
+            fprintf(stderr,"ERR:  widescreen conversion should not be set to either noletterbox or nopanscan for 4:3 source material.\n");
+            exit(1);
+        }
+    } else {
+        if( va->vd.vwidescreen == VW_CROP ) {
+            fprintf(stderr,"ERR:  widescreen conversion should not be set to crop for 16:9 source material.\n");
+            exit(1);
+        }
+    }
 
     for( i=0; i<32; i++ ) {
         int id=(i>>2)+1, f=(i&3)+1, j,fnd; // note this does not follow the normal stream order
@@ -499,37 +564,127 @@ static void setattr(struct vobgroup *va,int pstype)
         inferattr(&va->ad[i].asample,AS_48KHZ);
     }
 
-    for( i=32; i<64; i++ ) {
-        int id=i-32+1, j, fnd;
+    for( i=0; i<va->numallpgcs; i++ ) {
+        int j, k, l, m, used, mask;
+        struct pgc *pgc=va->allpgcs[i];
+
+        mask=getsubpmask(&va->vd);
+
+        // If any of the subpicture streams were manually set for this PGC, assume
+        // they all were set and don't try to infer anything (in case a VOB is used
+        // by multiple PGC's, but only some subpictures are exposed in one PGC and others
+        // in the other PGC)
+        for( m=0; m<4; m++ )
+            if( pgc->subpmap[0][m] )
+                goto noinfer;
+
+        for( j=0; j<pgc->numsources; j++ ) {
+            struct vob *vob=pgc->sources[j]->vob;
+
+            for( k=0; k<32; k++ ) {
+                // Does this subpicture stream exist in the VOB?  if not, skip
+                if( !vob->audch[k+32].numaudpts )
+                    continue;
+                // Is this subpicture stream already referenced by the subpicture table?  if so, skip
+                for( l=0; l<32; l++ )
+                    for( m=0; m<4; m++ )
+                        if( pgc->subpmap[l][m]==128+k )
+                            goto handled;
+                // Is this subpicture id defined by the vobgroup?
+                used=0;
+                for( l=0; l<va->numsubpicturetracks; l++ )
+                    for( m=0; m<4; m++ )
+                        if( va->sp[l].idmap[m]==128+k && pgc->subpmap[l][m]==0 ) {
+                            pgc->subpmap[l][m]=128+k;
+                            used=1; // keep looping in case it's referenced multiple times
+                        }
+                if( used )
+                    continue;
+                // Find a subpicture slot that is not used
+                for( l=0; l<32; l++ ) {
+                    // Is this slot defined by the vobgroup?  If so, it can't be used
+                    if( l<va->numsubpicturetracks ) {
+                        for( m=0; m<4; m++ )
+                            if( va->sp[l].idmap[m] )
+                                goto next;
+                    }
+                    // Is this slot defined by the pgc?  If so, it can't be used
+                    for( m=0; m<4; m++ )
+                        if( pgc->subpmap[l][m] )
+                            goto next;
+
+                    break;
+
+                next: ;
+                }
+                assert(l<32);
+                // Set all the appropriate stream ids
+                for( m=0; m<4; m++ )
+                    pgc->subpmap[l][m] = (mask&(1<<m))  ?  128+k  :  127;
+                    
+            handled: ;
+            }
+        }
+
+    noinfer:
+        for( m=0; m<4; m++ ) {
+            if( mask&(1<<m) )
+                continue;
+
+
+
+            for( l=0; l<32; l++ ) {
+                int mainid=-1;
+
+                for( m=0; m<4; m++ ) {
+                    if( !(mask&(1<<m)) && (pgc->subpmap[l][m]&128)==128 ) {
+                        fprintf(stderr,"WARN: PGC %d has the subtitle set for stream %d, mode %s which is illegal given the video characteristics.  Forcibly removing.\n",i,l,smodedesc[m+1]);
+                        pgc->subpmap[l][m]=127;
+                    }
+                    if( pgc->subpmap[l][m]&128 ) {
+                        if( mainid==-1 )
+                            mainid=pgc->subpmap[l][m]&127;
+                        else if( mainid>=0 && mainid!=(pgc->subpmap[l][m]&127) )
+                            mainid=-2;
+                    }
+                }
+
+                // if no streams are set for this subpicture, ignore it
+                if( mainid==-1 )
+                    continue;
+                // if any streams aren't set that should be (because of the mask), then set them to the main stream
+                for( m=0; m<4; m++ ) {
+                    if( !(mask&(1<<m)) )
+                        continue;
+                    if( !(pgc->subpmap[l][m]&128) ) {
+                        if( mainid<0 )
+                            fprintf(stderr,"WARN:  Cannot infer the stream id for subpicture %d mode %s in PGC %d; please manually specify.\n",l,smodedesc[m+1],i);
+                        else
+                            pgc->subpmap[l][m]=128+mainid;
+                    }
+                }
+            }   
+        }
+    }
+
+    for( i=0; i<32; i++ ) {
+        int j, k, fnd;
 
         fnd=0;
-        for( j=0; j<va->numvobs; j++ )
-            if( va->vobs[j]->audch[i].numaudpts )
-                fnd=1;
+        for( j=0; j<va->numallpgcs; j++ ) 
+            for( k=0; k<4; k++ )
+                if( va->allpgcs[j]->subpmap[i][k] )
+                    fnd=1;
         if( !fnd )
             continue;
       
-        // do we already know about this stream?
-        fnd=0;
-        for( j=0; j<va->numsubpicturetracks; j++ )
-            if( va->sp[j].sid==id )
-                fnd=1;
-        if( fnd )
-            continue;
-
-        // maybe we know about this type of stream but haven't matched the id yet?
-        for( j=0; j<va->numsubpicturetracks; j++ )
-            if( va->sp[j].sid==0 ) {
-                va->sp[j].sid=id;
-                fnd=1;
-                break;
-            }
-        if( fnd )
-            continue;
-
         // guess we need to add this stream
-        va->sp[va->numsubpicturetracks].sid=id;
-        va->numsubpicturetracks++;
+        if( i >= va->numsubpicturetracks )
+            va->numsubpicturetracks=i+1;
+    }
+
+    if( va->numsubpicturetracks>1 && pstype!=0 ) {
+        fprintf(stderr,"WARN: Too many subpicture tracks for a menu; 1 is allowed, %d are present.  Perhaps you want different streams for normal/widescreen/letterbox/panscan instead of actually having multiple streams?\n",va->numsubpicturetracks);
     }
 
     fprintf(stderr,"INFO: Generating %s with the following video attributes:\n",pstypes[pstype]);
@@ -551,7 +706,7 @@ static void setattr(struct vobgroup *va,int pstype)
     }
 }
 
-int findcellvobu(struct vob *va,int cellid)
+int findcellvobu(const struct vob *va,int cellid)
 {
     int l=0,h=va->numvobus-1;
     if( h<l )
@@ -571,14 +726,14 @@ int findcellvobu(struct vob *va,int cellid)
     return l;
 }
 
-pts_t getcellpts(struct vob *va,int cellid)
+pts_t getcellpts(const struct vob *va,int cellid)
 {
     int s=findcellvobu(va,cellid),e=findcellvobu(va,cellid+1);
     if( s==e ) return 0;
     return va->vi[e-1].sectpts[1]-va->vi[s].sectpts[0];
 }
 
-int findvobu(struct vob *va,pts_t pts,int l,int h)
+int findvobu(const struct vob *va,pts_t pts,int l,int h)
 {
     // int l=0,h=va->numvobus-1;
 
@@ -598,15 +753,15 @@ int findvobu(struct vob *va,pts_t pts,int l,int h)
     return l;
 }
 
-pts_t getptsspan(struct pgc *ch)
+pts_t getptsspan(const struct pgc *ch)
 {
     int s,c,ci;
     pts_t ptsspan=0;
 
     for( s=0; s<ch->numsources; s++ ) {
-        struct source *sc=ch->sources[s];
+        const struct source *sc=ch->sources[s];
         for( c=0; c<sc->numcells; c++ ) {
-            struct cell *cl=&sc->cells[c];
+            const struct cell *cl=&sc->cells[c];
             for( ci=cl->scellid; ci<cl->ecellid; ci++ )
                 ptsspan+=getcellpts(sc->vob,ci);
         }
@@ -922,6 +1077,25 @@ void pgc_set_stilltime(struct pgc *p,int still)
     p->pauselen=still;
 }
 
+int pgc_set_subpic_stream(struct pgc *p,int ch,char *m,int id)
+{
+    int mid;
+
+    mid=findsubpmode(m);
+    if( mid<0 ) {
+        fprintf(stderr,"ERR:  Cannot parse subpicture stream mode '%s'\n",m);
+        exit(1);
+    }
+
+    if( p->subpmap[ch][mid] && p->subpmap[ch][mid]!=128+id ) {
+        fprintf(stderr,"ERR:  Subpicture stream already defined for subpicture %d mode %s\n",ch,m);
+        exit(1);
+    }
+    p->subpmap[ch][mid]=128+id;
+
+    return 0;
+}
+
 void pgc_add_entry(struct pgc *p,char *entry)
 {
     int i;
@@ -982,6 +1156,8 @@ void pgcgroup_add_pgc(struct pgcgroup *ps,struct pgc *p)
 {
     ps->pgcs=(struct pgc **)realloc(ps->pgcs,(ps->numpgcs+1)*sizeof(struct pgc *));
     ps->pgcs[ps->numpgcs++]=p;
+    assert(p->pgcgroup==0);
+    p->pgcgroup=ps;
 }
 
 int pgcgroup_set_video_attr(struct pgcgroup *va,int attr,char *s)
@@ -997,6 +1173,11 @@ int pgcgroup_set_audio_attr(struct pgcgroup *va,int attr,char *s,int ch)
 int pgcgroup_set_subpic_attr(struct pgcgroup *va,int attr,char *s,int ch)
 {
     return vobgroup_set_subpic_attr(va->vg,attr,s,ch);
+}
+
+int pgcgroup_set_subpic_stream(struct pgcgroup *va,int ch,char *m,int id)
+{
+    return vobgroup_set_subpic_stream(va->vg,ch,m,id);
 }
 
 struct menugroup *menugroup_new()
@@ -1035,9 +1216,27 @@ int menugroup_set_subpic_attr(struct menugroup *va,int attr,char *s,int ch)
     return vobgroup_set_subpic_attr(va->vg,attr,s,ch);
 }
 
+int menugroup_set_subpic_stream(struct menugroup *va,int ch,char *m,int id)
+{
+    return vobgroup_set_subpic_stream(va->vg,ch,m,id);
+}
+
 void dvdauthor_enable_jumppad()
 {
+    if( allowallreg ) {
+        fprintf(stderr,"ERR:  Cannot enable both allgprm and jumppad\n");
+        exit(1);
+    }
     jumppad=1;
+}
+
+void dvdauthor_enable_allgprm()
+{
+    if( jumppad ) {
+        fprintf(stderr,"ERR:  Cannot enable both allgprm and jumppad\n");
+        exit(1);
+    }
+    allowallreg=1;
 }
 
 void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,char *fbase)
@@ -1108,7 +1307,7 @@ void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,char *fbase)
         MarkChapters(menus->vg);
         setattr(menus->vg,2);
         fprintf(stderr,"\n");
-        FixVobus(fbuf,menus->vg,2);
+        FixVobus(fbuf,menus->vg,&ws,2);
     }
     sprintf(fbuf,"%s/VIDEO_TS.IFO",vtsdir);
     TocGen(&ws,fpc,fbuf);
@@ -1156,6 +1355,6 @@ void dvdauthor_vts_gen(struct menugroup *menus,struct pgcgroup *titles,char *fba
     fprintf(stderr,"\n");
     WriteIFOs(realfbase,&ws);
     if( menus->vg->numvobs )
-        FixVobus(realfbase,menus->vg,1);
-    FixVobus(realfbase,titles->vg,0);
+        FixVobus(realfbase,menus->vg,&ws,1);
+    FixVobus(realfbase,titles->vg,&ws,0);
 }

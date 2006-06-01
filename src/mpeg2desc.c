@@ -30,7 +30,7 @@
 
 #include <netinet/in.h>
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/mpeg2desc.c#33 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/mpeg2desc.c#34 $";
 
 // #define SHOWDATA
 
@@ -479,7 +479,7 @@ int main(int argc,char **argv)
             }
 
             if( outputenglish )
-                printf("%08x: mpeg%c pack hdr, %lld.%03lld sec\n",disppos,mpeg2?'2':'1',fulltime/SCRTIME,(fulltime%SCRTIME)/(SCRTIME/1000));
+                printf("%08x: mpeg%c pack hdr, %" PRId64 ".%03" PRId64 " sec\n",disppos,mpeg2?'2':'1',fulltime/SCRTIME,(fulltime%SCRTIME)/(SCRTIME/1000));
             
             forceread(&hdr,4,stdin);
             break;
@@ -617,14 +617,14 @@ int main(int argc,char **argv)
                         
                         pts=readpts(buf+eptr);
                         eptr+=5;
-                        printf("; pts %lld.%03lld sec",pts/PTSTIME,(pts%PTSTIME)/(PTSTIME/1000));
+                        printf("; pts %" PRId64 ".%03" PRId64 " sec",pts/PTSTIME,(pts%PTSTIME)/(PTSTIME/1000));
                     }
                     if( has_dts ) {
                         int64_t dts;
                     
                         dts=readpts(buf+eptr);
                         eptr+=5;
-                        printf("; dts %lld.%03lld sec",dts/PTSTIME,(dts%PTSTIME)/(PTSTIME/1000));
+                        printf("; dts %" PRId64 ".%03" PRId64 " sec",dts/PTSTIME,(dts%PTSTIME)/(PTSTIME/1000));
                     }
 		    if(mpeg2) {
                         if( buf[1] & 32 ) {

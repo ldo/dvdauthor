@@ -24,15 +24,13 @@ enum {VM_NONE=0,VM_MPEG1=1,VM_MPEG2=2};
 enum {VS_NONE=0,VS_720H=1,VS_704H=2,VS_352H=3,VS_352L=4};
 enum {VF_NONE=0,VF_NTSC=1,VF_PAL=2};
 enum {VA_NONE=0,VA_4x3=1,VA_16x9=2};
-enum {VD_NONE=0,VD_LETTERBOX=1,VD_PANSCAN=2};
+enum {VW_NONE=0,VW_NOLETTERBOX=1,VW_NOPANSCAN=2,VW_CROP=3};
 enum {VR_NONE=0,VR_NTSCFILM=1,VR_FILM=2,VR_PAL=3,VR_NTSC=4,VR_30=5,VR_PALFIELD=6,VR_NTSCFIELD=7,VR_60=8};
 enum {AF_NONE=0,AF_AC3=1,AF_MP2=2,AF_PCM=3,AF_DTS=4};
 enum {AQ_NONE=0,AQ_16=1,AQ_20=2,AQ_24=3,AQ_DRC=4};
 enum {AD_NONE=0,AD_SURROUND=1};
 enum {AL_NONE=0,AL_NOLANG=1,AL_LANG=2};
 enum {AS_NONE=0,AS_48KHZ=1,AS_96KHZ=2};
-
-enum {COMPILE_PRE=0,COMPILE_CELL=1,COMPILE_POST=2};
 
 typedef int64_t pts_t;
 
@@ -48,7 +46,7 @@ struct colorinfo {
 };
 
 struct videodesc {
-    int vmpeg,vres,vformat,vaspect,vdisallow,vframerate,vcaption;
+    int vmpeg,vres,vformat,vaspect,vwidescreen,vframerate,vcaption;
 };
 
 struct audiodesc {
@@ -58,8 +56,9 @@ struct audiodesc {
 };
 
 struct subpicdesc {
-    int slangp,sid;
+    int slangp;
     char lang[2];
+    unsigned char idmap[4]; // (128 | id) if defined
 };
 
 struct cell {
@@ -99,13 +98,20 @@ struct vob {
     unsigned char buttoncoli[24];
 };
 
-struct button {
-    char *name;
+struct buttoninfo {
+    int st;
     int autoaction;
     int x1,y1,x2,y2;
     char *up,*down,*left,*right;
     int grp;
+};
+
+#define MAXBUTTONSTREAM 3
+struct button {
+    char *name;
     struct vm_statement *cs;
+    struct buttoninfo stream[MAXBUTTONSTREAM];
+    int numstream;
 };
 
 struct pgc {
@@ -115,6 +121,8 @@ struct pgc {
     struct button *buttons;
     struct vm_statement *prei,*posti;
     struct colorinfo *ci;
+    struct pgcgroup *pgcgroup;
+    unsigned char subpmap[32][4]; // (128|id) if known; 127 if not present
 };
 
 struct pgcgroup {
@@ -158,14 +166,13 @@ struct toc_summary {
 };
 
 struct workset {
-    struct toc_summary *ts;
-    struct menugroup *menus;
-    struct pgcgroup *titles;
-    int curmenu;
+    const struct toc_summary *ts;
+    const struct menugroup *menus;
+    const struct pgcgroup *titles;
 };
 
 extern char *entries[];
-extern int jumppad;
+extern int jumppad, allowallreg;
 extern char *pstypes[];
 
 void write8(unsigned char *p,unsigned char d0,unsigned char d1,
@@ -176,29 +183,31 @@ void write4(unsigned char *p,unsigned int v);
 void write2(unsigned char *p,unsigned int v);
 unsigned int read4(unsigned char *p);
 unsigned int read2(unsigned char *p);
-int getratedenom(struct vobgroup *va);
-int findvobu(struct vob *va,pts_t pts,int l,int h);
-pts_t getptsspan(struct pgc *ch);
-pts_t getframepts(struct vobgroup *va);
-unsigned int buildtimeeven(struct vobgroup *va,int64_t num);
-unsigned int getaudch(struct vobgroup *va,int a);
-int findcellvobu(struct vob *va,int cellid);
-pts_t getcellpts(struct vob *va,int cellid);
+int getsubpmask(const struct videodesc *vd);
+int getratedenom(const struct vobgroup *va);
+int findvobu(const struct vob *va,pts_t pts,int l,int h);
+pts_t getptsspan(const struct pgc *ch);
+pts_t getframepts(const struct vobgroup *va);
+unsigned int buildtimeeven(const struct vobgroup *va,int64_t num);
+unsigned int getaudch(const struct vobgroup *va,int a);
+int findcellvobu(const struct vob *va,int cellid);
+pts_t getcellpts(const struct vob *va,int cellid);
 int vobgroup_set_video_attr(struct vobgroup *va,int attr,char *s);
 int vobgroup_set_video_framerate(struct vobgroup *va,int rate);
 int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int attr,char *s);
 
-unsigned char *vm_compile(unsigned char *obuf,unsigned char *buf,struct workset *ws,int thispgc,struct vm_statement *cs,int ismenu,int prepost);
+unsigned char *vm_compile(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,int ismenu);
+void vm_optimize(unsigned char *obuf,unsigned char *buf,unsigned char **end);
 struct vm_statement *vm_parse(const char *b);
 
-void WriteIFOs(char *fbase,struct workset *ws);
-void TocGen(struct workset *ws,struct pgc *fpc,char *fname);
+void WriteIFOs(char *fbase,const struct workset *ws);
+void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname);
 
-int CreatePGC(FILE *h,struct workset *ws,int ismenu);
+int CreatePGC(FILE *h,const struct workset *ws,int ismenu);
 
 int FindVobus(char *fbase,struct vobgroup *va,int ismenu);
 void MarkChapters(struct vobgroup *va);
-void FixVobus(char *fbase,struct vobgroup *va,int ismenu);
-int calcaudiogap(struct vobgroup *va,int vcid0,int vcid1,int ach);
+void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int ismenu);
+int calcaudiogap(const struct vobgroup *va,int vcid0,int vcid1,int ach);
 
 #endif

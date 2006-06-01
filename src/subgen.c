@@ -35,7 +35,7 @@
 #include "subgen.h"
 #include "textsub.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subgen.c#49 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/subgen.c#50 $";
 
 
 // (90000*300)/(1260000/2048)
@@ -831,7 +831,7 @@ int main(int argc,char **argv)
             if(progr)
             {
                 if (lps % 1024 * 1024 * 10 < secsize)
-                    fprintf(stderr, "INFO: %lld bytes of data written\r", lps);
+                    fprintf(stderr, "INFO: %" PRIu64 " bytes of data written\r", lps);
             }
 
             if(debug > 5) fprintf(stderr, "INFO: pack_start_code\n");

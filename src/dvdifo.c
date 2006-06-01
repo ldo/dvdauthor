@@ -26,19 +26,19 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdifo.c#19 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdifo.c#28 $";
 
 #define BIGWRITEBUFLEN (16*2048)
 static unsigned char bigwritebuf[BIGWRITEBUFLEN];
 
-static struct vobuinfo *globalfindvobu(struct pgc *ch,int pts)
+static const struct vobuinfo *globalfindvobu(const struct pgc *ch,int pts)
 {
     int s,c,ci;
 
     for( s=0; s<ch->numsources; s++ ) {
-        struct source *sc=ch->sources[s];
+        const struct source *sc=ch->sources[s];
         for( c=0; c<sc->numcells; c++ ) {
-            struct cell *cl=&sc->cells[c];
+            const struct cell *cl=&sc->cells[c];
             int span=0;
             int fv=findcellvobu(sc->vob,cl->scellid);
 
@@ -63,7 +63,7 @@ static struct vobuinfo *globalfindvobu(struct pgc *ch,int pts)
     return 0;
 }
 
-static int getvoblen(struct vobgroup *va)
+static int getvoblen(const struct vobgroup *va)
 {
     int i;
 
@@ -73,17 +73,17 @@ static int getvoblen(struct vobgroup *va)
     return 0;
 }
 
-static unsigned int getptssec(struct vobgroup *va,int nsec)
+static unsigned int getptssec(const struct vobgroup *va,int nsec)
 {
     return nsec*getratedenom(va);
 }
 
-static unsigned int findptssec(struct vobgroup *va,int pts)
+static unsigned int findptssec(const struct vobgroup *va,int pts)
 {
     return pts/getratedenom(va);
 }
 
-static int numsec(struct pgcgroup *va,int c)
+static int numsec(const struct pgcgroup *va,int c)
 {
     return findptssec(va->vg,getptsspan(va->pgcs[c]));
 }
@@ -96,14 +96,14 @@ static int secunit(int ns)
     return (ns+maxunits-1)/maxunits;
 }
 
-static int tmapt_block_size(struct pgcgroup *va,int pgc)
+static int tmapt_block_size(const struct pgcgroup *va,int pgc)
 {
     int v=numsec(va,pgc);
     v=v/secunit(v);
     return v*4+4;
 }
 
-static int sizeTMAPT(struct pgcgroup *va)
+static int sizeTMAPT(const struct pgcgroup *va)
 {
     int s=0,i;
     for( i=0; i<va->numpgcs; i++ )
@@ -111,12 +111,12 @@ static int sizeTMAPT(struct pgcgroup *va)
     return s+va->numpgcs*4+8;
 }
 
-static int numsectTMAPT(struct pgcgroup *va)
+static int numsectTMAPT(const struct pgcgroup *va)
 {
     return (sizeTMAPT(va)+2047)/2048;
 }
 
-static void CreateTMAPT(FILE *h,struct pgcgroup *va)
+static void CreateTMAPT(FILE *h,const struct pgcgroup *va)
 {
     int i,mapblock;
     unsigned char buf[8];
@@ -136,7 +136,7 @@ static void CreateTMAPT(FILE *h,struct pgcgroup *va)
     for( i=0; i<va->numpgcs; i++ ) {
         int numtmapt=numsec(va,i), ptsbase, j, lastsrc=-1;
         int units=secunit(numtmapt);
-        struct pgc *p=va->pgcs[i];
+        const struct pgc *p=va->pgcs[i];
 
         numtmapt/=units;
         buf[0]=units;
@@ -145,7 +145,7 @@ static void CreateTMAPT(FILE *h,struct pgcgroup *va)
             write2(buf+2,numtmapt);
             ptsbase=-getframepts(va->vg);
             for( j=0; j<numtmapt; j++ ) {
-                struct vobuinfo *vobu=globalfindvobu(p,ptsbase+getptssec(va->vg,(j+1)*units));
+                const struct vobuinfo *vobu=globalfindvobu(p,ptsbase+getptssec(va->vg,(j+1)*units));
                 if( vobu->vobcellid!=lastsrc ) {
                     if( lastsrc!=-1 )
                         buf[0]|=0x80;
@@ -171,7 +171,7 @@ static void CreateTMAPT(FILE *h,struct pgcgroup *va)
     }
 }
 
-static int numsectVOBUAD(struct vobgroup *va)
+static int numsectVOBUAD(const struct vobgroup *va)
 {
     int nv=0, i;
 
@@ -181,7 +181,7 @@ static int numsectVOBUAD(struct vobgroup *va)
     return (4+nv*4+2047)/2048;
 }
 
-static int CreateCallAdr(FILE *h,struct vobgroup *va)
+static int CreateCallAdr(FILE *h,const struct vobgroup *va)
 {
     unsigned char *buf=bigwritebuf;
     int i,p,k;
@@ -189,7 +189,7 @@ static int CreateCallAdr(FILE *h,struct vobgroup *va)
     memset(buf,0,BIGWRITEBUFLEN);
     p=8;
     for( k=0; k<va->numvobs; k++ ) {
-        struct vob *c=va->vobs[k];
+        const struct vob *c=va->vobs[k];
         for( i=0; i<c->numvobus; i++ ) {
             if( !i || c->vi[i].vobcellid!=c->vi[i-1].vobcellid ) {
                 if( i ) {
@@ -205,7 +205,8 @@ static int CreateCallAdr(FILE *h,struct vobgroup *va)
         p+=12;
     }
     write4(buf+4,p-1);
-    write2(buf,(p-8)/12);
+    // first 2 bytes of C_ADT contains number of vobs
+    write2(buf,va->numvobs);
     assert(p<=BIGWRITEBUFLEN);
     p=(p+2047)&(-2048);
     if(h)
@@ -213,7 +214,7 @@ static int CreateCallAdr(FILE *h,struct vobgroup *va)
     return p/2048;
 }
 
-static void CreateVOBUAD(FILE *h,struct vobgroup *va)
+static void CreateVOBUAD(FILE *h,const struct vobgroup *va)
 {
     int i,j,nv;
     unsigned char buf[16];
@@ -225,7 +226,7 @@ static void CreateVOBUAD(FILE *h,struct vobgroup *va)
     write4(buf,nv*4+3);
     fwrite(buf,1,4,h);
     for( j=0; j<va->numvobs; j++ ) {
-        struct vob *p=va->vobs[j];
+        const struct vob *p=va->vobs[j];
         for( i=0; i<p->numvobus; i++ ) {
             write4(buf,p->vi[i].sector);
             fwrite(buf,1,4,h);
@@ -243,7 +244,7 @@ static void CreateVOBUAD(FILE *h,struct vobgroup *va)
     }
 }
 
-static int Create_PTT_SRPT(FILE *h,struct pgcgroup *t)
+static int Create_PTT_SRPT(FILE *h,const struct pgcgroup *t)
 {
     unsigned char *buf=bigwritebuf;
     int i,j,p;
@@ -253,13 +254,13 @@ static int Create_PTT_SRPT(FILE *h,struct pgcgroup *t)
     p=8+t->numpgcs*4;
     assert(p<=2048); // need to make sure all the pgc pointers fit in the first sector because of dvdauthor.c:ScanIfo
     for( j=0; j<t->numpgcs; j++ ) {
-        struct pgc *pgc=t->pgcs[j];
+        const struct pgc *pgc=t->pgcs[j];
         int pgm=1,k;
 
         write4(buf+8+j*4,p);
         for( i=0; i<pgc->numsources; i++ )
             for( k=0; k<pgc->sources[i]->numcells; k++ ) {
-                struct cell *c=&pgc->sources[i]->cells[k];
+                const struct cell *c=&pgc->sources[i]->cells[k];
                 if( c->scellid!=c->ecellid )
                     switch(c->ischapter ) {
                     case 1:
@@ -280,7 +281,7 @@ static int Create_PTT_SRPT(FILE *h,struct pgcgroup *t)
     return p/2048;    
 }
 
-static int Create_TT_SRPT(FILE *h,struct toc_summary *ts,int vtsstart)
+static int Create_TT_SRPT(FILE *h,const struct toc_summary *ts,int vtsstart)
 {
     unsigned char *buf=bigwritebuf;
     int i,j,k,p,tn;
@@ -313,15 +314,16 @@ static int Create_TT_SRPT(FILE *h,struct toc_summary *ts,int vtsstart)
     return p/2048;        
 }
 
-static void BuildAVInfo(unsigned char *buf,struct vobgroup *va)
+static void BuildAVInfo(unsigned char *buf,const struct vobgroup *va)
 {
     int i;
+    static int widescreen_bits[4]={0,0x100,0x200,2}; // VW_NONE, VW_NOLETTERBOX, VW_NOPANSCAN, VW_CROP
 
     write2(buf,
            (va->vd.vmpeg==2?0x4000:0)
-           |(va->vd.vdisallow<<8)
+           |widescreen_bits[va->vd.vwidescreen]
            |(va->vd.vformat==VF_PAL?0x1000:0)
-           |(va->vd.vaspect==VA_16x9?0xc00:0)
+           |(va->vd.vaspect==VA_16x9?0xc00:0x300) // if 16:9, set aspect flag; if 4:3 set noletterbox/nopanscan
            |((va->vd.vcaption&1)?0x80:0)
            |((va->vd.vcaption&2)?0x40:0)
            |((va->vd.vres-1)<<2));
@@ -351,7 +353,7 @@ static void BuildAVInfo(unsigned char *buf,struct vobgroup *va)
     }
 }
 
-static int needmenus(struct menugroup *mg)
+static int needmenus(const struct menugroup *mg)
 {
     if (!mg ) return 0;
     if( !mg->numgroups ) return 0;
@@ -359,7 +361,7 @@ static int needmenus(struct menugroup *mg)
     return 1;
 }
 
-static void WriteIFO(FILE *h,struct workset *ws)
+static void WriteIFO(FILE *h,const struct workset *ws)
 {
     static unsigned char buf[2048];
     int i,forcemenus=needmenus(ws->menus);
@@ -435,7 +437,7 @@ static void WriteIFO(FILE *h,struct workset *ws)
     CreateVOBUAD(h,ws->titles->vg);
 }
 
-void WriteIFOs(char *fbase,struct workset *ws)
+void WriteIFOs(char *fbase,const struct workset *ws)
 {
     FILE *h;
     static char buf[1000];
@@ -451,7 +453,7 @@ void WriteIFOs(char *fbase,struct workset *ws)
     fclose(h);
 }
 
-void TocGen(struct workset *ws,struct pgc *fpc,char *fname)
+void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
 {
     static unsigned char buf[2048];
     int i,j,vtsstart,forcemenus=needmenus(ws->menus);
@@ -500,7 +502,8 @@ void TocGen(struct workset *ws,struct pgc *fpc,char *fname)
     if( forcemenus )
         BuildAVInfo(buf+256,ws->menus->vg);
 
-    buf[0x407]=0xc0;
+    // create FPC
+    buf[0x407]=(getratedenom(ws->menus->vg)==90090?3:1)<<6; // only set frame rate XXX: should check titlesets if there is no VMGM menu
     buf[0x4e5]=0xec; // pointer to command table
     // command table
     buf[0x4ed]=1; // # pre commands
@@ -512,7 +515,10 @@ void TocGen(struct workset *ws,struct pgc *fpc,char *fname)
             fprintf(stderr,"ERR:  FPC can ONLY contain prei commands, nothing else\n");
             exit(1);
         }
-        pi=vm_compile(buf+i,buf+i,ws,-1,fpc->prei,2,COMPILE_PRE);
+        if( ws->menus && ws->menus->numgroups )
+            pi=vm_compile(buf+i,buf+i,ws,ws->menus->groups[0].pg,0,fpc->prei,2); // XXX: just use the first pgcgroup as a reference
+        else
+            pi=vm_compile(buf+i,buf+i,ws,0,0,fpc->prei,2);
         if( !pi ) {
             fprintf(stderr,"ERR:  in FPC\n");
             exit(1);

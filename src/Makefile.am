@@ -1,5 +1,10 @@
 
-bin_PROGRAMS = dvdauthor dvdunauthor spumux spuunmux mpeg2desc
+bin_PROGRAMS = dvdauthor spumux spuunmux mpeg2desc
+
+if HAVE_DVDREAD
+  bin_PROGRAMS += dvdunauthor
+endif
+
 nodist_bin_SCRIPTS = dvddirdel
 
 AM_CPPFLAGS   = -DSYSCONFDIR="\"$(sysconfdir)\"" @XML_CPPFLAGS@ @MAGICK_CPPFLAGS@ @FREETYPE_CPPFLAGS@ @FRIBIDI_CPPFLAGS@
@@ -12,7 +17,7 @@ dvdauthor_SOURCES = dvdauthor.c dvdauthor.h da-internal.h \
 	conffile.c conffile.h compat.c compat.h rgb.h
 dvdauthor_LDADD = $(LIBICONV) $(XML_LIBS)
 
-dvdunauthor_SOURCES = dvdunauthor.c compat.c compat.h
+dvdunauthor_SOURCES = dvdunauthor.c dvduncompile.c dvduncompile.h compat.c compat.h
 dvdunauthor_LDADD = $(XML_LIBS) -ldvdread
 
 spumux_SOURCES = subgen.c subgen.h rgb.h \

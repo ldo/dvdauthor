@@ -41,6 +41,7 @@ void pgc_set_color(struct pgc *p,int index,int color);
 void pgc_set_buttongroup(struct pgc *p,int index,unsigned char *map);
 #endif
 void pgc_set_stilltime(struct pgc *p,int still);
+int pgc_set_subpic_stream(struct pgc *p,int ch,char *m,int id);
 
 enum { VIDEO_ANY=0, VIDEO_MPEG, VIDEO_FORMAT, VIDEO_ASPECT, VIDEO_RESOLUTION, VIDEO_WIDESCREEN, VIDEO_FRAMERATE, VIDEO_CAPTION };
 enum { AUDIO_ANY=0, AUDIO_FORMAT, AUDIO_QUANT, AUDIO_DOLBY, AUDIO_LANG, AUDIO_CHANNELS, AUDIO_SAMPLERATE };
@@ -51,18 +52,21 @@ void pgcgroup_add_pgc(struct pgcgroup *ps,struct pgc *p);
 int pgcgroup_set_video_attr(struct pgcgroup *va,int attr,char *s);
 int pgcgroup_set_audio_attr(struct pgcgroup *va,int attr,char *s,int ch);
 int pgcgroup_set_subpic_attr(struct pgcgroup *va,int attr,char *s,int ch);
+int pgcgroup_set_subpic_stream(struct pgcgroup *va,int ch,char *m,int id);
 
 struct menugroup *menugroup_new();
 void menugroup_add_pgcgroup(struct menugroup *mg,char *lang,struct pgcgroup *pg);
 int menugroup_set_video_attr(struct menugroup *va,int attr,char *s);
 int menugroup_set_audio_attr(struct menugroup *va,int attr,char *s,int ch);
 int menugroup_set_subpic_attr(struct menugroup *va,int attr,char *s,int ch);
+int menugroup_set_subpic_stream(struct menugroup *va,int ch,char *m,int id);
 
 struct source *source_new();
 int source_add_cell(struct source *v,double starttime,double endtime,int chap,int pause,const char *cmd);
 void source_set_filename(struct source *v,const char *s);
 
 void dvdauthor_enable_jumppad();
+void dvdauthor_enable_allgprm();
 void dvdauthor_vts_gen(struct menugroup *menus,struct pgcgroup *titles,char *fbase);
 void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,char *fbase);
 

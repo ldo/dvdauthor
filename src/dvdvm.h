@@ -7,6 +7,8 @@
 typedef void *dvdvm_buffer_state;
 #endif
 
+extern int allowallreg;
+
 extern void dvdvmerror(char *s);
 extern int dvdvmlex(void);
 extern dvdvm_buffer_state dvdvm_scan_string(const char *s);
@@ -51,6 +53,11 @@ enum { VM_NOP=0,
        VM_LAND,
        VM_LOR,
        VM_NOT,
+
+       VM_RND,
+       VM_GOTO,
+       VM_LABEL,
+       VM_BREAK,
        
        VM_MAX_OPCODE
 };

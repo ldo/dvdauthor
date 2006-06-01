@@ -1,4 +1,4 @@
-AC_INIT(DVDAuthor,0.6.11,dvdauthor-users@lists.sourceforge.net)
+AC_INIT(DVDAuthor,0.6.12-alpha,dvdauthor-users@lists.sourceforge.net)
 
 AM_CONFIG_HEADER(src/config.h)
 AC_CONFIG_AUX_DIR(autotools)
@@ -9,7 +9,9 @@ AC_PROG_INSTALL
 
 AC_SYS_LARGEFILE
 
-AC_CHECK_LIB(dvdread, DVDOpenFile, , AC_MSG_ERROR([You must have libdvdread(-devel) installed]))
+have_dvdread=false
+AC_CHECK_LIB(dvdread, DVDOpenFile, have_dvdread=true)
+AM_CONDITIONAL(HAVE_DVDREAD, $have_dvdread)
 
 AC_CHECK_LIB(gnugetopt, getopt_long)
 

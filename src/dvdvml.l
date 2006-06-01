@@ -22,7 +22,7 @@
 #include "dvdvm.h"
 #include "dvdvmy.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvml.l#2 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvml.l#9 $";
 
 %}
 
@@ -35,23 +35,28 @@ ws              {blank}+
 letter          [a-zA-Z_]
 digit           [0-9]
 identifier      {letter}({letter}|{digit})* 
+hex_num         0x[0-9a-fA-F]+
 int_num         {digit}+ 
+lang_code       \"[a-z]{2}\"
 
 %%
 
 and		{ return _AND_TOK; }
 angle		{ return ANGLE_TOK; }
 audio		{ return AUDIO_TOK; }
+break           { return BREAK_TOK; }
 button		{ return BUTTON_TOK; }
 call            { return CALL_TOK; }
 cell		{ return CELL_TOK; }
 chapter		{ return CHAPTER_TOK; }
+counter         { return COUNTER_TOK; }
 else		{ return ELSE_TOK; }
 entry		{ return ENTRY_TOK; }
 eq		{ return EQ_TOK; }
 exit		{ return EXIT_TOK; }
 fpc		{ return FPC_TOK; }
 ge		{ return GE_TOK; }
+goto            { return GOTO_TOK; }
 gt		{ return GT_TOK; }
 if		{ return IF_TOK; }
 jump		{ return JUMP_TOK; }
@@ -59,15 +64,21 @@ le		{ return LE_TOK; }
 lt		{ return LT_TOK; }
 menu		{ return MENU_TOK; }
 ne		{ return NE_TOK; }
+next            { return NEXT_TOK; }
 not		{ return NOT_TOK; }
 or		{ return _OR_TOK; }
+prev            { return PREV_TOK; }
 program		{ return PROGRAM_TOK; }
 ptt		{ return PTT_TOK; }
+random          { return RND_TOK; }
+region          { return REGION_TOK; }
 resume		{ return RESUME_TOK; }
 root		{ return ROOT_TOK; }
 subtitle	{ return SUBTITLE_TOK; }
+tail            { return TAIL_TOK; }
 title		{ return TITLE_TOK; }
 titleset	{ return TITLESET_TOK; }
+top             { return TOP_TOK; }
 vmgm		{ return VMGM_TOK; }
 xor		{ return XOR_TOK; }
 
@@ -106,22 +117,54 @@ xor		{ return XOR_TOK; }
 "!"		{ return NOT_TOK; }
 
 ";"             { return SEMICOLON_TOK; }
+":"             { return COLON_TOK; }
 "{"		{ return OPENBRACE_TOK; }
 "}"		{ return CLOSEBRACE_TOK; }
 "("		{ return OPENPAREN_TOK; }
 ")"		{ return CLOSEPAREN_TOK; }
 
-{int_num}	{ sscanf((char *)yytext,"%d",&dvdvmlval.int_val);
-                  return NUM_TOK; }
-
-g{int_num}	{ sscanf((char *)yytext+1,"%d",&dvdvmlval.int_val);
-		  if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=13 ) {
-			fprintf(stderr,"ERR:  Can only access g0-g12 (%s)\n",yytext);
+{hex_num}       { sscanf((char *)yytext,"0x%x",&dvdvmlval.int_val);
+		  if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=65536 ) {
+			fprintf(stderr,"ERR:  Integers must be between 0 and 65535, inclusive (%s)\n",yytext);
 			return ERROR_TOK;
 		  }
+                  return NUM_TOK; }
+
+
+{int_num}	{ sscanf((char *)yytext,"%u",&dvdvmlval.int_val);
+		  if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=65536 ) {
+			fprintf(stderr,"ERR:  Integers must be between 0 and 65535, inclusive (%s)\n",yytext);
+			return ERROR_TOK;
+		  }
+                  return NUM_TOK; }
+
+{int_num}k	{ sscanf((char *)yytext,"%u",&dvdvmlval.int_val);
+		  if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=64 ) {
+			fprintf(stderr,"ERR:  Integers must be between 0 and 65535, inclusive (%s)\n",yytext);
+			return ERROR_TOK;
+		  }
+                  dvdvmlval.int_val*=1024;
+                  return NUM_TOK; }
+
+{lang_code}     { dvdvmlval.int_val = ((unsigned char *)yytext)[1] * 256 + ((unsigned char *)yytext)[2];
+                  return NUM_TOK; }
+
+
+g{int_num}	{ sscanf((char *)yytext+1,"%u",&dvdvmlval.int_val);
+                  if( allowallreg ) {
+                      if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=16 ) {
+                          fprintf(stderr,"ERR:  Can only access g0-g15 (%s)\n",yytext);
+                          return ERROR_TOK;
+                      }
+                  } else {
+                      if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=13 ) {
+                          fprintf(stderr,"ERR:  Can only access g0-g12 (%s)\n",yytext);
+                          return ERROR_TOK;
+                      }
+                  }
 		  return G_TOK; }
 
-s{int_num}	{ sscanf((char *)yytext+1,"%d",&dvdvmlval.int_val);
+s{int_num}	{ sscanf((char *)yytext+1,"%u",&dvdvmlval.int_val);
 		  if( dvdvmlval.int_val<0 || dvdvmlval.int_val>23 ) {
 			fprintf(stderr,"ERR:  Can only access s0-s23 (%s)\n",yytext);
 			return ERROR_TOK;
