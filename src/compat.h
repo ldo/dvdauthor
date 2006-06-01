@@ -81,7 +81,7 @@
 
 
 #ifndef HAVE_STRSEP
-chat *strsep(char **stringp,const char *delim);
+char *strsep(char **stringp,const char *delim);
 #endif
 
 #if !HAVE_DECL_O_BINARY
