@@ -159,12 +159,12 @@ static void adddd(struct dispdetails *d)
 static int dvddecode()
 {
     unsigned int io;
-    unsigned short int size, dsize, i, x, y, t;
+    uint16_t size, dsize, i, x, y, t;
     unsigned char c;
     struct spu *s;
 
-    size = (((unsigned int) sub[0]) << 8) + sub[1];
-    dsize = (((unsigned int) sub[2]) << 8) + sub[3];
+    size = read2(sub);
+    dsize = read2(sub+2);
 
     if (debug > 1)
 	fprintf(stderr, "packet: 0x%x bytes, 0x%x bytes data\n", size,
