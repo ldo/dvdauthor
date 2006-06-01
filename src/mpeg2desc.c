@@ -451,7 +451,7 @@ int main(int argc,char **argv)
 
         case 0x1ba: // mpeg_pack_header
         {
-            long scr,scrhi,scrext;
+            uint32_t scr,scrhi,scrext;
             int64_t fulltime;
             forceread(buf,8,stdin);
             if((buf[0] & 0xC0) == 0x40) {
@@ -467,7 +467,7 @@ int main(int argc,char **argv)
                 scrext=((buf[4]&3)<<7)|
                     (buf[5]>>1);
                 if( scrext >= 300 && outputenglish ) {
-                    printf("WARN: scrext in pack hdr > 300: %ld\n",scrext);
+                    printf("WARN: scrext in pack hdr > 300: %u\n",scrext);
                 }
                 fulltime=((int64_t)scrhi)<<32|((int64_t)scr);
                 fulltime*=300;
