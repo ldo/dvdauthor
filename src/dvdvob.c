@@ -739,7 +739,7 @@ static void printvobustatus(struct vobgroup *va,int cursect)
 
 static void audio_scan_ac3(struct audchannel *ach,unsigned char *buf,int sof,int len)
 {
-    u_int32_t parse;
+    uint32_t parse;
     int acmod,lfeon,nch=0;
     char attr[4];
 

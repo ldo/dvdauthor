@@ -82,9 +82,9 @@ struct button {
 struct dispdetails {
     int pts[2];
     int numpal;
-    u_int32_t palette[16];
+    uint32_t palette[16];
     int numcoli;
-    u_int32_t coli[6];
+    uint32_t coli[6];
     int numbuttons;
     struct button *buttons;
     struct dispdetails *next;
@@ -93,8 +93,8 @@ struct dispdetails {
 static struct dispdetails *dd=0;
 
 struct colormap {
-    u_int16_t color;
-    u_int16_t contrast;
+    uint16_t color;
+    uint16_t contrast;
     int x1,y1,x2,y2;
 };
 
@@ -579,7 +579,7 @@ static void write_menu_image(struct spu *s,struct dispdetails *d,char *type,int 
     map[0].x2=0x7fffffff;
     map[0].y2=0x7fffffff;
     for( i=0; i<d->numbuttons; i++ ) {
-        u_int32_t cc=d->coli[2*d->buttons[i].grp-2+offset];
+        uint32_t cc=d->coli[2*d->buttons[i].grp-2+offset];
         map[i+1].x1=d->buttons[i].x1;
         map[i+1].y1=d->buttons[i].y1;
         map[i+1].x2=d->buttons[i].x2;

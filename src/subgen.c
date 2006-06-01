@@ -61,7 +61,7 @@ static unsigned int spuindex, progr;
 static int tofs;
 static int svcd;
 
-static u_int64_t lps;
+static uint64_t lps;
 
 stinfo **spus=0;
 int numspus=0;
@@ -83,7 +83,7 @@ int max_sub_size;
 static int subno,secsize,mode,fdo,header_size,muxrate;
 static unsigned char substr, *sector;
 static stinfo *newsti;
-static u_int64_t gts, nextgts;
+static uint64_t gts, nextgts;
 
 
 /*
@@ -134,7 +134,7 @@ per button:
       db up, down, left, right
 */
 
-static void mkpackh(u_int64_t time, unsigned int muxrate, unsigned char stuffing)
+static void mkpackh(uint64_t time, unsigned int muxrate, unsigned char stuffing)
 {
     unsigned long th=time/300,tl=time%300;
     header[0] = 0x44 | ((th >> 27) & 0x38) | ((th >> 28) & 3);
@@ -190,16 +190,16 @@ static unsigned int getmuxr(unsigned char *buf)
     return (buf[8] >> 2)|(buf[7]*64)|(buf[6]*16384);
 }
 
-static u_int64_t getgts(unsigned char *buf)
+static uint64_t getgts(unsigned char *buf)
 {
-    u_int64_t th,tl;
+    uint64_t th,tl;
     if (((buf[8]&3) != 3) || ((buf[5]&1) != 1) || ((buf[4]&4) != 4)||((buf[2]&4) != 4)|| ((buf[0]&0xc4) != 0x44)) return -1;
     th=(buf[4] >> 3) + (buf[3]*32) + ((buf[2]&3)*32*256) + ((buf[2]&0xf8)*32*128) + (buf[1]*1024*1024) + ((buf[0]&3)*1024*1024*256) + ((buf[0]&0x38)*1024*1024*256*2);
     tl=((buf[4]&3)<<7)|(buf[5]>>1);
     return th*300+tl;
 }
 
-static void fixgts(u_int64_t *gts,u_int64_t *nextgts)
+static void fixgts(uint64_t *gts,uint64_t *nextgts)
 {
     if( gts[0] < nextgts[0] )
         gts[0]=nextgts[0];

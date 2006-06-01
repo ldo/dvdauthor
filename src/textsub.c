@@ -142,8 +142,8 @@ sub_data * textsub_init(char *textsub_filename, float textsub_movie_fps, float t
   if (dvdsub_lang)
     if (!strcmp(dvdsub_lang,""))
       dvdsub_lang=NULL;
-  image_buffer=malloc(sizeof(u_int8_t)*3*textsub_movie_height*textsub_movie_width*3);
-  memset(image_buffer,128,sizeof(u_int8_t)*3*textsub_movie_height*textsub_movie_width*3);
+  image_buffer=malloc(sizeof(uint8_t)*3*textsub_movie_height*textsub_movie_width*3);
+  memset(image_buffer,128,sizeof(uint8_t)*3*textsub_movie_height*textsub_movie_width*3);
   if ( image_buffer==NULL)
   {
     fprintf(stderr,"ERR: Failed to allocate memory\n");
@@ -191,7 +191,7 @@ void textsub_render(subtitle* sub)
 {
   vo_sub=sub;
   vo_osd_changed(OSDTYPE_SUBTITLE);
-  memset(image_buffer,128,sizeof(u_int8_t)*3*movie_height*movie_width*3);
+  memset(image_buffer,128,sizeof(uint8_t)*3*movie_height*movie_width*3);
   vo_update_osd(movie_width,movie_height);
 /*  draw_image(movie_width,movie_height,image_buffer,movie_width*3); */
 }
@@ -296,7 +296,7 @@ static struct pngdata create_png (char * fname, int image_width, int image_heigh
     return png;
 }
 
-static u_int8_t destroy_png(struct pngdata png) {
+static uint8_t destroy_png(struct pngdata png) {
 
     if(verbose > 1) fprintf(stderr,"INFO: PNG Write End\n");
     png_write_end(png.png_ptr, png.info_ptr);
