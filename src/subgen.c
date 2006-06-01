@@ -35,7 +35,6 @@
 #include "subgen.h"
 #include "textsub.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subgen.c#51 $";
 
 
 // (90000*300)/(1260000/2048)

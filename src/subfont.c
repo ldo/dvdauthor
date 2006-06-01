@@ -31,7 +31,6 @@
 
 #include "config.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subfont.c#12 $";
 
 #ifdef HAVE_FREETYPE
 

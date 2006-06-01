@@ -26,7 +26,6 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdifo.c#30 $";
 
 #define BIGWRITEBUFLEN (16*2048)
 static unsigned char bigwritebuf[BIGWRITEBUFLEN];

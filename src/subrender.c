@@ -34,7 +34,6 @@
 #include "subfont.h"
 
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subrender.c#10 $";
 
 
 #define NEW_SPLITTING

@@ -21,7 +21,6 @@
 
 #include "dvdvm.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvmy.y#7 $";
 
 #define YYERROR_VERBOSE
 

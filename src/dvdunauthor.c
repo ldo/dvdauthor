@@ -38,7 +38,6 @@
 
 #include "dvduncompile.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdunauthor.c#55 $";
 
 #define BIGBLOCKSECT 512
 #define BIGBLOCKLEN (DVD_VIDEO_LB_LEN*BIGBLOCKSECT)

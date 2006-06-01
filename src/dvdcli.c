@@ -29,7 +29,6 @@
 #include "readxml.h"
 #include "rgb.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdcli.c#57 $";
 
 #define RGB2YCrCb(R,G,B) ((((int)RGB2Y(R,G,B))<<16)|(((int)RGB2Cr(R,G,B))<<8)|(((int)RGB2Cb(R,G,B))))
 

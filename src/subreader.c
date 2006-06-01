@@ -51,7 +51,6 @@ static int flip_hebrew = 1;
 #endif
 
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subreader.c#7 $";
 
 
 extern int sub_utf8;

@@ -26,7 +26,6 @@
 
 #include "subgen.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subgen-encode.c#12 $";
 
 static int remainbit,subo;
 

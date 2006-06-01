@@ -34,7 +34,6 @@
 #include "subgen.h"
 #include "textsub.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subgen-image.c#23 $";
 
 #define MAXX 720
 #define MAXY 576

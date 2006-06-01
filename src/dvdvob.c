@@ -29,7 +29,6 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvob.c#64 $";
 
 
 struct colorremap {

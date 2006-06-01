@@ -30,7 +30,6 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdauthor.c#82 $";
 
 
 

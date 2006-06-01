@@ -34,7 +34,6 @@
 #include <locale.h>
 #endif
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/readxml.c#17 $";
 
 int parser_err=0, parser_acceptbody=0;
 char *parser_body=0;

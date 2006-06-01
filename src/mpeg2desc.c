@@ -30,7 +30,6 @@
 
 #include <netinet/in.h>
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/mpeg2desc.c#35 $";
 
 // #define SHOWDATA
 

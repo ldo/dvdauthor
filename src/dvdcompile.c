@@ -26,7 +26,6 @@
 #include "da-internal.h"
 #include "dvdvm.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdcompile.c#31 $";
 
 struct vm_statement *dvd_vm_parsed_cmd;
 

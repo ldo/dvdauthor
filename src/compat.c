@@ -2,8 +2,6 @@
 
 #include "compat.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/compat.c#2 $";
-
 #ifndef HAVE_STRSEP
 /* Match STRING against the filename pattern PATTERN, returning zero if
    it matches, nonzero if not.  */

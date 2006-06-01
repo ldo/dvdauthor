@@ -28,7 +28,6 @@
 #include "readxml.h"
 #include "textsub.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subgen-parse-xml.c#14 $";
 
 static void printtime(char *b,int t)
 {

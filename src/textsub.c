@@ -51,7 +51,6 @@
 #include "textsub.h"
 
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/textsub.c#6 $";
 
 char* dvdsub_lang="";
 /* dvdsub_lang (char) indicates subtitle language (user parameter) */

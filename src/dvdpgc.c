@@ -26,7 +26,6 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdpgc.c#34 $";
 
 
 #define MAXCELLS 4096

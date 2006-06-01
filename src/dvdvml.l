@@ -22,7 +22,6 @@
 #include "dvdvm.h"
 #include "dvdvmy.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvml.l#9 $";
 
 %}
 

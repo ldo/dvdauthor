@@ -44,7 +44,6 @@
 #define CBUFSIZE 65536
 #define PSBUFSIZE 10
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/spuunmux.c#22 $";
 
 static unsigned int add_offset;
 
