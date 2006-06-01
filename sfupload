@@ -1,0 +1,2 @@
+#!/bin/bash
+rsync -aRv --exclude="_darcs/current" -e ssh _darcs trckjunky@shell.sf.net:/home/groups/d/dv/dvdauthor/htdocs/darcs/
