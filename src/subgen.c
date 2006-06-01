@@ -194,7 +194,7 @@ static uint64_t getgts(unsigned char *buf)
 {
     uint64_t th,tl;
     if (((buf[8]&3) != 3) || ((buf[5]&1) != 1) || ((buf[4]&4) != 4)||((buf[2]&4) != 4)|| ((buf[0]&0xc4) != 0x44)) return -1;
-    th=(buf[4] >> 3) + (buf[3]*32) + ((buf[2]&3)*32*256) + ((buf[2]&0xf8)*32*128) + (buf[1]*1024*1024) + ((buf[0]&3)*1024*1024*256) + ((buf[0]&0x38)*1024*1024*256*2);
+    th=(buf[4] >> 3) + (buf[3]*32) + ((buf[2]&3)*32*256) + ((buf[2]&0xf8)*32*128) + (buf[1]*1024*1024) + ((buf[0]&3)*1024*1024*256) + ((buf[0]&0x38)*1024*1024*128);
     tl=((buf[4]&3)<<7)|(buf[5]>>1);
     return th*300+tl;
 }
@@ -640,15 +640,14 @@ static void mux(int eoinput)
             if(svcd)
             {
                 /* 4 byte svcd header */
-                unsigned char cc = subno >> 8;
+                uint16_t cc = htons(subno);
 
                 swrite(fdo, &substr, 1); // current subtitle stream
 
                 if (bytes_send + i == sub_size) seq |= 128;
                 swrite(fdo, &seq, 1); // packet number in current sub
                 // 0 - up, last packet has bit 7 set
-                swrite(fdo, &cc, 1);    // h current sub nr
-                swrite(fdo, &subno, 1); // l current sub nr
+                swrite(fdo, &cc, 2);
             }
 
             seq++;
