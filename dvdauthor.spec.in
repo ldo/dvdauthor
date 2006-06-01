@@ -15,7 +15,7 @@ Group: 		Applications/Multimedia
 Source0: 	http://prdownloads.sourceforge.net/dvdauthor/dvdauthor-%{dvdauthor_version}.tar.gz
 BuildRoot: 	/var/tmp/%{name}-%{version}-root
 Requires: 	libxml2 >= 2.6.0 libdvdread
-BuildRequires:	libxml2-devel >= 2.6.0 libdvdread
+BuildRequires:	libxml2-devel >= 2.6.0 libdvdread-devel
 URL:            http://dvdauthor.sourceforge.net/
 
 %description
@@ -53,7 +53,7 @@ make
 %doc {COPYING,ChangeLog,INSTALL,README,TODO}
 %{_bindir}/*
 %{_mandir}/man1/*
-%{_prefix}/share/dvdauthor/*
+%{_datadir}/dvdauthor/*
 
 %changelog
 * Fri Feb 21 2003 Scott Smith 0.4.4
