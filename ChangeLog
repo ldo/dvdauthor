@@ -1,4 +1,8 @@
 alpha:
+	fix underflow wraparound in computing dts for subtitles
+	fill in reference pointers for all 3 frames even if less than 3 exist
+	allow last vobu of cell to have a forward pointer to self
+	fix TMAPT bug (ptsbase=0; matches Bullitt)
 	support random(FOO) in vm
 	allow the use of all 16 GPRMS via 'allgprm="yes"' option
 	embed commands within the VOB if only one instruction

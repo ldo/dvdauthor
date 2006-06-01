@@ -29,7 +29,7 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvob.c#63 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdvob.c#64 $";
 
 
 struct colorremap {
@@ -52,6 +52,14 @@ static int writebufpos=0;
 static int writefile=-1;
 
 static unsigned char videoslidebuf[15]={255,255,255,255, 255,255,255, 0,0,0,0, 0,0,0,0};
+
+
+/* The following are variants for the ways I've seen DVD's encoded */
+
+// Grosse Pointe Blank uses exactly 1/2 second for the FF/REW records
+// Bullitt uses 1/2 video second (i.e. in NTSC, 45045 PTS)
+#define DVD_FFREW_HALFSEC 45000
+// #define DVD_FFREW_HALFSEC (getratedenom(va)>>1)
 
 static pts_t calcpts(struct vobgroup *va,int cancomplain,int *didcomplain,pts_t *align,pts_t basepts,int nfields)
 {
@@ -454,6 +462,7 @@ static void scanvideoptr(struct vobgroup *va,unsigned char *buf,struct vobuinfo 
                 
                 if( (buf[6]&3)==3 ) padj++; // adj for frame pic
                 if( buf[7]&2 )      padj++; // adj for repeat flag
+                printf("Picture coding extension; frame=%d, repeat=%d, padj=%d\n",buf[6]&3,(buf[7]&2)>>1,padj);
                 
                 thisvi->numfields+=padj;
                 if(vsi->lastadjust && vsi->firstgop==2)
@@ -1245,6 +1254,8 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
             for( i=0; i<3; i++ ) {
                 pts_t pts_align=-1;
                 int complain=0, j;
+
+                printf("ROUND %d\n",i);
                 
                 for( j=0; j<s->numvobus; j++ ) {
                     struct vobuinfo *vi=s->vi+j;
@@ -1402,7 +1413,7 @@ void MarkChapters(struct vobgroup *va)
 
                 if( lastcellid!=v &&
                     s->vob->vi[v].firstIfield!=0) {
-                    fprintf(stderr,"WARN: GOP is not closed on cell %d of source %s of pgc %d\n",k+1,s->fname,i+1);
+                    fprintf(stderr,"WARN: GOP may not be closed on cell %d of source %s of pgc %d\n",k+1,s->fname,i+1);
                 }
 
                 if( s->cells[k].endpts>=0 ) {
@@ -1669,8 +1680,12 @@ void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int
             buf[0x406]=1;
             write4(buf+0x407,scr);
             write4(buf+0x40b,vi->sector); // current lbn
-            for( j=0; j<vi->numref; j++ )
-                write4(buf+0x413+j*4,vi->lastrefsect[j]-vi->sector);
+            if( vi->numref>0 ) {
+                for( j=0; j<vi->numref; j++ )
+                    write4(buf+0x413+j*4,vi->lastrefsect[j]-vi->sector);
+                for( ; j<3; j++ )
+                    write4(buf+0x413+j*4,vi->lastrefsect[vi->numref-1]-vi->sector);
+            }
             write2(buf+0x41f,vi->vobcellid>>8);
             buf[0x422]=vi->vobcellid;
             write4(buf+0x423,read4(buf+0x45));
@@ -1737,13 +1752,15 @@ void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int
             for( j=0; j<19; j++ ) {
                 int nff,nrew;
 
-                nff=findvobu(p,vi->sectpts[0]+timeline[j]*45000,
+                nff=findvobu(p,vi->sectpts[0]+timeline[j]*DVD_FFREW_HALFSEC,
                              vi->firstvobuincell,
                              vi->lastvobuincell);
                 // a hack -- the last vobu in the cell shouldn't have any forward ptrs
-                if( i==vi->lastvobuincell )
-                    nff=i+1;
-                nrew=findvobu(p,vi->sectpts[0]-timeline[j]*45000,
+                // EXCEPT this hack violates both Grosse Pointe Blank and Bullitt -- what was I thinking?
+                // if( i==vi->lastvobuincell )
+                // nff=i+1;
+
+                nrew=findvobu(p,vi->sectpts[0]-timeline[j]*DVD_FFREW_HALFSEC,
                               vi->firstvobuincell,
                               vi->lastvobuincell);
                 write4(buf+0x53d-j*4,getsect(p,i,nff,j>=15 && nff>vff+1,0x3fffffff));

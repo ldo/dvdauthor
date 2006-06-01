@@ -1,15 +1,14 @@
-%define DISTRO %([ -f /etc/redhat-release ] && sed -e "s/\\(.\\+\\)\\( Linux release \\)\\(.\\+\\)\\( .\\+\\)/\\1 \\3/" /etc/redhat-release)
-%define DISTRO_REL %([ -f /etc/redhat-release ] && sed -e "s/\\(.\\+ release \\)\\(.\\+\\)\\( .\\+\\)/\\2/" /etc/redhat-release)
-%define REQ_RPM_REL %(rpm -q --queryformat "%{VERSION}" rpm)
-%define GLIBC_REL %(rpm -q --queryformat "%{VERSION}" glibc)
+%define DISTRO_RH %([ -f /etc/redhat-release ] && sed -e "s/\\(.\\+ release \\)\\(.\\+\\)\\( .\\+\\)/\\2/" /etc/redhat-release)
+%define DISTRO_SUSE %([ -f /etc/SuSE-release ] && grep VERSION /etc/SuSE-release| sed -e "s/VERSION = /SuSE/"|tr -d ".")
+ 
 
 %define	dvdauthor_version	@PACKAGE_VERSION@
 %define	dvdauthor_release	1
 
 Summary: 	Latest DVDAuthor package
 Name: 		dvdauthor
-Version: 	%{dvdauthor_version}
-Release: 	%{dvdauthor_release}.%{DISTRO_REL}
+Version: 	%(echo %{dvdauthor_version}|tr -s "-" "_")
+Release: 	%{dvdauthor_release}.%{DISTRO_RH}%{DISTRO_SUSE}
 License:        GNU GPL
 Vendor:         Unknown
 Group: 		Applications/Multimedia
@@ -51,9 +50,10 @@ make
 
 %files
 %defattr(-,root,root)
-%doc {COPYING,HISTORY,INSTALL,README,TODO}
+%doc {COPYING,ChangeLog,INSTALL,README,TODO}
 %{_bindir}/*
 %{_mandir}/man1/*
+%{_prefix}/share/dvdauthor/*
 
 %changelog
 * Fri Feb 21 2003 Scott Smith 0.4.4

@@ -30,7 +30,7 @@
 
 #include <netinet/in.h>
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/mpeg2desc.c#34 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/mpeg2desc.c#35 $";
 
 // #define SHOWDATA
 
@@ -418,6 +418,12 @@ int main(int argc,char **argv)
                     printf("%08x: extension hdr %x\n",disppos,buf[0]>>4);
                 break;
             }
+            forceread(&hdr,4,stdin);
+            break;
+
+        case 0x1b7: // end of sequence
+            if( outputenglish )
+                printf("%08x: end of sequence\n",disppos);
             forceread(&hdr,4,stdin);
             break;
 

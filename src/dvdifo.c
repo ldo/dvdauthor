@@ -26,7 +26,7 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdifo.c#28 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdifo.c#30 $";
 
 #define BIGWRITEBUFLEN (16*2048)
 static unsigned char bigwritebuf[BIGWRITEBUFLEN];
@@ -134,29 +134,30 @@ static void CreateTMAPT(FILE *h,const struct pgcgroup *va)
     }
 
     for( i=0; i<va->numpgcs; i++ ) {
-        int numtmapt=numsec(va,i), ptsbase, j, lastsrc=-1;
+        int numtmapt=numsec(va,i), ptsbase, j;
         int units=secunit(numtmapt);
         const struct pgc *p=va->pgcs[i];
 
         numtmapt/=units;
         buf[0]=units;
         buf[1]=0;
-        if( numtmapt>0 ) {
-            write2(buf+2,numtmapt);
-            ptsbase=-getframepts(va->vg);
-            for( j=0; j<numtmapt; j++ ) {
-                const struct vobuinfo *vobu=globalfindvobu(p,ptsbase+getptssec(va->vg,(j+1)*units));
-                if( vobu->vobcellid!=lastsrc ) {
-                    if( lastsrc!=-1 )
-                        buf[0]|=0x80;
-                    lastsrc=vobu->vobcellid;
-                }
-                fwrite(buf,1,4,h);
-                write4(buf,vobu->sector);
-            }
-        } else
-            write2(buf+2,0);
+        write2(buf+2,numtmapt);
         fwrite(buf,1,4,h);
+        if( numtmapt>0 ) {
+            const struct vobuinfo *vobu1;
+            // I don't know why I ever did this
+            // ptsbase=-getframepts(va->vg);
+            ptsbase=0; // this matches Bullitt
+            vobu1=globalfindvobu(p,ptsbase+getptssec(va->vg,units));
+            for( j=0; j<numtmapt; j++ ) {
+                const struct vobuinfo *vobu2=globalfindvobu(p,ptsbase+getptssec(va->vg,(j+2)*units));
+                write4(buf,vobu1->sector);
+                if( !vobu2 || vobu1->vobcellid!=vobu2->vobcellid )
+                    buf[0]|=0x80;
+                fwrite(buf,1,4,h);
+                vobu1=vobu2;
+            }
+        }
     }
 
     i=(-sizeTMAPT(va))&2047;

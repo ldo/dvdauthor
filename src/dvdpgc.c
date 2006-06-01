@@ -26,7 +26,7 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdpgc.c#33 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/dvdpgc.c#34 $";
 
 
 #define MAXCELLS 4096
@@ -207,6 +207,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                 if( cdd==cd+8 ) {
                     // the button fits in one command; assume it went in the vob itself
                     memset(postptr+i*8+16,0,8); // nop
+                    memset(cd,0,8); // reset the just compiled command, since it was test written to part of the pgc structure
                 } else {
                     write8(postptr+i*8+16,0x00,0xa1,0x00,0x0E,0x00,i+1,0x00,(cd-postptr)/8+1);
                     cd=cdd;

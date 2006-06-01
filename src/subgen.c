@@ -35,7 +35,7 @@
 #include "subgen.h"
 #include "textsub.h"
 
-static const char RCSID[]="$Id: //depot/dvdauthor/src/subgen.c#50 $";
+static const char RCSID[]="$Id: //depot/dvdauthor/src/subgen.c#51 $";
 
 
 // (90000*300)/(1260000/2048)
@@ -377,10 +377,12 @@ static void mux(int eoinput)
         int bytes_send, sub_size;
         unsigned char seq;
         unsigned int q;
-        u_int64_t dgts;
+        int64_t dgts;
         
         /* wait for correct time to insert sub, leave time for vpts to occur */
         dgts=(newsti->spts-.15*90000)*300;
+        if( dgts < 0 )
+            dgts=0;
         if( dgts > gts && !eoinput)
             break;
 
