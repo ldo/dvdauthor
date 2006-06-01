@@ -39,9 +39,9 @@ edit = sed \
 	-e 's,@PACKAGE_BUGREPORT\@,@PACKAGE_BUGREPORT@,g'
 
 # by having it depend on config.h, it will get rebuilt if ./configure is run
-dvddirdel: dvddirdel.in config.h
+dvddirdel: $(srcdir)/dvddirdel.in config.h
 	rm -f dvddirdel dvddirdel.tmp
-	$(edit) dvddirdel.in > dvddirdel.tmp
+	$(edit) $(srcdir)/dvddirdel.in > dvddirdel.tmp
 	chmod +x dvddirdel.tmp
 	mv dvddirdel.tmp dvddirdel
 
