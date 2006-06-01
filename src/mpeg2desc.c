@@ -409,7 +409,10 @@ int main(int argc,char **argv)
                 if( buf[4]&64 )
                     forceread(buf+5,2,stdin);
                 if( outputenglish ) {
-                    printf("%08x: picture coding extension hdr%s\n",disppos,(buf[3]&2)?", repeat":"");
+                    printf("%08x: picture coding extension hdr%s%s\n",
+                           disppos,
+                           (buf[3]&0x80)?", top":", bottom",
+                           (buf[3]&2)?", repeat":"");
                 }
                 break;
             default:
