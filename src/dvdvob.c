@@ -73,7 +73,7 @@ static pts_t calcpts(struct vobgroup *va,int cancomplain,int *didcomplain,pts_t 
                 fprintf(stderr,"WARN: Video PTS does not line up on a multiple of a field.\n");
             *didcomplain=1;
         }
-        *align=basepts;
+        *align=basepts*2;
     } else
         nfields += bpframe;
     return (*align+nfields*fpts)/2;
