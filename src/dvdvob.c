@@ -581,7 +581,6 @@ static FILE *openvob(char *f,int *ispipe)
 
         f[l-1]=0;
         h=popen(f,"r");
-        free(str);
         ispipe[0]=1;
     } else if( !strcmp(f,"-") ) {
         h=stdin;
