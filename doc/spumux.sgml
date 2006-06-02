@@ -170,6 +170,7 @@ is not specified.
          vertical-alignment="bottom" left-margin="60" right-margin="60" 
          top-margin="20" bottom-margin="30" subtitle-fps="25" 
          movie-fps="25" movie-width="720" movie-height="574"
+         force="yes"
       /&gt;
    &lt;/stream&gt;
 &lt;/subpictures&gt;
@@ -235,6 +236,12 @@ The movie-width and movie-height attributes define the maximum size of
 the subtitle page, these shouldn't be larger than the fram-size of the 
 movie frame, normally they are the same. Some DVD-players more like 
 subtitle frames that are 2 or 4 pixels smaller in height.
+
+</para>
+<para>
+
+The force option allows you to force the display of the subtitle,
+regardless of whether the user has enabled subtitles or not.
 
 </para>
 </refsect1>

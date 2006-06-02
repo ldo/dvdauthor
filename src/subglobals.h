@@ -6,6 +6,7 @@ typedef struct {
     unsigned long end;
     char *text[SUB_MAX_TEXT];
     unsigned char alignment;
+    int text_forced;
 } subtitle;
 
 typedef struct {
@@ -35,6 +36,7 @@ extern float movie_fps;
 extern int movie_width;
 extern int movie_height;
 extern float text_font_scale_factor;
+extern int text_forceit;
 extern float osd_font_scale_factor;
 extern float subtitle_font_radius;
 extern float subtitle_font_thickness;

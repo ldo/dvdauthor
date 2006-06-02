@@ -295,6 +295,15 @@ void textsub_movie_width(char* v)  { movie_width=atoi(v);            }
 void textsub_movie_height(char* v) { movie_height=atoi(v);           }
 void textsub_fontsize(char *v)     { text_font_scale_factor=atof(v); }
 
+void textsub_force(char *v)
+{
+    text_forceit = xml_ison(v);
+    if( text_forceit ==-1 ) {
+        fprintf(stderr,"ERR:  Cannot parse 'force' value '%s'\n",v);
+        exit(1);
+    }
+}
+
 void textsub_transparent(char *v)
 {
     sscanf(v,"%x",&transparent_color);
@@ -358,6 +367,7 @@ static struct elemattr spu_attrs[]={
     {"textsub","movie-width",textsub_movie_width},
     {"textsub","movie-height",textsub_movie_height},
     {"textsub","transparent",textsub_transparent},
+    {"textsub","force",textsub_force},
     {0,0,0}
 };
 

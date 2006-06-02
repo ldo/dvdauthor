@@ -19,6 +19,7 @@ alpha:
 	add 'crop' keyword for widescreen (crops 4:3 image for 16:9 tvs)
 	if audio extends beyond video, then set sector pts accordingly
 	support separate subpicture streams for normal, widescreen, letterbox, and panscan
+	allow text subtitles to be forced on
 
 0.6.11: February 10, 2005
 	fix compile error on newer gcc compilers

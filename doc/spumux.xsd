@@ -80,6 +80,7 @@
     <xsd:attribute name="filename" type="xsd:string"/>
     <xsd:attribute name="characterset" type="xsd:string"/>
     <xsd:attribute name="fontsize" type="xsd:string"/>
+    <xsd:attribute name="force" type="xsd:string"/>
     <xsd:attribute name="font" type="xsd:string"/>
     <xsd:attribute name="horizontal-alignment" type="xsd:string"/>
     <xsd:attribute name="vertical-alignment" type="xsd:string"/>

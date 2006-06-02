@@ -311,6 +311,7 @@ static int read_pic(stinfo *s,pict *p)
     if ( have_textsub)
     {
         textsub_render(s->sub_title);
+        s->forced = s->sub_title->text_forced;
         r=read_frame(p);
     }
     else

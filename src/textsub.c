@@ -80,10 +80,13 @@ int sub_justify=1;
 
 /*-----------------25-11-03 1:29--------------------
  * Start of minimum set of variables that should be user configurable
+ *
+ * 23-04-05   Added the text_forceit default value (by Pierre Dumuid)
  * --------------------------------------------------*/
 char* sub_cp="ISO8859-1";    /* sub_cp (char) contains "from character-set" for ICONV like ISO8859-1 and UTF-8, */
                           /* "to character-set" is set to UTF-8 (optional user parameter, NULL for non-applicable)*/
 float text_font_scale_factor = 28.0; /* font size in font units */
+int text_forceit = 0;     /* Forcing of the subtitles */
 int h_sub_alignment = 1;  /* Horizontal alignmeent 0=center, 1=left, 2=right, 4=subtitle default */
 int sub_alignment=2;      /* Vertical alignment 0=top, 1=center, 2=bottom */
 int sub_left_margin=60;   /* Size of left horizontal non-display area in pixel units */
@@ -176,6 +179,7 @@ textsub_subtitle_type *textsub_find_sub(unsigned long text_sub_pts)
 	{
 	  vo_sub->alignment=h_sub_alignment;
 	}
+	vo_sub->text_forced=text_forceit;   // Not sure where this should go... PMD
 	sub_num_of_subtitles++;
 	sub_last=current_sub;
 	tsub->start=vo_sub->start;
