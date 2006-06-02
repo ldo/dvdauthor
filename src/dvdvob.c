@@ -578,21 +578,9 @@ static FILE *openvob(char *f,int *ispipe)
     int l=strlen(f);
 
     if( l>0 && f[l-1]=='|' ) {
-        char *str;
-        int i;
 
         f[l-1]=0;
-        str=(char *)malloc(l*2+1+10);
-        strcpy(str,"sh -c \"");
-        l=strlen(str);
-        for( i=0; f[i]; i++ ) {
-            if( f[i]=='\"' || f[i]=='\'' )
-                str[l++]='\\';
-            str[l++]=f[i];
-        }
-        str[l]=0;
-        strcpy(str+l,"\"");
-        h=popen(str,"r");
+        h=popen(f,"r");
         free(str);
         ispipe[0]=1;
     } else if( !strcmp(f,"-") ) {
