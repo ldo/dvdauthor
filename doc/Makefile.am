@@ -10,10 +10,16 @@ manpages:
 	rm -f $(man1_MANS)
 	docbook2man root.sgml
 
+$(man1_MANS):
+	make manpages
+
 .PHONY: html
 
 html:
 	rm -f *.html
 	docbook2html -d html.dsl root.sgml
+
+index.html:
+	make html
 
 MAINTAINERCLEANFILES = $(man1_MANS)
