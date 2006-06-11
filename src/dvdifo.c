@@ -373,43 +373,43 @@ static void WriteIFO(FILE *h,const struct workset *ws)
     write4(buf+128,0x7ff);
     i=1;
 
-    buf[0xCB]=i; // VTS_PTT_SRPT
+    write4(buf+0xC8,i); // VTS_PTT_SRPT
     i+=Create_PTT_SRPT(0,ws->titles);
 
-    buf[0xCF]=i; // VTS_PGCI
+    write4(buf+0xCC,i); // VTS_PGCI
     i+=CreatePGC(0,ws,0);
 
     if( jumppad || forcemenus ) {
-        buf[0xD3]=i; // VTSM_PGCI
+        write4(buf+0xD0,i); // VTSM_PGCI
         i+=CreatePGC(0,ws,1);
     }
 
-    buf[0xD7]=i; // VTS_TMAPT
+    write4(buf+0xD4,i); // VTS_TMAPT
     i+=numsectTMAPT(ws->titles);
 
     if( jumppad || forcemenus ) {
-        buf[0xDB]=i; // VTSM_C_ADT
+        write4(buf+0xD8,i); // VTSM_C_ADT
         i+=CreateCallAdr(0,ws->menus->vg);
         
-        buf[0xDF]=i; // VTSM_VOBU_ADMAP
+        write4(buf+0xDC,i); // VTSM_VOBU_ADMAP
         i+=numsectVOBUAD(ws->menus->vg);
     }
 
-    buf[0xE3]=i; // VTS_C_ADT
+    write4(buf+0xE0,i); // VTS_C_ADT
     i+=CreateCallAdr(0,ws->titles->vg);
 
-    buf[0xE7]=i; // VTS_VOBU_ADMAP
+    write4(buf+0xE4,i); // VTS_VOBU_ADMAP
     i+=numsectVOBUAD(ws->titles->vg);
 
-    buf[31]=i-1;
+    write4(buf+28,i-1);
     if( jumppad || forcemenus ) {
-        buf[0xC3]=i;
+        write4(buf+0xC0,i);
         i+=getvoblen(ws->menus->vg);
     }
     write4(buf+0xC4,i);
     if( ws->titles->numpgcs )
         i+=getvoblen(ws->titles->vg);
-    i+=buf[31];
+    i+=read4(buf+28);
     write4(buf+12,i);
 
     if( jumppad || forcemenus )
