@@ -1323,7 +1323,10 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                         p=s->vi[i+1].sectpts[0];
                     else // the next vobu is an audio only vobu, and will backfill the pts as necessary
                         continue;
-                    assert(p>vi->sectpts[0]);
+                    if( p<=vi->sectpts[0] ) {
+                        fprintf(stderr, "ERR:  Audio and video are too poorly synchronised; you must remultiplex.\n");
+                        exit(1);
+                    }
                     vi->sectpts[1]=p;
                 }
             }
