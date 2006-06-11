@@ -361,12 +361,26 @@ static int pickbuttongroups(stinfo *s,int ng,int useimg)
     gs=malloc(ng*sizeof(palgroup));
     memset(gs,0,ng*sizeof(palgroup));
 
+    assert(!useimg || s->xd <= s->img.width && s->yd <= s->img.height);
+    assert(s->xd <= s->hlt.width && s->yd <= s->hlt.height);
+    assert(s->xd <= s->sel.width && s->yd <= s->sel.height);
+
     // fprintf(stderr,"attempt %d groups, %d useimg\n",ng,useimg);
     // find unique colors per button
     for( i=0; i<s->numbuttons; i++ ) {
         button *b=&s->buttons[i];
         palgroup *bp=&bpgs[i];
 
+        if( b->r.x0 != b->r.x1 && b->r.y0 != b->r.y1
+	    && (b->r.x0 < 0 || b->r.x0 > b->r.x1 || b->r.x1 > s->xd
+		|| b->r.y0 < 0 || b->r.y0 > b->r.y1 || b->r.y1 > s->yd) )
+        {
+            if (debug > -1)
+                fprintf(stderr,
+                        "ERR: Button coordinates out of range: (%d,%d)-(%d,%d)\n",
+                        b->r.x0, b->r.y0, b->r.x1, b->r.y1);
+            exit(1);
+        }
         for( y=b->r.y0; y<b->r.y1; y++ )
             for( x=b->r.x0; x<b->r.x1; x++ )
                 if( !checkcolor(bp,gettricolor(s,y*s->xd+x,useimg)) )
