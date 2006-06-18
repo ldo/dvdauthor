@@ -708,7 +708,8 @@ static void procremap(struct colorremap *cr,unsigned char *b,int l,pts_t *timesp
             break;
            
         case CR_CHGARG:
-	    if (!--cr->skip) cr->state=CR_CHGLN0;
+	    if (!--cr->skip)
+                cr->state=CR_CHGLN0;
 	    break;
 
         case CR_CHGLN0: cr->ln_ctli =b[0]<<24; cr->state=CR_CHGLN1; break;
@@ -717,13 +718,14 @@ static void procremap(struct colorremap *cr,unsigned char *b,int l,pts_t *timesp
 
         case CR_CHGLN3:
 	    cr->ln_ctli|=b[0];
-
-	    if (cr->ln_ctli==0x0fffffff) cr->state=CR_CMD;
+            
+	    if (cr->ln_ctli==0x0fffffff)
+                cr->state=CR_CMD;
 	    else {
-	      cr->ln_ctli>>=12;
-	      cr->ln_ctli&=0xf;
-	      cr->skip=2;
-	      cr->state=CR_CHGPX0;
+                cr->ln_ctli>>=12;
+                cr->ln_ctli&=0xf;
+                cr->skip=2;
+                cr->state=CR_CHGPX0;
 	    }
 	    break;
 
@@ -738,8 +740,8 @@ static void procremap(struct colorremap *cr,unsigned char *b,int l,pts_t *timesp
 
         case CR_CHGPX2:
 	    if (!--cr->skip) {
-	      if (!--cr->ln_ctli) cr->state=CR_CHGLN0;
-	      else { cr->skip=2; cr->state=CR_CHGPX0; }
+                if (!--cr->ln_ctli) cr->state=CR_CHGLN0;
+                else { cr->skip=2; cr->state=CR_CHGPX0; }
 	    }
 	    break;
 
