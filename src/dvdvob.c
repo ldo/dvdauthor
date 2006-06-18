@@ -33,7 +33,7 @@
 
 struct colorremap {
     int newcolors[16];
-    int state,curoffs,maxlen,nextoffs,skip;
+    int state,curoffs,maxlen,nextoffs,skip,ln_ctli;
     struct colorinfo *origmap;
 };
 
@@ -601,7 +601,9 @@ static FILE *openvob(char *f,int *ispipe)
 
 enum { CR_BEGIN0,   CR_BEGIN1,    CR_BEGIN2,    CR_BEGIN3, CR_SKIP0,
        CR_SKIP1,    CR_NEXTOFFS0, CR_NEXTOFFS1, CR_WAIT,   CR_CMD,
-       CR_SKIPWAIT, CR_COL0,      CR_COL1};
+       CR_SKIPWAIT, CR_COL0,      CR_COL1,      CR_CHGARG, CR_CHGLN0,
+       CR_CHGLN1,   CR_CHGLN2,    CR_CHGLN3,    CR_CHGPX0, CR_CHGPX1,
+       CR_CHGPX2 };
 
 static char *readpstr(char *b,int *i)
 {
@@ -687,6 +689,7 @@ static void procremap(struct colorremap *cr,unsigned char *b,int l,pts_t *timesp
             case 4: cr->skip=2; cr->state=CR_SKIPWAIT; break;
             case 5: cr->skip=6; cr->state=CR_SKIPWAIT; break;
             case 6: cr->skip=4; cr->state=CR_SKIPWAIT; break;
+            case 7: cr->skip=2; cr->state=CR_CHGARG; break;
             case 255: cr->state=CR_WAIT; break;
             default:
                 fprintf(stderr,"ERR: procremap encountered unknown subtitle command: %d\n",*b);
@@ -704,6 +707,42 @@ static void procremap(struct colorremap *cr,unsigned char *b,int l,pts_t *timesp
             cr->state=CR_CMD;
             break;
            
+        case CR_CHGARG:
+	    if (!--cr->skip) cr->state=CR_CHGLN0;
+	    break;
+
+        case CR_CHGLN0: cr->ln_ctli =b[0]<<24; cr->state=CR_CHGLN1; break;
+        case CR_CHGLN1: cr->ln_ctli|=b[0]<<16; cr->state=CR_CHGLN2; break;
+        case CR_CHGLN2: cr->ln_ctli|=b[0]<< 8; cr->state=CR_CHGLN3; break;
+
+        case CR_CHGLN3:
+	    cr->ln_ctli|=b[0];
+
+	    if (cr->ln_ctli==0x0fffffff) cr->state=CR_CMD;
+	    else {
+	      cr->ln_ctli>>=12;
+	      cr->ln_ctli&=0xf;
+	      cr->skip=2;
+	      cr->state=CR_CHGPX0;
+	    }
+	    break;
+
+        case CR_CHGPX0:
+	    if (!--cr->skip) { cr->skip=2; cr->state=CR_CHGPX1; }
+	    break;
+
+	case CR_CHGPX1:
+            remapbyte(cr,b);
+	    if (!--cr->skip) { cr->skip=2; cr->state=CR_CHGPX2; }
+	    break;
+
+        case CR_CHGPX2:
+	    if (!--cr->skip) {
+	      if (!--cr->ln_ctli) cr->state=CR_CHGLN0;
+	      else { cr->skip=2; cr->state=CR_CHGPX0; }
+	    }
+	    break;
+
         default:
             assert(0);
         }
