@@ -183,7 +183,7 @@ static int dvddecode()
     s->map[0].y2=0x7ffffff;
     i = dsize + 4;
 
-    t = sub[dsize] * 256 + sub[dsize + 1];
+    t = read2(sub+dsize);
 
     if (debug > 2)
 	fprintf(stderr, "time offset: %d sub[%d]=0x%02x sub[%d]=0x%02x\n",
@@ -271,7 +271,7 @@ static int dvddecode()
 		break;
 	    }
 
-	    t = sub[i + 1] * 256 + sub[i + 2];
+	    t = read2(sub + i + 1);
 	    if (debug > 4) {
 		fprintf(stderr, "next packet time: %d  end: 0x%02x%02x\n",
 			t, sub[i + 3], sub[i + 4]);
@@ -836,7 +836,7 @@ int main(int argc, char **argv)
 		    ((psbuf[2] & 0xf8) * 32 * 128) +
 		    (psbuf[1] * 1024 * 1024) +
 		    ((psbuf[0] & 3) * 1024 * 1024 * 256) +
-		    ((psbuf[0] & 0x38) * 1024 * 1024 * 256 * 2);
+		    ((psbuf[0] & 0x38) * 1024 * 1024 * 128);
 
 		if (new_system_time < old_system_time) {
 		    if (old_system_time != -1) {
