@@ -50,7 +50,8 @@ static unsigned int add_offset;
 static int debug = 0;
 
 static int full_size = FALSE;
-static unsigned int ofs, ofs1, pts, spts, subi, subs, subno;
+static unsigned int pts, spts, subi, subs, subno;
+static int ofs, ofs1;
 static unsigned char sub[65536];
 static unsigned char next_bits;
 static char *base_name;
@@ -166,6 +167,8 @@ static int dvddecode()
     size = read2(sub);
     dsize = read2(sub+2);
 
+    ofs = -1;
+
     if (debug > 1)
 	fprintf(stderr, "packet: 0x%x bytes, 0x%x bytes data\n", size,
 		dsize);
@@ -249,8 +252,10 @@ static int dvddecode()
 	    break;
 
 	case 0x06:
-	    ofs = (((unsigned int) sub[i + 1]) << 8) + sub[i + 2];
-	    ofs1 = (((unsigned int) sub[i + 3]) << 8) + sub[i + 4];
+            if( ofs>=0 )
+                fprintf(stderr,"WARN: image pointer already supplied for this subpicture\n");
+	    ofs = read2(sub+i+1);
+	    ofs1 = read2(sub+i+3);
 	    if (debug > 4)
 		fprintf(stderr, "cmd: image offsets 0x%x 0x%x\n", ofs,
 			ofs1);
@@ -309,50 +314,54 @@ static int dvddecode()
     io = 0;
     s->img = malloc( s->xd*s->yd);
 
-    while ((ofs < dsize) && (y < s->yd)) {
-	i = get_next_bits();
+    if( ofs<0 && y<s->yd ) {
+        fprintf(stderr,"WARN: No image data supplied for this subtitle\n");
+    } else {
+        while ((ofs < dsize) && (y < s->yd)) {
+            i = get_next_bits();
 
-	if (i < 4) {
-	    i = (i << 4) + get_next_bits();
-	    if (i < 16) {
-		i = (i << 4) + get_next_bits();
-		if (i < 0x40) {
-		    i = (i << 4) + get_next_bits();
-		    if (i < 256) {
-			have_bits = FALSE;
+            if (i < 4) {
+                i = (i << 4) + get_next_bits();
+                if (i < 16) {
+                    i = (i << 4) + get_next_bits();
+                    if (i < 0x40) {
+                        i = (i << 4) + get_next_bits();
+                        if (i < 256) {
+                            have_bits = FALSE;
 
-			y += 2;
-			while (x++ != s->xd)
-			    s->img[io++] = i;
-			x = 0;
-			if ((y >= s->yd) && !(y & 1)) {
-			    y = 1;
-			    io = s->xd;
-			    ofs = ofs1;
-			} else
-			    io += s->xd;
-			continue;
-		    }
-		}
-	    }
-	}
+                            y += 2;
+                            while (x++ != s->xd)
+                                s->img[io++] = i;
+                            x = 0;
+                            if ((y >= s->yd) && !(y & 1)) {
+                                y = 1;
+                                io = s->xd;
+                                ofs = ofs1;
+                            } else
+                                io += s->xd;
+                            continue;
+                        }
+                    }
+                }
+            }
 
-	c = i & 3;
-	i = i >> 2;
-	while (i--) {
-	    s->img[io++] = c;
-	    if (++x == s->xd) {
-		y += 2;
-		x = 0;
-                if ((y >= s->yd) && !(y & 1)) {
-                    y = 1;
-                    io = s->xd;
-                    ofs = ofs1;
-                } else
-                    io += s->xd;
-		have_bits = FALSE;
-	    }
-	}
+            c = i & 3;
+            i = i >> 2;
+            while (i--) {
+                s->img[io++] = c;
+                if (++x == s->xd) {
+                    y += 2;
+                    x = 0;
+                    if ((y >= s->yd) && !(y & 1)) {
+                        y = 1;
+                        io = s->xd;
+                        ofs = ofs1;
+                    } else
+                        io += s->xd;
+                    have_bits = FALSE;
+                }
+            }
+        }
     }
     
     if (s->pts[0] == -1)
@@ -1004,7 +1013,7 @@ int main(int argc, char **argv)
 
                                         d->numpal=0;
                                         for( j=0; j<cbuf[i+1]; j++ ) {
-                                            int c=(cbuf[i+2+3*j]<<16)|(cbuf[i+3+3*j]<<8)|(cbuf[i+4+3*j]);
+                                            int c=read4(cbuf+i+1+3*j)&0xffFFff;
                                             d->palette[j]=c;
                                             d->numpal++;
                                         }
