@@ -124,7 +124,7 @@ static int jumppgc(unsigned char *buf,int pgc,const struct workset *ws,const str
     }
     buf[0xE5]=base;
     buf[base+1]=ncmd;
-    buf[base+7]=7+8*ncmd;
+    write2(buf+base+6, 7+8*ncmd);
     return offs;
 }
 
