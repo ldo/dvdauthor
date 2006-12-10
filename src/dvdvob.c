@@ -290,9 +290,11 @@ static int mpa_len(unsigned char *b)
 static void writeflush()
 {
     if( !writebufpos ) return;
-    if( write(writefile,bigwritebuf,writebufpos) != writebufpos ) {
-        fprintf(stderr,"ERR:  Error writing data\n");
-        exit(1);
+    if( writefile!=-1 ) {
+        if( write(writefile,bigwritebuf,writebufpos) != writebufpos ) {
+            fprintf(stderr,"ERR:  Error writing data\n");
+            exit(1);
+        }
     }
     writebufpos=0;
 }
@@ -1015,11 +1017,13 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
             if( fsect == -1 ) {
                 char newname[200];
                 fsect=0;
-                if( outnum>=0 )
-                    sprintf(newname,"%s_%d.VOB",fbase,outnum);
-                else
-                    strcpy(newname,fbase);
-                writeopen(newname);
+                if( fbase ) {
+                    if( outnum>=0 )
+                        sprintf(newname,"%s_%d.VOB",fbase,outnum);
+                    else
+                        strcpy(newname,fbase);
+                    writeopen(newname);
+                }
             }
             if( buf[14] == 0 &&
                 buf[15] == 0 &&
@@ -1612,14 +1616,16 @@ void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int
                 if( h >= 0 )
                     close(h);
                 fnum=vi->fnum;
-                if( fnum==-1 )
-                    strcpy(fname,fbase);
-                else
-                    sprintf(fname,"%s_%d.VOB",fbase,fnum);
-                h=open(fname,O_WRONLY|O_BINARY);
-                if( h < 0 ) {
-                    fprintf(stderr,"\nERR:  Error opening %s: %s\n",fname,strerror(errno));
-                    exit(1);
+                if( fbase ) {
+                    if( fnum==-1 )
+                        strcpy(fname,fbase);
+                    else
+                        sprintf(fname,"%s_%d.VOB",fbase,fnum);
+                    h=open(fname,O_WRONLY|O_BINARY);
+                    if( h < 0 ) {
+                        fprintf(stderr,"\nERR:  Error opening %s: %s\n",fname,strerror(errno));
+                        exit(1);
+                    }
                 }
             }
             buf=vi->sectdata;
@@ -1796,14 +1802,16 @@ void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int
                 vrew=nrew;
             }
 
-            lseek(h,vi->fsect*2048,SEEK_SET);
-            write(h,buf,2048);
+            if( h!=-1 ) {
+                lseek(h,vi->fsect*2048,SEEK_SET);
+                write(h,buf,2048);
+            }
             curvob++;
             if( !(curvob&15) ) 
                 fprintf(stderr,"STAT: fixing VOBU at %dMB (%d/%d, %d%%)\r",vi->sector/512,curvob+1,totvob,curvob*100/totvob);
         }
     }
-    if( h>=0 )
+    if( h!=-1 )
         close(h);
     if( totvob>0 )
         fprintf(stderr,"STAT: fixed %d VOBUS                         ",totvob);

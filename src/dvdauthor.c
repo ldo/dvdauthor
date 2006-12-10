@@ -854,6 +854,8 @@ static int getvtsnum(char *fbase)
     static char realfbase[1000];
     int i;
     
+    if( !fbase )
+        return 1;
     for( i=1; i<=99; i++ ) {
         FILE *h;
         sprintf(realfbase,"%s/VIDEO_TS/VTS_%02d_0.IFO",fbase,i);
@@ -870,11 +872,13 @@ static void initdir(char *fbase)
 {
     static char realfbase[1000];
 
-    mkdir(fbase,0777);
-    sprintf(realfbase,"%s/VIDEO_TS",fbase);
-    mkdir(realfbase,0777);
-    sprintf(realfbase,"%s/AUDIO_TS",fbase);
-    mkdir(realfbase,0777);
+    if( fbase ) {
+        mkdir(fbase,0777);
+        sprintf(realfbase,"%s/VIDEO_TS",fbase);
+        mkdir(realfbase,0777);
+        sprintf(realfbase,"%s/AUDIO_TS",fbase);
+        mkdir(realfbase,0777);
+    }
 }
 
 static struct colorinfo *colorinfo_new()
@@ -1249,6 +1253,8 @@ void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,char *fbase)
     static char ifonames[101][14];
     struct workset ws;
 
+    if( !fbase ) // can't really make a vmgm without titlesets
+        return;
     ws.ts=&ts;
     ws.menus=menus;
     ws.titles=0;
@@ -1339,21 +1345,24 @@ void dvdauthor_vts_gen(struct menugroup *menus,struct pgcgroup *titles,char *fba
         exit(1);
     }
     vtsnum=getvtsnum(fbase);
-    sprintf(realfbase,"%s/VIDEO_TS/VTS_%02d",fbase,vtsnum);
+    if( fbase ) {
+        sprintf(realfbase,"%s/VIDEO_TS/VTS_%02d",fbase,vtsnum);
+        fbase=realfbase;
+    }
     if( menus->vg->numvobs ) {
-        FindVobus(realfbase,menus->vg,1);
+        FindVobus(fbase,menus->vg,1);
         MarkChapters(menus->vg);
         setattr(menus->vg,1);
     }
-    FindVobus(realfbase,titles->vg,0);
+    FindVobus(fbase,titles->vg,0);
     MarkChapters(titles->vg);
     setattr(titles->vg,0);
     if( !menus->vg->numvobs ) { // for undefined menus, we'll just copy the video type of the title
         menus->vg->vd=titles->vg->vd;
     }
     fprintf(stderr,"\n");
-    WriteIFOs(realfbase,&ws);
+    WriteIFOs(fbase,&ws);
     if( menus->vg->numvobs )
-        FixVobus(realfbase,menus->vg,&ws,1);
-    FixVobus(realfbase,titles->vg,&ws,0);
+        FixVobus(fbase,menus->vg,&ws,1);
+    FixVobus(fbase,titles->vg,&ws,0);
 }
