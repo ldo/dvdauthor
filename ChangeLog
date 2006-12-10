@@ -1,4 +1,7 @@
 alpha:
+	add remap support for subtitle command #7 (CHG_COLCON)
+	fix sector number overflow in IFO files
+	don't escape command sent to shell
 	fix underflow wraparound in computing dts for subtitles
 	fill in reference pointers for all 3 frames even if less than 3 exist
 	allow last vobu of cell to have a forward pointer to self

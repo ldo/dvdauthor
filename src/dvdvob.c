@@ -461,7 +461,6 @@ static void scanvideoptr(struct vobgroup *va,unsigned char *buf,struct vobuinfo 
                 
                 if( (buf[6]&3)==3 ) padj++; // adj for frame pic
                 if( buf[7]&2 )      padj++; // adj for repeat flag
-                printf("Picture coding extension; frame=%d, repeat=%d, padj=%d\n",buf[6]&3,(buf[7]&2)>>1,padj);
                 
                 thisvi->numfields+=padj;
                 if(vsi->lastadjust && vsi->firstgop==2)
@@ -1282,8 +1281,6 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                 pts_t pts_align=-1;
                 int complain=0, j;
 
-                printf("ROUND %d\n",i);
-                
                 for( j=0; j<s->numvobus; j++ ) {
                     struct vobuinfo *vi=s->vi+j;
                     
