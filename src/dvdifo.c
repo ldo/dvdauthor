@@ -30,6 +30,12 @@
 #define BIGWRITEBUFLEN (16*2048)
 static unsigned char bigwritebuf[BIGWRITEBUFLEN];
 
+static void nfwrite(const void *ptr,size_t len,FILE *h)
+{
+    if( h )
+        fwrite(ptr,len,1,h);
+}
+
 static const struct vobuinfo *globalfindvobu(const struct pgc *ch,int pts)
 {
     int s,c,ci;
@@ -123,12 +129,12 @@ static void CreateTMAPT(FILE *h,const struct pgcgroup *va)
     write2(buf,va->numpgcs);
     write2(buf+2,0);
     write4(buf+4,sizeTMAPT(va)-1);
-    fwrite(buf,1,8,h);
+    nfwrite(buf,8,h);
 
     mapblock=8+4*va->numpgcs;
     for( i=0; i<va->numpgcs; i++ ) {
         write4(buf,mapblock);
-        fwrite(buf,1,4,h);
+        nfwrite(buf,4,h);
         mapblock+=tmapt_block_size(va,i);
     }
 
@@ -141,7 +147,7 @@ static void CreateTMAPT(FILE *h,const struct pgcgroup *va)
         buf[0]=units;
         buf[1]=0;
         write2(buf+2,numtmapt);
-        fwrite(buf,1,4,h);
+        nfwrite(buf,4,h);
         if( numtmapt>0 ) {
             const struct vobuinfo *vobu1;
             // I don't know why I ever did this
@@ -153,7 +159,7 @@ static void CreateTMAPT(FILE *h,const struct pgcgroup *va)
                 write4(buf,vobu1->sector);
                 if( !vobu2 || vobu1->vobcellid!=vobu2->vobcellid )
                     buf[0]|=0x80;
-                fwrite(buf,1,4,h);
+                nfwrite(buf,4,h);
                 vobu1=vobu2;
             }
         }
@@ -163,11 +169,11 @@ static void CreateTMAPT(FILE *h,const struct pgcgroup *va)
     if( i ) {
         memset(buf,0,8);
         while(i>=8) {
-            fwrite(buf,1,8,h);
+            nfwrite(buf,8,h);
             i-=8;
         }
         if( i )
-            fwrite(buf,1,i,h);
+            nfwrite(buf,i,h);
     }
 }
 
@@ -209,8 +215,7 @@ static int CreateCallAdr(FILE *h,const struct vobgroup *va)
     write2(buf,va->numvobs);
     assert(p<=BIGWRITEBUFLEN);
     p=(p+2047)&(-2048);
-    if(h)
-        fwrite(buf,1,p,h);
+    nfwrite(buf,p,h);
     return p/2048;
 }
 
@@ -224,23 +229,23 @@ static void CreateVOBUAD(FILE *h,const struct vobgroup *va)
         nv+=va->vobs[i]->numvobus;
 
     write4(buf,nv*4+3);
-    fwrite(buf,1,4,h);
+    nfwrite(buf,4,h);
     for( j=0; j<va->numvobs; j++ ) {
         const struct vob *p=va->vobs[j];
         for( i=0; i<p->numvobus; i++ ) {
             write4(buf,p->vi[i].sector);
-            fwrite(buf,1,4,h);
+            nfwrite(buf,4,h);
         }
     }
     i=(-(4+nv*4))&2047;
     if( i ) {
         memset(buf,0,16);
         while(i>=16) {
-            fwrite(buf,1,16,h);
+            nfwrite(buf,16,h);
             i-=16;
         }
         if( i )
-            fwrite(buf,1,i,h);
+            nfwrite(buf,i,h);
     }
 }
 
@@ -276,8 +281,7 @@ static int Create_PTT_SRPT(FILE *h,const struct pgcgroup *t)
     write4(buf+4,p-1);
     assert(p<=BIGWRITEBUFLEN);
     p=(p+2047)&(-2048);
-    if(h)
-        fwrite(buf,1,p,h);
+    nfwrite(buf,p,h);
     return p/2048;    
 }
 
@@ -309,8 +313,7 @@ static int Create_TT_SRPT(FILE *h,const struct toc_summary *ts,int vtsstart)
 
     assert(p<=BIGWRITEBUFLEN);
     p=(p+2047)&(-2048);
-    if(h)
-        fwrite(buf,1,p,h);
+    nfwrite(buf,p,h);
     return p/2048;        
 }
 
@@ -415,7 +418,7 @@ static void WriteIFO(FILE *h,const struct workset *ws)
     if( jumppad || forcemenus )
         BuildAVInfo(buf+256,ws->menus->vg);
     BuildAVInfo(buf+512,ws->titles->vg);
-    fwrite(buf,1,2048,h);
+    nfwrite(buf,2048,h);
 
     // sect 1: VTS_PTT_SRPT
     Create_PTT_SRPT(h,ws->titles);
@@ -442,15 +445,18 @@ void WriteIFOs(char *fbase,const struct workset *ws)
     FILE *h;
     static char buf[1000];
 
-    sprintf(buf,"%s_0.IFO",fbase);
-    h=fopen(buf,"wb");
-    WriteIFO(h,ws);
-    fclose(h);
-
-    sprintf(buf,"%s_0.BUP",fbase);
-    h=fopen(buf,"wb");
-    WriteIFO(h,ws);
-    fclose(h);
+    if( fbase ) {
+        sprintf(buf,"%s_0.IFO",fbase);
+        h=fopen(buf,"wb");
+        WriteIFO(h,ws);
+        fclose(h);
+        
+        sprintf(buf,"%s_0.BUP",fbase);
+        h=fopen(buf,"wb");
+        WriteIFO(h,ws);
+        fclose(h);
+    } else
+        WriteIFO(0,ws);
 }
 
 void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
@@ -556,7 +562,7 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
     }
     write2(buf+0x4f2,7+buf[0x4ed]*8);
     write2(buf+0x82,0x4ec+read2(buf+0x4f2));
-    fwrite(buf,1,2048,h);
+    nfwrite(buf,2048,h);
 
     Create_TT_SRPT(h,ws->ts,vtsstart);
 
@@ -571,18 +577,18 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
     write4(buf+4,ws->ts->numvts*0x30c+8-1);
     for( i=0; i<ws->ts->numvts; i++ )
         write4(buf+8+i*4,j+i*0x308);
-    fwrite(buf,1,j,h);
+    nfwrite(buf,j,h);
     for( i=0; i<ws->ts->numvts; i++ ) {
         write4(buf,0x307);
         memcpy(buf+4,ws->ts->vts[i].vtscat,4);
         memcpy(buf+8,ws->ts->vts[i].vtssummary,0x300);
-        fwrite(buf,1,0x308,h);
+        nfwrite(buf,0x308,h);
         j+=0x308;
     }
     j=2048-(j&2047);
     if( j < 2048 ) {
         memset(buf,0,j);
-        fwrite(buf,1,j,h);
+        nfwrite(buf,j,h);
     }
 
     if( jumppad || forcemenus ) {

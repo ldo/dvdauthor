@@ -34,7 +34,7 @@
 
 static int readdvdauthorxml(const char *xmlfile,char *fb);
 
-static int hadchapter=0,pauselen=0;
+static int hadchapter=0,pauselen=0,writeoutput=1;
 static char *chapters=0;
 
 static void parsevideoopts(struct pgcgroup *va,char *o)
@@ -227,10 +227,12 @@ static void usage()
 #endif
 
     fprintf(stderr,
-            "syntax: dvdauthor [-o VTSBASE] [options] VOBFILE(s)\n"
+            "syntax: dvdauthor [-o VTSBASE | -n] [options] VOBFILE(s)\n"
             "\n\t-x XMLFILE where XMLFILE is a configuration file describing the\n"
             "\t    structure of the DVD to create.  If you use a config file, then you\n"
-            "\t    do not need to specify any other options, except -o.\n"
+            "\t    do not need to specify any other options, except -o and -n.\n"
+            "\n\t-n skips writing any files, for testing purposes.  MUST occur before any\n"
+            "\t    other options.\n"
             "\n\t" LONGOPT("--video=VOPTS or ") "-v VOPTS where VOPTS is a plus (+) separated list of\n"
             "\t    video options.  dvdauthor will try to infer any unspecified options.\n"
             "\t\tpal, ntsc, 4:3, 16:9, 720xfull, 720x576, 720x480, 704xfull,\n"
@@ -364,7 +366,7 @@ int main(int argc,char **argv)
 
     while(1) {
         struct pgcgroup *vc=va[curva];
-        int c=GETOPTFUNC(argc,argv,"f:o:v:a:s:hc:Cp:Pmtb:Ti:e:x:jg");
+        int c=GETOPTFUNC(argc,argv,"f:o:v:a:s:hc:Cp:Pmtb:Ti:e:x:jgn");
         if( c == -1 )
             break;
         switch(c) {
@@ -378,6 +380,10 @@ int main(int argc,char **argv)
                 return 1;
             }
             return readdvdauthorxml(optarg,fbase);
+
+        case 'n':
+            writeoutput=0;
+            break;
 
         case 'j':
             dvdauthor_enable_jumppad();
@@ -519,7 +525,7 @@ int main(int argc,char **argv)
     if( !va[1] && !istoc )
         va[1]=pgcgroup_new(0);
 
-    if( !fbase ) {
+    if( !fbase && writeoutput ) {
         fbase=readconfentry("WORKDIR");
         if( !fbase )
             usage();
@@ -528,9 +534,11 @@ int main(int argc,char **argv)
         fprintf(stderr,"ERR:  bad version of getopt; please precede all sources with '-f'\n");
         return 1;
     }
-    l=strlen(fbase);
-    if( l && fbase[l-1]=='/' )
-        fbase[l-1]=0;
+    if( fbase ) {
+        l=strlen(fbase);
+        if( l && fbase[l-1]=='/' )
+            fbase[l-1]=0;
+    }
 
     if( istoc )
         dvdauthor_vmgm_gen(fpc,mg,fbase);
@@ -631,7 +639,9 @@ static void dvdauthor_allgprm(char *s)
 
 static void getfbase()
 {
-    if( !fbase ) {
+    if( !writeoutput )
+        fbase=0;
+    else if( !fbase ) {
         fbase=readconfentry("WORKDIR");
         if( !fbase ) {
             fprintf(stderr,"ERR:  Must specify working directory\n");
@@ -642,7 +652,7 @@ static void getfbase()
 
 static void dvdauthor_end()
 {
-    if( fbase && hadtoc ) {
+    if( hadtoc ) {
         dvdauthor_vmgm_gen(fpc,vmgmmenus,fbase);
         vmgmmenus=0;
         fpc=0;
@@ -658,7 +668,7 @@ static void titleset_start()
 static void titleset_end()
 {
     getfbase();
-    if( fbase ) {
+    if( !parser_err ) {
         if( !titles )
             titles=pgcgroup_new(0);
         dvdauthor_vts_gen(mg,titles,fbase);
