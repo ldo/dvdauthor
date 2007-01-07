@@ -238,7 +238,10 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
             }
         
         write2(buf+228,d);
-        assert(cd-(buf+d)-8<=128*8); // can only have 128 commands
+        if( cd-(buf+d)-8>128*8 ) { // can only have 128 commands
+            fprintf(stderr,"ERR:  Can only have 128 commands for pre, post, and cell commands.\n");
+            exit(1);
+        }
         write2(buf+d,(postptr-preptr)/8); // # pre commands
         write2(buf+d+2,(cellptr-postptr)/8); // # post command
         write2(buf+d+4,(cd-cellptr)/8); // # cell command

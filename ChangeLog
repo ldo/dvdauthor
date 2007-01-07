@@ -1,4 +1,5 @@
 alpha:
+	change assert to verbose warning for more than 128 commands per pgc
 	fix spumux "read 0, expected 4" false warning
 	fix border condition with TMAPT table
 	add -n flag to skip writing output
