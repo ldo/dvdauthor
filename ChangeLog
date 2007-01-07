@@ -1,4 +1,4 @@
-alpha:
+0.6.12: January 7, 2007
 	print offending vob names on audio discontinuity
 	change assert to verbose warning for more than 128 commands per pgc
 	fix spumux "read 0, expected 4" false warning
