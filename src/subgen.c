@@ -306,7 +306,8 @@ static int sread(int h,void *b,int l)
             return -1;
         }
         if( !r ) {
-            fprintf(stderr,"WARN:  Read %d, expected %d\n",tr+r,tr+l);
+            if( tr )
+                fprintf(stderr,"WARN:  Read %d, expected %d\n",tr+r,tr+l);
             return tr;
         }
         l-=r;
