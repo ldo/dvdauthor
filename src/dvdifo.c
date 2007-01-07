@@ -90,7 +90,11 @@ static unsigned int findptssec(const struct vobgroup *va,int pts)
 
 static int numsec(const struct pgcgroup *va,int c)
 {
-    return findptssec(va->vg,getptsspan(va->pgcs[c]));
+    // we subtract 1 because there is a bug if getptsspan() returns
+    // an exact multiple of 90090*units; if so, then the last entry of the
+    // TMAPT table cannot be properly computed, because that entry will have
+    // fallen off the end of the VOBU table
+    return findptssec(va->vg,getptsspan(va->pgcs[c])-1);
 }
 
 static int secunit(int ns)
