@@ -1588,7 +1588,7 @@ int calcaudiogap(const struct vobgroup *va,int vcid0,int vcid1,int ach)
         g2=calcaudiodiff(va,vcid1,ach,0);
         return g1!=g2;
     }
-    fprintf(stderr,"WARN: Do not know how to compute the audio gap, assuming discontinuity.\n");
+    fprintf(stderr,"WARN: Do not know how to compute the audio gap between '%s' and '%s', assuming discontinuity.\n",va->vobs[(vcid0>>8)-1]->fname,va->vobs[(vcid1>>8)-1]->fname);
     return 1;
 }
 
