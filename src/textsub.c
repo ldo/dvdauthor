@@ -305,7 +305,7 @@ static uint8_t destroy_png(struct pngdata png) {
     if(verbose > 1) fprintf(stderr,"INFO: PNG Write End\n");
     png_write_end(png.png_ptr, png.info_ptr);
 
-    if(verbose > 1) fprintf("INFO: PNG Destroy Write Struct\n");
+    if(verbose > 1) fprintf(stderr,"INFO: PNG Destroy Write Struct\n");
     png_destroy_write_struct(&png.png_ptr, &png.info_ptr);
 
     fclose (png.fp);

@@ -361,7 +361,7 @@ static int pickbuttongroups(stinfo *s,int ng,int useimg)
     gs=malloc(ng*sizeof(palgroup));
     memset(gs,0,ng*sizeof(palgroup));
 
-    assert(!useimg || s->xd <= s->img.width && s->yd <= s->img.height);
+    assert(!useimg || (s->xd <= s->img.width && s->yd <= s->img.height));
     assert(s->xd <= s->hlt.width && s->yd <= s->hlt.height);
     assert(s->xd <= s->sel.width && s->yd <= s->sel.height);
 
