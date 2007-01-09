@@ -1119,13 +1119,10 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                 buf[14] == 0 &&
                 buf[15] == 0 &&
                 buf[16] == 1 &&
-                ((buf[17] & 0xf8) == 0xc0 || buf[17]==0xbd) &&
-                buf[21] & 128 ) {
-                pts_t pts0=readpts(buf+23),pts1,backpts1;
+                ((buf[17] & 0xf8) == 0xc0 || buf[17]==0xbd)) {
+                pts_t pts0=0,pts1=0,backpts1=0;
                 int dptr=buf[22]+23,endop=read2(buf+18)+20;
-                int audch;
-                pts1=pts0;
-                backpts1=0;
+                int audch,haspts=(buf[21]&128);
                 if( buf[17]==0xbd ) {
                     int sid=buf[dptr],offs=read2(buf+dptr+2);
 
@@ -1177,11 +1174,17 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                     memcpy(mp2hdr[index].buf,buf+dptr+len-3,3);
                     audiodesc_set_audio_attr(&s->audch[audch].ad,&s->audch[audch].adwarn,AUDIO_SAMPLERATE,"48khz");
                 }
-                // fprintf(stderr,"aud ch=%d pts %d - %d\n",audch,pts0,pts1);
+                if( haspts ) {
+                    pts0=readpts(buf+23);
+                    pts1+=pts0;
+                } else if( pts1>0 ) {
+                    fprintf(stderr,"WARN: Audio channel %d contains sync headers but has no PTS.\n",audch);
+                }
+                // fprintf(stderr,"aud ch=%d pts %d - %d (%d)\n",audch,pts0,pts1,pts1-pts0);
                 // fprintf(stderr,"pts[%d] %d (%02x %02x %02x %02x %02x)\n",va->numaudpts,pts,buf[23],buf[24],buf[25],buf[26],buf[27]);
                 if( audch<0 || audch>=64 ) {
                     fprintf(stderr,"WARN: Invalid audio channel %d\n",audch);
-                } else {
+                } else if( haspts ) {
                     struct audchannel *ach=&s->audch[audch];
 
                     if( ach->numaudpts>=ach->maxaudpts ) {
@@ -1204,9 +1207,10 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                         if( ach->audpts[ach->numaudpts-1].pts[1]<pts0 ) {
                             if( audch>=32 )
                                 goto noshow;
-                            fprintf(stderr,"WARN: Discontinuity in audio channel %d; please remultiplex input.\n",audch);
+                            fprintf(stderr,"WARN: Discontinuity of %" PRId64" in audio channel %d; please remultiplex input.\n",pts0-ach->audpts[ach->numaudpts-1].pts[1],audch);
+                            // fprintf(stderr,"last=%d, this=%d\n",ach->audpts[ach->numaudpts-1].pts[1],pts0);
                         } else if( ach->audpts[ach->numaudpts-1].pts[1]>pts0 )
-                            fprintf(stderr,"WARN: Audio pts for channel %d moves backwards; please remultiplex input.\n",audch);
+                            fprintf(stderr,"WARN: Audio pts for channel %d moves backwards by %" PRId64 "; please remultiplex input.\n",audch,ach->audpts[ach->numaudpts-1].pts[1]-pts0);
                         else
                             goto noshow;
                         fprintf(stderr,"WARN: Previous sector: ");
