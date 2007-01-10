@@ -38,7 +38,7 @@ struct vobuinfo {
     int sector,lastsector,fsect,fnum,vobcellid,firstvobuincell,lastvobuincell,hasseqend,hasvideo;
     pts_t videopts[2],sectpts[2],firstvideopts;
     int numref, firstIfield, numfields, lastrefsect[3]; // why on earth do they want the LAST sector of the ref (I, P) frame?
-    unsigned char *sectdata; // so we don't have to reread it
+    unsigned char sectdata[0x26]; // so we don't have to reread it
 };
 
 struct colorinfo {

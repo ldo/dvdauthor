@@ -1063,8 +1063,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                     vi->numref=0;
                     vi->hasseqend=0;
                     vi->hasvideo=0;
-                    vi->sectdata=(unsigned char *)malloc(2048);
-                    memcpy(s->vi[s->numvobus-1].sectdata,buf,2048);
+                    memcpy(s->vi[s->numvobus-1].sectdata,buf,0x26); // save pack and system header; the rest will be reconstructed later
                     if( !(s->numvobus&15) )
                         printvobustatus(va,cursect);
                     vsi.lastrefsect=0;
@@ -1602,7 +1601,6 @@ void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int
     int i,j,pn,fnum=-2;
     pts_t scr;
     int vff,vrew,totvob,curvob;
-    unsigned char *buf;
 
     totvob=0;
     for( pn=0; pn<va->numvobs; pn++ )
@@ -1614,6 +1612,7 @@ void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int
 
         for( i=0; i<p->numvobus; i++ ) {
             struct vobuinfo *vi=&p->vi[i];
+            static unsigned char buf[2048];
 
             if( vi->fnum!=fnum ) {
                 char fname[200];
@@ -1632,13 +1631,18 @@ void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int
                     }
                 }
             }
-            buf=vi->sectdata;
+            memcpy(buf,vi->sectdata,0x26);
+            write4(buf+0x26,0x1bf); // private stream 2
+            write2(buf+0x2a,0x3d4); // length
+            buf[0x2c]=0;
             memset(buf+0x2d,0,0x400-0x2d);
+            write4(buf+0x400,0x1bf); // private stream 2
+            write2(buf+0x404,0x3fa); // length
+            buf[0x406]=1;
             memset(buf+0x407,0,0x7ff-0x407);
 
             scr=readscr(buf+4);
 
-            buf[0x2c]=0;
             write4(buf+0x2d,vi->sector);
             write4(buf+0x39,vi->sectpts[0]); // vobu_s_ptm
             write4(buf+0x3d,vi->sectpts[1]); // vobu_e_ptm
@@ -1714,7 +1718,6 @@ void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int
                 }
             }
 
-            buf[0x406]=1;
             write4(buf+0x407,scr);
             write4(buf+0x40b,vi->sector); // current lbn
             if( vi->numref>0 ) {
