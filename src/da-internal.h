@@ -189,7 +189,7 @@ int findvobu(const struct vob *va,pts_t pts,int l,int h);
 pts_t getptsspan(const struct pgc *ch);
 pts_t getframepts(const struct vobgroup *va);
 unsigned int buildtimeeven(const struct vobgroup *va,int64_t num);
-unsigned int getaudch(const struct vobgroup *va,int a);
+int getaudch(const struct vobgroup *va,int a);
 int findcellvobu(const struct vob *va,int cellid);
 pts_t getcellpts(const struct vob *va,int cellid);
 int vobgroup_set_video_attr(struct vobgroup *va,int attr,char *s);

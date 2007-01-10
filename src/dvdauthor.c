@@ -150,7 +150,7 @@ unsigned int buildtimeeven(const struct vobgroup *va,int64_t num)
     return buildtimehelper(va,num,ratedenom[rc]);
 }
 
-unsigned int getaudch(const struct vobgroup *va,int a)
+int getaudch(const struct vobgroup *va,int a)
 {
     if( !va->ad[a].aid )
         return -1;
