@@ -26,6 +26,7 @@
 #include <math.h>
 
 #ifdef HAVE_MAGICK
+#include <stdarg.h>
 #include <magick/api.h>
 #else
 #include <png.h>
