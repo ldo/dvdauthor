@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <fcntl.h>
 
 #include "conffile.h"
 #include "dvdauthor.h"
@@ -172,14 +173,11 @@ static void parsechapters(char *o,struct source *src,int pauselen)
 static void readpalette(struct pgc *p,const char *fname)
 {
     int i,rgbf;
-    FILE *h;
+    struct vfile h;
 
-    if(fname[0] == '&' && isdigit(fname[1]) )
-        h=fdopen(atoi(&fname[1]),"rb");
-    else
-        h=fopen(fname,"rb");
+    h=varied_open(fname,O_RDONLY);
     
-    if( !h ) {
+    if( !h.h ) {
         fprintf(stderr,"ERR:  Cannot open palette file '%s'\n",fname);
         exit(1);
     }
@@ -188,7 +186,7 @@ static void readpalette(struct pgc *p,const char *fname)
     rgbf=( i>=4 && !strcasecmp(fname+i-4,".rgb") );
     for( i=0; i<16; i++ ) {
         int pcolor;
-        fscanf(h, "%x", &pcolor);
+        fscanf(h.h, "%x", &pcolor);
         if( rgbf ) {
             int r=(pcolor>>16)&255,
                 g=(pcolor>>8)&255,
@@ -204,7 +202,7 @@ static void readpalette(struct pgc *p,const char *fname)
 
     memset(groups,0,24);
     i=0;
-    while(fscanf(h,"%x",&b) == 1 && i<24 ) {
+    while(fscanf(h.h,"%x",&b) == 1 && i<24 ) {
         groups[i++]=b>>24;
         groups[i++]=b>>16;
         groups[i++]=b>>8;
@@ -213,7 +211,7 @@ static void readpalette(struct pgc *p,const char *fname)
             pgc_set_buttongroup(p,(i-8)/8,groups+(i-8));
     }
 #endif
-    fclose(h);
+    varied_close(h);
 }
 
 static void usage()

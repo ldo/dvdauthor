@@ -573,33 +573,6 @@ static void printpts(pts_t pts)
     fprintf(stderr,"%d.%03d",(int)(pts/90000),(int)((pts/90)%1000));
 }
 
-static FILE *openvob(char *f,int *ispipe)
-{
-    FILE *h;
-    int l=strlen(f);
-
-    if( l>0 && f[l-1]=='|' ) {
-
-        f[l-1]=0;
-        h=popen(f,"r");
-        ispipe[0]=1;
-    } else if( !strcmp(f,"-") ) {
-        h=stdin;
-        ispipe[0]=2;
-    } else if( f[0]=='&' && isdigit(f[1]) ) {
-        h=fdopen(atoi(&f[1]),"rb");
-        ispipe[0]=0;
-    } else {
-        h=fopen(f,"rb");
-        ispipe[0]=0;
-    }
-    if( !h ) {
-        fprintf(stderr,"ERR:  Error opening %s: %s\n",f,strerror(errno));
-        exit(1);
-    }
-    return h;
-}
-
 enum { CR_BEGIN0,   CR_BEGIN1,    CR_BEGIN2,    CR_BEGIN3, CR_SKIP0,
        CR_SKIP1,    CR_NEXTOFFS0, CR_NEXTOFFS1, CR_WAIT,   CR_CMD,
        CR_SKIPWAIT, CR_COL0,      CR_COL1,      CR_CHGARG, CR_CHGLN0,
@@ -846,9 +819,8 @@ static void audio_scan_pcm(struct audchannel *ach,unsigned char *buf,int len)
 int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
 {
     unsigned char *buf;
-    FILE *h;
     int cursect=0,fsect=-1,vnum,outnum=-ismenu+1;
-    int ispipe,vobid=0;
+    int vobid=0;
     struct mp2info {
         int hdrptr;
         unsigned char buf[6];
@@ -863,6 +835,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
         struct vob *s=va->vobs[vnum];
         int prevvidsect=-1;
         struct vscani vsi;
+        struct vfile vf;
 
         vsi.lastrefsect=0;
         for( i=0; i<32; i++ )
@@ -873,7 +846,11 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
         vsi.firstgop=1;
 
         fprintf(stderr,"\nSTAT: Processing %s...\n",s->fname);
-        h=openvob(s->fname,&ispipe);
+        vf=varied_open(s->fname,O_RDONLY);
+        if( !vf.h ) {
+            fprintf(stderr,"ERR:  Error opening %s: %s\n",s->fname,strerror(errno));
+            exit(1);
+        }
         memset(mp2hdr,0,8*sizeof(struct mp2info));
         while(1) {
             if( fsect == 524272 ) {
@@ -887,7 +864,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
             }
             buf=writegrabbuf();
 
-            i=fread(buf,1,2048,h);
+            i=fread(buf,1,2048,vf.h);
             if( i!=2048 ) {
                 if( i==-1 ) {
                     fprintf(stderr,"\nERR:  Error while reading: %s\n",strerror(errno));
@@ -1251,21 +1228,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
             cursect++;
             fsect++;
         }
-        switch(ispipe) {
-        case 0:
-            if (fclose(h)) {
-                fprintf(stderr,"\nERR:  Error reading from file: %s\n",strerror(errno));
-                exit(1);
-            }
-            break;
-        case 1:
-            if (pclose(h)) {
-                fprintf(stderr,"\nERR:  Error reading from pipe: %s\n",strerror(errno));
-                exit(1);
-            }
-            break;
-        case 2: break;
-        }
+        varied_close(vf);
         if( s->numvobus ) {
             int i;
             pts_t finalaudiopts;

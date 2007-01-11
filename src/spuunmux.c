@@ -697,7 +697,7 @@ static void usage(void)
 
 int main(int argc, char **argv)
 {
-    int fd;
+    struct vfile fd;
     int option, n;
     int rgb;
     char *temp;
@@ -816,8 +816,8 @@ int main(int argc, char **argv)
     add_offset = 450; // for rounding purposes
 
     while (inc < Inc) {
-	fd = open(iname[inc], O_RDONLY | O_BINARY);
-	if (fd < 0) {
+	fd = varied_open(iname[inc], O_RDONLY);
+	if (fd.h == 0) {
 	    fprintf(stderr, "error opening file %s\n", iname[inc]);
 
 	    exit(-1);
@@ -828,7 +828,7 @@ int main(int argc, char **argv)
 
 	inc++;
 
-	while (read(fd, &c, 4) == 4) {
+	while (fread(&c, 1, 4, fd.h) == 4) {
             c=ntohl(c);
 	    if (c == 0x000001ba) {	// start PS (Program stream)
 		static unsigned int old_system_time = -1;
@@ -837,7 +837,7 @@ int main(int argc, char **argv)
 		if (debug > 5)
 		    fprintf(stderr, "pack_start_code\n");
 
-		if (read(fd, psbuf, PSBUFSIZE) < 1)
+		if (fread(psbuf, 1, PSBUFSIZE, fd.h) < 1)
 		    break;
 
 		new_system_time = (psbuf[4] >> 3) + (psbuf[3] * 32) +
@@ -866,7 +866,7 @@ int main(int argc, char **argv)
                 if (debug > 5)
                     fprintf(stderr, "end packet\n");
 	    } else {
-		read(fd, &package_length, 2);
+		fread(&package_length, 1, 2, fd.h);
                 package_length=ntohs(package_length);
 		if (package_length != 0) {
 
@@ -882,7 +882,7 @@ int main(int argc, char **argv)
 		    case 0x01bd:
 			if (debug > 5)
 			    fprintf(stderr, "private stream\n");
-			read(fd, cbuf, package_length);
+			fread(cbuf, 1, package_length, fd.h);
 
 			next_word = getpts(cbuf);
 			if (next_word != -1) {
@@ -953,7 +953,7 @@ int main(int argc, char **argv)
 			break;
 		    case 0x01e0:
                         if( firstvideo==-1 ) {
-                            read(fd, cbuf, package_length);
+                            fread(cbuf, 1, package_length, fd.h);
                             firstvideo=getpts(cbuf);
                             add_offset-=firstvideo;
                             package_length=0;
@@ -983,7 +983,7 @@ int main(int argc, char **argv)
 			if (debug > 5)
 			    fprintf(stderr, "padding stream %d bytes\n",
 				    package_length);
-			read(fd, cbuf, package_length);
+			fread(cbuf, 1, package_length, fd.h);
                         if( package_length > 30 ) {
                             int i;
 
@@ -1112,7 +1112,7 @@ int main(int argc, char **argv)
 			package_length = 2;
 			while (next_word != 0x1ba) {
 			    next_word = next_word << 8;
-			    if (read(fd, &next_word, 1) < 1)
+			    if (fread(&next_word, 1, 1, fd.h) < 1)
 				break;
 			    package_length++;
 			}
@@ -1123,14 +1123,14 @@ int main(int argc, char **argv)
 				    package_length);
 			goto l_01ba;
 		    }		/* end switch */
-                    read(fd, cbuf, package_length);
+                    fread(cbuf, 1, package_length, fd.h);
 		}
 
 	    }			/* end if 0xbd010000 */
 
 	}			/* end while read 4 */
 
-	close(fd);
+	varied_close(fd);
     }				/* end while inc < Inc */
 
     flushspus(0x7fffffff);

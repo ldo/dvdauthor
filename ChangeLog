@@ -4,6 +4,7 @@ alpha:
 	fix int/unsigned problem: dvdauthor dumps core on some mpegs (Closes: Debian Bug#345105)
 	substantially reduce runtime memory requirements
 	fix numerous memory leaks
+	support '-', '&FD', and pipes more consistently and for more places
 	
 
 0.6.12: January 7, 2007

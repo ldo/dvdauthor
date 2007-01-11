@@ -106,3 +106,10 @@ char *strsep(char **stringp,const char *delim);
 #define FT_FREETYPE_H <freetype/freetype.h>
 #define FT_GLYPH_H <freetype/ftglyph.h>
 #endif
+
+struct vfile {
+    FILE *h;
+    int ftype;
+};
+extern struct vfile varied_open(const char *fname,int mode);
+extern void varied_close(struct vfile vf);

@@ -24,10 +24,11 @@ spumux_SOURCES = subgen.c subgen.h rgb.h \
 	subgen-parse-xml.c readxml.c readxml.h \
 	subgen-encode.c subgen-image.c \
 	subconfig.h subglobals.h \
+	compat.c compat.h \
 	textsub.c textsub.h subrender.c subrender.h subreader.c subreader.h subfont.c subfont.h
 spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) $(FRIBIDI_LIBS) $(LIBICONV)
 
-spuunmux_SOURCES = spuunmux.c rgb.h
+spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h
 spuunmux_LDADD = -lpng -lz -lm
 
 mpeg2desc_SOURCES = mpeg2desc.c

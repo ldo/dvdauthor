@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include <libxml/xmlreader.h>
 
@@ -38,15 +39,25 @@
 int parser_err=0, parser_acceptbody=0;
 char *parser_body=0;
 
+static int xml_varied_read(void *context,char *buffer,int len)
+{
+    return fread(buffer,1,len,((struct vfile *)context)->h);
+}
+
+static int xml_varied_close(void *context)
+{
+    varied_close(*((struct vfile *)context));
+    return 0;
+}
+
 int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
 {
     int curstate=0,statehistory[10];
     xmlTextReaderPtr f;
+    struct vfile fd;
 
-    if( xmlfile[0]=='&' && isdigit(xmlfile[1]) )
-        f=xmlReaderForFd(atoi(xmlfile+1),xmlfile,NULL,0);
-    else
-        f=xmlNewTextReaderFilename(xmlfile);
+    fd=varied_open(xmlfile,O_RDONLY);
+    f=xmlReaderForIO(xml_varied_read,xml_varied_close,&fd,xmlfile,NULL,0);
     if(!f) {
         fprintf(stderr,"ERR:  Unable to open XML file %s\n",xmlfile);
         return 1;
