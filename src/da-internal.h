@@ -42,6 +42,7 @@ struct vobuinfo {
 };
 
 struct colorinfo {
+    int refcount;
     int colors[16];
 };
 

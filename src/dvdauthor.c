@@ -884,8 +884,16 @@ static void initdir(char *fbase)
 static struct colorinfo *colorinfo_new()
 {
     struct colorinfo *ci=malloc(sizeof(struct colorinfo));
+    ci->refcount=1;
     memcpy(ci->colors,colors,16*sizeof(int));
     return ci;
+}
+
+static void colorinfo_free(struct colorinfo *ci)
+{
+    ci->refcount--;
+    if( !ci->refcount )
+        free(ci);
 }
 
 static struct vob *vob_new(const char *fname,struct pgc *p)
@@ -962,9 +970,10 @@ static void pgcgroup_pushci(struct pgcgroup *p,int warn)
             for( ii=0; ii<p->numpgcs; ii++ )
                 for( jj=0; jj<p->pgcs[ii]->numsources; jj++ )
                     if( v==p->pgcs[ii]->sources[jj]->vob ) {
-                        if( !p->pgcs[ii]->ci )
+                        if( !p->pgcs[ii]->ci ) {
                             p->pgcs[ii]->ci=p->pgcs[i]->ci;
-                        else if( p->pgcs[ii]->ci!=p->pgcs[i]->ci && warn) {
+                            p->pgcs[ii]->ci->refcount++;
+                        } else if( p->pgcs[ii]->ci!=p->pgcs[i]->ci && warn) {
                             fprintf(stderr,"WARN: Conflict in colormap between PGC %d and %d\n",i,ii);
                         }
                     }
@@ -1148,7 +1157,8 @@ void pgc_free(struct pgc *p)
         statement_free(p->prei);
     if( p->posti )
         statement_free(p->posti);
-    // if( p->ci ) free(p->ci); // Ownership of the colorinfo structure is unknown due to pgcgroup_pushci
+    if( p->ci )
+        colorinfo_free(p->ci);
     // don't free the pgcgroup; it's an upward reference
     free(p);
 }
