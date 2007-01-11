@@ -12,6 +12,7 @@ extern int allowallreg;
 extern void dvdvmerror(char *s);
 extern int dvdvmlex(void);
 extern dvdvm_buffer_state dvdvm_scan_string(const char *s);
+extern void dvdvm_delete_buffer(dvdvm_buffer_state b);
 extern int dvdvmparse(void);
 
 struct vm_statement {
@@ -99,15 +100,4 @@ static inline struct vm_statement *statement_setop(int reg,int op,struct vm_stat
     v2->i1=reg-256;
     v->param=statement_expression(v2,op,vp);
     return v;
-}
-
-static inline void statement_free(struct vm_statement *s)
-{
-    if( s->s1 ) free(s->s1);
-    if( s->s2 ) free(s->s2);
-    if( s->s3 ) free(s->s3);
-    if( s->s4 ) free(s->s4);
-    if( s->param ) statement_free(s->param);
-    if( s->next ) statement_free(s->next);
-    free(s);
 }

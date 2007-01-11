@@ -958,6 +958,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                                     exit(1);
                                 }
                                 b=&s->p->buttons[findbutton(s->p,bn,0)-1];
+                                free(bn);
 
                                 if( b->numstream>=MAXBUTTONSTREAM ) {
                                     fprintf(stderr,"WARN: Too many button streams; ignoring buttons\n");

@@ -70,11 +70,12 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
         case XML_READER_TYPE_COMMENT:
             break;
 
-        case XML_READER_TYPE_ELEMENT:
+        case XML_READER_TYPE_ELEMENT: {
+            char *elemname=xmlTextReaderName(f);
             assert(!parser_body);
             for( i=0; elems[i].elemname; i++ )
                 if( curstate==elems[i].parentstate &&
-                    !strcmp(xmlTextReaderName(f),elems[i].elemname) ) {
+                    !strcmp(elemname,elems[i].elemname) ) {
                     // reading the attributes causes these values to change
                     // so if you want to use them later, save them now
                     int empty=xmlTextReaderIsEmptyElement(f),
@@ -103,6 +104,8 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
                                     fprintf(stderr,"ERR:      %s\n",attrs[j].attr);
                             return 1;
                         }
+                        xmlFree(nm);
+                        xmlFree(v);
                     }
                     if( empty ) {
                         if( elems[i].end ) {
@@ -117,13 +120,15 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
                     break;
                 }
             if( !elems[i].elemname ) {
-                fprintf(stderr,"ERR:  Cannot match start tag '%s'.  Valid tags are:\n",xmlTextReaderName(f));
+                fprintf(stderr,"ERR:  Cannot match start tag '%s'.  Valid tags are:\n",elemname);
                 for( i=0; elems[i].elemname; i++ )
                     if( curstate==elems[i].parentstate )
                         fprintf(stderr,"ERR:      %s\n",elems[i].elemname);
                 return 1;
             }
+            xmlFree(elemname);
             break;
+        }
 
         case XML_READER_TYPE_END_ELEMENT:
             i=statehistory[xmlTextReaderDepth(f)];
@@ -133,6 +138,8 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
                     return 1;
             }
             curstate=elems[i].parentstate;
+            if( parser_body )
+                free(parser_body);
             parser_body=0;
             parser_acceptbody=0;
             if( !curstate )
@@ -151,6 +158,7 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
                         v[i]!=' '  &&
                         v[i]!='\t' )
                         goto has_nonws_body;
+                xmlFree(v);
                 break;
             }
         has_nonws_body:
@@ -165,6 +173,7 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
                 parser_body=realloc(parser_body,strlen(parser_body)+strlen(v)+1);
                 strcat(parser_body,v);
             }
+            xmlFree(v);
             break;
         }
 
@@ -174,6 +183,7 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
         }
     }
  done_parsing:
+    xmlFreeTextReader(f);
 
     return 0;
 }

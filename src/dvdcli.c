@@ -545,6 +545,13 @@ int main(int argc,char **argv)
     else
         dvdauthor_vts_gen(mg,va[1],fbase);
 
+    if( fpc )
+        pgc_free(fpc);
+    if( mg )
+        menugroup_free(mg);
+    if( va[1] )
+        pgcgroup_free(va[1]);
+
     return 0;
 }
 
@@ -654,8 +661,12 @@ static void dvdauthor_end()
 {
     if( hadtoc ) {
         dvdauthor_vmgm_gen(fpc,vmgmmenus,fbase);
-        vmgmmenus=0;
+        if( fpc )
+            pgc_free(fpc);
+        if( vmgmmenus )
+            menugroup_free(vmgmmenus);
         fpc=0;
+        vmgmmenus=0;
     }
 }
 
@@ -672,6 +683,9 @@ static void titleset_end()
         if( !titles )
             titles=pgcgroup_new(0);
         dvdauthor_vts_gen(mg,titles,fbase);
+        if( mg )
+            menugroup_free(mg);
+        pgcgroup_free(titles);
         mg=0;
         titles=0;
     }
@@ -971,7 +985,9 @@ static void vob_start()
 
 static void vob_file(char *f)
 {
-    source_set_filename(curvob,utf8tolocal(f));
+    f=utf8tolocal(f);
+    source_set_filename(curvob,f);
+    free(f);
 }
 
 static void vob_chapters(char *c)

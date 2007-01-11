@@ -31,6 +31,7 @@ struct source;
 struct cell;
 
 struct pgc *pgc_new();
+void pgc_free(struct pgc *p);
 int pgc_add_button(struct pgc *p,const char *name,const char *cmd);
 void pgc_add_entry(struct pgc *p,char *entry);
 void pgc_add_source(struct pgc *p,struct source *v);
@@ -48,6 +49,7 @@ enum { AUDIO_ANY=0, AUDIO_FORMAT, AUDIO_QUANT, AUDIO_DOLBY, AUDIO_LANG, AUDIO_CH
 enum { SPU_ANY=0, SPU_LANG };
 
 struct pgcgroup *pgcgroup_new(int type);
+void pgcgroup_free(struct pgcgroup *pg);
 void pgcgroup_add_pgc(struct pgcgroup *ps,struct pgc *p);
 int pgcgroup_set_video_attr(struct pgcgroup *va,int attr,char *s);
 int pgcgroup_set_audio_attr(struct pgcgroup *va,int attr,char *s,int ch);
@@ -55,6 +57,7 @@ int pgcgroup_set_subpic_attr(struct pgcgroup *va,int attr,char *s,int ch);
 int pgcgroup_set_subpic_stream(struct pgcgroup *va,int ch,char *m,int id);
 
 struct menugroup *menugroup_new();
+void menugroup_free(struct menugroup *mg);
 void menugroup_add_pgcgroup(struct menugroup *mg,char *lang,struct pgcgroup *pg);
 int menugroup_set_video_attr(struct menugroup *va,int attr,char *s);
 int menugroup_set_audio_attr(struct menugroup *va,int attr,char *s,int ch);

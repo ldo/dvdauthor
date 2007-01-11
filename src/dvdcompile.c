@@ -1064,8 +1064,8 @@ struct vm_statement *vm_parse(const char *b)
 {
     if( b ) {
         char *cmd=strdup(b);
+        dvdvm_buffer_state buf=dvdvm_scan_string(cmd);
         dvd_vm_parsed_cmd=0;
-        dvdvm_scan_string(cmd);
         if( dvdvmparse() ) {
             fprintf(stderr,"ERR:  Parser failed on code '%s'.\n",b);
             exit(1);
@@ -1074,6 +1074,7 @@ struct vm_statement *vm_parse(const char *b)
             fprintf(stderr,"ERR:  Nothing parsed from '%s'\n",b);
             exit(1);
         }
+        dvdvm_delete_buffer(buf);
         free(cmd);
         return dvd_vm_parsed_cmd;
     } else {

@@ -29,7 +29,7 @@
 
 #include "dvdauthor.h"
 #include "da-internal.h"
-
+#include "dvdvm.h"
 
 
 
@@ -888,6 +888,29 @@ static struct colorinfo *colorinfo_new()
     return ci;
 }
 
+static struct vob *vob_new(const char *fname,struct pgc *p)
+{
+    struct vob *v=malloc(sizeof(struct vob));
+    memset(v,0,sizeof(struct vob));
+    v->fname=strdup(fname);
+    v->p=p;
+    return v;
+}
+
+static void vob_free(struct vob *v)
+{
+    int i;
+
+    if( v->fname )
+        free(v->fname);
+    if( v->vi )
+        free(v->vi);
+    for( i=0; i<64; i++ )
+        if( v->audch[i].audpts )
+            free(v->audch[i].audpts);
+    free(v);
+}
+
 static struct vobgroup *vobgroup_new()
 {
     struct vobgroup *vg=malloc(sizeof(struct vobgroup));
@@ -895,10 +918,23 @@ static struct vobgroup *vobgroup_new()
     return vg;
 }
 
+static void vobgroup_free(struct vobgroup *vg)
+{
+    int i;
+
+    if( vg->allpgcs )
+        free(vg->allpgcs);
+    if( vg->vobs ) {
+        for( i=0; i<vg->numvobs; i++ )
+            vob_free(vg->vobs[i]);
+        free(vg->vobs);
+    }
+    free(vg);
+}
+
 static void vobgroup_addvob(struct vobgroup *pg,struct pgc *p,struct source *s)
 {
     int i,forcenew;
-    struct vob *v;
 
     forcenew=(p->numbuttons!=0);
     if( !forcenew ) {
@@ -910,12 +946,7 @@ static void vobgroup_addvob(struct vobgroup *pg,struct pgc *p,struct source *s)
             }
     }
     pg->vobs=realloc(pg->vobs,(pg->numvobs+1)*sizeof(struct vob *));
-    v=malloc(sizeof(struct vob));
-    pg->vobs[pg->numvobs++]=v;
-    memset(v,0,sizeof(struct vob));
-    v->fname=strdup(s->fname);
-    v->p=p;
-    s->vob=v;
+    s->vob=pg->vobs[pg->numvobs++]=vob_new(s->fname,p);
 }
 
 static void pgcgroup_pushci(struct pgcgroup *p,int warn)
@@ -1019,11 +1050,38 @@ static void validatesummary(struct pgcgroup *va)
         exit(1);
 }
 
+static void statement_free(struct vm_statement *s)
+{
+    if( s->s1 ) free(s->s1);
+    if( s->s2 ) free(s->s2);
+    if( s->s3 ) free(s->s3);
+    if( s->s4 ) free(s->s4);
+    if( s->param ) statement_free(s->param);
+    if( s->next ) statement_free(s->next);
+    free(s);
+}
+
 struct source *source_new()
 {
     struct source *v=malloc(sizeof(struct source));
     memset(v,0,sizeof(struct source));
     return v;
+}
+
+static void source_free(struct source *s)
+{
+    int i;
+
+    if( s->fname )
+        free(s->fname);
+    if( s->cells ) {
+        for( i=0; i<s->numcells; i++ )
+            if( s->cells[i].cs )
+                statement_free(s->cells[i].cs);
+        free(s->cells);
+    }
+    // vob is a reference created by vobgroup_addvob
+    free(s);
 }
 
 int source_add_cell(struct source *v,double starttime,double endtime,int chap,int pause,const char *cmd)
@@ -1049,11 +1107,50 @@ void source_set_filename(struct source *v,const char *s)
     v->fname=strdup(s);
 }
 
+static void button_freecontents(struct button *b)
+{
+    int i;
+
+    if( b->name )
+        free(b->name);
+    if( b->cs )
+        statement_free(b->cs);
+    for( i=0; i<b->numstream; i++ ) {
+        if( b->stream[i].up    ) free(b->stream[i].up);
+        if( b->stream[i].down  ) free(b->stream[i].down);
+        if( b->stream[i].left  ) free(b->stream[i].left);
+        if( b->stream[i].right ) free(b->stream[i].right);
+    }
+}
+
 struct pgc *pgc_new()
 {
     struct pgc *p=malloc(sizeof(struct pgc));
     memset(p,0,sizeof(struct pgc));
     return p;
+}
+
+void pgc_free(struct pgc *p)
+{
+    int i;
+
+    if( p->sources ) {
+        for( i=0; i<p->numsources; i++ )
+            source_free(p->sources[i]);
+        free(p->sources);
+    }
+    if( p->buttons ) {
+        for( i=0; i<p->numbuttons; i++ )
+            button_freecontents(p->buttons+i);
+        free(p->buttons);
+    }
+    if( p->prei )
+        statement_free(p->prei);
+    if( p->posti )
+        statement_free(p->posti);
+    // if( p->ci ) free(p->ci); // Ownership of the colorinfo structure is unknown due to pgcgroup_pushci
+    // don't free the pgcgroup; it's an upward reference
+    free(p);
 }
 
 void pgc_set_pre(struct pgc *p,const char *cmd)
@@ -1155,6 +1252,20 @@ struct pgcgroup *pgcgroup_new(int type)
     return ps;
 }
 
+void pgcgroup_free(struct pgcgroup *pg)
+{
+    int i;
+
+    if( pg->pgcs ) {
+        for( i=0; i<pg->numpgcs; i++ )
+            pgc_free(pg->pgcs[i]);
+        free(pg->pgcs);
+    }
+    if( pg->vg )
+        vobgroup_free(pg->vg);
+    free(pg);
+}
+
 void pgcgroup_add_pgc(struct pgcgroup *ps,struct pgc *p)
 {
     ps->pgcs=(struct pgc **)realloc(ps->pgcs,(ps->numpgcs+1)*sizeof(struct pgc *));
@@ -1191,6 +1302,19 @@ struct menugroup *menugroup_new()
     return mg;
 }
 
+void menugroup_free(struct menugroup *mg)
+{
+    int i;
+
+    if( mg->groups ) {
+        for( i=0; i<mg->numgroups; i++ )
+            pgcgroup_free(mg->groups[i].pg);
+        free(mg->groups);
+    }
+    vobgroup_free(mg->vg);
+    free(mg);
+}
+
 void menugroup_add_pgcgroup(struct menugroup *mg,char *lang,struct pgcgroup *pg)
 {
     mg->groups=(struct langgroup *)realloc(mg->groups,(mg->numgroups+1)*sizeof(struct langgroup));
@@ -1200,6 +1324,7 @@ void menugroup_add_pgcgroup(struct menugroup *mg,char *lang,struct pgcgroup *pg)
     }
     mg->groups[mg->numgroups].lang[0]=tolower(lang[0]);
     mg->groups[mg->numgroups].lang[1]=tolower(lang[1]);
+    mg->groups[mg->numgroups].lang[2]=0;
     mg->groups[mg->numgroups].pg=pg;
     mg->numgroups++;
 }
@@ -1318,6 +1443,10 @@ void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,char *fbase)
     TocGen(&ws,fpc,fbuf);
     sprintf(fbuf,"%s/VIDEO_TS.BUP",vtsdir);
     TocGen(&ws,fpc,fbuf);
+    for( i=0; i<ts.numvts; i++ )
+        if( ts.vts[i].numchapters )
+            free(ts.vts[i].numchapters);
+    free(vtsdir);
 }
 
 void dvdauthor_vts_gen(struct menugroup *menus,struct pgcgroup *titles,char *fbase)

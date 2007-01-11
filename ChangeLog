@@ -3,6 +3,7 @@ alpha:
 	patch from Romain Chantereau to fix libmagick6 not including stdarg (Closes: Debian Bug#317463)
 	fix int/unsigned problem: dvdauthor dumps core on some mpegs (Closes: Debian Bug#345105)
 	substantially reduce runtime memory requirements
+	fix numerous memory leaks
 	
 
 0.6.12: January 7, 2007
