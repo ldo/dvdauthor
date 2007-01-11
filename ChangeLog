@@ -5,6 +5,7 @@ alpha:
 	substantially reduce runtime memory requirements
 	fix numerous memory leaks
 	support '-', '&FD', and pipes more consistently and for more places
+	if possible, make color #0 (of the 4 color subtitle palette) be transparent (Closes: Debian Bug#387828)
 	
 
 0.6.12: January 7, 2007

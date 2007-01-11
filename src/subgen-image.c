@@ -453,6 +453,50 @@ static int pickbuttongroups(stinfo *s,int ng,int useimg)
         }
         free(bpgs);
         free(gs);
+
+	// If possible, make each palette entry 0 transparent in
+	// all states, since some players may pad buttons with 0
+	// and we also pad with 0 in some cases.
+	for( j=0; j<ng; j++ ) {
+	    int spare = -1;
+	    int tri;
+
+            // search for an unused color, or one that is already fully transparent
+	    for( k=0; k<4; k++ ) {
+		tri = s->groupmap[j][k];
+		if( tri == -1
+		    || (s->img.pal[(tri >> 16) & 0xFF].t == 0
+			&& s->hlt.pal[(tri >> 8) & 0xFF].t == 0
+			&& s->sel.pal[tri & 0xFF].t == 0) ) {
+		    spare = k;
+		    break;
+		}
+	    }
+            // if we find a spare color but one that is not transparent, make one that is transparent
+	    if( spare > 0 && tri == -1 ) {
+		tri = 0;
+		for( k=0; k<s->img.numpal; ++k )
+		    if( s->img.pal[k].t == 0 ) {
+			tri |= k << 16;
+			break;
+		    }
+		for( k=0; k<s->hlt.numpal; ++k )
+		    if( s->hlt.pal[k].t == 0 ) {
+			tri |= k << 8;
+			break;
+		    }
+		for( k=0; k<s->sel.numpal; ++k )
+		    if( s->sel.pal[k].t == 0 ) {
+			tri |= k;
+			break;
+		    }
+	    }
+	    if( spare > 0 ) {
+		s->groupmap[j][spare] = s->groupmap[j][0];
+		s->groupmap[j][0] = tri;
+	    }
+	}
+
         fprintf(stderr,"INFO: Pickbuttongroups, success with %d groups, useimg=%d\n",ng,useimg);
         s->numgroups=ng;
         return 1;
