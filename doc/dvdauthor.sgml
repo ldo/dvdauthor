@@ -101,6 +101,13 @@ systems by avoiding extra filesystem accesses.</para>
 <varlistentry><term><literal>-g</literal></term><term><literal>--allgprm</literal></term>
 <listitem><para>Enable the use of all 16 general purpose registers.  Prohibits the use of jumppad and some complex expressions that require temporary registers.</para></listitem></varlistentry>
 
+<varlistentry><term><literal>-T</literal></term>
+<listitem><para>Creates the table of contents file instead of a
+titleset. If this option is used, it should be listed first, and you
+may not specify any titles.</para></listitem>
+</varlistentry>
+
+
 <varlistentry><term><literal>-m</literal></term>
 <listitem><para>Creates a menu.</para></listitem></varlistentry>
 
@@ -126,25 +133,54 @@ two letter ISO 639 language abbreviation.  Default is 1 track, mp2,
 </para></listitem></varlistentry>
 
 <varlistentry><term><literal>-s <replaceable>subpicture-opts</replaceable></literal></term><term><literal>--subpictures=<replaceable>subpicture-opts</replaceable></literal></term>
-<listitem><para>foo</para></listitem></varlistentry>
+<listitem><para>A plus (+) separated list of options for a subpicture
+track, with each track separated by a comma (,). nolang and any two
+letter language abbreviation (see -a) Default is no subpicture
+tracks.</para></listitem>
+</varlistentry>
 
 <varlistentry><term><literal>-e <replaceable>entry(s)</replaceable></literal></term><term><literal>--entry=<replaceable>entry(s)</replaceable></literal></term>
-<listitem><para>foo</para></listitem></varlistentry>
+<listitem><para>Makes the current menu the default for certain
+circumstances. It is a comma separated list of any of:</para><para>for
+TOC menus: title</para><para>for VTS menus: root, ptt, audio,
+subtitle, angle</para></listitem>
+</varlistentry>
 
 <varlistentry><term><literal>-p <replaceable>palette-file</replaceable></literal></term><term><literal>--palette=<replaceable>palette-file</replaceable></literal></term>
-<listitem><para>foo</para></listitem></varlistentry>
-
-<varlistentry><term><literal>-i <replaceable>commandlist</replaceable></literal></term><term><literal>--instructions=<replaceable>commandlist</replaceable></literal></term>
-<listitem><para>foo</para></listitem></varlistentry>
+<listitem><para>Specifies where to get the subpicture
+palette. Settable per title and per menu. If the filename ends in .rgb
+(case insensitive) then it is assumed to be RGB, otherwise it is
+YUV. Entries should be 6 hexadecimal
+digits. <replaceable>FILE</replaceable> defaults to
+xste-palette.dat</para></listitem>
+</varlistentry>
 
 <varlistentry><term><literal>-c <replaceable>chapterpts</replaceable></literal></term><term><literal>--chapters=<replaceable>chapterpts</replaceable></literal></term>
-<listitem><para>foo</para></listitem></varlistentry>
+<listitem><para>Specifies a comma (,) separated list of chapter
+markers. Each marker is of the form [[h:]mm:]ss[.frac] and is relative
+to the SCR of the next file listed (independent of any timestamp
+transposing that occurs within dvdauthor). The chapter markers ONLY
+apply to the next file listed. Defaults to 0.</para></listitem>
+</varlistentry>
 
 <varlistentry><term><literal>-f <replaceable>mpeg-file</replaceable></literal></term><term><literal>--file=<replaceable>mpeg-file</replaceable></literal></term><term><literal><replaceable>mpeg-file</replaceable></literal></term>
-<listitem><para>foo</para></listitem></varlistentry>
+<listitem><para>Specifies either a file, a pipe, or a shell command
+ending in | which supplies an MPEG-2 system stream with VOB sectors
+inserted in the appropriate places (using mplex -f 8 to
+generate)</para></listitem>
+</varlistentry>
 
-<varlistentry><term><literal>-b <replaceable>buttondef</replaceable></literal></term><term><literal>--button=<replaceable>buttondef</replaceable></literal></term>
-<listitem><para>foo</para></listitem></varlistentry>
+<varlistentry><term><literal>-b <replaceable>buttondef</replaceable></literal></term><term><literal>--button=<replaceable>X1xY1-X2xY2,commandlist</replaceable></literal></term>
+<listitem><para>creates a button of the specified size. See
+LANGUAGE DESCRIPTION for a description of <replaceable>commandlist</replaceable>.</para></listitem>
+</varlistentry>
+
+<varlistentry><term><literal>-i <replaceable>[pre|post]=commandlist</replaceable></literal></term><term><literal>--instructions=<replaceable>[pre|post]=commandlist</replaceable></literal></term>
+<listitem><para>Executes the <replaceable>commandlist</replaceable>
+instructions either before or at the end of the menu/title.  See
+LANGUAGE DESCRIPTION for the format of <replaceable>commandlist.</replaceable></para></listitem>
+</varlistentry>
+
 
 </variablelist>
 
