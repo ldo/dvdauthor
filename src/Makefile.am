@@ -48,6 +48,7 @@ dvddirdel: $(srcdir)/dvddirdel.in config.h
 
 
 EXTRA_DIST = dvdvml.l dvdvmy.y dvddirdel.in
+MOSTLYCLEANFILES = dvddirdel
 MAINTAINERCLEANFILES = dvdvml.c dvdvmy.c dvdvmy.h
 
 FLEX = flex
