@@ -1,0 +1,52 @@
+<refentry>
+  <refmeta>
+    <refentrytitle>dvddirdel</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+  <refnamediv>
+    <refname>dvddirdel</refname>
+	<refpurpose>
+	Deletes a previously authored DVD directory structure in DIR
+	</refpurpose>
+</refnamediv>
+<refsynopsisdiv>
+	<cmdsynopsis>
+	<command>dvddirdel</command>
+	<arg><option>-o </option><replaceable class="parameter">DIR</replaceable></arg>
+	</cmdsynopsis>
+</refsynopsisdiv>
+<refsect1>
+	<title>DESCRIPTION</title>
+	<para>
+	<command>dvddirdel</command> deletes a previously authored DVD directory structure in DIR
+	</para>
+</refsect1>
+<refsect1>
+	<title>USAGE</title>
+	<para>
+	<command>dvddirdel</command> -o DIR 
+	</para>
+</refsect1>
+<refsect1>
+	<title>CAVEATS</title>
+	<para>
+	None.
+	</para>
+</refsect1>
+<refsect1>
+	<title>BUGS</title>
+	<para>
+	None.
+	</para>
+</refsect1>
+<refsect1>
+	<title>AUTHOR</title>
+	<para>
+	<author>
+		<firstname>Marc</firstname>
+		<surname>Leeman</surname>
+		<contrib>This manual page was written by Marc Leeman &#60;marc.leeman@gmail.com&#62;, for the Debian GNU/Linux system (but may be used by others).</contrib>
+	</author>
+	</para>
+</refsect1>
+</refentry>

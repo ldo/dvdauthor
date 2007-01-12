@@ -2,13 +2,21 @@
 <!ENTITY examples SYSTEM "examples.sgml">
 <!ENTITY iso639 SYSTEM "iso639.sgml">
 <!ENTITY dvdauthor SYSTEM "dvdauthor.sgml">
+<!ENTITY dvddirdel SYSTEM "dvddirdel.sgml">
+<!ENTITY dvdunauthor SYSTEM "dvdunauthor.sgml">
+<!ENTITY mpeg2desc SYSTEM "mpeg2desc.sgml">
 <!ENTITY spumux SYSTEM "spumux.sgml">
+<!ENTITY spuunmux SYSTEM "spuunmux.sgml">
 ]>
 <book id="index"><title>DVDAuthor</title>
 &examples;
 &iso639;
 <reference id="manpages"><title>DVDAuthor Man Pages</title>
 &dvdauthor;
+&dvddirdel;
+&dvdunauthor;
+&mpeg2desc;
 &spumux;
+&spuunmux;
 </reference>
 </book>

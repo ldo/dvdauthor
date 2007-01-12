@@ -1,4 +1,4 @@
-man1_MANS = dvdauthor.1 spumux.1
+man1_MANS = dvdauthor.1 dvddirdel.1 dvdunauthor.1 mpeg2desc.1 spumux.1 spuunmux.1
 dist_pkgdata_DATA = dvdauthor.xsd spumux.xsd
 
 

@@ -1,0 +1,111 @@
+<refentry>
+  <refmeta>
+    <refentrytitle>mpeg2desc</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+  <refnamediv>
+    <refname>mpeg2desc</refname>
+	<refpurpose>
+	multiplex audio/video streams
+	</refpurpose>
+</refnamediv>
+<refsynopsisdiv>
+	<cmdsynopsis>
+	<command>mpeg2desc</command>
+<arg><option>-a </option><replaceable class="parameter">stream</replaceable></arg>
+<arg><option>-v </option><replaceable class="parameter">stream</replaceable></arg>
+<arg><option>-o </option><replaceable class="parameter">FILE</replaceable></arg>
+<arg><option>-s </option></arg>
+<arg><option>-m </option></arg>
+<arg><option>-h </option></arg>
+<arg rep="repeat"><replaceable class="parameter">&#60; movie.mpg</replaceable></arg>
+	</cmdsynopsis>
+</refsynopsisdiv>
+<refsect1>
+	<title>DESCRIPTION</title>
+	<para>
+	<command>mpeg2desc</command> multiplexes audio and video streams
+	</para>
+</refsect1>
+<refsect1>
+	<title>OPTIONS</title>
+	<variablelist>
+	<varlistentry>
+		<term>-a <replaceable class="parameter">stream</replaceable></term>
+		<listitem>
+			<para>
+			Output audio <filename>stream</filename> to stdout
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-v <replaceable class="parameter">stream</replaceable></term>
+		<listitem>
+			<para>
+			Output video <filename>stream</filename> to stdout
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-o <replaceable class="parameter">FILE</replaceable></term>
+		<listitem>
+			<para>
+			output the previous stream to <filename>FILE</filename> instead of stdout
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-s</term>
+		<listitem>
+			<para>
+			skip to first valid header -- ensures mplex can handle output
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-m</term>
+		<listitem>
+			<para>
+			output mplex offset to stdout
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-h</term>
+		<listitem>
+			<para>
+			show short help
+			</para>
+		</listitem>
+	</varlistentry>
+	</variablelist>
+</refsect1>
+<refsect1>
+	<title>USAGE</title>
+	<para>
+	<command>mpeg2desc</command> mpeg2desc [options] &#60; movie.mpg
+	</para>
+</refsect1>
+<refsect1>
+	<title>CAVEATS</title>
+	<para>
+	None.
+	</para>
+</refsect1>
+<refsect1>
+	<title>BUGS</title>
+	<para>
+	None.
+	</para>
+</refsect1>
+<refsect1>
+	<title>AUTHOR</title>
+	<para>
+	<author>
+		<firstname>Marc</firstname>
+		<surname>Leeman</surname>
+		<contrib>This manual page was written by Marc Leeman &#60;marc.leeman@gmail.com&#62;, for the Debian GNU/Linux system (but may be used by others).</contrib>
+	</author>
+	</para>
+</refsect1>
+</refentry>

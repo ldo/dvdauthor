@@ -1,0 +1,52 @@
+<refentry>
+  <refmeta>
+    <refentrytitle>dvdunauthor</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+  <refnamediv>
+    <refname>dvdunauthor</refname>
+	<refpurpose>
+	Removes DVD-Video file structure
+	</refpurpose>
+</refnamediv>
+<refsynopsisdiv>
+	<cmdsynopsis>
+	<command>dvdunauthor</command>
+<arg>path</arg>
+	</cmdsynopsis>
+</refsynopsisdiv>
+<refsect1>
+	<title>DESCRIPTION</title>
+	<para>
+	<command>dvdunauthor</command> removes the DVD-Video file structure
+	</para>
+</refsect1>
+<refsect1>
+	<title>USAGE</title>
+	<para>
+	<command>dvdunauthor</command> path 
+	</para>
+</refsect1>
+<refsect1>
+	<title>CAVEATS</title>
+	<para>
+	None.
+	</para>
+</refsect1>
+<refsect1>
+	<title>BUGS</title>
+	<para>
+	None.
+	</para>
+</refsect1>
+<refsect1>
+	<title>AUTHOR</title>
+	<para>
+	<author>
+		<firstname>Marc</firstname>
+		<surname>Leeman</surname>
+		<contrib>This manual page was written by Marc Leeman &#60;marc.leeman@gmail.com&#62;, for the Debian GNU/Linux system (but may be used by others).</contrib>
+	</author>
+	</para>
+</refsect1>
+</refentry>

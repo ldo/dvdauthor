@@ -1,0 +1,120 @@
+<refentry id="spuunmux">
+  <refmeta>
+    <refentrytitle>spuunmux</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+  <refnamediv>
+    <refname>spuunmux</refname>
+	<refpurpose>
+	demultiplexes subtitles from an existing mpeg2 program stream
+	</refpurpose>
+</refnamediv>
+<refsynopsisdiv>
+	<cmdsynopsis>
+	<command>spuunmux</command>
+<arg><replaceable class="parameter">input file</replaceable></arg>
+<arg rep="repeat"><replaceable class="parameter">input file</replaceable></arg>
+	</cmdsynopsis>
+</refsynopsisdiv>
+<refsect1>
+	<title>DESCRIPTION</title>
+	<para>
+	<command>spuunmux</command> demultiplexes subtitles from an existing mpeg2 program stream
+	</para>
+</refsect1>
+<refsect1>
+	<title>OPTIONS</title>
+	<variablelist>
+	<varlistentry>
+		<term>-o <replaceable class="parameter">name</replaceable></term>
+		<listitem>
+			<para>
+			 base name for script and images. Defaults to <replaceable>sub</replaceable>.
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-v <replaceable class="parameter">level</replaceable></term>
+		<listitem>
+			<para>
+			 verbosity level. <replaceable>sub</replaceable>. Defaults to <replaceable>0</replaceable>.
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-f</term>
+		<listitem>
+			<para>
+			resize images to full size. Defaults to <replaceable>720x576</replaceable>.
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-s <replaceable class="parameter">stream</replaceable></term>
+		<listitem>
+			<para>
+			 number of the substream to extract. Defaults to <replaceable>0</replaceable>.
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-p <replaceable class="parameter">file</replaceable></term>
+		<listitem>
+			<para>
+			name of file with dvd palette. If palette file ends with .rgb, treated as a RGB else as a YCbCr color
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-h</term>
+		<listitem>
+			<para>
+			 print this help
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-V</term>
+		<listitem>
+			<para>
+			 print version number
+			</para>
+		</listitem>
+	</varlistentry>
+	</variablelist>
+</refsect1>
+<refsect1>
+	<title>USAGE</title>
+	<para>
+	<command>spuunmux</command> inputfile1 inputfile2
+	</para>
+	<para>
+	demultiplexes subtitles from an existing mpeg2 program stream. To use stdin for demultiplexing, use - for the inputfile:
+	</para>
+	<para>
+	play_cell GoldFinger.iso 1 1 6 | <command>spuunmux</command> -
+	</para>
+</refsect1>
+<refsect1>
+	<title>CAVEATS</title>
+	<para>
+	None.
+	</para>
+</refsect1>
+<refsect1>
+	<title>BUGS</title>
+	<para>
+	None.
+	</para>
+</refsect1>
+<refsect1>
+	<title>AUTHOR</title>
+	<para>
+	<author>
+		<firstname>Marc</firstname>
+		<surname>Leeman</surname>
+		<contrib>This manual page was written by Marc Leeman &#60;marc.leeman@gmail.com&#62;, for the Debian GNU/Linux system (but may be used by others).</contrib>
+	</author>
+	</para>
+</refsect1>
+</refentry>
