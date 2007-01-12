@@ -1226,6 +1226,10 @@ void pgc_add_entry(struct pgc *p,char *entry)
 
 void pgc_add_source(struct pgc *p,struct source *v)
 {
+    if( !v->fname ) {
+        fprintf(stderr,"ERR:  source has no filename\n");
+        exit(1);
+    }
     p->sources=(struct source **)realloc(p->sources,(p->numsources+1)*sizeof(struct source *));
     p->sources[p->numsources++]=v;
 }
