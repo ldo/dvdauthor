@@ -57,59 +57,68 @@ for VTSM root menu:
 
 */
 
-static int jumppgc(unsigned char *buf,int pgc,const struct workset *ws,const struct pgcgroup *curgroup)
+static int genjumppad(unsigned char *buf,int ismenu,int entry,const struct workset *ws,const struct pgcgroup *curgroup)
 {
-    int base=0xEC,ncmd,offs,i,j,k;
-    offs=base+8;
-    
-    if( ws && ws->ts && ws->menus ) {
+    unsigned char *cbuf=buf;
+    int i,j,k;
+
+    if( jumppad && ismenu==1 && entry==7 ) {
+        // *** VTSM jumppad
+        write8(cbuf,0x61,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]=g[15];
+        write8(cbuf,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); cbuf+=8; // g[15]=0;
+        // menu entry jumptable
+        for( i=2; i<8; i++ ) {
+            for( j=0; j<curgroup->numpgcs; j++ )
+                if( curgroup->pgcs[j]->entries&(1<<i) ) {
+                    write8(cbuf,0x20,0xA4,0x00,0x0E,i+120,0x00,0x00,j+1); cbuf+=8; // if g[14]==0xXX00 then LinkPGCN XX
+                }
+        }
+        // menu jumptable
+        for( i=0; i<curgroup->numpgcs; i++ ) {
+            write8(cbuf,0x20,0xA4,0x00,0x0E,i+1,0x00,0x00,i+1); cbuf+=8; // if g[14]==0xXX00 then LinkPGCN XX
+        }
+        // title/chapter jumptable
+        for( i=0; i<ws->titles->numpgcs; i++ ) {
+            write8(cbuf,0x71,0x00,0x00,0x0D,i+129,0,0x00,0x00); cbuf+=8; // g[13]=(i+1)*256;
+            write8(cbuf,0x30,0x23,0x00,0x00,0x00,i+1,0x0E,0x0D); cbuf+=8; // if g[15]==g[13] then JumpSS VTSM i+1, ROOT
+            for( j=0; j<ws->titles->pgcs[i]->numchapters; j++ ) {
+                write8(cbuf,0x71,0x00,0x00,0x0D,i+129,j+1,0x00,0x00); cbuf+=8; // g[13]=(i+1)*256;
+                write8(cbuf,0x30,0x25,0x00,j+1,0x00,i+1,0x0E,0x0D); cbuf+=8; // if g[15]==g[13] then JumpSS VTSM i+1, ROOT
+            }
+        }
+    } else if( jumppad && ismenu==2 && entry==2 ) {
         // *** VMGM jumppad
         // remap all VMGM TITLE X -> TITLESET X TITLE Y
         k=129;
         for( i=0; i<ws->ts->numvts; i++ )
             for( j=0; j<ws->ts->vts[i].numtitles; j++ ) {
-                write8(buf+offs,0x71,0xA0,0x0F,0x0F,j+129,i+2,k,1); 
-                offs+=8;
+                write8(cbuf,0x71,0xA0,0x0F,0x0F,j+129,i+2,k,1); 
+                cbuf+=8;
                 k++;
             }
         // move TITLE out of g[15] into g[14] (to mate up with CHAPTER)
         // then put title/chapter into g[15], and leave titleset in g[14]
-        write8(buf+offs,0x63,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); offs+=8; // g[14]+=g[15]
-        write8(buf+offs,0x79,0x00,0x00,0x0F,0x00,0xFF,0x00,0x00); offs+=8; // g[15]&=255
-        write8(buf+offs,0x64,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); offs+=8; // g[14]-=g[15]
-        write8(buf+offs,0x62,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); offs+=8; // g[14]<->g[15]
+        write8(cbuf,0x63,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]+=g[15]
+        write8(cbuf,0x79,0x00,0x00,0x0F,0x00,0xFF,0x00,0x00); cbuf+=8; // g[15]&=255
+        write8(cbuf,0x64,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]-=g[15]
+        write8(cbuf,0x62,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]<->g[15]
         // For each titleset, delegate to the appropriate submenu
         for( i=0; i<ws->ts->numvts; i++ ) {
-            write8(buf+offs,0x71,0x00,0x00,0x0D,0x00,i+2,0x00,0x00); offs+=8; // g[13]=(i+1)*256;
-            write8(buf+offs,0x30,0x26,0x00,0x01,i+1,0x87,0x0E,0x0D); offs+=8; // if g[14]==g[13] then JumpSS VTSM i+1, ROOT
+            write8(cbuf,0x71,0x00,0x00,0x0D,0x00,i+2,0x00,0x00); cbuf+=8; // g[13]=(i+1)*256;
+            write8(cbuf,0x30,0x26,0x00,0x01,i+1,0x87,0x0E,0x0D); cbuf+=8; // if g[14]==g[13] then JumpSS VTSM i+1, ROOT
         }
         // set g[15]=0 so we don't leak dirty registers to other PGC's
-        write8(buf+offs,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); offs+=8; // g[15]=0;
-    } else if( ws && ws->menus && ws->titles ) {
-        // *** VTSM jumppad
-        write8(buf+offs,0x61,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); offs+=8; // g[14]=g[15];
-        write8(buf+offs,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); offs+=8; // g[15]=0;
-        // menu entry jumptable
-        for( i=2; i<8; i++ ) {
-            for( j=0; j<curgroup->numpgcs; j++ )
-                if( curgroup->pgcs[j]->entries&(1<<i) ) {
-                    write8(buf+offs,0x20,0xA4,0x00,0x0E,i+120,0x00,0x00,j+1); offs+=8; // if g[14]==0xXX00 then LinkPGCN XX
-                }
-        }
-        // menu jumptable
-        for( i=0; i<curgroup->numpgcs; i++ ) {
-            write8(buf+offs,0x20,0xA4,0x00,0x0E,i+1,0x00,0x00,i+1); offs+=8; // if g[14]==0xXX00 then LinkPGCN XX
-        }
-        // title/chapter jumptable
-        for( i=0; i<ws->titles->numpgcs; i++ ) {
-            write8(buf+offs,0x71,0x00,0x00,0x0D,i+129,0,0x00,0x00); offs+=8; // g[13]=(i+1)*256;
-            write8(buf+offs,0x30,0x23,0x00,0x00,0x00,i+1,0x0E,0x0D); offs+=8; // if g[15]==g[13] then JumpSS VTSM i+1, ROOT
-            for( j=0; j<ws->titles->pgcs[i]->numchapters; j++ ) {
-                write8(buf+offs,0x71,0x00,0x00,0x0D,i+129,j+1,0x00,0x00); offs+=8; // g[13]=(i+1)*256;
-                write8(buf+offs,0x30,0x25,0x00,j+1,0x00,i+1,0x0E,0x0D); offs+=8; // if g[15]==g[13] then JumpSS VTSM i+1, ROOT
-            }
-        }
+        write8(cbuf,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); cbuf+=8; // g[15]=0;
     }
+    return cbuf-buf;
+}
+
+static int jumppgc(unsigned char *buf,int pgc,int ismenu,int entry,const struct workset *ws,const struct pgcgroup *curgroup)
+{
+    int base=0xEC,ncmd,offs;
+    offs=base+8;
+    
+    offs+=genjumppad(buf+offs,ismenu,entry,ws,curgroup);
     
     if( pgc>0 )
         write8(buf+offs,0x20,0x04,0x00,0x00,0x00,0x00,0x00,pgc); // LinkPGCN pgc
@@ -119,7 +128,7 @@ static int jumppgc(unsigned char *buf,int pgc,const struct workset *ws,const str
 
     ncmd=(offs-base)/8-1;
     if( ncmd>128 ) {
-        fprintf(stderr,"ERR:  Too many pre/post/cell commands.  Reduce complexity and/or disable\njumppad.\n");
+        fprintf(stderr,"ERR:  Too many titlesets/titles/menus/etc for jumppad to handle.  Reduce complexity and/or disable\njumppad.\n");
         exit(1);
     }
     buf[0xE5]=base;
@@ -128,7 +137,7 @@ static int jumppgc(unsigned char *buf,int pgc,const struct workset *ws,const str
     return offs;
 }
 
-static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgroup *group,int pgc,int ismenu)
+static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgroup *group,int pgc,int ismenu,int entry)
 {
     const struct vobgroup *va=(ismenu?ws->menus->vg:ws->titles->vg);
     const struct pgc *p=group->pgcs[pgc];
@@ -165,6 +174,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
         unsigned char *cd=buf+d+8,*preptr,*postptr,*cellptr;
 
         preptr=cd;
+        cd+=genjumppad(cd,ismenu,entry,ws,group);
         if( p->prei ) {
             cd=vm_compile(preptr,cd,ws,p->pgcgroup,p,p->prei,ismenu);
             if(!cd) {
@@ -341,13 +351,13 @@ static int createpgcgroup(const struct workset *ws,int ismenu,const struct pgcgr
     pgcidx=8;
 
     for( i=0; i<va->numpgcs; i++ ) {
+        int j=0;
+
         if( buf+len+BUFFERPAD-bigwritebuf > bigwritebuflen )
             return -1;
         if( !ismenu )
             buf[pgcidx]=0x81+i;
         else {
-            int j;
-
             buf[pgcidx]=0;
             for( j=2; j<8; j++ )
                 if( va->pgcs[i]->entries&(1<<j) ) {
@@ -356,7 +366,7 @@ static int createpgcgroup(const struct workset *ws,int ismenu,const struct pgcgr
                 }
         }
         write4(buf+pgcidx+4,len);
-        len+=genpgc(buf+len,ws,va,i,ismenu);
+        len+=genpgc(buf+len,ws,va,i,ismenu,j);
         pgcidx+=8;
     }
 
@@ -370,20 +380,17 @@ static int createpgcgroup(const struct workset *ws,int ismenu,const struct pgcgr
             for( j=0; j<va->numpgcs; j++ )
                 if( va->pgcs[j]->entries&(1<<i) )
                     break;
-            assert(j<va->numpgcs);
-            // is this the first entry for this pgc? if so, it was already
-            // triggered via the PGC itself, so skip writing the extra
-            // entry here
-            if( (va->pgcs[j]->entries & ((1<<i)-1)) == 0 )
-                continue;
+            if( j<va->numpgcs ) { // this can be false if jumppad is set
+                // is this the first entry for this pgc? if so, it was already
+                // triggered via the PGC itself, so skip writing the extra
+                // entry here
+                if( (va->pgcs[j]->entries & ((1<<i)-1)) == 0 )
+                    continue;
+            }
             j++;
             buf[pgcidx]=0x80|i;
             write4(buf+pgcidx+4,len);
-            if( jumppad && ((ismenu==1 && i==7) || 
-                            (ismenu==2 && i==2) ))
-                len+=jumppgc(buf+len,j,ws,va);
-            else
-                len+=jumppgc(buf+len,j,0,0);
+            len+=jumppgc(buf+len,j,ismenu,i,ws,va);
             pgcidx+=8;
         }
     }

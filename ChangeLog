@@ -8,6 +8,8 @@ alpha:
 	if possible, make color #0 (of the 4 color subtitle palette) be transparent (Closes: Debian Bug#387828)
 	fix byte overflow on PGC Command Table Size (Lucas Pierce)
 	minor errorchecking for vobs with no filenames
+	fix segfault relating to jumppad
+	fix omission of jumppad table if a menu pgc was defined with ptt or title entry
 	
 
 0.6.12: January 7, 2007
