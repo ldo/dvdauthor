@@ -383,16 +383,21 @@ static void scanvideoptr(struct vobgroup *va,unsigned char *buf,struct vobuinfo 
 
             vobgroup_set_video_framerate(va,frame);
             switch(frame) {
-            case 1:
-            case 4:
-            case 7:
+            case 1: // 24000/1001
+            case 4: // 30000/1001
+            case 7: // 60000/1001
                 vobgroup_set_video_attr(va,VIDEO_FORMAT,"ntsc");
                 break;
 
-            case 3:
-            case 6:
+            case 3: // 25
+            case 6: // 50
                 vobgroup_set_video_attr(va,VIDEO_FORMAT,"pal");
                 break;
+
+            case 2: // 24
+            case 5: // 30
+            case 8: // 60
+                break; // these are nonstandard, but at least we know what they are
 
             default:
                 fprintf(stderr,"WARN: unknown frame rate %d\n",frame);
