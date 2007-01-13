@@ -559,6 +559,8 @@ static void mux(int eoinput)
                         wdshort(b->r.y0);
                         wdshort(b->r.x1);
                         wdshort(b->r.y1);
+                        if( (b->r.y0&1) || (b->r.y1&1) )
+                            fprintf(stderr,"WARN: Button y coordinates are odd for button %s: %dx%d-%dx%d; they may not display properly.\n",b->name,b->r.x0,b->r.y0,b->r.x1,b->r.y1);
                         sprintf(nm1,"%d",i?i:(cursti->numbuttons));
                         sprintf(nm2,"%d",(i+1!=cursti->numbuttons)?(i+2):1);
                         // fprintf(stderr,"BUTTON NAVIGATION FOR %s: up=%s down=%s left=%s right=%s (%s %s)\n",b->name,b->up,b->down,b->left,b->right,nm1,nm2);

@@ -12,7 +12,7 @@ alpha:
 	fix omission of jumppad table if a menu pgc was defined with ptt or title entry
 	incorporate Debian manpages for dvdunauthor, dvddirdel, mpeg2desc, and spuunmux
 	loosely support 24, 30, and 60fps
-	
+	buttons need even 'Y' coordinates
 
 0.6.12: January 7, 2007
 	print offending vob names on audio discontinuity

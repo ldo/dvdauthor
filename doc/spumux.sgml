@@ -127,15 +127,24 @@ actions.  Otherwise, read on.
 </para>
 <para>
 
-The name attribute is used to give a button or action an easy to
-refer to name.  By default they are numbered sequentially starting
-with "1".  The (x0,y0) coordinates describe the upper left hand corner
+The name attribute is used to give a button or action an easy to refer
+to name.  By default they are numbered sequentially starting with "1".
+The up, down, left, and right names describe which button or action
+should be tied to the corresponding key when the current button is
+highlighted, though if omitted spumux will use a reasonably
+intelligent algorithm to determine which buttons to move to.
+
+</para>
+<para>
+
+The (x0,y0) coordinates describe the upper left hand corner
 inclusively, while the (x1,y1) coordinates describe the lower right
-hand corner EXclusively.  The up, down, left, and right names
-describe which button or action should be tied to the corresponding
-key when the current button is highlighted, though if omitted spumux
-will use a reasonably intelligent algorithm to determine which buttons
-to move to.
+hand corner EXclusively.  The coordinates start at 0,0 for the upper
+left hand corner.  Ideally, the y0 and y1 coordinates should both be
+even, so the button fully empasses two interlaced scanlines, even if
+there is no data in the extra scanline.  Some DVD players will fill in
+the extra scanline if it is not specified; spumux makes an effort to
+ensure that will be transparent but there is no guarantee.
 
 </para>
 </refsect1>

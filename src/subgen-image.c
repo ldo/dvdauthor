@@ -700,6 +700,9 @@ static void detectbuttons(stinfo *s)
                     }
                 } while(didwork);
 
+                r.y0-=r.y0&1; // buttons need even 'y' coordinates
+                r.y1+=r.y1&1;
+
                 // add button r
                 rs=realloc(rs,(numr+1)*sizeof(rectangle));
                 rs[numr++]=r;
