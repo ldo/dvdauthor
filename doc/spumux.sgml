@@ -141,10 +141,10 @@ The (x0,y0) coordinates describe the upper left hand corner
 inclusively, while the (x1,y1) coordinates describe the lower right
 hand corner EXclusively.  The coordinates start at 0,0 for the upper
 left hand corner.  Ideally, the y0 and y1 coordinates should both be
-even, so the button fully empasses two interlaced scanlines, even if
-there is no data in the extra scanline.  Some DVD players will fill in
-the extra scanline if it is not specified; spumux makes an effort to
-ensure that will be transparent but there is no guarantee.
+even, so the button edges fully empasses two interlaced scanlines,
+even if there is no data in the extra scanline.  Some DVD players will
+fill in the extra scanline if it is not specified; spumux makes an
+effort to ensure that will be transparent but there is no guarantee.
 
 </para>
 </refsect1>
