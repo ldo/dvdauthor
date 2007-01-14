@@ -1,3 +1,6 @@
+alpha:
+	popen mode must be 'r' or 'w', not 'rb' or 'wb'
+
 0.6.13: January 13, 2007
 	fix handling of audio packets that have no PTS
 	patch from Romain Chantereau to fix libmagick6 not including stdarg (Closes: Debian Bug#317463)

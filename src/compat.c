@@ -50,13 +50,13 @@ struct vfile varied_open(const char *fname,int mode)
             char *fcopy=strdup(fname);
             fcopy[l-1]=0;
             vf.ftype=1;
-            vf.h=popen(fcopy,"rb");
+            vf.h=popen(fcopy,"r");
             free(fcopy);
             return vf;
         }
     } else if( fname[0]=='|' ) {
         vf.ftype=1;
-        vf.h=popen(fname+1,"wb");
+        vf.h=popen(fname+1,"w");
         return vf;
     }
     vf.ftype=0;
