@@ -860,7 +860,7 @@ int main(int argc, char **argv)
                 flushspus(old_system_time);
 
 		if (debug > 5) {
-		    fprintf(stderr, "system time: %d\n", new_system_time);
+		    fprintf(stderr, "system time: %u\n", new_system_time);
 		}
             } else if( c==0x1b9 ) {
                 if (debug > 5)
