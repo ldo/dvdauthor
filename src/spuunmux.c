@@ -579,9 +579,45 @@ static void write_pts(char *preamble,int pts)
             (pts / 900) % 100);
 }
 
+/*
+  copy the content of buf to expbuf converting '&' '<' '>' '"'
+  expbuf must be big enough to contain the expanded buffer
+*/
+static void xml_buf(unsigned char *expbuf,unsigned char *buf)
+{
+    unsigned char *p;
+
+    do {
+        switch (*buf) {
+            case '&':
+              p="&amp;";
+              break;
+            case '<':
+              p="&lt;";
+              break;
+            case '>':
+              p="&gt;";
+              break;
+            case '"':
+              p="&quot;";
+              break;
+            default:
+              p=NULL;
+              break;
+        }
+        if( p ) {
+            while ( (*expbuf++ = *p++) )
+                 ;
+            --expbuf;
+        } else
+            *expbuf++ = *buf;
+    } while ( *buf++ ) ;
+}
+
 static void write_menu_image(struct spu *s,struct dispdetails *d,char *type,int offset)
 {
     unsigned char nbuf[256];
+    unsigned char ebuf[256*6];
     int nummap=d->numbuttons+1, i;
     struct colormap *map=malloc(sizeof(struct colormap)*nummap);
     memset(map,0,sizeof(struct colormap)); // set the first one blank
@@ -598,14 +634,17 @@ static void write_menu_image(struct spu *s,struct dispdetails *d,char *type,int 
     }
     
     sprintf(nbuf, "%s%05d%c.png", base_name, s->subno, type[0]);
-    if( !write_png(nbuf,s,map,nummap) )
-        fprintf(fdo," %s=\"%s\"",type,nbuf);
+    if( !write_png(nbuf,s,map,nummap) ) {
+        xml_buf(ebuf,nbuf);
+        fprintf(fdo," %s=\"%s\"",type,ebuf);
+    }
     free(map);
 }
 
 static void write_spu(struct spu *s,struct dispdetails *d)
 {
     unsigned char nbuf[256];
+    unsigned char ebuf[256*6];
     int i;
 
     if( d )
@@ -613,8 +652,10 @@ static void write_spu(struct spu *s,struct dispdetails *d)
     fprintf(fdo,"\t\t<spu");
 
     sprintf(nbuf, "%s%05d.png", base_name, s->subno);
-    if( !write_png(nbuf,s,s->map,s->nummap) )
-        fprintf(fdo," image=\"%s\"",nbuf);
+    if( !write_png(nbuf,s,s->map,s->nummap) ) {
+        xml_buf(ebuf,nbuf);
+        fprintf(fdo," image=\"%s\"",ebuf);
+    }
 
     if( d && d->numbuttons ) {
         write_menu_image(s,d,"highlight",0);

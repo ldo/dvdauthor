@@ -1,5 +1,6 @@
 alpha:
 	popen mode must be 'r' or 'w', not 'rb' or 'wb'
+	make spuunmux escape filenames in xml file
 
 0.6.13: January 13, 2007
 	fix handling of audio packets that have no PTS
