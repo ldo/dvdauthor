@@ -198,13 +198,10 @@ static int dvddecode()
 	case 0x0:		//force start display
 	    if (debug > 4)
 		fprintf(stderr, "\tcmd(%5d): force start display\n",i);
-	    i++;
 	    s->force_display = TRUE;
-	    s->pts[0] = t * 1024 + spts;
-	    break;
-
+            // fall through
 	case 0x01:
-	    if (debug > 4)
+	    if (debug > 4 && c==0x01)
 		fprintf(stderr, "\tcmd(%5d): start display\n",i);
 	    i++;
 	    s->pts[0] = t * 1024 + spts;
@@ -315,20 +312,8 @@ static int dvddecode()
                     i = (i << 4) + get_next_bits();
                     if (i < 0x40) {
                         i = (i << 4) + get_next_bits();
-                        if (i < 256) {
-                            have_bits = FALSE;
-
-                            y += 2;
-                            while (x++ != s->xd)
-                                s->img[io++] = i;
-                            x = 0;
-                            if ((y >= s->yd) && !(y & 1)) {
-                                y = 1;
-                                io = s->xd;
-                                ofs = ofs1;
-                            } else
-                                io += s->xd;
-                            continue;
+                        if (i < 4) {
+                            i=i+(s->xd-x)*4;
                         }
                     }
                 }
