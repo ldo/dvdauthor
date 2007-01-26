@@ -170,7 +170,7 @@ static int dvddecode()
     ofs = -1;
 
     if (debug > 1)
-	fprintf(stderr, "packet: 0x%x bytes, 0x%x bytes data\n", size,
+	fprintf(stderr, "packet: %d bytes, first block offset=%d\n", size,
 		dsize);
 
     s=malloc(sizeof(struct spu));
@@ -189,41 +189,37 @@ static int dvddecode()
     t = read2(sub+dsize);
 
     if (debug > 2)
-	fprintf(stderr, "time offset: %d sub[%d]=0x%02x sub[%d]=0x%02x\n",
-		t, dsize, sub[dsize], dsize + 1, sub[dsize + 1]);
+	fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", dsize, t, read2(sub+dsize+2));
 
     while (i < size) {
 	c = sub[i];
-	if (debug > 4)
-	    fprintf(stderr, "i: %d cmd: 0x%x\n", i, c);
 
 	switch (c) {
 	case 0x0:		//force start display
+	    if (debug > 4)
+		fprintf(stderr, "\tcmd(%5d): force start display\n",i);
 	    i++;
 	    s->force_display = TRUE;
 	    s->pts[0] = t * 1024 + spts;
-	    if (debug > 4)
-		fprintf(stderr, "cmd: force start display\n");
 	    break;
 
 	case 0x01:
+	    if (debug > 4)
+		fprintf(stderr, "\tcmd(%5d): start display\n",i);
 	    i++;
 	    s->pts[0] = t * 1024 + spts;
-	    if (debug > 4)
-		fprintf(stderr, "cmd: start display\n");
 	    break;
 
 	case 0x02:
 	    if (debug > 4)
-		fprintf(stderr, "cmd: end display\n");
+		fprintf(stderr, "\tcmd(%5d): end display\n",i);
 	    s->pts[1] = t * 1024 + spts;
 	    i++;
 	    break;
 
 	case 0x03:
 	    if (debug > 4)
-		fprintf(stderr, "cmd: palette %02x%02x\n", sub[i + 1],
-			sub[i + 2]);
+		fprintf(stderr, "\tcmd(%5d): palette=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
 
             s->map[0].color=read2(sub+i+1);
 	    i += 3;
@@ -231,8 +227,7 @@ static int dvddecode()
 
 	case 0x04:
 	    if (debug > 4)
-		fprintf(stderr, "cmd: t-palette %02x%02x\n", sub[i + 1],
-			sub[i + 2]);
+		fprintf(stderr, "\tcmd(%5d): transparency=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
 
             s->map[0].contrast=read2(sub+i+1);
 	    i += 3;
@@ -246,7 +241,7 @@ static int dvddecode()
 	    s->yd = (((sub[i + 5] & 0x0f) << 8) + sub[i + 6]) - s->y0 + 1;
 
 	    if (debug > 4)
-		fprintf(stderr, "cmd: img ofs %d,%d  size: %d,%d\n", s->x0,
+		fprintf(stderr, "\tcmd(%5d): image corner=%d,%d, size=%d,%d\n", i, s->x0,
 			s->y0, s->xd, s->yd);
 	    i += 7;
 	    break;
@@ -257,20 +252,15 @@ static int dvddecode()
 	    ofs = read2(sub+i+1);
 	    ofs1 = read2(sub+i+3);
 	    if (debug > 4)
-		fprintf(stderr, "cmd: image offsets 0x%x 0x%x\n", ofs,
+		fprintf(stderr, "\tcmd(%5d): image offsets=%d,%d\n", i, ofs,
 			ofs1);
 	    i += 5;
 	    break;
 
 	case 0xff:
-	    if (debug > 4)
-		fprintf(stderr, "cmd: end cmd\n");
-
 	    if (i + 5 > size) {
 		if (debug > 4)
-		    fprintf(stderr,
-			    "short end command i=%d size=%d (%d bytes)\n",
-			    i, size, size - i);
+		    fprintf(stderr,"\tcmd(%5d): end cmd\n",i);
 
 		i = size;
 		break;
@@ -278,9 +268,9 @@ static int dvddecode()
 
 	    t = read2(sub + i + 1);
 	    if (debug > 4) {
-		fprintf(stderr, "next packet time: %d  end: 0x%02x%02x\n",
-			t, sub[i + 3], sub[i + 4]);
-	    }
+		fprintf(stderr, "\tcmd(%5d): end cmd\n",i);
+                fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", i+1, t, read2(sub+i+3));
+            }
 
 	    if ((sub[i + 3] != sub[dsize + 2])
 		|| (sub[i + 4] != sub[dsize + 3])) {
@@ -291,9 +281,6 @@ static int dvddecode()
 			    sub[dsize + 3], dsize);
 		}
 
-		if (debug > 3)
-		    fprintf(stderr, "i: %d\n", i);
-
 		i = size;
 		break;
 	    }
@@ -302,6 +289,8 @@ static int dvddecode()
 	    break;
 
 	default:
+            if (debug > 4)
+                fprintf(stderr, "\tcmd(%5d): 0x%x\n", i, c);
 	    if (debug > 0)
 		fprintf(stderr,
 			"invalid sequence in control header (%02x)!\n", c);
@@ -372,9 +361,6 @@ static int dvddecode()
         s->pts[1] += add_offset;
     
     addspu(s);
-
-    if (debug > 2)
-	fprintf(stderr, "ofs: 0x%x y: %d\n", ofs, y);
 
     return 0;
 }				/* end fuction dvd_decode */
