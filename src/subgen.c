@@ -716,7 +716,10 @@ int main(int argc,char **argv)
     }
 //fprintf(stderr, "malloc sub=%p\n", sub);
 
-    cbuf = malloc(65536);
+    if ( !(cbuf = malloc(65536)) ) {
+	fprintf(stderr, "ERR: Could not allocate space for sub buffer, aborting.\n");
+	exit(1);
+    }
 
     image_init();
 
@@ -809,7 +812,10 @@ int main(int argc,char **argv)
 
     skip=0;
 
-    sector=malloc(secsize);
+    if ( !(sector=malloc(secsize)) ) {
+	fprintf(stderr, "ERR: Could not allocate space for sector buffer, aborting.\n");
+	exit(1);
+    }
 
     newsti=getnextsub();
     max_sub_size = 0;
