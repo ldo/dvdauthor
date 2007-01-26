@@ -903,6 +903,16 @@ int main(int argc, char **argv)
 		if (debug > 5) {
 		    fprintf(stderr, "system time: %u\n", new_system_time);
 		}
+
+                c=psbuf[9]&7;
+		if (c) {
+                    char s[7];
+
+		    if (debug > 5)
+		        fprintf(stderr, "found %d stuffing bytes\n", c);
+		    if (fread(s, 1, c, fd.h) < c)
+		        break;
+		}
             } else if( c==0x1b9 ) {
                 if (debug > 5)
                     fprintf(stderr, "end packet\n");
