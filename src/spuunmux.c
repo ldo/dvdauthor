@@ -852,6 +852,12 @@ int main(int argc, char **argv)
 		if (fread(psbuf, 1, PSBUFSIZE, fd.h) < 1)
 		    break;
 
+		if ( (psbuf[0] & 0xc0) != 0x40 ) {
+		    if (debug > 1)
+		        fprintf(stderr, "not a MPEG-2 file, skipping.\n");
+		    break;
+		}
+
 		new_system_time = (psbuf[4] >> 3) + (psbuf[3] * 32) +
 		    ((psbuf[2] & 3) * 32 * 256) +
 		    ((psbuf[2] & 0xf8) * 32 * 128) +
