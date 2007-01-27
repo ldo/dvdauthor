@@ -182,8 +182,8 @@ static int dvddecode()
     s->nummap=1;
     s->map=malloc(sizeof(struct colormap));
     memset(s->map,0,sizeof(struct colormap));
-    s->map[0].x2=0x7ffffff;
-    s->map[0].y2=0x7ffffff;
+    s->map[0].x2=0x7fffffff;
+    s->map[0].y2=0x7fffffff;
     i = dsize + 4;
 
     t = read2(sub+dsize);
