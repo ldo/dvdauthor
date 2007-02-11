@@ -3,6 +3,7 @@ alpha:
 	make spuunmux escape filenames in xml file
 	properly skip padding bytes in pack header in spuunmux
 	only allow spuunmux to process mpeg-2 files
+	fix bug in setting the resolution field of VTS/VMGM
 
 0.6.13: January 13, 2007
 	fix handling of audio packets that have no PTS

@@ -333,7 +333,7 @@ static void BuildAVInfo(unsigned char *buf,const struct vobgroup *va)
            |(va->vd.vaspect==VA_16x9?0xc00:0x300) // if 16:9, set aspect flag; if 4:3 set noletterbox/nopanscan
            |((va->vd.vcaption&1)?0x80:0)
            |((va->vd.vcaption&2)?0x40:0)
-           |((va->vd.vres-1)<<2));
+           |((va->vd.vres-1)<<3));
     buf[3]=va->numaudiotracks;
     for( i=0; i<va->numaudiotracks; i++ ) {
         buf[4+i*8]=(va->ad[i].aformat-1)<<6;
