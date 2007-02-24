@@ -1,4 +1,4 @@
-alpha:
+0.6.14: February 24, 2007
 	popen mode must be 'r' or 'w', not 'rb' or 'wb'
 	make spuunmux escape filenames in xml file
 	properly skip padding bytes in pack header in spuunmux
