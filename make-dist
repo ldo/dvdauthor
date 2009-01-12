@@ -16,7 +16,6 @@ rm -rf .git
 mkdir autotools
 aclocal
 autoheader
-# gettextize
 cp /usr/share/gettext/config.rpath autotools/
 automake --add-missing
 autoconf
@@ -24,13 +23,7 @@ autoconf
 (cd src; bison -o dvdvmy.c -d -p dvdvm dvdvmy.y)
 (cd doc; docbook2man root.sgml)
 rm -rf autom4te.cache
-# rm ABOUT-NLS
-# rm -rf po
-# rm -rf m4
 rm doc/manpage.links doc/manpage.refs
-# mv ChangeLog~ ChangeLog
-# mv configure.ac~ configure.ac
-# mv Makefile.am~ Makefile.am
 rm doc/*.sgml doc/html.dsl
 cd ..
 tar czhvf ../dvdauthor.tar.gz dvdauthor/
