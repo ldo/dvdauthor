@@ -1,0 +1,17 @@
+#!/bin/bash
+#+
+# Run GNU autotools stuff preparatory to building from the source tree.
+#
+# Execute this script with the working directory set to the top of
+# the dvdauthor source tree, and it will create the configure scripts
+# and other related bits and pieces.
+#
+# Created by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+#-
+mkdir autotools
+aclocal
+autoheader
+cp /usr/share/gettext/config.rpath autotools/
+automake --add-missing
+autoconf
+

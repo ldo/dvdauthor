@@ -13,18 +13,14 @@ mkdir ../$dstdir/ || exit 1
 cp -a ./ ../$dstdir/dvdauthor/
 cd ../$dstdir/dvdauthor
 rm -rf .git
-mkdir autotools
-aclocal
-autoheader
-cp /usr/share/gettext/config.rpath autotools/
-automake --add-missing
-autoconf
+./bootstrap
 (cd src; flex -s -B -Cem -odvdvml.c -Pdvdvm dvdvml.l)
 (cd src; bison -o dvdvmy.c -d -p dvdvm dvdvmy.y)
 (cd doc; docbook2man root.sgml)
 rm -rf autom4te.cache
 rm doc/manpage.links doc/manpage.refs
 rm doc/*.sgml doc/html.dsl
+rm bootstrap make-dist
 cd ..
 tar czhvf ../dvdauthor.tar.gz dvdauthor/
 cd ..
