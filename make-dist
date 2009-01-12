@@ -1,0 +1,38 @@
+#!/bin/bash
+#+
+# Create distribution source tarball from repository source tree.
+#
+# Execute this script with the working directory set to the top of
+# the dvdauthor source tree, and it will create dvdauthor.tar.gz in
+# the parent directory.
+#
+# Created by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+#-
+dstdir=dvdauthor-tartmp
+mkdir ../$dstdir/ || exit 1
+cp -a ./ ../$dstdir/dvdauthor/
+cd ../$dstdir/dvdauthor
+rm -rf .git
+mkdir autotools
+aclocal
+autoheader
+# gettextize
+cp /usr/share/gettext/config.rpath autotools/
+automake --add-missing
+autoconf
+(cd src; flex -s -B -Cem -odvdvml.c -Pdvdvm dvdvml.l)
+(cd src; bison -o dvdvmy.c -d -p dvdvm dvdvmy.y)
+(cd doc; docbook2man root.sgml)
+rm -rf autom4te.cache
+# rm ABOUT-NLS
+# rm -rf po
+# rm -rf m4
+rm doc/manpage.links doc/manpage.refs
+# mv ChangeLog~ ChangeLog
+# mv configure.ac~ configure.ac
+# mv Makefile.am~ Makefile.am
+rm doc/*.sgml doc/html.dsl
+cd ..
+tar czhvf ../dvdauthor.tar.gz dvdauthor/
+cd ..
+rm -rf $dstdir/
