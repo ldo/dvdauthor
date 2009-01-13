@@ -2,7 +2,7 @@
 #define DVDUNCOMPILE_H_INCLUDED
 
 /* Ogle - A video player
- * Copyright (C) 2000, 2001 Martin Norb‰ck, HÂkan Hjort
+ * Copyright (C) 2000, 2001 Martin Norb√§ck, H√•kan Hjort
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

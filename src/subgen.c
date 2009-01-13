@@ -1,4 +1,7 @@
 /*
+    spumux mainline
+*/
+/*
  * Copyright (C) 2002, 2003 Jan Panteltje <panteltje@yahoo.com>
  * With many changes by Scott Smith (trckjunky@users.sourceforge.net)
  *
@@ -175,7 +178,7 @@ static void mkpesh1(unsigned long int pts)
     header[7] = 1 | (pts << 1);
     header[8] = 0x1e; //P - STD_buffer_flag
     header[9] = 0x60; //buffer scale
-    header[10] = 0x3a; //buffer size (wtf nu det är..) (svcdverifier tycker  att 64 är ett bra tal här..)
+    header[10] = 0x3a; //buffer size (wtf nu det Ã¤r..) (svcdverifier tycker  att 64 Ã¤r ett bra tal hÃ¤r..)
 }
 
 static void mkpesh2 ()

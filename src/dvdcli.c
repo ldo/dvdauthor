@@ -1,4 +1,8 @@
 /*
+    dvdauthor mainline, interpretation of command-line options and parsing of
+    dvdauthor XML control files
+*/
+/*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
  *
  * This program is free software; you can redistribute it and/or modify

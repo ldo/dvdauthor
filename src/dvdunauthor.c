@@ -1,4 +1,7 @@
 /*
+    dvdunauthor mainline
+*/
+/*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
  * 13.11.2004, Ralf Engels <ralf-engels@gmx.de> added lang options for titles,
  *                                              conversion to write-xml2 lib

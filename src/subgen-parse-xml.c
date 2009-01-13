@@ -1,4 +1,7 @@
 /*
+    Parsing of spumux XML control files
+*/
+/*
  * Copyright (C) 2003 Scott Smith (trckjunky@users.sourceforge.net)
  *
  * This program is free software; you can redistribute it and/or modify

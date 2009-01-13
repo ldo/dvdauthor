@@ -1,4 +1,7 @@
 /*
+    Common XML parsing routines
+*/
+/*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
  *
  * This program is free software; you can redistribute it and/or modify

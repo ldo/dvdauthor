@@ -1,5 +1,5 @@
 /* Ogle - A video player
- * Copyright (C) 2000, 2001 Martin Norb‰ck, HÂkan Hjort
+ * Copyright (C) 2000, 2001 Martin Norb√§ck, H√•kan Hjort
  *
  * Heavily modified (C) 2005 Scott Smith
  *
