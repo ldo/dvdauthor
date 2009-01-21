@@ -216,6 +216,8 @@ static unsigned int getpts(unsigned char *buf)
 }
 
 int findmasterpal(stinfo *s,palt *p)
+  /* returns the index in s->masterpal corresponding to colour p, allocating a
+    new palette entry if not there already. */
 {
     int i;
 
@@ -231,6 +233,7 @@ int findmasterpal(stinfo *s,palt *p)
 }
 
 static void freestinfo(stinfo *s)
+  /* frees up memory allocated for s. */
 {
     int i;
 

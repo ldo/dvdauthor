@@ -24,34 +24,44 @@ typedef struct
     unsigned char r, g, b, t; // t=255 means opaque, t=0 means transparent
 } palt;
 
-typedef struct {
-    unsigned char *fname;
-    unsigned char *img;
-    palt pal[256];
-    int numpal,width,height;
+typedef struct { /* representation of a raster image read from a file on disk */
+    unsigned char *fname; /* name of file to read image from */
+    unsigned char *img; /* one byte per pixel, index into pal */
+    palt pal[256]; /* image colour table */
+    int numpal; /* nr used entries in pal */
+    int width,height; /* dimensions of image (will be even) */
 } pict;
 
 typedef struct {
     int x0,y0,x1,y1;
 } rectangle;
 
-typedef struct {
+typedef struct { /* representation of a menu button */
     char *name;
     int autoaction;
-    rectangle r;
-    char *up,*down,*left,*right;
-    int grp;
+    rectangle r; /* bounds of button */
+    char *up,*down,*left,*right; /* pointers to other buttons in corresponding directions, if any */
+    int grp; /* which group button belongs to */
 } button;
 
-typedef struct {
-    unsigned int x0, y0, xd, yd; // x0,y0 -- start, xd,yd -- dimension (size)
-    int spts, sd, forced, numbuttons, numpal; // start pts, subtitle duration
+typedef struct { /* representation of a subpicture and associated buttons */
+    unsigned int x0, y0; /* top-left coords of pixels actually present */
+    unsigned int xd, yd;
+    int spts, sd; // start pts, subtitle duration
+    int forced;
+    int numbuttons; /* nr entries in buttons */
+    int numpal; /* nr entries in masterpal */
     int autooutline,outlinewidth,autoorder;
-    pict img,hlt,sel;
-    unsigned char *fimg;
-    palt pal[4],masterpal[16],transparentc;
-    int numgroups,groupmap[3][4];
-    button *buttons;
+    pict img; /* button image in "normal" state */
+    pict hlt; /* button image in "highlighted" state (user has moved to button with remote) */
+    pict sel; /* button image in "selected" state (user has hit OK key with button highlighted) */
+    unsigned char *fimg; /* combined menu subpicture image built here */
+    palt pal[4]; /* palette for fimg */
+    palt masterpal[16];
+    palt transparentc;
+    int numgroups; /* how many button groups */
+    int groupmap[3][4]; /* colour table for each button group, -1 for unused entries in each group */
+    button *buttons; /* array of buttons */
 	subtitle *sub_title;
 } stinfo;
 
@@ -74,6 +84,8 @@ int calcCr(palt *p);
 int calcCb(palt *p);
 
 int findmasterpal(stinfo *s,palt *p);
+  /* returns the index in s->masterpal corresponding to colour p, allocating a
+    new palette entry if not there already. */
 
 // subgen-parse-xml
 

@@ -1,3 +1,6 @@
+/*
+    Interface to FreeType font rendering
+*/
 #ifndef __SUBFONT_H
 #define __SUBFONT_H
 

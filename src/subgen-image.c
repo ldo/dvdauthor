@@ -1,4 +1,7 @@
 /*
+    Reading of subpicture images and handling of buttons and associated palettes
+*/
+/*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
  *
  * This program is free software; you can redistribute it and/or modify
@@ -40,6 +43,7 @@
 #define MAXY 576
 
 static void constructblankpic(pict *p,int w,int h)
+  /* allocates and fills in p with an image consisting entirely of transparent pixels */
 {
     w+=w&1;
     h+=h&1;
@@ -55,9 +59,9 @@ static void constructblankpic(pict *p,int w,int h)
     memset(p->img,0,w*h);
 }
 
-typedef struct {
-    int numpal;
-    int pal[4];
+typedef struct { /* a set of colours in a subpicture or button */
+    int numpal; /* nr entries used in pal */
+    int pal[4]; /* that's all the DVD spec allows */
 } palgroup;
 
 // ****************************************************
@@ -88,35 +92,44 @@ static void scanpict(stinfo *s,pict *p)
 }
 
 static void putpixel(pict *p,int x,palt *c)
+  /* stores another pixel into pict p at offset x with colour c. Adds a new
+    entry into the colour table if not already present and there's room. */
 {
     int i;
 
     if( !c->t ) {
+      /* all transparent pixels look alike to me */
         c->r=0;
         c->g=0;
         c->b=0;
     }
     for( i=0; i<p->numpal; i++ )
         if( !memcmp(&p->pal[i],c,sizeof(palt)) ) {
+          /* matches existing palette entry */
             p->img[x]=i;
             return;
         }
     if( p->numpal==256 ) {
+      /* too many colours */
         p->img[x]=0;
         return;
     }
+  /* allocate new palette entry */
     p->img[x]=p->numpal;
 /*    fprintf(stderr,"CREATING COLOR %d,%d,%d %d\n",c->r,c->g,c->b,c->t); */
     p->pal[p->numpal++]=*c;
 }
 
 static void createimage(pict *s,int w,int h)
+  /* allocates memory for pixels in s with dimensions w and h. */
 {
     s->numpal=0;
+  /* ensure allocated dimensions are even */
     s->width=w+(w&1);
     s->height=h+(h&1);
     s->img=malloc(s->width*s->height);
     if( w!=s->width ) {
+      /* set padding pixels along side to transparent */
         int y;
         palt t;
 
@@ -128,6 +141,7 @@ static void createimage(pict *s,int w,int h)
             putpixel(s,w+y*s->width,&t);
     }
     if( h!=s->height ) {
+      /* set padding pixels along bottom to transparent */
         int x;
         palt t;
 
@@ -142,6 +156,7 @@ static void createimage(pict *s,int w,int h)
 
 #ifdef HAVE_MAGICK
 static int read_magick(pict *s)
+/* uses ImageMagick to read image s from s->fname. */
 {
     Image *im;
     ImageInfo *ii;
@@ -197,6 +212,7 @@ static int read_magick(pict *s)
 }
 #else
 static int read_png(pict *s)
+/* uses libpng to read image s from s->fname. */
 {
     unsigned char pnghead[8];
     FILE *fp;
@@ -285,6 +301,7 @@ static int read_png(pict *s)
 #endif
 
 static int read_frame(pict *s)
+  /* fills in s from image_buffer. */
 {
   int x,y;
 
@@ -332,6 +349,7 @@ static int read_pic(stinfo *s,pict *p)
 
 
 static int checkcolor(palgroup *p,int c)
+  /* tries to put colour c into palette p, returning true iff successful or already there. */
 {
     int i;
 
@@ -345,172 +363,226 @@ static int checkcolor(palgroup *p,int c)
 }
 
 static int gettricolor(stinfo *s,int p,int useimg)
+  /* returns an index used to represent the particular combination of colours used
+    in s->img, s->hlt and s->sel at offset p. */
 {
     return (useimg?s->img.img[p]<<16:0)|
         (s->hlt.img[p]<<8)|
         (s->sel.img[p]);
 }
 
-static int pickbuttongroups(stinfo *s,int ng,int useimg)
-{
-    palgroup *bpgs,*gs;
-    int i,x,y,j,k,enb;
+static int pickbuttongroups(stinfo *s, int ng, int useimg)
+  /* tries to assign the buttons in s to ng unique groups. useimg indicates
+    whether to look at the pixels in s->img in addition to s->hlt and s->sel. */
+  {
+	palgroup *bpgs, *gs;
+	int i, x, y, j, k, enb;
 
-    bpgs=malloc(s->numbuttons*sizeof(palgroup));
-    memset(bpgs,0,s->numbuttons*sizeof(palgroup));
+	bpgs = malloc(s->numbuttons * sizeof(palgroup)); /* colour tables for each button */
+	memset(bpgs, 0, s->numbuttons * sizeof(palgroup));
 
-    gs=malloc(ng*sizeof(palgroup));
-    memset(gs,0,ng*sizeof(palgroup));
+	gs = malloc(ng * sizeof(palgroup)); /* colour tables for each button group */
+	memset(gs, 0, ng * sizeof(palgroup));
 
-    assert(!useimg || (s->xd <= s->img.width && s->yd <= s->img.height));
-    assert(s->xd <= s->hlt.width && s->yd <= s->hlt.height);
-    assert(s->xd <= s->sel.width && s->yd <= s->sel.height);
+	assert(!useimg || (s->xd <= s->img.width && s->yd <= s->img.height));
+	assert(s->xd <= s->hlt.width && s->yd <= s->hlt.height);
+	assert(s->xd <= s->sel.width && s->yd <= s->sel.height);
 
-    // fprintf(stderr,"attempt %d groups, %d useimg\n",ng,useimg);
-    // find unique colors per button
-    for( i=0; i<s->numbuttons; i++ ) {
-        button *b=&s->buttons[i];
-        palgroup *bp=&bpgs[i];
+	// fprintf(stderr,"attempt %d groups, %d useimg\n",ng,useimg);
+	// find unique colors per button
+	for (i = 0; i < s->numbuttons; i++)
+	  {
+		button *b = &s->buttons[i];
+		palgroup *bp = &bpgs[i]; /* button's colour table filled in here */
 
-        if( b->r.x0 != b->r.x1 && b->r.y0 != b->r.y1
-	    && (b->r.x0 < 0 || b->r.x0 > b->r.x1 || b->r.x1 > s->xd
-		|| b->r.y0 < 0 || b->r.y0 > b->r.y1 || b->r.y1 > s->yd) )
-        {
-            if (debug > -1)
-                fprintf(stderr,
-                        "ERR: Button coordinates out of range: (%d,%d)-(%d,%d)\n",
-                        b->r.x0, b->r.y0, b->r.x1, b->r.y1);
-            exit(1);
-        }
-        for( y=b->r.y0; y<b->r.y1; y++ )
-            for( x=b->r.x0; x<b->r.x1; x++ )
-                if( !checkcolor(bp,gettricolor(s,y*s->xd+x,useimg)) )
-                    goto impossible;
-        // fprintf(stderr,"pbg: button %d has %d colors\n",i,bp->numpal);
-    }
+		if
+		  (
+				b->r.x0 != b->r.x1
+			&&
+				b->r.y0 != b->r.y1
+			&&
+				(
+					b->r.x0 < 0
+				||
+					b->r.x0 > b->r.x1
+				||
+					b->r.x1 > s->xd
+				||
+					b->r.y0 < 0
+				||
+					b->r.y0 > b->r.y1
+				||
+					b->r.y1 > s->yd
+				)
+		  )
+		  {
+			if (debug > -1)
+				fprintf
+				  (
+					stderr,
+					"ERR: Button coordinates out of range: (%d,%d)-(%d,%d)\n",
+					b->r.x0, b->r.y0, b->r.x1, b->r.y1
+				  );
+			exit(1);
+		  } /*if*/
+		for (y = b->r.y0; y < b->r.y1; y++)
+			for (x = b->r.x0; x < b->r.x1; x++)
+				if (!checkcolor(bp, gettricolor(s, y * s->xd + x, useimg)))
+					goto impossible;
+		// fprintf(stderr, "pbg: button %d has %d colors\n", i, bp->numpal);
+      } /*for i*/
 
-    // assign to groups
-    enb=1;
-    for( i=0; i<s->numbuttons; i++ )
-        enb*=ng;
-    for( i=0; i<enb; i++ ) {
-        // check that the buttons fit in the buttongroups
-        for( j=0; j<ng; j++ )
-            gs[j].numpal=0;
-        // fprintf(stderr,"trying ");
-        k=i;
-        for( j=0; j<s->numbuttons; j++ ) {
-            int l;
-            palgroup *pd=&gs[k%ng],*ps=&bpgs[j];
+	// assign to groups
+	enb = 1;
+	for (i = 0; i < s->numbuttons; i++)
+		enb *= ng; /* how many combinations to try--warning! combinatorial explosion! */
+	for (i = 0; i < enb; i++)
+	  {
+	  /* try another combination for assigning buttons to groups */
+		for (j = 0; j < ng; j++)
+			gs[j].numpal = 0; /* clear all button group palettes */
+		// fprintf(stderr, "trying ");
+		k = i;
+		for (j = 0; j < s->numbuttons; j++)
+		  {
+			int l;
+			palgroup *pd = &gs[k % ng];
+			  /* palette for group to which to try to assign this button */
+			palgroup *ps = &bpgs[j]; /* palette for button */
 
-            s->buttons[j].grp=k%ng+1;
-            // fprintf(stderr,"%s%d",j?", ":"",s->buttons[j].grp);
-            k/=ng;
-            for( l=0; l<ps->numpal; l++ )
-                if( !checkcolor(pd,ps->pal[l]) ) {
-                    // fprintf(stderr," -- failed mapping button %d\n",j);
-                    goto trynext;
-                }
-        }
-        // if necessary, check if the image fits in one palette
-        if(useimg) {
-            palgroup p;
+			s->buttons[j].grp = k % ng + 1; /* assign button group */
+			// fprintf(stderr, "%s%d",j?", ":"", s->buttons[j].grp);
+			k /= ng;
+			for (l = 0; l < ps->numpal; l++)
+			  /* try to merge button palette into group palette */
+				if (!checkcolor(pd, ps->pal[l]))
+				  {
+					// fprintf(stderr, " -- failed mapping button %d\n", j);
+					goto trynext;
+				  } /*if; for*/
+		  } /*for j*/
+		if (useimg)
+		  {
+		  /* ensure the colours used in s->img for all the buttons fit in a single palette */
+			palgroup p;
 
-            p.numpal=s->img.numpal;
-            for( j=0; j<p.numpal; j++ )
-                p.pal[j]=j;
-            for( j=0; j<ng; j++ ) {
-                for( k=0; k<4; k++ )
-                    s->groupmap[j][k]=-1;
-                for( k=0; k<p.numpal; k++ )
-                    p.pal[k]&=255;
-                for( k=0; k<gs[j].numpal; k++ ) {
-                    int l,c;
+			p.numpal = s->img.numpal;
+			for (j = 0; j < p.numpal; j++)
+				p.pal[j] = j;
+			for (j = 0; j < ng; j++)
+			  {
+				for (k = 0; k < 4; k++)
+					s->groupmap[j][k] = -1; /* button group palettes initially empty */
+				for (k = 0; k < p.numpal; k++)
+					p.pal[k] &= 255; /* clear colour-already-matched flag */
+				for (k = 0; k < gs[j].numpal; k++)
+				  {
+					int l, c;
 
-                    c=(gs[j].pal[k]>>16);
-                    for( l=0; l<p.numpal; l++ )
-                        if( p.pal[l] == c ) {
-                            goto ui_found;
-                        }
-                    if( p.numpal==4 ) {
-                        // fprintf(stderr," -- failed finding unique overall palette\n");
-                        goto trynext;
-                    }
-                    p.numpal++;
-                ui_found:
-                    p.pal[l]=c|256;
-                    s->groupmap[j][l]=gs[j].pal[k];
-                }
+					c = gs[j].pal[k] >> 16; /* s->img component of tricolor from button group palette */
+					for (l = 0; l < p.numpal; l++)
+						if (p.pal[l] == c)
+						  {
+							goto ui_found;
+						  } /*if; for */
+					if (p.numpal == 4)
+					  {
+						// fprintf(stderr, " -- failed finding unique overall palette\n");
+						goto trynext;
+					  } /*if*/
+					p.numpal++;
+ui_found:
+					p.pal[l] = c | 256; /* mark palette entry as already matched */
+					s->groupmap[j][l] = gs[j].pal[k]; /* merge colour into button group palette */
+				  } /*for*/
+			  } /*for j*/
+		  }
+		else
+		  {
+		  /* save the final button group palettes */
+			for (j = 0; j < ng; j++)
+			  {
+				for (k = 0; k < gs[j].numpal; k++)
+					s->groupmap[j][k] = gs[j].pal[k];
+				for (; k < 4; k++)
+					s->groupmap[j][k] = -1; /* unused palette entries */
+			  } /*for*/
+		  } /*if*/
+		free(bpgs);
+		free(gs);
 
-            }
-        } else {
-            for( j=0; j<ng; j++ ) {
-                for( k=0; k<gs[j].numpal; k++ )
-                    s->groupmap[j][k]=gs[j].pal[k];
-                for( ; k<4; k++ )
-                    s->groupmap[j][k]=-1;
-            }
-        }
-        free(bpgs);
-        free(gs);
+		// If possible, make each palette entry 0 transparent in
+		// all states, since some players may pad buttons with 0
+		// and we also pad with 0 in some cases.
+		for (j = 0; j < ng; j++)
+		  {
+			int spare = -1;
+			int tri;
 
-	// If possible, make each palette entry 0 transparent in
-	// all states, since some players may pad buttons with 0
-	// and we also pad with 0 in some cases.
-	for( j=0; j<ng; j++ ) {
-	    int spare = -1;
-	    int tri;
+			// search for an unused color, or one that is already fully transparent
+			for (k = 0; k < 4; k++)
+			  {
+				tri = s->groupmap[j][k];
+				if
+				  (
+						tri == -1
+					||
+							s->img.pal[(tri >> 16) & 0xFF].t == 0
+						&&
+							s->hlt.pal[(tri >> 8) & 0xFF].t == 0
+						&&
+							s->sel.pal[tri & 0xFF].t == 0
+				  )
+				  {
+					spare = k;
+					break;
+				  } /*if*/
+			  } /*for*/
+			// if we find a spare color but one that is not transparent, make one that is transparent
+			if (spare > 0 && tri == -1)
+			  {
+				tri = 0;
+				for (k = 0; k < s->img.numpal; ++k)
+					if (s->img.pal[k].t == 0)
+					  {
+						tri |= k << 16;
+						break;
+					  } /*if; for*/
+				for (k = 0; k < s->hlt.numpal; ++k)
+					if (s->hlt.pal[k].t == 0)
+					  {
+						tri |= k << 8;
+						break;
+					  } /*if; for*/
+				for (k = 0; k < s->sel.numpal; ++k)
+					if (s->sel.pal[k].t == 0)
+					  {
+						tri |= k;
+						break;
+					  } /*if*/
+			  } /*if*/
+			if (spare > 0)
+			  {
+				s->groupmap[j][spare] = s->groupmap[j][0];
+				s->groupmap[j][0] = tri;
+			  } /*if*/
+		  } /*for j*/
 
-            // search for an unused color, or one that is already fully transparent
-	    for( k=0; k<4; k++ ) {
-		tri = s->groupmap[j][k];
-		if( tri == -1
-		    || (s->img.pal[(tri >> 16) & 0xFF].t == 0
-			&& s->hlt.pal[(tri >> 8) & 0xFF].t == 0
-			&& s->sel.pal[tri & 0xFF].t == 0) ) {
-		    spare = k;
-		    break;
-		}
-	    }
-            // if we find a spare color but one that is not transparent, make one that is transparent
-	    if( spare > 0 && tri == -1 ) {
-		tri = 0;
-		for( k=0; k<s->img.numpal; ++k )
-		    if( s->img.pal[k].t == 0 ) {
-			tri |= k << 16;
-			break;
-		    }
-		for( k=0; k<s->hlt.numpal; ++k )
-		    if( s->hlt.pal[k].t == 0 ) {
-			tri |= k << 8;
-			break;
-		    }
-		for( k=0; k<s->sel.numpal; ++k )
-		    if( s->sel.pal[k].t == 0 ) {
-			tri |= k;
-			break;
-		    }
-	    }
-	    if( spare > 0 ) {
-		s->groupmap[j][spare] = s->groupmap[j][0];
-		s->groupmap[j][0] = tri;
-	    }
-	}
+		fprintf(stderr, "INFO: Pickbuttongroups, success with %d groups, useimg=%d\n", ng, useimg);
+		s->numgroups = ng;
+		return 1;
+trynext:
+		continue; // 'deprecated use of label at end of compound statement'
+	  } /*for i*/
 
-        fprintf(stderr,"INFO: Pickbuttongroups, success with %d groups, useimg=%d\n",ng,useimg);
-        s->numgroups=ng;
-        return 1;
-    trynext:
-        continue; // 'deprecated use of label at end of compound statement'
-    }
-
- impossible:
-    free(bpgs);
-    free(gs);
-    return 0;
-}
+impossible:
+	free(bpgs);
+	free(gs);
+	return 0;
+  } /*pickbuttongroups*/
 
 static void fixnames(stinfo *s)
+  /* assigns default names to buttons that don't already have them. */
 {
     int i;
 
@@ -614,6 +686,8 @@ static void findbestbindir(stinfo *s,button *b,char **dest,int a)
 }
 
 static void detectdirections(stinfo *s)
+  /* automatically detects the neighbours of each button in each direction, where
+	these have not already been specified. */
 {
     int i;
 
@@ -659,6 +733,7 @@ static int scanhline(stinfo *s,unsigned char *v,rectangle *r,int y,int d)
 }
 
 static void detectbuttons(stinfo *s)
+  /* does automatic detection of button outlines. */
 {
     unsigned char *visitmask=malloc(s->xd*s->yd);
     int i,x,y;
@@ -756,138 +831,165 @@ static void detectbuttons(stinfo *s)
 }
 
 static int imgfix(stinfo *s)
+  /* fills in the subpicture/button details. */
 {
     int i,useimg,w,h,x,y,x0,y0;
 
-    w=s->img.width;
-    h=s->img.height;
-    s->xd=w; // pickbuttongroups needs these values set
-    s->yd=h;
+    w = s->img.width;
+    h = s->img.height;
+    s->xd = w; // pickbuttongroups needs these values set
+    s->yd = h;
 
-    if( s->autooutline )
+    if (s->autooutline)
         detectbuttons(s);
 
     fixnames(s);
     detectdirections(s);
 
-    s->fimg=malloc(w*h);
-    memset(s->fimg,255,w*h);
+    s->fimg = malloc(w * h);
+    memset(s->fimg, 255, w * h);
 
     // first try not to have multiple palettes for
-    useimg=1;
-    if( s->numbuttons ) {
-        i=0;
-        do {
-            if( pickbuttongroups(s,1,useimg) ) break;
-            if( pickbuttongroups(s,2,useimg) ) break;
-            if( pickbuttongroups(s,3,useimg) ) break;
+    useimg = 1;
+    if (s->numbuttons)
+	  {
+        i = 0;
+        do
+		  {
+            if (pickbuttongroups(s, 1, useimg))
+				break;
+            if (pickbuttongroups(s, 2, useimg))
+				break;
+            if (pickbuttongroups(s, 3, useimg))
+				break;
             useimg--;
-        } while(useimg>=0);
-
+          }
+		while (useimg >= 0);
         // at this point I don't want to deal with blocking the primary subtitle image
         assert(useimg);
-
-        if( useimg<0 ) {
-            fprintf(stderr,"ERR: Cannot pick button masks\n");
+        if (useimg < 0)
+		  {
+            fprintf(stderr, "ERR: Cannot pick button masks\n");
             return 0;
-        }
+          } /*if*/
 
-        for( i=0; i<s->numbuttons; i++ ) {
-            button *b=&s->buttons[i];
+        for (i = 0; i < s->numbuttons; i++)
+		  {
+            button *b = &s->buttons[i];
 
-            for( y=b->r.y0; y<b->r.y1; y++ )
-                for( x=b->r.x0; x<b->r.x1; x++ ) {
-                    int dc=-1,p=y*w+x,j;
-                    int c=gettricolor(s,p,useimg);
-                    for( j=0; j<4; j++ )
-                        if( s->groupmap[b->grp-1][j]==c ) {
-                            dc=j;
+            for (y = b->r.y0; y < b->r.y1; y++)
+                for (x = b->r.x0; x < b->r.x1; x++)
+				  {
+                    int dc = -1, p = y * w + x, j;
+                    int c = gettricolor(s, p, useimg);
+                    for (j = 0; j < 4; j++)
+                        if (s->groupmap[b->grp-1][j] == c)
+						  {
+                            dc = j;
                             break;
-                        }
-                    if( dc == -1 ) {
-                        fprintf(stderr,"ERR: Button %d cannot find color %06x in group %d\n",i,c,b->grp-1);
-                        assert(dc!=-1);
-                    }
-                    if( s->fimg[p]!=dc && s->fimg[p]!=255 ) {
-                        fprintf(stderr,"ERR: Overlapping buttons\n");
+						  } /*if; for*/
+                    if (dc == -1)
+					  {
+                        fprintf(stderr, "ERR: Button %d cannot find color %06x in group %d\n",
+							i, c, b->grp - 1);
+                        assert(dc != -1); /* instant assertion failure */
+                      } /*if*/
+                    if (s->fimg[p] != dc && s->fimg[p] != 255)
+					  {
+                        fprintf(stderr, "ERR: Overlapping buttons\n");
                         return 0;
-                    }
-                    s->fimg[p]=dc;
-                }
-        }
-    }
-    for( i=0; i<4; i++ ) {
-        s->pal[i].r=255;
-        s->pal[i].g=255;
-        s->pal[i].b=255;
-        s->pal[i].t=0;
-    }
-    for( i=0; i<w*h; i++ )
-        if( s->fimg[i]!=255 )
-            s->pal[s->fimg[i]]=s->img.pal[s->img.img[i]];
-    for( i=0; i<w*h; i++ )
-        if( s->fimg[i]==255 ) {
+                      } /*if*/
+                    s->fimg[p] = dc;
+				  } /*for; for*/
+		  } /*for*/
+	  } /*if s->numbuttons*/
+    for (i = 0; i < 4; i++)
+	  {
+        s->pal[i].r = 255;
+        s->pal[i].g = 255;
+        s->pal[i].b = 255;
+        s->pal[i].t = 0;
+	  } /*for*/
+    for (i = 0; i < w * h; i++)
+        if (s->fimg[i] != 255)
+            s->pal[s->fimg[i]] = s->img.pal[s->img.img[i]];
+    for (i = 0; i < w * h; i++)
+        if (s->fimg[i] == 255)
+		  {
             int j;
-            palt *p=&s->img.pal[s->img.img[i]];
+            palt *p = &s->img.pal[s->img.img[i]];
 
-            for( j=0; j<4; j++ )
-                if( !memcmp(&s->pal[j],p,sizeof(palt)) )
+            for (j = 0; j < 4; j++)
+                if (!memcmp(&s->pal[j], p, sizeof(palt)))
                     goto if_found;
-            for( j=0; j<4; j++ )
-                if( s->pal[j].t==0 && s->pal[j].r==255 ) {
-                    s->pal[j]=*p;
+            for (j = 0; j < 4; j++)
+                if (s->pal[j].t == 0 && s->pal[j].r == 255)
+				  {
+                    s->pal[j] = *p;
                     goto if_found;
-                }
-            fprintf(stderr,"ERR: Too many colors in base picture\n");
+				  } /*if*/
+            fprintf(stderr, "ERR: Too many colors in base picture\n");
             return 0;
 
-        if_found:
-            s->fimg[i]=j;
-        }
+if_found:
+            s->fimg[i] = j;
+		  } /*if; for*/
 
     // determine minimal visual area, and crop the subtitle accordingly
-    x0=w;
-    y0=-1;
-    s->xd=0;
-    s->yd=0;
-    for( i=0, y=0; y<h; y++ ) {
-        for( x=0; x<w; i++, x++ ) {
-            if( s->img.pal[s->img.img[i]].t ||
-                s->hlt.pal[s->hlt.img[i]].t ||
-                s->sel.pal[s->sel.img[i]].t ) {
-
-                if( y0==-1 ) y0=y;
-                s->yd=y;
-
-                if( x<x0 ) x0=x;
-                if( x>s->xd ) s->xd=x;
-            }
-        }
-    }
-    if( y0==-1 ) { // empty image?
-        s->xd=w;
-        s->yd=h;
+    x0 = w;
+    y0 = -1;
+    s->xd = 0;
+    s->yd = 0;
+    for (i = 0, y = 0; y < h; y++)
+	  {
+        for (x = 0; x < w; i++, x++)
+		  {
+			if
+			  (
+					s->img.pal[s->img.img[i]].t
+				||
+					s->hlt.pal[s->hlt.img[i]].t
+				||
+					s->sel.pal[s->sel.img[i]].t
+			  )
+			  {
+                if (y0 == -1)
+					y0 = y;
+                s->yd = y;
+                if (x < x0)
+					x0 = x;
+                if (x > s->xd)
+					s->xd = x;
+			  } /*if*/
+		  } /*for*/
+	  } /*for*/
+    if (y0 == -1)
+	  { // empty image?
+        s->xd = w;
+        s->yd = h;
         return 1;
-    }
-    x0&=-2;
-    y0&=-2;
-    s->xd=(s->xd+2-x0)&(-2);
-    s->yd=(s->yd+2-y0)&(-2);
-    for( i=0; i<s->yd; i++ )
-        memmove(s->fimg+i*s->xd,s->fimg+i*w+x0+y0*w,s->xd);
-    for( i=0; i<s->numbuttons; i++ ) {
-        button *b=&s->buttons[i];
-        b->r.x0+=s->x0;
-        b->r.y0+=s->y0;
-        b->r.x1+=s->x0;
-        b->r.y1+=s->y0;
-    }
-    s->x0+=x0;
-    s->y0+=y0;
+	  } /*if*/
+    x0 &= -2;
+    y0 &= -2;
+    s->xd = (s->xd + 2 - x0) & (-2);
+    s->yd = (s->yd + 2 - y0) & (-2);
+    for (i = 0; i < s->yd; i++)
+        memmove(s->fimg + i * s->xd, s->fimg + i * w + x0 + y0 * w, s->xd);
+    for (i = 0; i < s->numbuttons; i++)
+	  {
+        button *b = &s->buttons[i];
+        b->r.x0 += s->x0;
+        b->r.y0 += s->y0;
+        b->r.x1 += s->x0;
+        b->r.y1 += s->y0;
+	  } /*for*/
+    s->x0 += x0;
+    s->y0 += y0;
     return 1;
-} /* end function imgfix */
+  } /*imgfix*/
 
 int process_subtitle(stinfo *s)
+  /* loads the specified image files and builds the subpicture in memory. */
 {
     int w=0,h=0;
     int iline=0;
@@ -925,6 +1027,7 @@ int process_subtitle(stinfo *s)
         fprintf(stderr,"WARN: No picture, skipping line %d\n",iline-1);
         return 0;
     }
+  /* check consistent dimensions, fill in missing images with blanks */
     if( !s->img.img ) {
         constructblankpic(&s->img,w,h);
         fprintf(stderr,"INFO: Constructing blank img\n");

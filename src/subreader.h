@@ -1,3 +1,6 @@
+/*
+    Reading of subtitle files
+*/
 #ifndef __SUBREADER_H
 #define __SUBREADER_H
 

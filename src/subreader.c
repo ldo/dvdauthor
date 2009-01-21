@@ -1,3 +1,6 @@
+/*
+    Reading of subtitle files
+*/
 /* Copyright (C) 2000 - 2003 various authors of the MPLAYER project
  * This module uses various parts of the MPLAYER project (http://www.mplayerhq.hu)
  * With many changes by Sjef van Gool (svangool@hotmail.com) November 2003
@@ -2042,7 +2045,7 @@ void dump_sami(sub_data* subd, float fps) {
     fd=fopen("dumpsub.smi","w");
     if(!fd)
     {
-	perror("dump_jacosub: fopen");
+	perror("dump_sami: fopen");
 	return;
     }
     fprintf(fd, "<SAMI>\n"

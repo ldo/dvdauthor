@@ -1,4 +1,7 @@
 /*
+    Generation of subpicture encoding
+*/
+/*
  * Copyright (C) 2002, 2003 Jan Panteltje <panteltje@yahoo.com>
  * With many changes by Scott Smith (trckjunky@users.sourceforge.net)
  *

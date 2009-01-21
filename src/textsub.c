@@ -222,6 +222,7 @@ void textsub_finish()
 }
 
 #ifdef TEXTSUB_DEBUG
+/* test program to save text rendering to a PNG file */
 
 static int framenum = 0;
 
