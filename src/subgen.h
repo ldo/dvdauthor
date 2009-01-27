@@ -50,7 +50,7 @@ typedef struct { /* representation of a subpicture and associated buttons */
     int spts, sd; // start pts, subtitle duration
     int forced;
     int numbuttons; /* nr entries in buttons */
-    int numpal; /* nr entries in masterpal */
+    int numpal; /* nr entries used in masterpal */
     int autooutline,outlinewidth,autoorder;
     pict img; /* button image in "normal" state */
     pict hlt; /* button image in "highlighted" state (user has moved to button with remote) */
