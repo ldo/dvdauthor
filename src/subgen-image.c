@@ -467,6 +467,7 @@ static int pickbuttongroups(stinfo *s, int ng, int useimg)
 		  {
 		  /* save the final button group palettes, ensuring the colours used in s->img
 			for all the buttons fit in a single palette */
+		  /* Whatever this code is trying to do, it doesn't work */
 			palgroup p;
 
 			p.numpal = s->img.numpal;
@@ -520,7 +521,7 @@ ui_found:
 		for (j = 0; j < ng; j++)
 		  {
 			int spare = -1;
-			int tri;
+			int tri; /* tricolor */
 
 			// search for an unused color, or one that is already fully transparent
 			for (k = 0; k < 4; k++)
@@ -541,9 +542,11 @@ ui_found:
 					break;
 				  } /*if*/
 			  } /*for*/
-			// if we find a spare color but one that is not transparent, make one that is transparent
+		  /* at this point, if spare = 0 then nothing to do, entry if any at location 0
+			is already transparent */
 			if (spare > 0 && tri == -1)
 			  {
+			  /* got an unused slot, make up a transparent entry to exchange it with */
 				tri = 0;
 				for (k = 0; k < s->img.numpal; ++k)
 					if (s->img.pal[k].t == 0)
@@ -566,8 +569,9 @@ ui_found:
 			  } /*if*/
 			if (spare > 0)
 			  {
-				s->groupmap[j][spare] = s->groupmap[j][0];
-				s->groupmap[j][0] = tri;
+			  /* move transparent colour to location 0 */
+				s->groupmap[j][spare] = s->groupmap[j][0]; /* move nontransparent colour */
+				s->groupmap[j][0] = tri; /* to make way for transparent one */
 			  } /*if*/
 		  } /*for j*/
 
