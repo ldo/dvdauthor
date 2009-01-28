@@ -25,7 +25,7 @@ typedef struct
 } palt;
 
 typedef struct { /* representation of a raster image read from a file on disk */
-    unsigned char *fname; /* name of file to read image from */
+    char *fname; /* name of file to read image from */
     unsigned char *img; /* one byte per pixel, index into pal */
     palt pal[256]; /* image colour table */
     int numpal; /* nr used entries in pal */

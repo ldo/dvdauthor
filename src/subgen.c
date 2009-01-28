@@ -294,7 +294,7 @@ static void wdlong(unsigned long l)
     wdest+=4;
 }
 
-static void wdstr(unsigned char *s)
+static void wdstr(char *s)
 {
     while(*s)
         wdbyte(*s++);

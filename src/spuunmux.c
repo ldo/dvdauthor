@@ -503,13 +503,13 @@ static int write_png(char *file_name,struct spu *s,struct colormap *map,int numm
 	png_byte *row_pointers[576];
 
 	if (full_size) {
-	    char *image;
+	    unsigned char *image;
 	    temp = out_buf;
 	    image = malloc(720 * 576 * 4);
 	    memset(image, 0, 720 * 576 * 4);	// fill image full transparrent
 	    // insert image on the correct position
 	    for (y = s->y0; y < s->y0 + s->yd; y++) {
-		char *to = &image[y * 720 * 4 + s->x0 * 4];
+		unsigned char *to = &image[y * 720 * 4 + s->x0 * 4];
 		for (x = 0; x < s->xd; x++) {
 		    *to++ = *temp++;
 		    *to++ = *temp++;
@@ -721,7 +721,7 @@ int main(int argc, char **argv)
     unsigned short int package_length;
     unsigned char cbuf[CBUFSIZE];
     unsigned char psbuf[PSBUFSIZE];
-    unsigned char nbuf[256], *palet_file, *iname[256];
+    char nbuf[256], *palet_file, *iname[256];
 
     fputs(PACKAGE_HEADER("spuunmux"),stderr);
 

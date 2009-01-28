@@ -370,7 +370,7 @@ void blur(
 	int width,
 	int height,
 	int stride,
-	int *m2,
+	unsigned int *m2,
 	int r,
 	int mwidth) {
 
