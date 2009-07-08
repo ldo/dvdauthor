@@ -53,7 +53,13 @@ static int xml_varied_close(void *context)
     return 0;
 }
 
-int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
+int readxml
+  (
+	const char *xmlfile, /* filename to read */
+	const struct elemdesc *elems, /* array terminated by entry with null elemname field */
+	const struct elemattr *attrs /* array terminated by entry with null elem field */
+  )
+  /* opens and reads an XML file according to the given element and attribute definitions. */
 {
     int curstate=0,statehistory[10];
     xmlTextReaderPtr f;
@@ -152,6 +158,7 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
                     return 1;
             }
             curstate=elems[i].parentstate;
+		  /* Note I don't handle sub-tags mixed with content! */
             if( parser_body )
                 free(parser_body);
             parser_body=0;
@@ -182,8 +189,9 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
             }
 
             if( !parser_body )
-                parser_body=strdup(v);
+                parser_body=strdup(v); /* first lot of tag content */
             else {
+			  /* append to previous tag content */
                 parser_body=realloc(parser_body,strlen(parser_body)+strlen(v)+1);
                 strcat(parser_body,v);
             }
@@ -203,6 +211,7 @@ int readxml(const char *xmlfile,struct elemdesc *elems,struct elemattr *attrs)
 }
 
 int xml_ison(const char *s)
+  /* interprets v as a value indicating yes/no/on/off, returning 1 for yes/on or 0 for no/off. */
 {
     if( !strcmp(s,"1") || !strcasecmp(s,"on") || !strcasecmp(s,"yes") )
         return 1;
@@ -214,10 +223,13 @@ int xml_ison(const char *s)
 #if defined(HAVE_ICONV) && defined(HAVE_LANGINFO_CODESET)
 
 static iconv_t get_conv()
+  /* returns a reusable iconv_t object (allocated on the first call)
+	for converting strings from UTF-8 to the current locale encoding. */
 {
-    static iconv_t ic=(iconv_t)-1;
+    static iconv_t ic=(iconv_t)-1; /* initially unallocated */
 
     if( ic==((iconv_t)-1) ) {
+	  /* first call */
         char *enc;
 
         errno=0;
@@ -242,10 +254,12 @@ static iconv_t get_conv()
 }
 
 char *utf8tolocal(const char *in)
+  /* converts a UTF-8-encoded character string to the current locale encoding,
+	suitable for use for file names. */
 {
     iconv_t c=get_conv();
     size_t inlen=strlen(in);
-    size_t outlen=inlen*5;
+    size_t outlen=inlen*5; /* hopefully this is enough */
     char *r=malloc(outlen+1);
     char *out=r;
     size_t v;
