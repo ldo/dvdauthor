@@ -1,4 +1,7 @@
 /*
+	Lower-level definitions for building DVD authoring structures
+*/
+/*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
  *
  * This program is free software; you can redistribute it and/or modify
@@ -172,9 +175,11 @@ struct workset {
     const struct pgcgroup *titles;
 };
 
-extern char *entries[];
+/* following implemented in dvdauthor.c */
+
+extern char *entries[]; /* PGC menu entry types */
 extern int jumppad, allowallreg;
-extern char *pstypes[];
+extern char *pstypes[]; /* PGC types */
 
 void write8(unsigned char *p,unsigned char d0,unsigned char d1,
             unsigned char d2,unsigned char d3,
@@ -197,14 +202,22 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,char *s);
 int vobgroup_set_video_framerate(struct vobgroup *va,int rate);
 int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int attr,char *s);
 
+/* following implemented in dvdcompile.c */
+
 unsigned char *vm_compile(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,int ismenu);
 void vm_optimize(unsigned char *obuf,unsigned char *buf,unsigned char **end);
 struct vm_statement *vm_parse(const char *b);
 
+/* following implemented in dvdifo.c */
+
 void WriteIFOs(char *fbase,const struct workset *ws);
 void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname);
 
+/* following implemented in dvdpgc.c */
+
 int CreatePGC(FILE *h,const struct workset *ws,int ismenu);
+
+/* following implemented in dvdvob.c */
 
 int FindVobus(char *fbase,struct vobgroup *va,int ismenu);
 void MarkChapters(struct vobgroup *va);

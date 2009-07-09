@@ -34,12 +34,17 @@
 #include "readxml.h"
 #include "rgb.h"
 
+/* common parsing bits for both command line and XML file */
 
 #define RGB2YCrCb(R,G,B) ((((int)RGB2Y(R,G,B))<<16)|(((int)RGB2Cr(R,G,B))<<8)|(((int)RGB2Cb(R,G,B))))
 
 static int readdvdauthorxml(const char *xmlfile,char *fb);
 
-static int hadchapter=0,pauselen=0,writeoutput=1;
+static int
+	hadchapter=0,
+	  /* 1 if vob chapters specified via cells (and possibly also "chapters" attribute),
+		2 if only via "chapters" attribute, 0 if neither seen yet */
+	pauselen=0,writeoutput=1;
 static char *chapters=0;
 
 static void parsevideoopts(struct pgcgroup *va,char *o)
@@ -295,6 +300,7 @@ static void usage()
     exit(1);
 }
 
+/* bits for authoring via command line */
 #define MAINDEF                                                      \
             if( !usedtocflag ) {                                     \
                 fprintf(stderr,"ERR:  Must first specify -t, -m, or -x.\n"); \
@@ -328,7 +334,7 @@ int main(int argc,char **argv)
 {
     struct pgcgroup *va[2];
     struct menugroup *mg;
-    char *fbase=0;
+    char *fbase=0; /* output directory name */
     int curva=1,istoc=0,l,
         usedtocflag=0; // whether the 'istoc' value has been used or not
     struct pgc *curpgc=0,*fpc=0;
@@ -557,6 +563,8 @@ int main(int argc,char **argv)
     return 0;
 }
 
+/* authoring via XML file */
+
 enum {
     DA_BEGIN=0,
     DA_ROOT,
@@ -569,13 +577,35 @@ enum {
 };
 
 static struct pgcgroup *titles=0, *curgroup=0;
-static struct menugroup *mg=0, *vmgmmenus=0;
+static struct menugroup
+	*mg=0, /* current menu group (for titleset or vmgm) */
+	*vmgmmenus=0; /* vmgm menu group */
 static struct pgc *curpgc=0,*fpc=0;
 static struct source *curvob=0;
-static char *fbase=0,*buttonname=0;
-static int ismenuf=0,istoc=0,setvideo=0,setaudio=0,setsubpicture=0,subpmode=DA_NOSUB,hadtoc=0,subpstreamid=-1;
-static char *subpstreammode=0;
-static int vobbasic,cell_chapter;
+static char
+	*fbase=0, /* output directory name */
+	*buttonname=0; /* name of button currently being defined */
+static int
+	ismenuf=0, /* 0 - vts, 1 - vtsm, 2 - vmgm */
+	istoc=0, /* 1 for vmgm, 0 for titleset */
+	setvideo=0, /* to keep count of <video> tags */
+	setaudio=0, /* to keep count of <audio> tags */
+	setsubpicture=0, /* to keep count of <subpicture> tags */
+	subpmode=DA_NOSUB,
+	  /* for determining context of a <subpicture> tag:
+		DA_NOSUB -- invalid
+		DA_PGC -- inside a <pgc> tag (no "lang" attribute allowed)
+		DA_PGCGROUP -- inside a <menus> or <titles> tag, must come before the <pgc> tags
+	  */
+	hadtoc=0, /* set to 1 when vmgm seen */
+	subpstreamid=-1; /* id attribute of current <stream> saved here */
+static char *subpstreammode=0; /* mode attribute of current <stream> saved here */
+static int
+	vobbasic,
+	  /* 1 if vob has "chapters" or "pause" attribute,
+		2 if it has <cell> subtags, 0 if neither seen yet */
+	cell_chapter;
+	  /* 1 if cell has chapter attribute, 2 if has program attribute, 0 if neither seen yet */
 static double cell_starttime,cell_endtime;
 static char menulang[3];
 
@@ -735,6 +765,7 @@ static void fpc_end()
 }
 
 static void pgcgroup_start()
+  /* common part of both <menus> and <titles> start */
 {
     setvideo=0;
     setaudio=-1;
@@ -781,6 +812,7 @@ static void video_start()
 {
     if( setvideo ) {
         fprintf(stderr,"ERR:  Already defined video characteristics for this PGC group\n");
+		  /* only one video stream allowed */
         parser_err=1;
     } else
         setvideo=1;
@@ -1021,9 +1053,9 @@ static void vob_end()
 static void cell_start()
 {
     parser_acceptbody=1;
-    assert(vobbasic!=1);
+    assert(vobbasic!=1); /* no "chapters" or "pause" attribute on containing <vob> allowed */
     vobbasic=2;
-    cell_starttime=cell_endtime;
+    cell_starttime=cell_endtime; /* new cell starts where previous one ends */
     cell_endtime=-1;
     cell_chapter=0;
     pauselen=0;
@@ -1048,6 +1080,8 @@ static void cell_parsechapter(char *f)
         exit(1);
     } else if (i)
         cell_chapter=1;
+		  /* override "program" attribute if previously seen -- should really
+			flag presence of both as error? */
 }
 
 static void cell_parseprogram(char *f)
@@ -1058,6 +1092,8 @@ static void cell_parseprogram(char *f)
         exit(1);
     } else if (i && cell_chapter!=1 )
         cell_chapter=2;
+		  /* let "chapter" attribute take precedence if previously seen --
+			should really flag presence of both as error? */
 }
 
 static void cell_pauselen(char *f)
