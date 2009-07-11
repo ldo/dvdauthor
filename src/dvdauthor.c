@@ -103,7 +103,7 @@ static int getratecode(const struct vobgroup *va)
     if( va->vd.vframerate )
         return va->vd.vframerate;
     else
-        return 4;
+        return VR_NTSC; /* fixme: should be a user-configurable setting */
 }
 
 int getratedenom(const struct vobgroup *va)
@@ -234,7 +234,7 @@ int vobgroup_set_video_framerate(struct vobgroup *va,int rate)
 {
     int w;
 
-    if( !va->vd.vframerate && rate!=3 && rate!=4 )
+    if( !va->vd.vframerate && rate!=VR_PAL && rate!=VR_NTSC )
         fprintf(stderr,"WARN: not a valid DVD frame rate: %s\n",vratedesc[rate]);
     w=scanandwarnupdate(&va->vd.vframerate,vratedesc[rate],&va->vdwarn.vframerate,"frame rate",vratedesc);
     if(w) return w-1;
@@ -899,12 +899,12 @@ static void colorinfo_free(struct colorinfo *ci)
         free(ci);
 }
 
-static struct vob *vob_new(const char *fname,struct pgc *p)
+static struct vob *vob_new(const char *fname,struct pgc *progchain)
 {
     struct vob *v=malloc(sizeof(struct vob));
     memset(v,0,sizeof(struct vob));
     v->fname=strdup(fname);
-    v->p=p;
+    v->progchain=progchain;
     return v;
 }
 
@@ -950,7 +950,7 @@ static void vobgroup_addvob(struct vobgroup *pg,struct pgc *p,struct source *s)
     forcenew=(p->numbuttons!=0);
     if( !forcenew ) {
         for( i=0; i<pg->numvobs; i++ )
-            if( !strcmp(pg->vobs[i]->fname,s->fname) && pg->vobs[i]->p->numbuttons==0 )
+            if( !strcmp(pg->vobs[i]->fname,s->fname) && pg->vobs[i]->progchain->numbuttons==0 )
             {
                 s->vob=pg->vobs[i];
                 return;

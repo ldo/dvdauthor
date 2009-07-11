@@ -23,19 +23,20 @@
 #ifndef __DA_INTERNAL_H_
 #define __DA_INTERNAL_H_
 
-enum {VM_NONE=0,VM_MPEG1=1,VM_MPEG2=2};
-enum {VS_NONE=0,VS_720H=1,VS_704H=2,VS_352H=3,VS_352L=4};
-enum {VF_NONE=0,VF_NTSC=1,VF_PAL=2};
-enum {VA_NONE=0,VA_4x3=1,VA_16x9=2};
-enum {VW_NONE=0,VW_NOLETTERBOX=1,VW_NOPANSCAN=2,VW_CROP=3};
-enum {VR_NONE=0,VR_NTSCFILM=1,VR_FILM=2,VR_PAL=3,VR_NTSC=4,VR_30=5,VR_PALFIELD=6,VR_NTSCFIELD=7,VR_60=8};
-enum {AF_NONE=0,AF_AC3=1,AF_MP2=2,AF_PCM=3,AF_DTS=4};
-enum {AQ_NONE=0,AQ_16=1,AQ_20=2,AQ_24=3,AQ_DRC=4};
-enum {AD_NONE=0,AD_SURROUND=1};
-enum {AL_NONE=0,AL_NOLANG=1,AL_LANG=2};
-enum {AS_NONE=0,AS_48KHZ=1,AS_96KHZ=2};
+enum {VM_NONE=0,VM_MPEG1=1,VM_MPEG2=2}; /* values for videodesc.vmpeg */
+enum {VS_NONE=0,VS_720H=1,VS_704H=2,VS_352H=3,VS_352L=4}; /* values for videodesc.vres */
+enum {VF_NONE=0,VF_NTSC=1,VF_PAL=2}; /* values for videodesc.vformat */
+enum {VA_NONE=0,VA_4x3=1,VA_16x9=2}; /* values for videodesc.vaspect */
+enum {VW_NONE=0,VW_NOLETTERBOX=1,VW_NOPANSCAN=2,VW_CROP=3}; /* values for videodesc.vwidescreen */
+enum {VR_NONE=0,VR_NTSCFILM=1,VR_FILM=2,VR_PAL=3,VR_NTSC=4,VR_30=5,VR_PALFIELD=6,VR_NTSCFIELD=7,VR_60=8}; /* values for videodesc.vframerate */
 
-typedef int64_t pts_t;
+enum {AF_NONE=0,AF_AC3=1,AF_MP2=2,AF_PCM=3,AF_DTS=4}; /* values for audiodesc.aformat */
+enum {AQ_NONE=0,AQ_16=1,AQ_20=2,AQ_24=3,AQ_DRC=4}; /* values for audiodesc.aquant */
+enum {AD_NONE=0,AD_SURROUND=1}; /* values for audiodesc.adolby */
+enum {AL_NONE=0,AL_NOLANG=1,AL_LANG=2}; /* values for audiodesc.alangp and subpicdesc.slangp */
+enum {AS_NONE=0,AS_48KHZ=1,AS_96KHZ=2}; /* values for audiodesc.asample */
+
+typedef int64_t pts_t; /* timestamp in units of 90kHz clock */
 
 struct vobuinfo {
     int sector,lastsector,fsect,fnum,vobcellid,firstvobuincell,lastvobuincell,hasseqend,hasvideo;
@@ -49,17 +50,17 @@ struct colorinfo {
     int colors[16];
 };
 
-struct videodesc {
+struct videodesc { /* describes a video stream */
     int vmpeg,vres,vformat,vaspect,vwidescreen,vframerate,vcaption;
 };
 
-struct audiodesc {
+struct audiodesc { /* describes an audio stream */
     int aformat,aquant,adolby;
     int achannels,alangp,aid,asample;
     char lang[2];
 };
 
-struct subpicdesc {
+struct subpicdesc { /* describes a subpicture stream */
     int slangp;
     char lang[2];
     unsigned char idmap[4]; // (128 | id) if defined
@@ -72,11 +73,11 @@ struct cell {
     struct vm_statement *cs;
 };
 
-struct source {
+struct source { /* describes an input video file */
     char *fname;
-    int numcells;
-    struct cell *cells;
-    struct vob *vob;
+    int numcells; /* nr elements in cells */
+    struct cell *cells; /* array */
+    struct vob *vob; /* containing vob */
 };
 
 struct audpts {
@@ -94,7 +95,7 @@ struct vob {
     char *fname;
     int numvobus,maxvobus;
     int vobid,numcells;
-    struct pgc *p; // used for colorinfo and buttons
+    struct pgc *progchain; // used for colorinfo and buttons
     struct vobuinfo *vi;
     // 0-31: top two bits are the audio type, bottom 3 bits are the channel id
     // 32-63: bottom five bits are subpicture id

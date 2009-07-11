@@ -898,7 +898,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                         case 1: // new colormap
                         {
                             int j;
-                            crs[st].origmap=s->p->ci;
+                            crs[st].origmap=s->progchain->ci;
                             for( j=0; j<buf[i+1]; j++ ) {
                                 crs[st].newcolors[j]=0x1000000|
                                     (buf[i+2+3*j]<<16)|
@@ -935,11 +935,11 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                                 struct buttoninfo *bi,bitmp;
                                 char *bn=readpstr(buf,&i);
                                     
-                                if( !findbutton(s->p,bn,0) ) {
+                                if( !findbutton(s->progchain,bn,0) ) {
                                     fprintf(stderr,"ERR:  Cannot find button '%s' as referenced by the subtitle\n",bn);
                                     exit(1);
                                 }
-                                b=&s->p->buttons[findbutton(s->p,bn,0)-1];
+                                b=&s->progchain->buttons[findbutton(s->progchain,bn,0)-1];
                                 free(bn);
 
                                 if( b->numstream>=MAXBUTTONSTREAM ) {
@@ -1619,8 +1619,8 @@ void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int
                 write4(buf+0x41,vi->videopts[1]); // vobu_se_e_ptm
             write4(buf+0x45,buildtimeeven(va,vi->sectpts[0]-p->vi[vi->firstvobuincell].sectpts[0])); // total guess
                 
-            if( p->p->numbuttons ) {
-                struct pgc *pg=p->p;
+            if( p->progchain->numbuttons ) {
+                struct pgc *pg=p->progchain;
                 int mask=getsubpmask(&va->vd),ng,grp;
                 char idmap[3];
 
