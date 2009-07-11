@@ -1,3 +1,6 @@
+/*
+	Decompile VM instructions to human-readable form
+*/
 /* Ogle - A video player
  * Copyright (C) 2000, 2001 Martin Norbäck, Håkan Hjort
  *
@@ -28,14 +31,20 @@
 #include "dvduncompile.h"
 
 
-static xmlNodePtr output;
-static const char *outputbase=0;
-static int indent=0,isnewline=0,curline;
+static xmlNodePtr
+	output; /* formatted output appended here */
+static const char
+	*outputbase=0;
+	  /* prepended to every line for indentation purposes relative to caller's output */
+static int
+	indent=0, /* current internal indentation level */
+	isnewline=0, /* am I starting a new line */
+	curline; /* for labelling branch targets */
 
-typedef struct
+typedef struct /* for holding command instruction currently being decoded */
 {
-    uint8_t bits[8];
-    uint8_t examined[8];
+    uint8_t bits[8]; /* the command instruction */
+    uint8_t examined[8]; /* for tracking leftover bits */
 } cmd_t;
 
 
@@ -110,7 +119,8 @@ static const char *system_reg_abbr_table[] = {
 };
 #endif
 
-static const char *entries[16]={
+static const char *entries[16]= /* menu entry types */
+{
     "UNKNOWN0",  "UNKNOWN1",  "title",     "root", // XXX: is 1 == fpc?
     "subtitle",  "audio",     "angle",     "ptt",
     "UNKNOWN8",  "UNKNOWN9",  "UNKNOWN10", "UNKNOWN11",
@@ -122,7 +132,7 @@ static void node_printf(const char *format,...)
     static char bigbuf[1024];
     va_list ap;
 
-    if( isnewline ) {
+    if( isnewline ) { /* starting a new line, prepend appropriate indentation */
         int i;
 
         xmlAddChildList(output,xmlNewText(outputbase));
@@ -139,6 +149,7 @@ static void node_printf(const char *format,...)
 }
 
 static void node_commentf(const char *format,...)
+/* attaches an XML comment to the output */
 {
     static char bigbuf[1024];
     va_list ap;
@@ -153,16 +164,19 @@ static void node_commentf(const char *format,...)
 }
 
 static void node_newline(void)
+/* starts a new line in the output */
 {
     isnewline=1;
 }
 
 static void node_indent(void)
+/* increases the indentation level */
 {
     indent++;
 }
 
 static void node_closebrace(void)
+/* outputs a closing brace on a line by itself and decreases the indentation level */
 {
     node_newline();
     indent--;
@@ -170,7 +184,9 @@ static void node_closebrace(void)
     node_newline();
 }
 
-static uint32_t bits(cmd_t *cmd, int byte, int bit, int count) {
+static uint32_t bits(cmd_t *cmd, int byte, int bit, int count)
+/* extracts count bits from cmd->bits at offset given by byte and bit */
+{
     uint32_t val = 0;
     int bit_mask;
   
@@ -179,11 +195,11 @@ static uint32_t bits(cmd_t *cmd, int byte, int bit, int count) {
             bit = 0;
             byte++;
         }
-        bit_mask = 0x01 << (7-bit);
+        bit_mask = 0x01 << (7-bit); /* bits are numbered from most significant end of byte */
         val <<= 1;
-        if((cmd->bits[byte]) & bit_mask)
+        if((cmd->bits[byte]) & bit_mask) /* extract next bit */
             val |= 1;
-        cmd->examined[byte] |= bit_mask;
+        cmd->examined[byte] |= bit_mask; /* mark bit as used */
         bit++;
     }
     return val;
@@ -226,7 +242,7 @@ static void print_set_op(uint8_t op) {
 
 static void print_reg_or_data(cmd_t *cmd, int immediate, int bytei, int byter, int scln) {
     if(immediate) {
-        int i = bits(cmd,bytei,0,16);
+        int i = bits(cmd,bytei,0,16); /* immediate value */
     
         node_printf("%d", i);
         if( scln )
@@ -321,7 +337,7 @@ static void print_special_instruction(cmd_t *cmd) {
         node_printf("break;");
         break;
     case 3: // Parental level
-        if( bits(cmd,7,0,8) == curline+1 ) {
+        if( bits(cmd,7,0,8) == curline+1 ) { /* branch to following instr => no branch */
             node_printf("SetTmpPML(%" PRIu8 ");", bits(cmd,6,4,4));
         } else {
             node_printf("if( SetTmpPML(%" PRIu8 ") ) {", bits(cmd,6,4,4));
@@ -558,10 +574,11 @@ static void print_set_version_3(cmd_t *cmd) {
 }
 
 static void print_command(cmd_t *cmd)
+  /* does the actual disassembly of a single command instruction. */
 {
     node_newline();
 
-    switch(bits(cmd,0,0,3)) { /* three first bits */
+    switch(bits(cmd,0,0,3)) { /* instruction class */
     case 0: // Special instructions
         print_if_version_1(cmd);
         print_special_instruction(cmd);
@@ -622,6 +639,7 @@ static void print_command(cmd_t *cmd)
 }
 
 static void vm_add_mnemonic(vm_cmd_t *command)
+  /* disassembles a single command. */
 {
     int i, extra_bits;
     cmd_t cmd;
@@ -648,8 +666,15 @@ static void vm_add_mnemonic(vm_cmd_t *command)
     }
 }
 
-void vm_add_mnemonics(xmlNodePtr node,const char *base,int ncmd,vm_cmd_t *command)
-{
+void vm_add_mnemonics
+  (
+	xmlNodePtr node, /* the node to append the disassembly to */
+	const char *base, /* prepended to every output line for indentation purposes */
+	int ncmd, /* nr of commands */
+	vm_cmd_t *commands /* array */
+  )
+  /* disassembles the specified command sequence as content for the specified XML tag. */
+  {
     int i,j;
 
     output=node;
@@ -659,22 +684,31 @@ void vm_add_mnemonics(xmlNodePtr node,const char *base,int ncmd,vm_cmd_t *comman
 
     for( i=0; i<ncmd; i++ ) {
         curline=i+1;
-        for( j=0; j<ncmd; j++ )
-            if( command[j].bytes[0]==0 &&
-                ((command[j].bytes[1]&15)==1 ||
-                 (command[j].bytes[1]&15)==3) &&
-                command[j].bytes[7]==curline )
-            {
-                indent--;
-                node_newline();
-                node_printf("l%d:",curline);
-                indent++;
-                break;
-            }
-        vm_add_mnemonic(command+i);
+        for (j = 0; j < ncmd; j++)
+			if /* some instruction has a branch target here */
+			  (
+					commands[j].bytes[0] == 0 /* special instruction */
+				&&
+					(
+						(commands[j].bytes[1] & 15) == 1 /* goto */
+					||
+						(commands[j].bytes[1] & 15) == 3 /* parental control */
+					)
+				&&
+					commands[j].bytes[7] == curline /* target of branch is here */
+			  )
+			  {
+			  /* output label definition for target of branch */
+				indent--;
+				node_newline();
+				node_printf("l%d:",curline);
+				indent++;
+				break;
+			  } /* if; for */
+		vm_add_mnemonic(commands+i);
     }
 
     node_newline();
     indent=0;
     node_printf("");
-}
+  }
