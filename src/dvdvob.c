@@ -156,7 +156,7 @@ static unsigned int getsect(struct vob *va,int curvobnum,int jumpvobnum,int skip
     if( skip ) {
         int l,h,i;
 
-        // only set skip bit if one of hte VOBU's from here to there contain video
+        // only set skip bit if one of the VOBU's from here to there contain video
         if( curvobnum<jumpvobnum ) {
             l=curvobnum+1;
             h=jumpvobnum-1;
@@ -233,22 +233,40 @@ static int findbutton(struct pgc *pg,char *dest,int dflt)
 }
 
 static void transpose_ts(unsigned char *buf,pts_t tsoffs)
+  /* adjusts the timestamps in the specified PACK header and its constituent packets
+	by the specified amount. */
 {
     // pack scr
-    if( buf[0] == 0 &&
-        buf[1] == 0 &&
-        buf[2] == 1 &&
-        buf[3] == 0xba )
+    if
+	  (
+			buf[0] == 0
+		&&
+			buf[1] == 0
+		&&
+			buf[2] == 1
+		&&
+			buf[3] == 0xba /* PACK header */
+	  )
     {
         writescr(buf+4,readscr(buf+4)+tsoffs);
-
         // video/audio?
         // pts?
-        if( buf[14] == 0 &&
-            buf[15] == 0 &&
-            buf[16] == 1 &&
-            (buf[17]==0xbd || (buf[17]>=0xc0 && buf[17]<=0xef)) &&
-            (buf[21] & 128))
+        if
+		  (
+				buf[14] == 0
+			&&
+				buf[15] == 0
+			&&
+				buf[16] == 1
+			&&
+				(
+					buf[17] == 0xbd /* private stream 1 */
+				||
+					buf[17] >= 0xc0 && buf[17] <= 0xef /* audio or video stream */
+				)
+			&&
+				(buf[21] & 128) /* PTS present */
+		  )
         {
             writepts(buf+23,readpts(buf+23)+tsoffs);
             // dts?
@@ -259,26 +277,26 @@ static void transpose_ts(unsigned char *buf,pts_t tsoffs)
     }
 }
 
-static int mpa_valid(unsigned char *b)
+static int mpa_valid(const unsigned char *b)
 {
-    unsigned int v=(b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3];
+    const unsigned int v = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
     int t;
 
     // sync, mpeg1, layer2, 48khz
-    if( (v&0xFFFE0C00) != 0xFFFC0400 )
+    if ((v & 0xFFFE0C00) != 0xFFFC0400)
         return 0;
     // bitrate 1..14
-    t=(v>>12)&15;
-    if( t==0 || t==15 )
+    t = (v >> 12) & 15;
+    if (t == 0 || t == 15)
         return 0;
     // emphasis reserved
-    if( (v&3)==2 )
+    if ((v & 3) == 2)
         return 0;
     return 1;
 }
 
 
-static int mpa_len(unsigned char *b)
+static int mpa_len(const unsigned char *b)
 {
     static int bitratetable[16]={0,32,48,56,64,80,96,112,128,160,192,224,256,320,384,0};
     int padding=(b[2]>>1)&1;
@@ -340,38 +358,48 @@ static void closelastref(struct vobuinfo *thisvi,struct vscani *vsi,int cursect)
     }
 }
 
-// this function is allowed to update buf[7] and gaurantee it will end up
+// this function is allowed to update buf[7] and guarantee it will end up
 // in the output stream
 // prevbytesect is the sector for the byte immediately preceding buf[0]
 static void scanvideoptr(struct vobgroup *va,unsigned char *buf,struct vobuinfo *thisvi,int prevbytesect,struct vscani *vsi)
-{
-    if( buf[0]==0 &&
-        buf[1]==0 &&
-        buf[2]==1 ) {
-        switch(buf[3]) {
-        case 0: {
-            int ptype=(buf[5]>>3)&7;
-            int temporal=(buf[4]<<2)|(buf[5]>>6);
+  {
+    if
+	  (
+			buf[0]==0
+		&&
+			buf[1]==0
+		&&
+			buf[2]==1
+	  )
+	  {
+        switch(buf[3])
+		  {
+        case 0: /* picture header */
+		  {
+            const int ptype = (buf[5] >> 3) & 7; /* frame type, 1 => I, 2 => P, 3 => B, 4 => D */
+            const int temporal = (buf[4] << 2) | (buf[5] >> 6); /* temporal sequence number */
 
             closelastref(thisvi,vsi,prevbytesect);
-            if( vsi->firsttemporal==-1 )
-                vsi->firsttemporal=temporal;
-            vsi->lastadjust=( temporal < vsi->firsttemporal );
-            if( ptype == 1 || ptype == 2 ) // I or P frame
-                vsi->lastrefsect=1;
+            if (vsi->firsttemporal == -1)
+                vsi->firsttemporal = temporal;
+            vsi->lastadjust = (temporal < vsi->firsttemporal);
+            if (ptype == 1 || ptype == 2) // I or P frame
+                vsi->lastrefsect = 1;
 
-            if( va->vd.vmpeg==VM_MPEG1) {
-                thisvi->numfields+=2;
-                if(vsi->lastadjust && vsi->firstgop==2)
-                    thisvi->firstIfield+=2;
-            }
+            if (va->vd.vmpeg == VM_MPEG1)
+			  {
+                thisvi->numfields += 2;
+                if (vsi->lastadjust && vsi->firstgop == 2)
+                    thisvi->firstIfield += 2;
+              } /*if*/
 
             // fprintf(stderr,"INFO: frame type %d, tempref=%d, prevsect=%d\n",ptype,temporal,prevbytesect);
-            break;
-        } 
+        break;
+          } /*case 0*/
 
-        case 0xb3: { // sequence header
-            int hsize,vsize,aspect,frame,newaspect;
+        case 0xb3: /* sequence header */
+		  {
+            int hsize,vsize,aspect,framerate,newaspect;
             char sizestring[30];
             
             closelastref(thisvi,vsi,prevbytesect);
@@ -379,111 +407,131 @@ static void scanvideoptr(struct vobgroup *va,unsigned char *buf,struct vobuinfo 
             hsize=(buf[4]<<4)|(buf[5]>>4);
             vsize=((buf[5]<<8)&0xf00)|buf[6];
             aspect=buf[7]>>4;
-            frame=buf[7]&0xf;
+            framerate=buf[7]&0xf;
 
-            vobgroup_set_video_framerate(va,frame);
-            switch(frame) {
+            vobgroup_set_video_framerate(va,framerate);
+            switch(framerate)
+			  {
             case 1: // 24000/1001
             case 4: // 30000/1001
             case 7: // 60000/1001
                 vobgroup_set_video_attr(va,VIDEO_FORMAT,"ntsc");
-                break;
+            break;
 
             case 3: // 25
             case 6: // 50
                 vobgroup_set_video_attr(va,VIDEO_FORMAT,"pal");
-                break;
+            break;
 
             case 2: // 24
             case 5: // 30
             case 8: // 60
-                break; // these are nonstandard, but at least we know what they are
+			   // these are nonstandard, but at least we know what they are
+            break;
 
             default:
-                fprintf(stderr,"WARN: unknown frame rate %d\n",frame);
-                break;
-            }
+                fprintf(stderr,"WARN: unknown frame rate %d\n",framerate);
+            break;
+              } /* switch(framerate) */
            
             sprintf(sizestring,"%dx%d",hsize,vsize);
             vobgroup_set_video_attr(va,VIDEO_RESOLUTION,sizestring);
 
-            if( va->vd.vmpeg==VM_MPEG1) {
-                switch( aspect ) {
+            if (va->vd.vmpeg == VM_MPEG1)
+			  {
+                switch (aspect)
+				  {
                 case 3:
                     vobgroup_set_video_attr(va,VIDEO_ASPECT,"16:9");
                     vobgroup_set_video_attr(va,VIDEO_FORMAT,"pal");
-                    break;
+                break;
                 case 6:
                     vobgroup_set_video_attr(va,VIDEO_ASPECT,"16:9");
                     vobgroup_set_video_attr(va,VIDEO_FORMAT,"ntsc");
-                    break;
+                break;
                 case 8:
                     vobgroup_set_video_attr(va,VIDEO_ASPECT,"4:3");
                     vobgroup_set_video_attr(va,VIDEO_FORMAT,"pal");
-                    break;
+                break;
                 case 12:
                     vobgroup_set_video_attr(va,VIDEO_ASPECT,"4:3");
                     vobgroup_set_video_attr(va,VIDEO_FORMAT,"ntsc");
-                    break;
+                break;
                 default:
                     fprintf(stderr,"WARN: unknown mpeg1 aspect ratio %d\n",aspect);
-                    break;
-                }
-                newaspect=3+
-                    (va->vd.vaspect==VA_4x3)*5+
-                    (va->vd.vformat==VF_NTSC)*3;
-                if( newaspect==11 ) newaspect++;
-                buf[7]=(buf[7]&0xf)|(newaspect<<4); // reset the aspect ratio
-            } else if( va->vd.vmpeg==VM_MPEG2 ) {
-                if( aspect==2 )
+                break;
+                  } /*switch*/
+                newaspect = 
+						3
+					+
+						(va->vd.vaspect == VA_4x3) * 5
+					+
+						(va->vd.vformat == VF_NTSC) * 3;
+                if (newaspect == 11)
+					newaspect++;
+                buf[7] = (buf[7] & 0xf) | (newaspect << 4); // reset the aspect ratio
+              }
+			else if (va->vd.vmpeg == VM_MPEG2)
+			  {
+                if (aspect == 2)
                     vobgroup_set_video_attr(va,VIDEO_ASPECT,"4:3");
-                else if( aspect==3 )
+                else if (aspect == 3)
                     vobgroup_set_video_attr(va,VIDEO_ASPECT,"16:9");
                 else
                     fprintf(stderr,"WARN: unknown mpeg2 aspect ratio %d\n",aspect);
-                buf[7]=(buf[7]&0xf)|(va->vd.vaspect==VA_4x3?2:3)<<4; // reset the aspect ratio
-            }
+                buf[7] = (buf[7] & 0xf) | (va->vd.vaspect == VA_4x3 ? 2 : 3) << 4; // reset the aspect ratio
+              } /*if*/
             break;
-        }
+          } /* case 0xb3 */
 
-        case 0xb5: { // extension header
+        case 0xb5: /* extension header */
+		  {
             vobgroup_set_video_attr(va,VIDEO_MPEG,"mpeg2");
-            switch(buf[4]&0xF0) {
+            switch (buf[4] & 0xF0)
+			  {
             case 0x10: // sequence extension
                 closelastref(thisvi,vsi,prevbytesect);
-                break;
+            break;
 
             case 0x20: // sequence display extension
                 closelastref(thisvi,vsi,prevbytesect);
-                switch(buf[4]&0xE) {
-                case 2: vobgroup_set_video_attr(va,VIDEO_FORMAT,"pal"); break;
-                case 4: vobgroup_set_video_attr(va,VIDEO_FORMAT,"ntsc"); break;
-                    // case 6: // secam
-                    // case 10: // unspecified
-                }
-                break;
+                switch (buf[4] & 0xE) /* video format */
+				  {
+                case 2:
+					vobgroup_set_video_attr(va,VIDEO_FORMAT,"pal");
+				break;
+                case 4:
+					vobgroup_set_video_attr(va,VIDEO_FORMAT,"ntsc");
+				break;
+				// case 6: // secam
+				// case 10: // unspecified
+                  }
+            break;
 
             case 0x80: { // picture coding extension
                 int padj=1; // default field pic
                 
-                if( (buf[6]&3)==3 ) padj++; // adj for frame pic
-                if( buf[7]&2 )      padj++; // adj for repeat flag
+                if ((buf[6] & 3) /* picture structure */ == 3)
+					padj++; // adj for frame pic
+                if (buf[7] & 2) /* repeat first field */
+					padj++; // adj for repeat flag
                 
                 thisvi->numfields+=padj;
                 if(vsi->lastadjust && vsi->firstgop==2)
                     thisvi->firstIfield+=padj;
                 // fprintf(stderr,"INFO: repeat flag=%d, cursect=%d\n",buf[7]&2,cursect);
-                break;
-            }
+            break;
+              }
 
-            }
-            break;
-        }
+              } /*switch*/
+        break;
+          } /* case 0xb5 */
             
-        case 0xb7: { // sequence end code
+        case 0xb7: /* sequence end */
+		  {
             thisvi->hasseqend=1;
-            break;
-        }
+        break;
+          } /* case 0xb7 */
 
         case 0xb8: // gop header
             closelastref(thisvi,vsi,prevbytesect);
@@ -495,7 +543,7 @@ static void scanvideoptr(struct vobgroup *va,unsigned char *buf,struct vobuinfo 
             } else if( vsi->firstgop==2 ) {
                 vsi->firstgop=0;
             }
-            break;
+        break;
 
         /*
         case 0xb8: { // gop header
@@ -510,9 +558,9 @@ static void scanvideoptr(struct vobgroup *va,unsigned char *buf,struct vobuinfo 
         }
         */
 
-        }
-    }
-}
+          } /*switch*/
+    } /*if*/
+  } /*scanvideoptr*/
 
 static void scanvideoframe(struct vobgroup *va,unsigned char *buf,struct vobuinfo *thisvi,int cursect,int prevsect,struct vscani *vsi)
 {
@@ -879,14 +927,27 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                 writeundo();
                 break;
             }
-            if( buf[14]==0 && buf[15]==0 && buf[16]==1 && buf[17]==0xbe && !strcmp(buf+20,"dvdauthor-data")) {
-                // private dvdauthor data, should be removed from the final stream
+            if
+			  (
+					buf[14] == 0
+				&&
+					buf[15] == 0
+				&&
+					buf[16] == 1
+				&&
+					buf[17] == 0xbe /* padding stream */
+				&&
+					!strcmp(buf + 20, "dvdauthor-data")
+			  )
+			  {
+                // private dvdauthor data, interpret and remove from final stream
                 int i=35;
-                if( buf[i]!=1 ) {
+                if (buf[i] != 1)
+				  {
                     fprintf(stderr,"ERR: dvd info packet is version %d\n",buf[i]);
                     exit(1);
-                }
-                switch(buf[i+1]) { // packet type
+                  } /*if*/
+                switch (buf[i+1]) { // packet type
 
                 case 1: // subtitle/menu color and button information
                 {
@@ -983,19 +1044,21 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                     exit(1);
                 }
 
-                writeundo();
+                writeundo(); /* drop private data from output */
                 continue;
             }
-            if( buf[0]==0 && buf[1]==0 && buf[2]==1 && buf[3]==0xba ) {
-                pts_t newscr=readscr(buf+4);
-                if( newscr < lastscr ) {
+            if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == 0xba) /* PACK header */
+			  {
+                const pts_t newscr = readscr(buf + 4);
+                if (newscr < lastscr)
+				  {
                     fprintf(stderr,"ERR:  SCR moves backwards, remultiplex input.\n");
                     exit(1);
-                }
-                lastscr=newscr;
-                if( !hadfirstvobu )
-                    backoffs=newscr;
-            }
+                  } /*if*/
+                lastscr = newscr;
+                if (!hadfirstvobu)
+                    backoffs = newscr;
+              } /*if*/
             transpose_ts(buf,-backoffs);
             if( fsect == -1 ) {
                 char newname[200];
@@ -1008,165 +1071,245 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                     writeopen(newname);
                 }
             }
-            if( buf[14] == 0 &&
-                buf[15] == 0 &&
-                buf[16] == 1 &&
-                buf[17] == 0xbb ) // system header
-            {
-                if( buf[38] == 0 &&
-                    buf[39] == 0 &&
-                    buf[40] == 1 &&
-                    buf[41] == 0xbf && // 1st private2
-                    buf[1024] == 0 &&
-                    buf[1025] == 0 &&
-                    buf[1026] == 1 &&
-                    buf[1027] == 0xbf ) // 2nd private2
-                {
+            if
+			  (
+					buf[14] == 0
+				&&
+					buf[15] == 0
+				&&
+					buf[16] == 1
+				&&
+					buf[17] == 0xbb /* system header */
+			  )
+              {
+                if
+				  (
+						buf[38] == 0
+					&&
+						buf[39] == 0
+					&&
+						buf[40] == 1
+					&&
+						buf[41] == 0xbf // 1st private2
+					&&
+						buf[1024] == 0
+					&&
+						buf[1025] == 0
+					&&
+						buf[1026] == 1
+					&&
+						buf[1027] == 0xbf // 2nd private2
+				  ) /* looks like a NAV PACK */
+                  {
                     struct vobuinfo *vi;
-                    if( s->numvobus )
+                    if (s->numvobus)
                         finishvideoscan(va,vnum,prevvidsect,&vsi);
                     // fprintf(stderr,"INFO: vobu\n");
-                    hadfirstvobu=1;
+                    hadfirstvobu = 1; /* NAV PACK starts a VOBU */
                     s->numvobus++;
-                    if( s->numvobus > s->maxvobus ) {
-                        if( !s->maxvobus )
-                            s->maxvobus=1;
+                    if (s->numvobus > s->maxvobus)
+					  {
+                        if (!s->maxvobus)
+                            s->maxvobus = 1;
                         else
-                            s->maxvobus<<=1;
-                        s->vi=(struct vobuinfo *)realloc(s->vi,s->maxvobus*sizeof(struct vobuinfo));
-                    }
-                    vi=&s->vi[s->numvobus-1];
-                    memset(vi,0,sizeof(struct vobuinfo));
-                    vi->sector=cursect;
-                    vi->fsect=fsect;
-                    vi->fnum=outnum;
-                    vi->firstvideopts=-1;
-                    vi->firstIfield=0;
-                    vi->numfields=0;
-                    vi->numref=0;
-                    vi->hasseqend=0;
-                    vi->hasvideo=0;
-                    memcpy(s->vi[s->numvobus-1].sectdata,buf,0x26); // save pack and system header; the rest will be reconstructed later
-                    if( !(s->numvobus&15) )
+                            s->maxvobus <<= 1;
+                        s->vi = (struct vobuinfo *)realloc(s->vi, s->maxvobus * sizeof(struct vobuinfo));
+                      } /*if*/
+                    vi = &s->vi[s->numvobus - 1];
+                    memset(vi, 0, sizeof(struct vobuinfo));
+                    vi->sector = cursect;
+                    vi->fsect = fsect;
+                    vi->fnum = outnum;
+                    vi->firstvideopts = -1;
+                    vi->firstIfield = 0;
+                    vi->numfields = 0;
+                    vi->numref = 0;
+                    vi->hasseqend = 0;
+                    vi->hasvideo = 0;
+                    memcpy(s->vi[s->numvobus-1].sectdata, buf, 0x26); // save pack and system header; the rest will be reconstructed later
+                    if (!(s->numvobus & 15)) /* time to let user know progress */
                         printvobustatus(va,cursect);
-                    vsi.lastrefsect=0;
-                    vsi.firstgop=1;
-                } else {
+                    vsi.lastrefsect = 0;
+                    vsi.firstgop = 1;
+                  }
+				else
+				  {
                     fprintf(stderr,"WARN: System header found, but PCI/DSI information is not where expected\n\t(make sure your system header is 18 bytes!)\n");
-                }
-            }
-            if( !hadfirstvobu ) {
+                  } /*if*/
+              } /*if*/
+            if (!hadfirstvobu)
+			  {
                 fprintf(stderr,"WARN: Skipping sector, waiting for first VOBU...\n");
-                writeundo();
+                writeundo(); /* ignore it */
                 continue;
-            }
-            s->vi[s->numvobus-1].lastsector=cursect;
+              } /*if*/
+            s->vi[s->numvobus - 1].lastsector = cursect;
 
-            i=14;
-            j=-1;
-            while(i<=2044) {
-                if( buf[i]==0 && buf[i+1]==0 && buf[i+2]==1 ) {
-                    if (buf[i+3]>=0xBD && buf[i+3]<=0xEF ) {
-                        j=i;
-                        i+=6+read2(buf+i+4);
+            i = 14;
+            j = -1;
+            while (i <= 2044)
+			  {
+                if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1)
+				  {
+                    if (buf[i + 3] >= 0xBD && buf[i + 3] <= 0xEF) /* private, padding, audio or video stream */
+					  {
+                        j = i;
+                        i += 6 + read2(buf + i + 4); /* start of next packet */
                         continue;
-                    } else if( buf[i+3]==0xB9 && j>=14 && buf[j+3]==0xBE ) {
-                        write2(buf+j+4,read2(buf+j+4)+4);
-                        memset(buf+i,0,4); // mplex uses 0 for padding, so will I                        
-                    }
-                }
+                      }
+					else if
+					  (
+							buf[i + 3] == 0xB9 /* program end */
+						&&
+							j >= 14
+						&&
+							buf[j + 3] == 0xBE /* previous was padding stream */
+					  )
+					  {
+                        write2(buf + j + 4, read2(buf + j + 4) + 4);
+                        memset(buf + i, 0, 4); // mplex uses 0 for padding, so will I
+                      } /*if*/
+                  } /*if*/
                 break;
-            }
+              } /*while*/
 
-            if( buf[0] == 0 &&
-                buf[1] == 0 &&
-                buf[2] == 1 &&
-                buf[3] == 0xba &&
-                buf[14] == 0 &&
-                buf[15] == 0 &&
-                buf[16] == 1 &&
-                buf[17] == 0xe0 ) { // video
-                struct vobuinfo *vi=&s->vi[s->numvobus-1];
-                vi->hasvideo=1;
-                scanvideoframe(va,buf,vi,cursect,prevvidsect,&vsi);
-                if( (buf[21] & 128) && vi->firstvideopts==-1 ) { // check whether there's a pts
-                    vi->firstvideopts=readpts(buf+23);
-                }
-                prevvidsect=cursect;
-            }
-            if( buf[0] == 0 &&
-                buf[1] == 0 &&
-                buf[2] == 1 &&
-                buf[3] == 0xba &&
-                buf[14] == 0 &&
-                buf[15] == 0 &&
-                buf[16] == 1 &&
-                ((buf[17] & 0xf8) == 0xc0 || buf[17]==0xbd)) {
-                pts_t pts0=0,pts1=0,backpts1=0;
-                int dptr=buf[22]+23,endop=read2(buf+18)+20;
-                int audch,haspts=(buf[21]&128);
-                if( buf[17]==0xbd ) {
-                    int sid=buf[dptr],offs=read2(buf+dptr+2);
-
-                    switch(sid&0xf8) {
+            if
+			  (
+					buf[0] == 0
+				&&
+					buf[1] == 0
+				&&
+					buf[2] == 1
+				&&
+					buf[3] == 0xba /* PACK header */
+				&&
+					buf[14] == 0
+				&&
+					buf[15] == 0
+				&&
+					buf[16] == 1
+				&&
+					buf[17] == 0xe0 /* video stream */
+			  )
+			  {
+                struct vobuinfo * const vi = &s->vi[s->numvobus - 1];
+                vi->hasvideo = 1;
+                scanvideoframe(va, buf, vi, cursect, prevvidsect, &vsi);
+                if
+				  (
+						(buf[21] & 128) /* PTS present */
+					&&
+						vi->firstvideopts == -1 /* not seen one yet */
+				  )
+				  {
+                    vi->firstvideopts = readpts(buf + 23);
+                  } /*if*/
+                prevvidsect = cursect;
+              } /*if*/
+            if
+			  (
+					buf[0] == 0
+				&&
+					buf[1] == 0
+				&&
+					buf[2] == 1
+				&&
+					buf[3] == 0xba /* PACK header */
+				&&
+					buf[14] == 0
+				&&
+					buf[15] == 0
+				&&
+					buf[16] == 1
+				&&
+					(
+						(buf[17] & 0xf8) == 0xc0 /* MPEG audio stream */
+					||
+						buf[17] == 0xbd /* private stream 1 -- DVD audio or subpicture */
+					)
+			  )
+			  {
+                pts_t pts0 = 0, pts1 = 0, backpts1 = 0;
+                const int dptr = buf[22] /* PES header data length */ + 23; /* offset to packet data */
+				const int endop = read2(buf + 18) /* PES packet length */ + 20 /* fixed PES header length */; /* end of packet */
+                int audch;
+				const int haspts = (buf[21] & 128);
+                if (buf[17] == 0xbd) /* private stream 1 -- DVD audio or subpicture */
+				  {
+                    const int sid = buf[dptr]; /* sub-stream ID */
+					const int offs = read2(buf + dptr + 2);
+                    switch (sid & 0xf8)
+					  {
                     case 0x20:                          // subpicture
                     case 0x28:                          // subpicture
                     case 0x30:                          // subpicture
-                    case 0x38: audch=sid; break;        // subpicture
-                    case 0x80:                          // ac3
-                        pts1+=2880*buf[dptr+1];
-                        audch=sid&7;
-                        audio_scan_ac3(&s->audch[audch],buf+dptr+4,offs-1,endop-(dptr+4));
-                        break;
-                    case 0x88:                          // dts
-                        audch=24|(sid&7);
-                        audio_scan_dts(&s->audch[audch],buf+dptr+4,offs-1,endop-(dptr+4));
-                        break;
-                    case 0xa0:                          // pcm
-                        pts1+=150*buf[dptr+1];
-                        audch=16|(sid&7);
-                        audio_scan_pcm(&s->audch[audch],buf+dptr+4,endop-(dptr+4));
-                        break;
-                    default:   audch=-1; break;         // unknown
-                    }
-                } else {
-                    int len=endop-dptr;
-                    int index=buf[17]&7;
-                    audch=8|index;                      // mp2
-                    memcpy(mp2hdr[index].buf+3,buf+dptr,3);
-                    while(mp2hdr[index].hdrptr+4<=len) {
+                    case 0x38:                          // subpicture
+						 audch = sid;
+					break;
+                    case 0x80:                          // ac3 audio
+                        pts1 += 2880 * buf[dptr + 1];
+                        audch = sid & 7;
+                        audio_scan_ac3(&s->audch[audch], buf+dptr+4, offs - 1, endop - (dptr + 4));
+                    break;
+                    case 0x88:                          // dts audio
+                        audch = 24 | (sid & 7);
+                        audio_scan_dts(&s->audch[audch], buf + dptr + 4, offs - 1, endop - (dptr + 4));
+                    break;
+                    case 0xa0:                          // pcm audio
+                        pts1 += 150 * buf[dptr + 1];
+                        audch = 16 | (sid & 7);
+                        audio_scan_pcm(&s->audch[audch], buf + dptr + 4, endop - (dptr + 4));
+                    break;
+                    default:         // unknown
+						audch = -1;
+					break;
+                      } /*switch*/
+                  }
+				else /* regular MPEG audio */
+				  {
+                    int len = endop - dptr;
+                    int index = buf[17] & 7;
+                    audch = 8 | index;                      // mp2
+                    memcpy(mp2hdr[index].buf + 3, buf + dptr, 3);
+                    while (mp2hdr[index].hdrptr + 4 <= len)
+					  {
                         unsigned char *h;
-
-                        if( mp2hdr[index].hdrptr < 0 )
-                            h=mp2hdr[index].buf+3+mp2hdr[index].hdrptr;
+                        if (mp2hdr[index].hdrptr < 0)
+                            h = mp2hdr[index].buf + 3 + mp2hdr[index].hdrptr;
                         else
-                            h=buf+dptr+mp2hdr[index].hdrptr;
-
-                        if( !mpa_valid(h) ) {
+                            h = buf + dptr + mp2hdr[index].hdrptr;
+                        if (!mpa_valid(h))
+						  {
                             mp2hdr[index].hdrptr++;
                             continue;
-                        }
-                        if( mp2hdr[index].hdrptr<0 )
-                            backpts1+=2160;
+                          } /*if*/
+                        if (mp2hdr[index].hdrptr < 0)
+                            backpts1 += 2160;
                         else
-                            pts1+=2160;
-                        mp2hdr[index].hdrptr+=mpa_len(h);
-                    }
-                    mp2hdr[index].hdrptr-=len;
-                    memcpy(mp2hdr[index].buf,buf+dptr+len-3,3);
-                    audiodesc_set_audio_attr(&s->audch[audch].ad,&s->audch[audch].adwarn,AUDIO_SAMPLERATE,"48khz");
-                }
-                if( haspts ) {
-                    pts0=readpts(buf+23);
-                    pts1+=pts0;
-                } else if( pts1>0 ) {
+                            pts1 += 2160;
+                        mp2hdr[index].hdrptr += mpa_len(h);
+                      } /*while*/
+                    mp2hdr[index].hdrptr -= len;
+                    memcpy(mp2hdr[index].buf, buf +dptr + len - 3, 3);
+                    audiodesc_set_audio_attr(&s->audch[audch].ad, &s->audch[audch]. adwarn, AUDIO_SAMPLERATE, "48khz");
+                  } /*if*/
+                if (haspts)
+				  {
+                    pts0 = readpts(buf + 23);
+                    pts1 += pts0;
+                  }
+				else if (pts1 > 0)
+				  {
                     fprintf(stderr,"WARN: Audio channel %d contains sync headers but has no PTS.\n",audch);
-                }
+                  } /*if*/
                 // fprintf(stderr,"aud ch=%d pts %d - %d (%d)\n",audch,pts0,pts1,pts1-pts0);
                 // fprintf(stderr,"pts[%d] %d (%02x %02x %02x %02x %02x)\n",va->numaudpts,pts,buf[23],buf[24],buf[25],buf[26],buf[27]);
-                if( audch<0 || audch>=64 ) {
+                if (audch < 0 || audch >= 64)
+				  {
                     fprintf(stderr,"WARN: Invalid audio channel %d\n",audch);
-                } else if( haspts ) {
+                  }
+				else if (haspts)
+				  {
                     struct audchannel *ach=&s->audch[audch];
 
                     if( ach->numaudpts>=ach->maxaudpts ) {
@@ -1211,28 +1354,41 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                     ach->audpts[ach->numaudpts].pts[1]=pts1;
                     ach->audpts[ach->numaudpts].sect=cursect;
                     ach->numaudpts++;
-                }
-            }
+                  } /*if*/
+              } /*if*/
             // the following code scans subtitle code in order to
             // remap the colors and update the end pts
-            if( buf[0] == 0 &&
-                buf[1] == 0 &&
-                buf[2] == 1 &&
-                buf[3] == 0xba &&
-                buf[14] == 0 &&
-                buf[15] == 0 &&
-                buf[16] == 1 &&
-                buf[17] == 0xbd) {
-                int dptr=buf[22]+23,ml=read2(buf+18)+20;
-                int st=buf[dptr];
-                dptr++;
-                if( (st&0xf8)==0x20 ) { // subtitle
-                    procremap(&crs[st&31],buf+dptr,ml-dptr,&s->audch[st].audpts[s->audch[st].numaudpts-1].pts[1]);
-                }
-            }
+            if
+			  (
+					buf[0] == 0
+				&&
+					buf[1] == 0
+				&&
+					buf[2] == 1
+				&&
+					buf[3] == 0xba /* PACK header */
+				&&
+					buf[14] == 0
+				&&
+					buf[15] == 0
+				&&
+					buf[16] == 1
+				&&
+					buf[17] == 0xbd /* private stream 1 */
+			  )
+			  {
+                int dptr = buf[22] /* PES header data length */ + 23; /* offset to packet data */
+				const int ml = read2(buf + 18) /* PES packet length */ + 20 /* fixed PES header length */; /* total length of packet */
+                const int st = buf[dptr]; /* sub-stream ID */
+                dptr++; /* skip sub-stream ID */
+                if ((st & 0xf8) == 0x20)
+				  { /* subpicture stream */
+                    procremap(&crs[st & 31], buf + dptr, ml - dptr, &s->audch[st].audpts[s->audch[st].numaudpts - 1].pts[1]);
+                  } /*if*/
+              } /*if*/
             cursect++;
             fsect++;
-        }
+          } /*while*/
         varied_close(vf);
         if( s->numvobus ) {
             int i;
@@ -1367,7 +1523,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
             }
             fprintf(stderr,"\n");
         }
-    }
+    } /*for*/
     writeclose();
     printvobustatus(va,cursect);
     fprintf(stderr,"\n");
