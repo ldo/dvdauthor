@@ -1458,7 +1458,7 @@ void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,char *fbase)
     }
     sprintf(fbuf,"%s/VIDEO_TS.IFO",vtsdir);
     TocGen(&ws,fpc,fbuf);
-    sprintf(fbuf,"%s/VIDEO_TS.BUP",vtsdir);
+    sprintf(fbuf,"%s/VIDEO_TS.BUP",vtsdir); /* same thing again, backup copy */
     TocGen(&ws,fpc,fbuf);
     for( i=0; i<ts.numvts; i++ )
         if( ts.vts[i].numchapters )

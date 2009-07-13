@@ -31,6 +31,7 @@
 static unsigned char bigwritebuf[BIGWRITEBUFLEN];
 
 static void nfwrite(const void *ptr,size_t len,FILE *h)
+/* writes to h, or turns into a noop if h is null. */
 {
     if( h )
         fwrite(ptr,len,1,h);
@@ -79,11 +80,13 @@ static int getvoblen(const struct vobgroup *va)
 }
 
 static unsigned int getptssec(const struct vobgroup *va,int nsec)
+/* converts nsec seconds to clock ticks adjusted for the video frame rate. */
 {
     return nsec*getratedenom(va);
 }
 
 static unsigned int findptssec(const struct vobgroup *va,int pts)
+/* converts pts frame-rate-adjusted clock ticks to seconds. */
 {
     return pts/getratedenom(va);
 }
@@ -182,6 +185,7 @@ static void CreateTMAPT(FILE *h,const struct pgcgroup *va)
 }
 
 static int numsectVOBUAD(const struct vobgroup *va)
+/* returns the number of sectors a VOBU_ADMAP will take up. */
 {
     int nv=0, i;
 
@@ -192,6 +196,7 @@ static int numsectVOBUAD(const struct vobgroup *va)
 }
 
 static int CreateCallAdr(FILE *h,const struct vobgroup *va)
+/* outputs a VMGM_C_ADT, VTSM_C_ADT or VTS_C_ADT structure containing pointers to all cells. */
 {
     unsigned char *buf=bigwritebuf;
     int i,p,k;
@@ -201,29 +206,30 @@ static int CreateCallAdr(FILE *h,const struct vobgroup *va)
     for( k=0; k<va->numvobs; k++ ) {
         const struct vob *c=va->vobs[k];
         for( i=0; i<c->numvobus; i++ ) {
-            if( !i || c->vi[i].vobcellid!=c->vi[i-1].vobcellid ) {
+            if( !i || c->vi[i].vobcellid!=c->vi[i-1].vobcellid ) { /* starting a new cell */
                 if( i ) {
-                    write4(buf+p+8,c->vi[i-1].lastsector);
+                    write4(buf+p+8,c->vi[i-1].lastsector); /* ending sector within VOB in previous entry */
                     p+=12;
                 }
-                write2(buf+p,c->vi[i].vobcellid>>8);
-                buf[p+2]=c->vi[i].vobcellid;
-                write4(buf+p+4,c->vi[i].sector);
+                write2(buf+p,c->vi[i].vobcellid>>8); /* VOBidn */
+                buf[p+2]=c->vi[i].vobcellid; /* CELLidn */
+                write4(buf+p+4,c->vi[i].sector); /* starting sector within VOB */
             }
         }
-        write4(buf+p+8,c->vi[i-1].lastsector);
+        write4(buf+p+8,c->vi[i-1].lastsector); /* ending sector within VOB in last entry */
         p+=12;
     }
     write4(buf+4,p-1);
     // first 2 bytes of C_ADT contains number of vobs
     write2(buf,va->numvobs);
     assert(p<=BIGWRITEBUFLEN);
-    p=(p+2047)&(-2048);
+    p=(p+2047)&(-2048); /* round up to whole sectors */
     nfwrite(buf,p,h);
-    return p/2048;
+    return p/2048; /* nr sectors written */
 }
 
 static void CreateVOBUAD(FILE *h,const struct vobgroup *va)
+/* outputs a VOBU_ADMAP structure. */
 {
     int i,j,nv;
     unsigned char buf[16];
@@ -361,6 +367,7 @@ static void BuildAVInfo(unsigned char *buf,const struct vobgroup *va)
 }
 
 static int needmenus(const struct menugroup *mg)
+/* do I actually have any menu definitions in mg. */
 {
     if (!mg ) return 0;
     if( !mg->numgroups ) return 0;
@@ -369,6 +376,7 @@ static int needmenus(const struct menugroup *mg)
 }
 
 static void WriteIFO(FILE *h,const struct workset *ws)
+/* writes the IFO for a VTSM. */
 {
     static unsigned char buf[2048];
     int i,forcemenus=needmenus(ws->menus);
@@ -376,7 +384,7 @@ static void WriteIFO(FILE *h,const struct workset *ws)
     // sect 0: VTS toplevel
     memset(buf,0,2048);
     memcpy(buf,"DVDVIDEO-VTS",12);
-    buf[33]=0x11;
+    buf[33]=0x11; /* version number */
     write4(buf+128,0x7ff);
     i=1;
 
@@ -455,15 +463,17 @@ void WriteIFOs(char *fbase,const struct workset *ws)
         WriteIFO(h,ws);
         fclose(h);
         
-        sprintf(buf,"%s_0.BUP",fbase);
+        sprintf(buf,"%s_0.BUP",fbase); /* same thing again, backup copy */
         h=fopen(buf,"wb");
         WriteIFO(h,ws);
         fclose(h);
     } else
+	  /* dummy write */
         WriteIFO(0,ws);
 }
 
 void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
+/* writes the IFO for a VMGM. */
 {
     static unsigned char buf[2048];
     int i,j,vtsstart,forcemenus=needmenus(ws->menus);
@@ -473,46 +483,50 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
 
     memset(buf,0,2048);
     memcpy(buf,"DVDVIDEO-VMG",12);
-    buf[0x21]=0x11;
-    buf[0x27]=1;
-    buf[0x29]=1;
-    buf[0x2a]=1;
-    write2(buf+0x3e,ws->ts->numvts);
-    strncpy((char *)(buf+0x40),PACKAGE_STRING,31);
-    buf[0x86]=4;
+    buf[0x21]=0x11; /* version number */
+    buf[0x27]=1; /* number of volumes */
+    buf[0x29]=1; /* volume number */
+    buf[0x2a]=1; /* side ID */
+    write2(buf+0x3e /* number of title sets */, ws->ts->numvts);
+    strncpy((char *)(buf+0x40) /* provider ID */, PACKAGE_STRING, 31);
+    buf[0x86]=4; /* start address of FP_PGC = 0x400 */
     i=1;
 
-    write4(buf+0xc4,i); // TT_SRPT
+    write4(buf+0xc4,i); /* sector pointer to TT_SRPT (table of titles) */
     i+=Create_TT_SRPT(0,ws->ts,0);
 
-    if( jumppad || forcemenus ) { // PGC
-        write4(buf+0xc8,i);
+    if( jumppad || forcemenus ) {
+        write4(buf+0xc8,i); /* sector pointer to VMGM_PGCI_UT (menu PGC table) */
         i+=CreatePGC(0,ws,2);
     }
 
-    write4(buf+0xd0,i); // VTS_ATRT
-    i+=(8+ws->ts->numvts*0x30c+2047)/2048;
+    write4(buf+0xd0,i);
+	  /* sector pointer to VMG_VTS_ATRT (copies of VTS audio/subpicture atts) */
+	  /* I will output it immediately following IFO header */
+    i+=(8+ws->ts->numvts*0x30c+2047)/2048; /* round up size of VMG_VTS_ATRT to whole sectors */
 
     if( jumppad || forcemenus ) {
-        write4(buf+0xd8,i); // C_ADT
-        i+=CreateCallAdr(0,ws->menus->vg);
+        write4(buf+0xd8,i);
+		  /* sector pointer to VMGM_C_ADT (menu cell address table) */
+		  /* I make it follow VMG_VTS_ATRT */
+        i+=CreateCallAdr(0,ws->menus->vg); /* how much room it will need */
 
-        write4(buf+0xdc,i); // VOBU_ADMAP
+        write4(buf+0xdc,i); /* sector pointer to VMGM_VOBU_ADMAP (menu VOBU address map) */
         i+=numsectVOBUAD(ws->menus->vg);
     }
 
-    write4(buf+0x1c,i-1);
-    vtsstart=i*2;
+    write4(buf+0x1c,i-1); /* last sector of IFO */
+    vtsstart=i*2; /* size of two copies including BUP */
     if( jumppad || forcemenus ) {
-        write4(buf+0xc0,i);
+        write4(buf+0xc0,i); /* start sector of menu VOB */
         vtsstart+=getvoblen(ws->menus->vg);
     }
-    write4(buf+0xc,vtsstart-1);
+    write4(buf+0xc,vtsstart-1); /* last sector of VMG set (last sector of BUP) */
 
     if( forcemenus )
         BuildAVInfo(buf+256,ws->menus->vg);
 
-    // create FPC
+    // create FPC at 0x400
     buf[0x407]=(getratedenom(ws->menus->vg)==90090?3:1)<<6; // only set frame rate XXX: should check titlesets if there is no VMGM menu
     buf[0x4e5]=0xec; // pointer to command table
     // command table
@@ -565,7 +579,7 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
         buf[i+7]=0x00;
     }
     write2(buf+0x4f2,7+buf[0x4ed]*8);
-    write2(buf+0x82,0x4ec+read2(buf+0x4f2));
+    write2(buf+0x82 /* end byte address, low word, of VMGI_MAT */,0x4ec+read2(buf+0x4f2));
     nfwrite(buf,2048,h);
 
     Create_TT_SRPT(h,ws->ts,vtsstart);
@@ -574,30 +588,34 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
     if( jumppad || forcemenus )
         CreatePGC(h,ws,2);
 
-    // VMG_VTS_ATRT
+    /* VMG_VTS_ATRT contains copies of menu and title attributes from all titlesets */
+	/* output immediately following IFO header, as promised above */
     memset(buf,0,2048);
     j=8+ws->ts->numvts*4;
-    write2(buf,ws->ts->numvts);
-    write4(buf+4,ws->ts->numvts*0x30c+8-1);
+    write2(buf,ws->ts->numvts); /* number of titlesets */
+    write4(buf+4,ws->ts->numvts*0x30c+8-1); /* end address (last byte of last VTS_ATRT) */
     for( i=0; i<ws->ts->numvts; i++ )
-        write4(buf+8+i*4,j+i*0x308);
+        write4(buf+8+i*4,j+i*0x308); /* offset to VTS_ATRT i */
     nfwrite(buf,j,h);
-    for( i=0; i<ws->ts->numvts; i++ ) {
-        write4(buf,0x307);
+    for( i=0; i<ws->ts->numvts; i++ ) /* output each VTS_ATRT */
+	  {
+        write4(buf,0x307); /* end address */
         memcpy(buf+4,ws->ts->vts[i].vtscat,4);
+		  /* VTS_CAT (copy of bytes 0x22 .. 0x25 of VTS IFO) */
         memcpy(buf+8,ws->ts->vts[i].vtssummary,0x300);
+		  /* copy of VTS attributes (bytes 0x100 onwards of VTS IFO) */
         nfwrite(buf,0x308,h);
         j+=0x308;
-    }
+      } /*for*/
     j=2048-(j&2047);
-    if( j < 2048 ) {
+    if( j < 2048 ) { /* pad to next whole sector */
         memset(buf,0,j);
         nfwrite(buf,j,h);
     }
 
     if( jumppad || forcemenus ) {
-        CreateCallAdr(h,ws->menus->vg);
-        CreateVOBUAD(h,ws->menus->vg);
+        CreateCallAdr(h,ws->menus->vg); /* actually generate VMGM_C_ADT */
+        CreateVOBUAD(h,ws->menus->vg); /* generate VMGM_VOBU_ADMAP */
     }
     fclose(h);
 }

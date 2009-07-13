@@ -39,7 +39,9 @@ enum {AS_NONE=0,AS_48KHZ=1,AS_96KHZ=2}; /* values for audiodesc.asample */
 typedef int64_t pts_t; /* timestamp in units of 90kHz clock */
 
 struct vobuinfo {
-    int sector,lastsector,fsect,fnum,vobcellid,firstvobuincell,lastvobuincell,hasseqend,hasvideo;
+    int sector,lastsector,fsect,fnum;
+	int vobcellid; /* cell ID in low byte, VOB ID in rest */
+	int firstvobuincell,lastvobuincell,hasseqend,hasvideo;
     pts_t videopts[2],sectpts[2],firstvideopts;
     int numref, firstIfield, numfields, lastrefsect[3]; // why on earth do they want the LAST sector of the ref (I, P) frame?
     unsigned char sectdata[0x26]; // so we don't have to reread it
