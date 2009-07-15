@@ -1,4 +1,7 @@
 /*
+	dvdauthor -- generation of IFO and BUP files
+*/
+/*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
  *
  * This program is free software; you can redistribute it and/or modify
@@ -260,42 +263,45 @@ static void CreateVOBUAD(FILE *h,const struct vobgroup *va)
 }
 
 static int Create_PTT_SRPT(FILE *h,const struct pgcgroup *t)
+/* creates the VTS_PTT_SRPT containing pointers to tables for each title. */
 {
     unsigned char *buf=bigwritebuf;
     int i,j,p;
 
     memset(buf,0,BIGWRITEBUFLEN);
     write2(buf,t->numpgcs); // # of titles
-    p=8+t->numpgcs*4;
+    p=8+t->numpgcs*4; /* start generating VTS_PTT entries here */
     assert(p<=2048); // need to make sure all the pgc pointers fit in the first sector because of dvdauthor.c:ScanIfo
     for( j=0; j<t->numpgcs; j++ ) {
         const struct pgc *pgc=t->pgcs[j];
         int pgm=1,k;
 
-        write4(buf+8+j*4,p);
-        for( i=0; i<pgc->numsources; i++ )
+        write4(buf+8+j*4,p); /* offset to VTS_PTT for title */
+        for( i=0; i<pgc->numsources; i++ ) /* generate the associated VTS_PTT entries */
             for( k=0; k<pgc->sources[i]->numcells; k++ ) {
                 const struct cell *c=&pgc->sources[i]->cells[k];
                 if( c->scellid!=c->ecellid )
                     switch(c->ischapter ) {
-                    case 1:
-                        buf[1+p]=j+1;
-                        buf[3+p]=pgm;
+                    case 1: /* chapter & program */
+                        buf[1+p]=j+1; /* PGCN low byte */
+                        buf[3+p]=pgm; /* PGN low byte */
                         p+=4;
-                    case 2:
+				  /* fallthru */
+                    case 2: /* program only */
                         pgm++;
                     }
             }
         
     }
-    write4(buf+4,p-1);
+    write4(buf+4,p-1); /* end address (last byte of last VTS_PTT) */
     assert(p<=BIGWRITEBUFLEN);
-    p=(p+2047)&(-2048);
+    p=(p+2047)&(-2048); /* round up to next whole sector */
     nfwrite(buf,p,h);
-    return p/2048;    
+    return p/2048; /* nr sectors generated */
 }
 
-static int Create_TT_SRPT(FILE *h,const struct toc_summary *ts,int vtsstart)
+static int Create_TT_SRPT(FILE *h,const struct toc_summary *ts,int vtsstart /* starting sector for VTS */)
+/* creates a TT_SRPT structure containing pointers to all the titles on the disc. */
 {
     unsigned char *buf=bigwritebuf;
     int i,j,k,p,tn;
@@ -307,11 +313,11 @@ static int Create_TT_SRPT(FILE *h,const struct toc_summary *ts,int vtsstart)
     p=8;
     for( i=0; i<ts->numvts; i++ ) {
         for( k=0; k<ts->vts[i].numtitles; k++ ) {
-            buf[0 + p]=0x3c; // title type
-            buf[1 + p]=0x1; // number of angles
-            write2(buf+2+p,ts->vts[i].numchapters[k]); // number of chapters
-            buf[6 + p]=i+1; // VTS #
-            buf[7 + p]=k+1; // title # within VTS
+            buf[0 + p]=0x3c; /* title type = jump/link/call may be found in all places */
+            buf[1 + p]=0x1; /* number of angles always 1 for now */
+            write2(buf+2+p,ts->vts[i].numchapters[k]); /* number of chapters (PTTs) */
+            buf[6 + p]=i+1; /* video titleset number, VTSN */
+            buf[7 + p]=k+1; /* title nr within VTS, VTS_TTN */
             write4(buf+8+p,j); // start sector for VTS
             tn++;
             p+=12;
@@ -319,15 +325,16 @@ static int Create_TT_SRPT(FILE *h,const struct toc_summary *ts,int vtsstart)
         j+=ts->vts[i].numsectors;
     }
     write2(buf,tn); // # of titles
-    write4(buf+4,p-1); // last byte of entry
+    write4(buf+4,p-1); /* end address (last byte of last entry) */
 
     assert(p<=BIGWRITEBUFLEN);
-    p=(p+2047)&(-2048);
+    p=(p+2047)&(-2048); /* round up to next whole sector */
     nfwrite(buf,p,h);
-    return p/2048;        
+    return p/2048; /* nr sectors generated */
 }
 
 static void BuildAVInfo(unsigned char *buf,const struct vobgroup *va)
+/* builds the part of the IFO structure from offset 0x100 (VMGM, VTSM) and 0x200 (VTS) onwards. */
 {
     int i;
     static int widescreen_bits[4]={0,0x100,0x200,2}; // VW_NONE, VW_NOLETTERBOX, VW_NOPANSCAN, VW_CROP
@@ -337,32 +344,39 @@ static void BuildAVInfo(unsigned char *buf,const struct vobgroup *va)
            |widescreen_bits[va->vd.vwidescreen]
            |(va->vd.vformat==VF_PAL?0x1000:0)
            |(va->vd.vaspect==VA_16x9?0xc00:0x300) // if 16:9, set aspect flag; if 4:3 set noletterbox/nopanscan
-           |((va->vd.vcaption&1)?0x80:0)
-           |((va->vd.vcaption&2)?0x40:0)
-           |((va->vd.vres-1)<<3));
-    buf[3]=va->numaudiotracks;
-    for( i=0; i<va->numaudiotracks; i++ ) {
-        buf[4+i*8]=(va->ad[i].aformat-1)<<6;
-        if( va->ad[i].alangp==AL_LANG ) {
-            buf[4+i*8]|=4;
-            memcpy(buf+6+i*8,va->ad[i].lang,2);
+           |((va->vd.vcaption&1)?0x80:0) /* caption=field1 (line-21 closed-captioning, NTSC only) */
+           |((va->vd.vcaption&2)?0x40:0) /* caption=field2 (line-21 closed-captioning, NTSC only) */
+           |((va->vd.vres-1)<<3)); /* resolution code */
+		/* bit rate always VBR, letterbox-cropped unset, PAL film flag unset for now */
+    buf[3]=va->numaudiotracks; /* nr audio streams, low byte */
+    for( i=0; i<va->numaudiotracks; i++ ) { /* fill in menu/title audio attributes */
+        buf[4+i*8]=(va->ad[i].aformat-1)<<6; /* audio coding mode */
+        if( va->ad[i].alangp==AL_LANG ) { /* for title audio, not menu audio */
+            buf[4+i*8]|=4; /* language type = as per language code */
+            memcpy(buf+6+i*8,va->ad[i].lang,2); /* language code */
         }
-        if( va->ad[i].adolby==AD_SURROUND ) {
-            buf[4+i*8]|=2;
-            buf[11+i*8]=8;
+	  /* multichannel extension not supported for now */
+        if( va->ad[i].adolby==AD_SURROUND ) { /* for title audio, not menu audio */
+            buf[4+i*8]|=2; /* application mode = surround */
+            buf[11+i*8]=8; /* suitable for Dolby surround decoding */
         }
+	  /* karaoke options not supported for now */
 
         buf[5+i*8]=
-            ((va->ad[i].aquant-1)<<6)  |
-            ((va->ad[i].asample-1)<<4) |
-            (va->ad[i].achannels-1);
+            ((va->ad[i].aquant-1)<<6)  | /* quantization/DRC */
+            ((va->ad[i].asample-1)<<4) | /* sample rate */
+            (va->ad[i].achannels-1); /* nr channels - 1 */
+
+	  /* audio code extension (buf[9 + i * 8], title audio only) currently left unspecified */
     }
-    buf[0x55]=va->numsubpicturetracks;
+    buf[0x55]=va->numsubpicturetracks; /* nr subpicture streams, low byte */
     for( i=0; i<va->numsubpicturetracks; i++ ) {
-        if( va->sp[i].slangp==AL_LANG ) {
-            buf[0x56+i*6]=1;
-            memcpy(buf+0x58+i*6,va->sp[i].lang,2);
+	  /* coding mode always RLE */
+        if( va->sp[i].slangp==AL_LANG ) { /* for title subpicture, not menu subpicture */
+            buf[0x56+i*6]=1; /* language type = as per language code */
+            memcpy(buf+0x58+i*6,va->sp[i].lang,2); /* language code */
         }
+	/* title code extension (buf[0x56 + i * 6 + 5], title subpicture only) currently left unspecified */
     }
 }
 
@@ -453,6 +467,7 @@ static void WriteIFO(FILE *h,const struct workset *ws)
 }
 
 void WriteIFOs(char *fbase,const struct workset *ws)
+/* writes out a .IFO and corresponding .BUP file. */
 {
     FILE *h;
     static char buf[1000];
@@ -493,7 +508,7 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
     i=1;
 
     write4(buf+0xc4,i); /* sector pointer to TT_SRPT (table of titles) */
-    i+=Create_TT_SRPT(0,ws->ts,0);
+    i+=Create_TT_SRPT(0,ws->ts,0); /* just to figure out how many sectors will be needed */
 
     if( jumppad || forcemenus ) {
         write4(buf+0xc8,i); /* sector pointer to VMGM_PGCI_UT (menu PGC table) */
@@ -582,7 +597,7 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
     write2(buf+0x82 /* end byte address, low word, of VMGI_MAT */,0x4ec+read2(buf+0x4f2));
     nfwrite(buf,2048,h);
 
-    Create_TT_SRPT(h,ws->ts,vtsstart);
+    Create_TT_SRPT(h,ws->ts,vtsstart); /* generate it for real */
 
     // PGC
     if( jumppad || forcemenus )

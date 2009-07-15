@@ -1,4 +1,7 @@
 /*
+	dvdauthor -- generation of .VOB files
+*/
+/*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
  *
  * This program is free software; you can redistribute it and/or modify
@@ -937,7 +940,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
 				&&
 					buf[17] == 0xbe /* padding stream */
 				&&
-					!strcmp(buf + 20, "dvdauthor-data")
+					!strcmp(buf + 20, "dvdauthor-data") /* message from spumux */
 			  )
 			  {
                 // private dvdauthor data, interpret and remove from final stream

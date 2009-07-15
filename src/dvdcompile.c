@@ -32,6 +32,7 @@
 
 struct vm_statement *dvd_vm_parsed_cmd;
 
+/* arbitrary implementation limits */
 #define MAXLABELS 200
 #define MAXGOTOS 200
 
@@ -733,7 +734,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 //	VTS	NONE	MEPGC	CHXX
                 //	VTS	VMGM	MEPGC	CHXX
                 //	VTS	TS	MEPGC	CHXX
-                fprintf(stderr,"ERR:  Cannot 'call' a chatper within a menu\n");
+                fprintf(stderr,"ERR:  Cannot 'call' a chapter within a menu\n");
                 return 0;
             }
             if( i2==121 && (cs->i1>=2 || (cs->i1==0 && ismenu!=2)) ) {
