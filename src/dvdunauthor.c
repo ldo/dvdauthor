@@ -147,7 +147,7 @@ static void addLangAttr( xmlNodePtr node, uint16_t lang_code )
             snprintf( buffer, 8, "%02x%02x", lang_code>>8,lang_code & 0xff );
         }
 
-        xmlNewProp( node, "lang", buffer );
+        xmlNewProp( node, (const xmlChar *)"lang", (const xmlChar *)buffer );
     }
 }
 
@@ -236,13 +236,13 @@ static void dump_attr( struct attrblock *ab,
     xmlNodePtr newNode;
 
     /* add video attributes */
-    newNode = xmlNewTextChild( node, NULL, "video", NULL );
+    newNode = xmlNewTextChild( node, NULL, (const xmlChar *)"video", NULL );
 
     if( ab->video_attr->display_aspect_ratio ) {
         // 16:9
         
         if( permitted_df[ab->video_attr->permitted_df] )
-            xmlNewProp( newNode, "widescreen", permitted_df[ab->video_attr->permitted_df]);
+            xmlNewProp( newNode, (const xmlChar *)"widescreen", (const xmlChar *)permitted_df[ab->video_attr->permitted_df]);
             
         if( ab->video_attr->permitted_df == 3 )
             fprintf(stderr,"WARN: permitted_df == 3 on 16:9 material");
@@ -250,26 +250,26 @@ static void dump_attr( struct attrblock *ab,
         // 4:3
 
         if( ab->video_attr->letterboxed )
-            xmlNewProp( newNode, "widescreen", "crop");
+            xmlNewProp( newNode, (const xmlChar *)"widescreen", (const xmlChar *)"crop");
 
         if( ab->video_attr->permitted_df != 3 )
             fprintf(stderr,"WARN: permitted_df != 3 on 4:3 material");
     }
 
     for(i = 0; i < ab->numaudio; i++) {
-        newNode = xmlNewTextChild( node, NULL, "audio", NULL );
+        newNode = xmlNewTextChild( node, NULL, (const xmlChar *)"audio", NULL );
         addLangAttr( newNode, ab->audio_attr[i].lang_code);
         if( audio_format[ab->audio_attr[i].audio_format] )
-            xmlNewProp( newNode, "format", audio_format[ab->audio_attr[i].audio_format] );
+            xmlNewProp( newNode, (const xmlChar *)"format", (const xmlChar *)audio_format[ab->audio_attr[i].audio_format] );
         if( audio_type[ab->audio_attr[i].code_extension] )
-            xmlNewProp( newNode, "content", audio_type[ab->audio_attr[i].code_extension] );
+            xmlNewProp( newNode, (const xmlChar *)"content", (const xmlChar *)audio_type[ab->audio_attr[i].code_extension] );
     }
 
     for(i = 0; i < ab->numsubp; i++) {
-        xmlNodePtr newNode = xmlNewTextChild( node, NULL, "subpicture", NULL );
+        xmlNodePtr newNode = xmlNewTextChild( node, NULL, (const xmlChar *)"subpicture", NULL );
         addLangAttr( newNode, ab->subp_attr[i].lang_code);
         if( subp_type[ab->subp_attr[i].code_extension] )
-            xmlNewProp( newNode, "content", subp_type[ab->subp_attr[i].code_extension] );
+            xmlNewProp( newNode, (const xmlChar *)"content", (const xmlChar *)subp_type[ab->subp_attr[i].code_extension] );
     }
 
 }
@@ -284,7 +284,7 @@ static void dump_buttons(xmlNodePtr cellNode,int vob)
         if( vobbuttons[i].vob==vob ) {
             struct vobbutton *v=&vobbuttons[i];
             hli_t *h=&v->h;
-            xmlNodePtr buttonsNode = xmlNewTextChild( cellNode, NULL, "buttons", NULL );
+            xmlNodePtr buttonsNode = xmlNewTextChild( cellNode, NULL, (const xmlChar *)"buttons", NULL );
 
             // XXX: add proper button overlap detection
 
@@ -298,16 +298,16 @@ static void dump_buttons(xmlNodePtr cellNode,int vob)
             }
             
             if( printtime(h->hl_gi.hli_s_ptm,getpts(vob,1),buffer,sizeof(buffer)) )
-                xmlNewProp( buttonsNode, "start", buffer );
+                xmlNewProp( buttonsNode, (const xmlChar *)"start", (const xmlChar *)buffer );
 
             if( printtime(h->hl_gi.hli_e_ptm,getpts(vob,1),buffer,sizeof(buffer)) )
-                xmlNewProp( buttonsNode, "end", buffer );
+                xmlNewProp( buttonsNode, (const xmlChar *)"end", (const xmlChar *)buffer );
 
             for( j=0; j<h->hl_gi.btn_ns; j++) {
                 btni_t  *b=&h->btnit[j];
-                xmlNodePtr buttonNode = xmlNewTextChild( buttonsNode, NULL, "button", NULL );
+                xmlNodePtr buttonNode = xmlNewTextChild( buttonsNode, NULL, (const xmlChar *)"button", NULL );
                 snprintf(buffer,sizeof(buffer),"%d",j+1);
-                xmlNewProp( buttonNode, "name", buffer );
+                xmlNewProp( buttonNode, (const xmlChar *)"name", (const xmlChar *)buffer );
                 vm_add_mnemonics( buttonNode,
                                   "\n              ",
                                   1,
@@ -351,9 +351,9 @@ static void FindWith(xmlNodePtr angleNode, pgcit_t *pgcs, int vob, cell_playback
             if( setvob(&vobs,&numvobs,ncpo->vob_id_nr) )
                 continue;
 
-            withNode=xmlNewTextChild( angleNode, NULL, "with", NULL );
+            withNode=xmlNewTextChild( angleNode, NULL, (const xmlChar *)"with", NULL );
             setfilename(ncpo->vob_id_nr);
-            xmlNewProp(withNode, "file",  filenamebase);
+            xmlNewProp(withNode, (const xmlChar *)"file",  (const xmlChar *)filenamebase);
         }
             
 
@@ -387,29 +387,29 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
                 snprintf(buffer,sizeof(buffer)," Menu %d/%d ",i+1,pgcs->nr_of_pgci_srp);
             else
                 snprintf(buffer,sizeof(buffer)," Title %d/%d ",i+1,pgcs->nr_of_pgci_srp);
-            xmlAddChildList(titleNode,xmlNewComment(buffer));
+            xmlAddChildList(titleNode,xmlNewComment((const xmlChar *)buffer));
 
-            pgcNode = xmlNewTextChild( titleNode, NULL, "pgc", NULL );
+            pgcNode = xmlNewTextChild( titleNode, NULL, (const xmlChar *)"pgc", NULL );
 
             if( !titlef && (pgcs->pgci_srp[i].entry_id&0x80) ) {
                 if( pgcs->pgci_srp[i].entry_id&0x70 ) {
                     fprintf(stderr,"WARN: Invalid entry on menu PGC: 0x%x\n",pgcs->pgci_srp[i].entry_id);
                 }
-                xmlNewProp( pgcNode, "entry", entries[pgcs->pgci_srp[i].entry_id&0xF] );
+                xmlNewProp( pgcNode, (const xmlChar *)"entry", (const xmlChar *)entries[pgcs->pgci_srp[i].entry_id&0xF] );
             }
 
             /* add pgc nav info */
             if( pgc->goup_pgc_nr ) {
                 snprintf(buffer,sizeof(buffer),"%d",pgc->goup_pgc_nr);
-                xmlNewProp( pgcNode, "up", buffer);
+                xmlNewProp( pgcNode, (const xmlChar *)"up", (const xmlChar *)buffer);
             }
             if( pgc->next_pgc_nr ) {
                 snprintf(buffer,sizeof(buffer),"%d",pgc->next_pgc_nr);
-                xmlNewProp( pgcNode, "next", buffer);
+                xmlNewProp( pgcNode, (const xmlChar *)"next", (const xmlChar *)buffer);
             }
             if( pgc->prev_pgc_nr ) {
                 snprintf(buffer,sizeof(buffer),"%d",pgc->prev_pgc_nr);
-                xmlNewProp( pgcNode, "prev", buffer);
+                xmlNewProp( pgcNode, (const xmlChar *)"prev", (const xmlChar *)buffer);
             }
  
             /* add pgc still time attribute */
@@ -418,17 +418,17 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
                     snprintf(buffer,sizeof(buffer),"inf");
                 else
                     snprintf(buffer,sizeof(buffer),"%d",pgc->still_time);
-                xmlNewProp( pgcNode, "pause", buffer );
+                xmlNewProp( pgcNode, (const xmlChar *)"pause", (const xmlChar *)buffer );
             }
 
             for( j=0; j<ab->numaudio; j++ ) {
-                xmlNodePtr audioNode = xmlNewTextChild( pgcNode, NULL, "audio", NULL );
+                xmlNodePtr audioNode = xmlNewTextChild( pgcNode, NULL, (const xmlChar *)"audio", NULL );
                 if( pgc->audio_control[j] & 0x8000 ) {
                     snprintf(buffer,sizeof(buffer),"%d",(pgc->audio_control[j]>>8)&7);
-                    xmlNewProp( audioNode, "id", buffer );
+                    xmlNewProp( audioNode, (const xmlChar *)"id", (const xmlChar *)buffer );
                 } else {
                     // fprintf(stderr,"WARN: Audio is not present for stream %d\n",j);
-                    xmlNewProp( audioNode, "present", "no" );
+                    xmlNewProp( audioNode, (const xmlChar *)"present", (const xmlChar *)"no" );
                 }
             }
 
@@ -438,7 +438,7 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
             }
 
             for( j=0; j<ab->numsubp; j++ ) {
-                xmlNodePtr subpNode = xmlNewTextChild( pgcNode, NULL, "subpicture", NULL );
+                xmlNodePtr subpNode = xmlNewTextChild( pgcNode, NULL, (const xmlChar *)"subpicture", NULL );
                 if( pgc->subp_control[j] & 0x80000000 ) {
                     int mask=0,k,first;
 
@@ -466,14 +466,14 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
                         }
                     if( k==4 ) { // all ids are the same
                         snprintf(buffer,sizeof(buffer),"%d",(pgc->subp_control[j]>>8*first)&0x1f);
-                        xmlNewProp( subpNode, "id", buffer );
+                        xmlNewProp( subpNode, (const xmlChar *)"id", (const xmlChar *)buffer );
                     } else {
                         for( k=3; k>=0; k-- )
                             if( mask&(1<<k) ) {
-                                xmlNodePtr streamNode = xmlNewTextChild( subpNode, NULL, "stream", NULL );
+                                xmlNodePtr streamNode = xmlNewTextChild( subpNode, NULL, (const xmlChar *)"stream", NULL );
                                 snprintf(buffer,sizeof(buffer),"%d",(pgc->subp_control[j]>>8*k)&0x1f);
-                                xmlNewProp( streamNode, "mode", subp_control_modes[k] );
-                                xmlNewProp( streamNode, "id", buffer );
+                                xmlNewProp( streamNode, (const xmlChar *)"mode", (const xmlChar *)subp_control_modes[k] );
+                                xmlNewProp( streamNode, (const xmlChar *)"id", (const xmlChar *)buffer );
                             }
                     }
                     for( k=3; k>=0; k-- ) {
@@ -483,7 +483,7 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
                     }
                 } else {
                     // fprintf(stderr,"WARN: Subpicture is not present for stream %d\n",j);
-                    xmlNewProp( subpNode, "present", "no" );
+                    xmlNewProp( subpNode, (const xmlChar *)"present", (const xmlChar *)"no" );
                 }                
             }
 
@@ -496,7 +496,7 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
             if( pgc->command_tbl &&
                 pgc->command_tbl->nr_of_pre > 0 )
             {
-                xmlNodePtr preNode = xmlNewTextChild( pgcNode, NULL, "pre", NULL );
+                xmlNodePtr preNode = xmlNewTextChild( pgcNode, NULL, (const xmlChar *)"pre", NULL );
                 vm_add_mnemonics( preNode,
                                   "\n        ",
                                   pgc->command_tbl->nr_of_pre,
@@ -526,13 +526,13 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
                         {
                             break;
                         }
-                        angleNode = xmlNewTextChild( pgcNode, NULL, "interleave", NULL );
+                        angleNode = xmlNewTextChild( pgcNode, NULL, (const xmlChar *)"interleave", NULL );
                         curvob=-1;
                         FindWith(angleNode, pgcs, pgc->cell_position[j].vob_id_nr, cp);
                         break;
 
                     case 1:
-                        angleNode = xmlNewTextChild( pgcNode, NULL, "interleave", NULL );
+                        angleNode = xmlNewTextChild( pgcNode, NULL, (const xmlChar *)"interleave", NULL );
                         curvob=-1;
                         break;
                     case 2:
@@ -552,31 +552,31 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
                 }
 
                 if( curvob != pgc->cell_position[j].vob_id_nr ) {
-                    vobNode = xmlNewTextChild( angleNode, NULL, "vob", NULL );
+                    vobNode = xmlNewTextChild( angleNode, NULL, (const xmlChar *)"vob", NULL );
                     curvob = pgc->cell_position[j].vob_id_nr;
 
                     setfilename(curvob);
-                    xmlNewProp( vobNode, "file", filenamebase );
+                    xmlNewProp( vobNode, (const xmlChar *)"file", (const xmlChar *)filenamebase );
 
                     dump_buttons( vobNode, curvob );
                 }
 
-                cellNode = xmlNewTextChild( vobNode, NULL, "cell", NULL );
+                cellNode = xmlNewTextChild( vobNode, NULL, (const xmlChar *)"cell", NULL );
 
                 /* add cell time attribute */
                 if( printcelltime(pgc->cell_position[j].vob_id_nr,pgc->cell_position[j].cell_nr, buffer, sizeof(buffer)) )
-                    xmlNewProp( cellNode, "start", buffer );
+                    xmlNewProp( cellNode, (const xmlChar *)"start", (const xmlChar *)buffer );
 
                 if( printcelltime(pgc->cell_position[j].vob_id_nr,pgc->cell_position[j].cell_nr+1, buffer, sizeof(buffer)) )
-                    xmlNewProp( cellNode, "end", buffer );
+                    xmlNewProp( cellNode, (const xmlChar *)"end", (const xmlChar *)buffer );
 
 
                 switch( getprogramtype( titlef?ifo->vts_ptt_srpt:0,pgc,i+1,j+1) ) {
                 case 1:
-                    xmlNewProp( cellNode, "chapter", "1" );
+                    xmlNewProp( cellNode, (const xmlChar *)"chapter", (const xmlChar *)"1" );
                     break;
                 case 2:
-                    xmlNewProp( cellNode, "program", "1" );
+                    xmlNewProp( cellNode, (const xmlChar *)"program", (const xmlChar *)"1" );
                     break;
                     /* default: 
                        do nothing */
@@ -588,7 +588,7 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
                         snprintf(buffer,sizeof(buffer),"inf");
                     else
                         snprintf(buffer,sizeof(buffer),"%d",cp->still_time);
-                    xmlNewProp( cellNode, "pause", buffer );
+                    xmlNewProp( cellNode, (const xmlChar *)"pause", (const xmlChar *)buffer );
                 }
 
                 /* add cell commands */
@@ -603,7 +603,7 @@ static void dump_pgcs(ifo_handle_t *ifo,pgcit_t *pgcs,struct attrblock *ab,int t
             if( pgc->command_tbl &&
                 pgc->command_tbl->nr_of_post > 0 )
             {
-                xmlNodePtr postNode = xmlNewTextChild( pgcNode, NULL, "post", NULL );
+                xmlNodePtr postNode = xmlNewTextChild( pgcNode, NULL, (const xmlChar *)"post", NULL );
                 vm_add_mnemonics( postNode,
                                   "\n        ",
                                   pgc->command_tbl->nr_of_post,
@@ -618,8 +618,8 @@ static void dump_fpc(pgc_t *p,xmlNodePtr titlesetNode)
 {
     /* add fpc commands */
     if( p && p->command_tbl && p->command_tbl->nr_of_pre ) {
-        xmlAddChildList(titlesetNode,xmlNewComment(" First Play "));
-        xmlNodePtr fpcNode = xmlNewTextChild( titlesetNode, NULL, "fpc", NULL );
+        xmlAddChildList(titlesetNode,xmlNewComment((const xmlChar *)" First Play "));
+        xmlNodePtr fpcNode = xmlNewTextChild( titlesetNode, NULL, (const xmlChar *)"fpc", NULL );
         vm_add_mnemonics( fpcNode,
                           "\n    ",
                           p->command_tbl->nr_of_pre,
@@ -689,7 +689,7 @@ static void wdlong(unsigned long l)
     wdest+=4;
 }
 
-static void wdstr(unsigned char *s)
+static void wdstr(const unsigned char *s)
 {
     while(*s)
         wdbyte(*s++);
@@ -729,7 +729,7 @@ static void writepalette(int h,uint32_t *palette)
         memset(sector+20,0xff,2048-20);
 
         wdest=sector+20;
-        wdstr("dvdauthor-data");
+        wdstr((const unsigned char *)"dvdauthor-data");
         wdbyte(1); // version
         wdbyte(1); // subtitle info
         wdbyte(j); // sub number
@@ -770,7 +770,7 @@ static void writebutton(int h,unsigned char *packhdr,hli_t *hli)
     memset(sector+20,0xff,2048-20);
 
     wdest=sector+20;
-    wdstr("dvdauthor-data");
+    wdstr((const unsigned char *)"dvdauthor-data");
     wdbyte(1); // version
     wdbyte(1); // subtitle info
     wdbyte(0); // sub number
@@ -790,7 +790,7 @@ static void writebutton(int h,unsigned char *packhdr,hli_t *hli)
         char nm1[10];
         
         sprintf(nm1,"%d",i+1);
-        wdstr(nm1);
+        wdstr((const unsigned char *)nm1);
         wdshort(0);
         wdbyte(b->auto_action_mode);
         if( b->auto_action_mode != 0 ) {
@@ -800,10 +800,10 @@ static void writebutton(int h,unsigned char *packhdr,hli_t *hli)
             wdshort(b->x_end);
             wdshort(b->y_end);
 
-            sprintf(nm1,"%d",b->up);    wdstr(nm1);
-            sprintf(nm1,"%d",b->down);  wdstr(nm1);
-            sprintf(nm1,"%d",b->left);  wdstr(nm1);
-            sprintf(nm1,"%d",b->right); wdstr(nm1);
+            sprintf(nm1,"%d",b->up);    wdstr((const unsigned char *)nm1);
+            sprintf(nm1,"%d",b->down);  wdstr((const unsigned char *)nm1);
+            sprintf(nm1,"%d",b->left);  wdstr((const unsigned char *)nm1);
+            sprintf(nm1,"%d",b->right); wdstr((const unsigned char *)nm1);
         }
     }
     
@@ -995,7 +995,7 @@ static void dump_dvd(dvd_reader_t *dvd,int titleset,int titlef, xmlNodePtr title
     getVobs( dvd, ifo, titleset, titlef );
 
     if( titlef ) {
-        xmlNodePtr titleNode = xmlNewTextChild( titlesetNode, NULL, "titles", NULL );
+        xmlNodePtr titleNode = xmlNewTextChild( titlesetNode, NULL, (const xmlChar *)"titles", NULL );
         struct attrblock ab;
 
         get_attr(ifo,titlef,&ab);
@@ -1009,13 +1009,13 @@ static void dump_dvd(dvd_reader_t *dvd,int titleset,int titlef, xmlNodePtr title
 
                 for( i=0; i<ifo->tt_srpt->nr_of_srpts; i++ ) {
                     char buffer[100];
-                    xmlNodePtr titleMapNode = xmlNewTextChild( titlesetNode, NULL, "titlemap", NULL );
+                    xmlNodePtr titleMapNode = xmlNewTextChild( titlesetNode, NULL, (const xmlChar *)"titlemap", NULL );
                     
                     snprintf(buffer,sizeof(buffer),"%d",ifo->tt_srpt->title[i].title_set_nr);
-                    xmlNewProp(titleMapNode, "titleset", buffer);
+                    xmlNewProp(titleMapNode, (const xmlChar *)"titleset", (const xmlChar *)buffer);
 
                     snprintf(buffer,sizeof(buffer),"%d",ifo->tt_srpt->title[i].vts_ttn);
-                    xmlNewProp(titleMapNode, "title", buffer);
+                    xmlNewProp(titleMapNode, (const xmlChar *)"title", (const xmlChar *)buffer);
                 }
             }
         }
@@ -1025,7 +1025,7 @@ static void dump_dvd(dvd_reader_t *dvd,int titleset,int titlef, xmlNodePtr title
             for( i=0; i<ifo->pgci_ut->nr_of_lus; i++ ) {
                 pgci_lu_t *lu=&ifo->pgci_ut->lu[i];
                 struct attrblock ab;
-                xmlNodePtr menusNode = xmlNewTextChild( titlesetNode, NULL, "menus", NULL );
+                xmlNodePtr menusNode = xmlNewTextChild( titlesetNode, NULL, (const xmlChar *)"menus", NULL );
                 addLangAttr( menusNode, lu->lang_code );
             
                 get_attr(ifo, titleset==0?-1:0, &ab );
@@ -1080,10 +1080,10 @@ int main(int argc,char **argv)
     }
 
 
-    myXmlDoc = xmlNewDoc( "1.0" );
-    mainNode = xmlNewDocNode( myXmlDoc, NULL, "dvdauthor", NULL );
+    myXmlDoc = xmlNewDoc( (xmlChar *)"1.0" );
+    mainNode = xmlNewDocNode( myXmlDoc, NULL, (xmlChar *)"dvdauthor", NULL );
     xmlDocSetRootElement(myXmlDoc, mainNode);
-    xmlNewProp( mainNode, "allgprm", "yes");
+    xmlNewProp( mainNode, (const xmlChar *)"allgprm", (const xmlChar *)"yes");
       
     for( i=0; i<=numtitlesets; i++ ) {
         if( i ) {
@@ -1091,11 +1091,11 @@ int main(int argc,char **argv)
 
             fprintf(stderr,"\n\nINFO: VTSM %d/%d\n",i,numtitlesets);
             snprintf(buffer,sizeof(buffer)," Titleset %d/%d ", i, numtitlesets);
-            xmlAddChildList(mainNode,xmlNewComment(buffer));
-            titlesetNode = xmlNewTextChild( mainNode, NULL, "titleset", NULL );
+            xmlAddChildList(mainNode,xmlNewComment((const xmlChar *)buffer));
+            titlesetNode = xmlNewTextChild( mainNode, NULL, (const xmlChar *)"titleset", NULL );
         } else {
             fprintf(stderr,"\n\nINFO: VMGM\n");
-            titlesetNode = xmlNewTextChild( mainNode, NULL, "vmgm", NULL );
+            titlesetNode = xmlNewTextChild( mainNode, NULL, (const xmlChar *)"vmgm", NULL );
         }
 
         dump_dvd(dvd,i,0, titlesetNode );

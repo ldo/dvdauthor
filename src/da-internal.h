@@ -47,8 +47,8 @@ struct vobuinfo {
     unsigned char sectdata[0x26]; // so we don't have to reread it
 };
 
-struct colorinfo {
-    int refcount;
+struct colorinfo { /* a colour table for subpictures */
+    int refcount; /* shared structure */
     int colors[16];
 };
 
@@ -134,7 +134,7 @@ struct pgc {
 
 struct pgcgroup {
     int pstype; // 0 - vts, 1 - vtsm, 2 - vmgm
-    struct pgc **pgcs;
+    struct pgc **pgcs; /* array[numpgcs] of pointers */
     int numpgcs,allentries,numentries;
     struct vobgroup *vg; // only valid for pstype==0
 };
@@ -181,7 +181,9 @@ struct workset {
 /* following implemented in dvdauthor.c */
 
 extern char *entries[]; /* PGC menu entry types */
-extern int jumppad, allowallreg;
+extern int
+	jumppad, /* reserve registers and set up code to allow convenient jumping between titlesets */
+	allowallreg; /* don't reserve any registers for convenience purposes */
 extern char *pstypes[]; /* PGC types */
 
 void write8(unsigned char *p,unsigned char d0,unsigned char d1,

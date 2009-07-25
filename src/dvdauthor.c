@@ -73,7 +73,7 @@ char *pstypes[3]={"VTS","VTSM","VMGM"};
 
 static char *smodedesc[6]={"","normal","widescreen","letterbox","panscan",0};
 
-static const int colors[16]={
+static const int colors[16]={ /* default contents for new colour tables */
     0x1000000,
     0x1000000,
     0x1000000,

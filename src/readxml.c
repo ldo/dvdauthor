@@ -91,7 +91,7 @@ int readxml
             break;
 
         case XML_READER_TYPE_ELEMENT: {
-            char *elemname=xmlTextReaderName(f);
+            const char * const elemname = (const char *)xmlTextReaderName(f);
             assert(!parser_body);
             for( i=0; elems[i].elemname; i++ )
                 if( curstate==elems[i].parentstate &&
@@ -106,7 +106,8 @@ int readxml
                             return 1;
                     }
                     while(xmlTextReaderMoveToNextAttribute(f)) {
-                        char *nm=xmlTextReaderName(f),*v=xmlTextReaderValue(f);
+                        const char * const nm = (const char *)xmlTextReaderName(f);
+						const char * const v = (const char *)xmlTextReaderValue(f);
                         int j;
 
                         for( j=0; attrs[j].elem; j++ )
@@ -124,8 +125,8 @@ int readxml
                                     fprintf(stderr,"ERR:      %s\n",attrs[j].attr);
                             return 1;
                         }
-                        xmlFree(nm);
-                        xmlFree(v);
+                        xmlFree((xmlChar *)nm);
+                        xmlFree((xmlChar *)v);
                     }
                     if( empty ) {
                         if( elems[i].end ) {
@@ -146,7 +147,7 @@ int readxml
                         fprintf(stderr,"ERR:      %s\n",elems[i].elemname);
                 return 1;
             }
-            xmlFree(elemname);
+            xmlFree((xmlChar *)elemname);
             break;
         }
 
@@ -168,7 +169,7 @@ int readxml
             break;
 
         case XML_READER_TYPE_TEXT: {
-            char *v=xmlTextReaderValue(f);
+            const char * const v = (const char *)xmlTextReaderValue(f);
 
             if( !parser_body ) {
                 // stupid buggy libxml2 2.5.4 that ships with RedHat 9.0!
@@ -179,7 +180,7 @@ int readxml
                         v[i]!=' '  &&
                         v[i]!='\t' )
                         goto has_nonws_body;
-                xmlFree(v);
+                xmlFree((xmlChar *)v);
                 break;
             }
         has_nonws_body:
@@ -195,7 +196,7 @@ int readxml
                 parser_body=realloc(parser_body,strlen(parser_body)+strlen(v)+1);
                 strcat(parser_body,v);
             }
-            xmlFree(v);
+            xmlFree((xmlChar *)v);
             break;
         }
 

@@ -135,9 +135,9 @@ static void node_printf(const char *format,...)
     if( isnewline ) { /* starting a new line, prepend appropriate indentation */
         int i;
 
-        xmlAddChildList(output,xmlNewText(outputbase));
+        xmlAddChildList(output,xmlNewText((const xmlChar *)outputbase));
         for( i=0; i<indent; i++ )
-            xmlAddChildList(output,xmlNewText("  "));
+            xmlAddChildList(output,xmlNewText((const xmlChar *)"  "));
         isnewline=0;
     }
 
@@ -145,7 +145,7 @@ static void node_printf(const char *format,...)
     vsnprintf(bigbuf,sizeof(bigbuf),format,ap);
     va_end(ap);
     bigbuf[sizeof(bigbuf)-1]=0;
-    xmlAddChildList(output,xmlNewText(bigbuf));
+    xmlAddChildList(output,xmlNewText((const xmlChar *)bigbuf));
 }
 
 static void node_commentf(const char *format,...)
@@ -159,7 +159,7 @@ static void node_commentf(const char *format,...)
     va_end(ap);
     bigbuf[sizeof(bigbuf)-1]=0;
     node_printf(" ");
-    xmlAddChildList(output,xmlNewComment(bigbuf));
+    xmlAddChildList(output,xmlNewComment((const xmlChar *)bigbuf));
     node_printf(" ");
 }
 

@@ -635,9 +635,11 @@ enum { CR_BEGIN0,   CR_BEGIN1,    CR_BEGIN2,    CR_BEGIN3, CR_SKIP0,
        CR_CHGLN1,   CR_CHGLN2,    CR_CHGLN3,    CR_CHGPX0, CR_CHGPX1,
        CR_CHGPX2 };
 
-static char *readpstr(char *b,int *i)
+static char *readpstr(const unsigned char *b,int *i)
+/* extracts a null-terminated string beginning at b[*i], advances *i past it and returns
+a copy of the string. */
 {
-    char *s=strdup(b+i[0]);
+    char *s=strdup((const char *)b+i[0]);
     i[0]+=strlen(s)+1;
     return s;
 }
@@ -888,7 +890,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
         int i,j;
         int hadfirstvobu=0;
         pts_t backoffs=0, lastscr=0;
-        struct vob *s=va->vobs[vnum];
+        struct vob * const thisvob = va->vobs[vnum];
         int prevvidsect=-1;
         struct vscani vsi;
         struct vfile vf;
@@ -898,13 +900,13 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
             initremap(crs+i);
 
         vobid++;
-        s->vobid=vobid;
+        thisvob->vobid=vobid;
         vsi.firstgop=1;
 
-        fprintf(stderr,"\nSTAT: Processing %s...\n",s->fname);
-        vf=varied_open(s->fname,O_RDONLY);
+        fprintf(stderr,"\nSTAT: Processing %s...\n",thisvob->fname);
+        vf=varied_open(thisvob->fname,O_RDONLY);
         if( !vf.h ) {
-            fprintf(stderr,"ERR:  Error opening %s: %s\n",s->fname,strerror(errno));
+            fprintf(stderr,"ERR:  Error opening %s: %s\n",thisvob->fname,strerror(errno));
             exit(1);
         }
         memset(mp2hdr,0,8*sizeof(struct mp2info));
@@ -940,7 +942,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
 				&&
 					buf[17] == 0xbe /* padding stream */
 				&&
-					!strcmp(buf + 20, "dvdauthor-data") /* message from spumux */
+					!strcmp((const char *)buf + 20, "dvdauthor-data") /* message from spumux */
 			  )
 			  {
                 // private dvdauthor data, interpret and remove from final stream
@@ -962,7 +964,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                         case 1: // new colormap
                         {
                             int j;
-                            crs[st].origmap=s->progchain->ci;
+                            crs[st].origmap=thisvob->progchain->ci;
                             for( j=0; j<buf[i+1]; j++ ) {
                                 crs[st].newcolors[j]=0x1000000|
                                     (buf[i+2+3*j]<<16)|
@@ -978,12 +980,12 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                         {
                             int j;
 
-                            memcpy(s->buttoncoli,buf+i+2,buf[i+1]*8);
+                            memcpy(thisvob->buttoncoli,buf+i+2,buf[i+1]*8);
                             for( j=0; j<buf[i+1]; j++ ) {
-                                remapbyte(&crs[st],s->buttoncoli+j*8+0);
-                                remapbyte(&crs[st],s->buttoncoli+j*8+1);
-                                remapbyte(&crs[st],s->buttoncoli+j*8+4);
-                                remapbyte(&crs[st],s->buttoncoli+j*8+5);
+                                remapbyte(&crs[st],thisvob->buttoncoli+j*8+0);
+                                remapbyte(&crs[st],thisvob->buttoncoli+j*8+1);
+                                remapbyte(&crs[st],thisvob->buttoncoli+j*8+4);
+                                remapbyte(&crs[st],thisvob->buttoncoli+j*8+5);
                             }
                             i+=2+8*buf[i+1];
                             break;
@@ -999,11 +1001,11 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                                 struct buttoninfo *bi,bitmp;
                                 char *bn=readpstr(buf,&i);
                                     
-                                if( !findbutton(s->progchain,bn,0) ) {
+                                if( !findbutton(thisvob->progchain,bn,0) ) {
                                     fprintf(stderr,"ERR:  Cannot find button '%s' as referenced by the subtitle\n",bn);
                                     exit(1);
                                 }
-                                b=&s->progchain->buttons[findbutton(s->progchain,bn,0)-1];
+                                b=&thisvob->progchain->buttons[findbutton(thisvob->progchain,bn,0)-1];
                                 free(bn);
 
                                 if( b->numstream>=MAXBUTTONSTREAM ) {
@@ -1105,20 +1107,20 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
 				  ) /* looks like a NAV PACK */
                   {
                     struct vobuinfo *vi;
-                    if (s->numvobus)
+                    if (thisvob->numvobus)
                         finishvideoscan(va,vnum,prevvidsect,&vsi);
                     // fprintf(stderr,"INFO: vobu\n");
                     hadfirstvobu = 1; /* NAV PACK starts a VOBU */
-                    s->numvobus++;
-                    if (s->numvobus > s->maxvobus)
+                    thisvob->numvobus++;
+                    if (thisvob->numvobus > thisvob->maxvobus)
 					  {
-                        if (!s->maxvobus)
-                            s->maxvobus = 1;
+                        if (!thisvob->maxvobus)
+                            thisvob->maxvobus = 1;
                         else
-                            s->maxvobus <<= 1;
-                        s->vi = (struct vobuinfo *)realloc(s->vi, s->maxvobus * sizeof(struct vobuinfo));
+                            thisvob->maxvobus <<= 1;
+                        thisvob->vi = (struct vobuinfo *)realloc(thisvob->vi, thisvob->maxvobus * sizeof(struct vobuinfo));
                       } /*if*/
-                    vi = &s->vi[s->numvobus - 1];
+                    vi = &thisvob->vi[thisvob->numvobus - 1];
                     memset(vi, 0, sizeof(struct vobuinfo));
                     vi->sector = cursect;
                     vi->fsect = fsect;
@@ -1129,8 +1131,8 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                     vi->numref = 0;
                     vi->hasseqend = 0;
                     vi->hasvideo = 0;
-                    memcpy(s->vi[s->numvobus-1].sectdata, buf, 0x26); // save pack and system header; the rest will be reconstructed later
-                    if (!(s->numvobus & 15)) /* time to let user know progress */
+                    memcpy(thisvob->vi[thisvob->numvobus-1].sectdata, buf, 0x26); // save pack and system header; the rest will be reconstructed later
+                    if (!(thisvob->numvobus & 15)) /* time to let user know progress */
                         printvobustatus(va,cursect);
                     vsi.lastrefsect = 0;
                     vsi.firstgop = 1;
@@ -1146,7 +1148,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                 writeundo(); /* ignore it */
                 continue;
               } /*if*/
-            s->vi[s->numvobus - 1].lastsector = cursect;
+            thisvob->vi[thisvob->numvobus - 1].lastsector = cursect;
 
             i = 14;
             j = -1;
@@ -1195,7 +1197,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
 					buf[17] == 0xe0 /* video stream */
 			  )
 			  {
-                struct vobuinfo * const vi = &s->vi[s->numvobus - 1];
+                struct vobuinfo * const vi = &thisvob->vi[thisvob->numvobus - 1];
                 vi->hasvideo = 1;
                 scanvideoframe(va, buf, vi, cursect, prevvidsect, &vsi);
                 if
@@ -1252,16 +1254,16 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                     case 0x80:                          // ac3 audio
                         pts1 += 2880 * buf[dptr + 1];
                         audch = sid & 7;
-                        audio_scan_ac3(&s->audch[audch], buf+dptr+4, offs - 1, endop - (dptr + 4));
+                        audio_scan_ac3(&thisvob->audch[audch], buf+dptr+4, offs - 1, endop - (dptr + 4));
                     break;
                     case 0x88:                          // dts audio
                         audch = 24 | (sid & 7);
-                        audio_scan_dts(&s->audch[audch], buf + dptr + 4, offs - 1, endop - (dptr + 4));
+                        audio_scan_dts(&thisvob->audch[audch], buf + dptr + 4, offs - 1, endop - (dptr + 4));
                     break;
                     case 0xa0:                          // pcm audio
                         pts1 += 150 * buf[dptr + 1];
                         audch = 16 | (sid & 7);
-                        audio_scan_pcm(&s->audch[audch], buf + dptr + 4, endop - (dptr + 4));
+                        audio_scan_pcm(&thisvob->audch[audch], buf + dptr + 4, endop - (dptr + 4));
                     break;
                     default:         // unknown
 						audch = -1;
@@ -1294,7 +1296,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                       } /*while*/
                     mp2hdr[index].hdrptr -= len;
                     memcpy(mp2hdr[index].buf, buf +dptr + len - 3, 3);
-                    audiodesc_set_audio_attr(&s->audch[audch].ad, &s->audch[audch]. adwarn, AUDIO_SAMPLERATE, "48khz");
+                    audiodesc_set_audio_attr(&thisvob->audch[audch].ad, &thisvob->audch[audch]. adwarn, AUDIO_SAMPLERATE, "48khz");
                   } /*if*/
                 if (haspts)
 				  {
@@ -1313,7 +1315,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                   }
 				else if (haspts)
 				  {
-                    struct audchannel *ach=&s->audch[audch];
+                    struct audchannel *ach=&thisvob->audch[audch];
 
                     if( ach->numaudpts>=ach->maxaudpts ) {
                         if( ach->maxaudpts )
@@ -1386,14 +1388,14 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                 dptr++; /* skip sub-stream ID */
                 if ((st & 0xf8) == 0x20)
 				  { /* subpicture stream */
-                    procremap(&crs[st & 31], buf + dptr, ml - dptr, &s->audch[st].audpts[s->audch[st].numaudpts - 1].pts[1]);
+                    procremap(&crs[st & 31], buf + dptr, ml - dptr, &thisvob->audch[st].audpts[thisvob->audch[st].numaudpts - 1].pts[1]);
                   } /*if*/
               } /*if*/
             cursect++;
             fsect++;
           } /*while*/
         varied_close(vf);
-        if( s->numvobus ) {
+        if( thisvob->numvobus ) {
             int i;
             pts_t finalaudiopts;
                 
@@ -1401,7 +1403,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
             // find end of audio
             finalaudiopts=-1;
             for( i=0; i<32; i++ ) {
-                struct audchannel *ach=s->audch+i;
+                struct audchannel *ach=thisvob->audch+i;
                 if( ach->numaudpts &&
                     ach->audpts[ach->numaudpts-1].pts[1] > finalaudiopts )
                     finalaudiopts=ach->audpts[ach->numaudpts-1].pts[1];
@@ -1416,8 +1418,8 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                 pts_t pts_align=-1;
                 int complain=0, j;
 
-                for( j=0; j<s->numvobus; j++ ) {
-                    struct vobuinfo *vi=s->vi+j;
+                for( j=0; j<thisvob->numvobus; j++ ) {
+                    struct vobuinfo *vi=thisvob->vi+j;
                     
                     if( vi->hasvideo ) {
                         if( pts_align==-1 ) {
@@ -1440,7 +1442,7 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                             break;
 
                         vi->sectpts[0]=vi->videopts[0];
-                        if( j+1 == s->numvobus && finalaudiopts > vi->videopts[1] )
+                        if( j+1 == thisvob->numvobus && finalaudiopts > vi->videopts[1] )
                             vi->sectpts[1]=finalaudiopts;
                         else
                             vi->sectpts[1]=vi->videopts[1];
@@ -1451,14 +1453,14 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
             }
             
             // guess at non-video vobus
-            for( i=0; i<s->numvobus; i++ ) {
-                struct vobuinfo *vi=s->vi+i;
+            for( i=0; i<thisvob->numvobus; i++ ) {
+                struct vobuinfo *vi=thisvob->vi+i;
                 if( !vi->hasvideo ) {
                     int j,k;
                     pts_t firstaudiopts=-1,p;
 
                     for( j=0; j<32; j++ ) {
-                        struct audchannel *ach=s->audch+j;
+                        struct audchannel *ach=thisvob->audch+j;
                         for( k=0; k<ach->numaudpts; k++ )
                             if( ach->audpts[k].sect>=vi->sector ) {
                                 if( firstaudiopts==-1 || ach->audpts[k].pts[0]<firstaudiopts )
@@ -1472,13 +1474,13 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
                     }
                     if( i ) {
                         pts_t frpts=getframepts(va);
-                        p=firstaudiopts-s->vi[i-1].sectpts[0];
+                        p=firstaudiopts-thisvob->vi[i-1].sectpts[0];
                         // ensure this is a multiple of a framerate, just to be nice
                         p+=frpts-1;
                         p-=p%frpts;
-                        p+=s->vi[i-1].sectpts[0];
-                        assert(p>=s->vi[i-1].sectpts[1]);
-                        s->vi[i-1].sectpts[1]=p;
+                        p+=thisvob->vi[i-1].sectpts[0];
+                        assert(p>=thisvob->vi[i-1].sectpts[1]);
+                        thisvob->vi[i-1].sectpts[1]=p;
                     } else {
                         fprintf(stderr,"ERR:  Cannot infer pts for VOBU if there is no audio or video and it is the\nERR:  first VOBU.\n");
                         exit(1);
@@ -1487,13 +1489,13 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
 
                     // if we can easily predict the end pts of this sector,
                     // then fill it in.  otherwise, let the next iteration do it
-                    if( i+1==s->numvobus ) { // if this is the end of the vob, use the final audio pts as the last pts
+                    if( i+1==thisvob->numvobus ) { // if this is the end of the vob, use the final audio pts as the last pts
                         if( finalaudiopts>vi->sectpts[0] )
                             p=finalaudiopts;
                         else
                             p=vi->sectpts[0]+getframepts(va); // add one frame of a buffer, so we don't have a zero (or less) length vobu
-                    } else if( s->vi[i+1].hasvideo ) // if the next vobu has video, use the start of the video as the end of this vobu
-                        p=s->vi[i+1].sectpts[0];
+                    } else if( thisvob->vi[i+1].hasvideo ) // if the next vobu has video, use the start of the video as the end of this vobu
+                        p=thisvob->vi[i+1].sectpts[0];
                     else // the next vobu is an audio only vobu, and will backfill the pts as necessary
                         continue;
                     if( p<=vi->sectpts[0] ) {
@@ -1505,17 +1507,17 @@ int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
             }
 
             fprintf(stderr,"\nINFO: Video pts = ");
-            printpts(s->vi[0].videopts[0]);
+            printpts(thisvob->vi[0].videopts[0]);
             fprintf(stderr," .. ");
-            for( i=s->numvobus-1; i>=0; i-- )
-                if( s->vi[i].hasvideo ) {
-                    printpts(s->vi[i].videopts[1]);
+            for( i=thisvob->numvobus-1; i>=0; i-- )
+                if( thisvob->vi[i].hasvideo ) {
+                    printpts(thisvob->vi[i].videopts[1]);
                     break;
                 }
             if( i<0 )
                 fprintf(stderr,"??");
             for( i=0; i<64; i++ ) {
-                struct audchannel *ach=&s->audch[i];
+                struct audchannel *ach=&thisvob->audch[i];
 
                 if( ach->numaudpts ) {
                     fprintf(stderr,"\nINFO: Audio[%d] pts = ",i);

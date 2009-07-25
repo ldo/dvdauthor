@@ -112,9 +112,11 @@ static unsigned int read2(unsigned char *p)
     return (p[0]<<8)|p[1];
 }
 
-static char *readpstr(char *b,int *i)
+static char *readpstr(const unsigned char *b,int *i)
+/* extracts a null-terminated string beginning at b[*i], advances *i past it and returns
+a copy of the string. */
 {
-    char *s=strdup(b+i[0]);
+    char *s=strdup((const char *)b+i[0]);
     i[0]+=strlen(s)+1;
     return s;
 }
@@ -559,21 +561,21 @@ static void write_pts(char *preamble,int pts)
 */
 static void xml_buf(unsigned char *expbuf,unsigned char *buf)
 {
-    unsigned char *p;
+    const unsigned char *p;
 
     do {
         switch (*buf) {
             case '&':
-              p="&amp;";
+              p=(const unsigned char *)"&amp;";
               break;
             case '<':
-              p="&lt;";
+              p=(const unsigned char *)"&lt;";
               break;
             case '>':
-              p="&gt;";
+              p=(const unsigned char *)"&gt;";
               break;
             case '"':
-              p="&quot;";
+              p=(const unsigned char *)"&quot;";
               break;
             default:
               p=NULL;
@@ -607,8 +609,8 @@ static void write_menu_image(struct spu *s,struct dispdetails *d,char *type,int 
         map[i+1].contrast=cc;
     }
     
-    sprintf(nbuf, "%s%05d%c.png", base_name, s->subno, type[0]);
-    if( !write_png(nbuf,s,map,nummap) ) {
+    sprintf((char *)nbuf, "%s%05d%c.png", base_name, s->subno, type[0]);
+    if( !write_png((char *)nbuf,s,map,nummap) ) {
         xml_buf(ebuf,nbuf);
         fprintf(fdo," %s=\"%s\"",type,ebuf);
     }
@@ -625,8 +627,8 @@ static void write_spu(struct spu *s,struct dispdetails *d)
         absorb_palette(d);
     fprintf(fdo,"\t\t<spu");
 
-    sprintf(nbuf, "%s%05d.png", base_name, s->subno);
-    if( !write_png(nbuf,s,s->map,s->nummap) ) {
+    sprintf((char *)nbuf, "%s%05d.png", base_name, s->subno);
+    if( !write_png((char *)nbuf,s,s->map,s->nummap) ) {
         xml_buf(ebuf,nbuf);
         fprintf(fdo," image=\"%s\"",ebuf);
     }
@@ -1020,7 +1022,7 @@ int main(int argc, char **argv)
 
                             package_length=0;
                             i=0;
-                            if( strcmp(cbuf+i,"dvdauthor-data") )
+                            if( strcmp((const char *)cbuf+i,"dvdauthor-data") )
                                 break;
                             i=15;
                             if( cbuf[i]!=1 )
