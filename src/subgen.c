@@ -154,38 +154,41 @@ static void mkpackh(uint64_t time, unsigned int muxrate, unsigned char stuffing)
 
 
 static void mkpesh0(unsigned long int pts)
+/* constructs an MPEG-2 PES header extension with PTS data but no PES extension. */
 {
-    header[0] = 0x81;
+    header[0] = 0x81; /* original flag set */
     header[1] = 0x80;	//pts flag
-    header[2] = 5;
-    header[3] = 0x21 | ((pts >> 29) & 6);
-    header[4] = pts >> 22;
-    header[5] = 1 | (pts >> 14);
-    header[6] = (pts >> 7);
-    header[7] = 1 | (pts << 1);
+    header[2] = 5; /* PES header data length */
+    header[3] = 0x21 | ((pts >> 29) & 6); /* PTS[31 .. 30] */
+    header[4] = pts >> 22; /* PTS[29 .. 22] */
+    header[5] = 1 | (pts >> 14); /* PTS[21 .. 15] */
+    header[6] = (pts >> 7); /* PTS[14 .. 7] */
+    header[7] = 1 | (pts << 1); /* PTS[6 .. 0] */
 }
 
 
 static void mkpesh1(unsigned long int pts)
+/* constructs an MPEG-2 PES header extension with PTS data and a PES extension. */
 {
-    header[0] = 0x81;
+    header[0] = 0x81; /* original flag set */
     header[1] = 0x81;	//pts flag + pes extension flag
-    header[2] = 8;
-    header[3] = 0x21 | ((pts >> 29)&6);
-    header[4] = pts >> 22;
-    header[5] = 1 | (pts >> 14);
-    header[6] = (pts >> 7);
-    header[7] = 1 | (pts << 1);
-    header[8] = 0x1e; //P - STD_buffer_flag
-    header[9] = 0x60; //buffer scale
+    header[2] = 8; /* PES header data length */
+    header[3] = 0x21 | ((pts >> 29)&6); /* PTS[31 .. 30] */
+    header[4] = pts >> 22; /* PTS[29 .. 22] */
+    header[5] = 1 | (pts >> 14); /* PTS[21 .. 15] */
+    header[6] = (pts >> 7); /* PTS[14 .. 7] */
+    header[7] = 1 | (pts << 1); /* PTS[6 .. 0] */
+    header[8] = 0x1e; /* PES extension byte -- only P-STD buffer flag set */
+    header[9] = 0x60; /* P-STD buffer data -- buffer scale = 1024 bytes, top bit of buffer size = 0 */
     header[10] = 0x3a; //buffer size (wtf nu det är..) (svcdverifier tycker  att 64 är ett bra tal här..)
 }
 
 static void mkpesh2 ()
+/* constructs an empty MPEG-2 PES header extension. */
 {
-    header[0] = 0x81;
-    header[1] = 0;
-    header[2] = 0;
+    header[0] = 0x81; /* original flag set */
+    header[1] = 0; /* nothing else */
+    header[2] = 0; /* PES header data length */
 }
 
 static unsigned int getmuxr(unsigned char *buf)
@@ -390,7 +393,7 @@ static void mux(int eoinput)
         if( dgts < 0 )
             dgts=0;
         if( dgts > gts && !eoinput)
-            break;
+            break; /* not yet time */
 
         cursti=newsti;
         if(debug>1)
@@ -488,7 +491,7 @@ static void mux(int eoinput)
             unsigned int c;
 
             /* write packet start code */
-            c = htonl(0x1ba);
+            c = htonl(0x1ba); /* PACK header */
             swrite(fdo, &c, 4);
             mkpackh(gts,muxrate,0);
             fixgts(&gts,&nextgts);
@@ -498,7 +501,7 @@ static void mux(int eoinput)
             header[0]=0;
             header[1]=0;
             header[2]=1;
-            header[3]=0xbe;
+            header[3]=0xbe; /* padding stream for my private button/palette data */
             header[4]=pdl>>8;
             header[5]=pdl;
             swrite(fdo,header,6);
@@ -581,7 +584,7 @@ static void mux(int eoinput)
             /*         fprintf(stderr,"INFO: Private sector size %d\n",wdest-sector); */
 
             swrite(fdo,sector,pdl);
-        }
+        } /* if( mode==DVD_SUB ) */
 
         // header_size is 12 before while starts
 
@@ -612,7 +615,7 @@ static void mux(int eoinput)
             }
 
             /* write header */
-            c = htonl(0x1ba);
+            c = htonl(0x1ba); /* PACK header */
             swrite(fdo, &c, 4);
             mkpackh(gts, muxrate, 0);
             fixgts(&gts,&nextgts);
@@ -625,7 +628,7 @@ static void mux(int eoinput)
             swrite(fdo, header, 10);
 
             /* write private stream code */
-            c = htonl(0x1bd);
+            c = htonl(0x1bd); /* private stream 1 */
             swrite(fdo, &c, 4);
 
             /* write packet length */
@@ -642,7 +645,7 @@ static void mux(int eoinput)
                 mkpesh2();
             header[2]+=stuffing;
             memset(header+header_size-1,0xff,stuffing);
-            header[header_size+stuffing-1]=svcd?SVCD_SUB_CHANNEL:substr;
+            header[header_size+stuffing-1]=svcd?SVCD_SUB_CHANNEL:substr; /* substream ID */
 
             swrite(fdo, header, header_size+stuffing);
 
@@ -673,7 +676,7 @@ static void mux(int eoinput)
                 /* if sector not full, write padding? */
 
                 /* write padding code */
-                c = htonl(0x1be);
+                c = htonl(0x1be); /* padding stream, really just padding this time */
                 swrite(fdo, &c, 4);
 
                 /* calculate number of padding bytes */
@@ -840,7 +843,7 @@ int main(int argc,char **argv)
 
         ch=ntohl(c);
 
-	if(ch == 0x1ba) /* packet start code */
+	if(ch == 0x1ba) /* PACK header */
         {
         l_01ba:
             if(progr)
@@ -866,7 +869,7 @@ int main(int argc,char **argv)
             swrite(fdo, &c, 4);
             swrite(fdo, header, psbufs);
         }
-	else if( ch>=0x1bb && ch<=0x1ef )
+	else if( ch>=0x1bb && ch<=0x1ef ) /* system header */
         {
             swrite(fdo, &c, 4);
             if (sread(fdi, &b, 2) != 2) break;
@@ -876,7 +879,7 @@ int main(int argc,char **argv)
             if (sread(fdi, cbuf, b) != b) break;
             swrite(fdo, cbuf, b);
 
-            if( ch == 0x1e0 && tofs == -1 ) {
+            if( ch == 0x1e0 && tofs == -1 ) { /* video stream (DVD only allows one) */
                 if (debug > 5) fprintf(stderr, "INFO: Video stream\n");
                 a = getpts(cbuf);
                 if (a != -1) {
@@ -885,10 +888,10 @@ int main(int argc,char **argv)
                     tofs=a;
                 }
             }
-        } else if( ch==0x1b9 ) {
+        } else if( ch==0x1b9 ) { /* end of program stream */
             swrite(fdo, &c, 4);
             // do nothing
-        } else{
+        } else{ /* unrecognized -- ignore */
             swrite(fdo, &c, 4);
             
             if (debug > 0)
@@ -898,7 +901,7 @@ int main(int argc,char **argv)
             }
 
             a = b = 0;
-            while(a  !=  0x1ba)
+            while(a  !=  0x1ba) /* until next PACK header */
             {
                 unsigned char nc;
 
