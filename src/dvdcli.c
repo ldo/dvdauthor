@@ -34,11 +34,40 @@
 #include "readxml.h"
 #include "rgb.h"
 
+static char * str_extract_until
+  (
+	const char ** src,
+	const char * delim
+  )
+  /* scans *src, looking for the first occurrence of a character in delim. Returns
+	a copy of the prior part of *src if found, and updates *src to point after the
+	delimiter character; else returns a copy of the whole of *src, and sets *src
+	to NULL. Returns NULL iff *src is NULL. */
+  {
+	char * result = NULL; /* to begin with */
+	if (*src != NULL)
+	  {
+		const size_t pos = strcspn(*src, delim);
+		if (pos < strlen(*src))
+		  {
+			result = strndup(*src, pos);
+			*src = *src + pos + strspn(*src + pos, delim);
+		  }
+		else
+		  {
+			result = strdup(*src);
+			*src = NULL;
+		  } /*if*/
+	  } /*if*/
+	return
+		result;
+  } /*str_extract_until*/
+
 /* common parsing bits for both command line and XML file */
 
 #define RGB2YCrCb(R,G,B) ((((int)RGB2Y(R,G,B))<<16)|(((int)RGB2Cr(R,G,B))<<8)|(((int)RGB2Cb(R,G,B))))
 
-static int readdvdauthorxml(const char *xmlfile,char *fb);
+static int readdvdauthorxml(const char *xmlfile,const char *fb);
 
 static int
 	hadchapter=0,
@@ -47,55 +76,60 @@ static int
 	pauselen=0,writeoutput=1;
 static char *chapters=0;
 
-static void parsevideoopts(struct pgcgroup *va,char *o)
+static void parsevideoopts(struct pgcgroup *va,const char *o)
 {
     char *s;
-    while(NULL!=(s=strsep(&o,"+"))) {
+    while(NULL!=(s=str_extract_until(&o,"+"))) {
         if(pgcgroup_set_video_attr(va,VIDEO_ANY,s)) {
             fprintf(stderr,"ERR:  Video option '%s' overrides previous option\n",s);
             exit(1);
         }
+		free(s);
     }
 }
 
-static void parseaudiotrack(struct pgcgroup *va,char *o,int c)
+static void parseaudiotrack(struct pgcgroup *va,const char *o,int c)
 {
     char *s;
-    while(NULL!=(s=strsep(&o,"+"))) {
+    while(NULL!=(s=str_extract_until(&o,"+"))) {
         if(pgcgroup_set_audio_attr(va,AUDIO_ANY,s,c)) {
             fprintf(stderr,"ERR:  Audio option '%s' on track %d overrides previous option\n",s,c);
             exit(1);
         }
+		free(s);
     }
 }
 
-static void parseaudioopts(struct pgcgroup *va,char *o)
+static void parseaudioopts(struct pgcgroup *va,const char *o)
 {
     char *s;
     int ch=0;
-    while(NULL!=(s=strsep(&o,", "))) {
+    while(NULL!=(s=str_extract_until(&o,", "))) {
         parseaudiotrack(va,s,ch);
+		free(s);
         ch++;
     }
 }
 
-static void parsesubpicturetrack(struct pgcgroup *va,char *o,int c)
+static void parsesubpicturetrack(struct pgcgroup *va,const char *o,int c)
 {
     char *s;
-    while(NULL!=(s=strsep(&o,"+"))) {
+    while(NULL!=(s=str_extract_until(&o,"+"))) {
         if(pgcgroup_set_subpic_attr(va,SPU_ANY,s,c)) {
             fprintf(stderr,"ERR:  Subpicture option '%s' on track %d overrides previous option\n",s,c);
             exit(1);
         }
+		free(s);
     }
 }
 
-static void parsesubpictureopts(struct pgcgroup *va,char *o)
+static void parsesubpictureopts(struct pgcgroup *va,const char *o)
 {
     char *s;
     int ch=0;
-    while(NULL!=(s=strsep(&o,", "))) {
+    while(NULL!=(s=str_extract_until(&o,", "))) {
         parsesubpicturetrack(va,s,ch);
+		free(s);
         ch++;
     }
 }
@@ -113,9 +147,9 @@ static void parsebutton(struct pgc *va,char *b)
     pgc_add_button(va,bnm,b);
 }
 
-static void parseinstructions(struct pgc *va,char *b)
+static void parseinstructions(struct pgc *va,const char *b)
 {
-    char *c=strsep(&b,"=");
+    char *c=str_extract_until(&b,"=");
     if(!strcasecmp(c,"post")) {
         pgc_set_post(va,b);
     } else if(!strcasecmp(c,"pre")) {
@@ -124,17 +158,21 @@ static void parseinstructions(struct pgc *va,char *b)
         fprintf(stderr,"Unknown instruction block: %s\n",c);
         exit(1);
     }
+	free(c);
 }
 
-static void parseentries(struct pgc *p,char *b)
+static void parseentries(struct pgc *p,const char *b)
 {
     char *v;
 
-    while(NULL!=(v=strsep(&b,", ")))
+    while(NULL!=(v=str_extract_until(&b,", ")))
+	  {
         pgc_add_entry(p,v);
+		free(v);
+	  } /*while*/
 }
 
-static double parsechapter(char *s)
+static double parsechapter(const char *s)
 {
     double total=0,field=0;
     int i;
@@ -161,13 +199,13 @@ static double parsechapter(char *s)
     return total*60+field;
 }
 
-static void parsechapters(char *o,struct source *src,int pauselen)
+static void parsechapters(const char *o,struct source *src,int pauselen)
 {
     char *s;
     double last=0;
     int lastchap=0;
 
-    while(NULL!=(s=strsep(&o,", "))) {
+    while(NULL!=(s=str_extract_until(&o,", "))) {
         double total=parsechapter(s);
         if( total>last ) {
             source_add_cell(src,last,total,lastchap,0,0);
@@ -175,6 +213,7 @@ static void parsechapters(char *o,struct source *src,int pauselen)
             lastchap=1;
         } else if( total==last )
             lastchap=1;
+		free(s);
     }
     source_add_cell(src,last,-1,lastchap,pauselen,0);
 }
@@ -582,7 +621,7 @@ static struct menugroup
 	*vmgmmenus=0; /* vmgm menu group */
 static struct pgc *curpgc=0,*fpc=0;
 static struct source *curvob=0;
-static char
+static const char
 	*fbase=0, /* output directory name */
 	*buttonname=0; /* name of button currently being defined */
 static int
@@ -609,7 +648,7 @@ static int
 static double cell_starttime,cell_endtime;
 static char menulang[3];
 
-static void set_video_attr(int attr,char *s)
+static void set_video_attr(int attr,const char *s)
 {
     if( ismenuf )
         menugroup_set_video_attr(mg,attr,s);
@@ -617,7 +656,7 @@ static void set_video_attr(int attr,char *s)
         pgcgroup_set_video_attr(titles,attr,s);
 }
 
-static void set_audio_attr(int attr,char *s,int ch)
+static void set_audio_attr(int attr,const char *s,int ch)
 {
     if( ismenuf )
         menugroup_set_audio_attr(mg,attr,s,ch);
@@ -625,7 +664,7 @@ static void set_audio_attr(int attr,char *s,int ch)
         pgcgroup_set_audio_attr(titles,attr,s,ch);
 }
 
-static void set_subpic_attr(int attr,char *s,int ch)
+static void set_subpic_attr(int attr,const char *s,int ch)
 {
     if( ismenuf )
         menugroup_set_subpic_attr(mg,attr,s,ch);
@@ -633,7 +672,7 @@ static void set_subpic_attr(int attr,char *s,int ch)
         pgcgroup_set_subpic_attr(titles,attr,s,ch);
 }
 
-static void set_subpic_stream(int ch,char *m,int id)
+static void set_subpic_stream(int ch,const char *m,int id)
 {
     if( ismenuf )
         menugroup_set_subpic_stream(mg,ch,m,id);
@@ -641,7 +680,7 @@ static void set_subpic_stream(int ch,char *m,int id)
         pgcgroup_set_subpic_stream(titles,ch,m,id);
 }
 
-static int parse_pause(char *f)
+static int parse_pause(const char *f)
 {
     if( !strcmp(f,"inf") )
         return 255;
@@ -649,12 +688,12 @@ static int parse_pause(char *f)
         return atoi(f);
 }
 
-static void dvdauthor_workdir(char *s)
+static void dvdauthor_workdir(const char *s)
 {
     fbase=utf8tolocal(s);
 }
 
-static void dvdauthor_jumppad(char *s)
+static void dvdauthor_jumppad(const char *s)
 {
     int i=xml_ison(s);
     if( i==1 )
@@ -665,7 +704,7 @@ static void dvdauthor_jumppad(char *s)
     }
 }
 
-static void dvdauthor_allgprm(char *s)
+static void dvdauthor_allgprm(const char *s)
 {
     int i=xml_ison(s);
     if( i==1 )
@@ -797,7 +836,7 @@ static void menus_start()
     strcpy(menulang,"en");
 }
 
-static void menus_lang(char *lang)
+static void menus_lang(const char *lang)
 {
     strcpy(menulang,lang);
 }
@@ -818,27 +857,27 @@ static void video_start()
         setvideo=1;
 }
 
-static void video_format(char *c)
+static void video_format(const char *c)
 {
     set_video_attr(VIDEO_FORMAT,c);
 }
 
-static void video_aspect(char *c)
+static void video_aspect(const char *c)
 {
     set_video_attr(VIDEO_ASPECT,c);
 }
 
-static void video_resolution(char *c)
+static void video_resolution(const char *c)
 {
     set_video_attr(VIDEO_RESOLUTION,c);
 }
 
-static void video_widescreen(char *c)
+static void video_widescreen(const char *c)
 {
     set_video_attr(VIDEO_WIDESCREEN,c);
 }
 
-static void video_caption(char *c)
+static void video_caption(const char *c)
 {
     set_video_attr(VIDEO_CAPTION,c);
 }
@@ -852,32 +891,32 @@ static void audio_start()
     }
 }
 
-static void audio_format(char *c)
+static void audio_format(const char *c)
 {
     set_audio_attr(AUDIO_FORMAT,c,setaudio);
 }
 
-static void audio_quant(char *c)
+static void audio_quant(const char *c)
 {
     set_audio_attr(AUDIO_QUANT,c,setaudio);
 }
 
-static void audio_dolby(char *c)
+static void audio_dolby(const char *c)
 {
     set_audio_attr(AUDIO_DOLBY,c,setaudio);
 }
 
-static void audio_lang(char *c)
+static void audio_lang(const char *c)
 {
     set_audio_attr(AUDIO_LANG,c,setaudio);
 }
 
-static void audio_samplerate(char *c)
+static void audio_samplerate(const char *c)
 {
     set_audio_attr(AUDIO_SAMPLERATE,c,setaudio);
 }
 
-static void audio_channels(char *c)
+static void audio_channels(const char *c)
 {
     char ch[4];
 
@@ -914,7 +953,7 @@ static void subattr_pgc_start()
     }
 }
 
-static void subattr_lang(char *c)
+static void subattr_lang(const char *c)
 {
     if( subpmode==DA_PGCGROUP )
         set_subpic_attr(SPU_LANG,c,setsubpicture);
@@ -930,7 +969,7 @@ static void stream_start()
     subpstreammode=0;
 }
 
-static void substream_id(char *c)
+static void substream_id(const char *c)
 {
     subpstreamid=atoi(c);
     if( subpstreamid<0 || subpstreamid>=32 ) {
@@ -939,7 +978,7 @@ static void substream_id(char *c)
     }
 }
 
-static void substream_mode(char *c)
+static void substream_mode(const char *c)
 {
     subpstreammode=strdup(c);
 }
@@ -965,19 +1004,19 @@ static void pgc_start()
     subpmode=DA_PGC;
 }
 
-static void pgc_entry(char *e)
+static void pgc_entry(const char *e)
 {
     // xml attributes can only be defined once, so entry="foo" entry="bar" won't work
     // instead, use parseentries...
     parseentries(curpgc,e);
 }
 
-static void pgc_palette(char *p)
+static void pgc_palette(const char *p)
 {
     readpalette(curpgc,p);
 }
 
-static void pgc_pause(char *c)
+static void pgc_pause(const char *c)
 {
     pgc_set_stilltime(curpgc,parse_pause(c));
 }
@@ -1017,21 +1056,20 @@ static void vob_start()
     cell_endtime=0;
 }
 
-static void vob_file(char *f)
+static void vob_file(const char *f)
 {
     f=utf8tolocal(f);
     source_set_filename(curvob,f);
-    free(f);
 }
 
-static void vob_chapters(char *c)
+static void vob_chapters(const char *c)
 {
     vobbasic=1;
     hadchapter=2;
     chapters=strdup(c);
 }
 
-static void vob_pause(char *c)
+static void vob_pause(const char *c)
 {
     vobbasic=1;
     pauselen=parse_pause(c);
@@ -1062,17 +1100,17 @@ static void cell_start()
     hadchapter=1;
 }
 
-static void cell_parsestart(char *f)
+static void cell_parsestart(const char *f)
 {
     cell_starttime=parsechapter(f);
 }
 
-static void cell_parseend(char *f)
+static void cell_parseend(const char *f)
 {
     cell_endtime=parsechapter(f);
 }
 
-static void cell_parsechapter(char *f)
+static void cell_parsechapter(const char *f)
 {
     int i=xml_ison(f);
     if(i==-1) {
@@ -1084,7 +1122,7 @@ static void cell_parsechapter(char *f)
 			flag presence of both as error? */
 }
 
-static void cell_parseprogram(char *f)
+static void cell_parseprogram(const char *f)
 {
     int i=xml_ison(f);
     if(i==-1) {
@@ -1096,7 +1134,7 @@ static void cell_parseprogram(char *f)
 			should really flag presence of both as error? */
 }
 
-static void cell_pauselen(char *f)
+static void cell_pauselen(const char *f)
 {
     pauselen=parse_pause(f);
 }
@@ -1114,7 +1152,7 @@ static void button_start()
     buttonname=0;
 }
 
-static void button_name(char *f)
+static void button_name(const char *f)
 {
     buttonname=strdup(f);
 }
@@ -1122,7 +1160,7 @@ static void button_name(char *f)
 static void button_end()
 {
     pgc_add_button(curpgc,buttonname,parser_body);
-    if(buttonname) free(buttonname);
+    if(buttonname) free((char *)buttonname);
 }
 
 static struct elemdesc elems[]={
@@ -1188,7 +1226,7 @@ static struct elemattr attrs[]={
     {0,0,0}
 };
 
-static int readdvdauthorxml(const char *xmlfile,char *fb)
+static int readdvdauthorxml(const char *xmlfile,const char *fb)
 {
     fbase=fb;
     return readxml(xmlfile,elems,attrs);

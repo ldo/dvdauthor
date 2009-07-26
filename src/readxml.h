@@ -3,7 +3,7 @@
 */
 
 typedef void (*parserfunc)(void);
-typedef void (*attrfunc)(char *);
+typedef void (*attrfunc)(const char *);
 
 struct elemdesc { /* defines a valid XML tag */
     char *elemname; /* element name */

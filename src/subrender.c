@@ -172,7 +172,7 @@ static void alloc_buf(mp_osd_obj_t* obj)
 
 inline static void vo_update_text_sub(mp_osd_obj_t* obj,int dxs,int dys)
 {
-    unsigned char *t;
+    const unsigned char *t;
     int c,i,j,prev_j,l,x,y,font,prevc,counter;
     int len;
     int k;
@@ -206,8 +206,8 @@ inline static void vo_update_text_sub(mp_osd_obj_t* obj,int dxs,int dys)
         while (l) {
             xsize = -vo_font->charspace;
             l--;
-            t=vo_sub->text[i++];
-            len=strlen(t)-1;
+            t=(const unsigned char *)vo_sub->text[i++];
+            len=strlen((const char *)t)-1;
 			char_position = 0;
 			char_seq = (int *) malloc((len + 1) * sizeof(int));
 

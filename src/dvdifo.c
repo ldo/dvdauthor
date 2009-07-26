@@ -466,7 +466,7 @@ static void WriteIFO(FILE *h,const struct workset *ws)
     CreateVOBUAD(h,ws->titles->vg);
 }
 
-void WriteIFOs(char *fbase,const struct workset *ws)
+void WriteIFOs(const char *fbase,const struct workset *ws)
 /* writes out a .IFO and corresponding .BUP file. */
 {
     FILE *h;
@@ -487,7 +487,7 @@ void WriteIFOs(char *fbase,const struct workset *ws)
         WriteIFO(0,ws);
 }
 
-void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname)
+void TocGen(const struct workset *ws,const struct pgc *fpc,const char *fname)
 /* writes the IFO for a VMGM. */
 {
     static unsigned char buf[2048];

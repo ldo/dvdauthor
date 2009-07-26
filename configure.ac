@@ -23,6 +23,7 @@ AC_CHECK_HEADERS( \
 
 AC_CHECK_FUNCS( \
 	strsep \
+	strndup \
 	getopt_long \
 	setmode \
 )

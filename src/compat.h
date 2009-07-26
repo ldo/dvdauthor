@@ -1,4 +1,6 @@
 // basic headers
+#define _GNU_SOURCE /* really just for strndup */
+
 #include <stdio.h>
 
 #ifdef HAVE_STDLIB_H
@@ -82,6 +84,14 @@
 
 #ifndef HAVE_STRSEP
 char *strsep(char **stringp,const char *delim);
+#endif
+
+#ifndef HAVE_STRNDUP
+char * strndup
+  (
+	const char * s,
+	size_t n
+  );
 #endif
 
 #if !HAVE_DECL_O_BINARY

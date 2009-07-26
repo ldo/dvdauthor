@@ -28,6 +28,27 @@ char *strsep(char **stringp, const char *delim)
 }
 #endif  /* HAVE_STRSEP */
 
+#ifndef HAVE_STRNDUP
+char * strndup
+  (
+	const char * s,
+	size_t n
+  )
+  {
+	char * result;
+	size_t l = strlen(s);
+	if (l > n)
+	  {
+		l = n;
+	  } /*if*/
+	result = malloc(l + 1);
+	memcpy(result, s, l);
+	result[l] = 0;
+	return
+		result;
+  } /*strndup*/
+#endif /*HAVE_STRNDUP*/
+
 /* Mode is either O_RDONLY or O_WRONLY, nothing more */
 struct vfile varied_open(const char *fname,int mode)
 {

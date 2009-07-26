@@ -203,9 +203,9 @@ unsigned int buildtimeeven(const struct vobgroup *va,int64_t num);
 int getaudch(const struct vobgroup *va,int a);
 int findcellvobu(const struct vob *va,int cellid);
 pts_t getcellpts(const struct vob *va,int cellid);
-int vobgroup_set_video_attr(struct vobgroup *va,int attr,char *s);
+int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s);
 int vobgroup_set_video_framerate(struct vobgroup *va,int rate);
-int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int attr,char *s);
+int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int attr,const char *s);
 
 /* following implemented in dvdcompile.c */
 
@@ -215,8 +215,8 @@ struct vm_statement *vm_parse(const char *b);
 
 /* following implemented in dvdifo.c */
 
-void WriteIFOs(char *fbase,const struct workset *ws);
-void TocGen(const struct workset *ws,const struct pgc *fpc,char *fname);
+void WriteIFOs(const char *fbase,const struct workset *ws);
+void TocGen(const struct workset *ws,const struct pgc *fpc,const char *fname);
 
 /* following implemented in dvdpgc.c */
 
@@ -224,9 +224,9 @@ int CreatePGC(FILE *h,const struct workset *ws,int ismenu);
 
 /* following implemented in dvdvob.c */
 
-int FindVobus(char *fbase,struct vobgroup *va,int ismenu);
+int FindVobus(const char *fbase,struct vobgroup *va,int ismenu);
 void MarkChapters(struct vobgroup *va);
-void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int ismenu);
+void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *ws,int ismenu);
 int calcaudiogap(const struct vobgroup *va,int vcid0,int vcid1,int ach);
 
 #endif

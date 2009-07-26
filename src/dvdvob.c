@@ -874,7 +874,7 @@ static void audio_scan_pcm(struct audchannel *ach,unsigned char *buf,int len)
     audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_CHANNELS,attr);
 }
 
-int FindVobus(char *fbase,struct vobgroup *va,int ismenu)
+int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
 {
     unsigned char *buf;
     int cursect=0,fsect=-1,vnum,outnum=-ismenu+1;
@@ -1725,7 +1725,7 @@ int calcaudiogap(const struct vobgroup *va,int vcid0,int vcid1,int ach)
     return 1;
 }
 
-void FixVobus(char *fbase,const struct vobgroup *va,const struct workset *ws,int ismenu)
+void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *ws,int ismenu)
 {
     int h=-1;
     int i,j,pn,fnum=-2;

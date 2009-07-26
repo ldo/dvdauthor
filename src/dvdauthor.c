@@ -206,7 +206,7 @@ static int findsubpmode(const char *m)
     return -1;
 }
 
-static int warnupdate(int *oldval,int newval,int *warnval,char *desc,char **lookup)
+static int warnupdate(int *oldval,int newval,int *warnval,const char *desc,char **lookup)
 {
     if( oldval[0]==0 ) {
         oldval[0]=newval;
@@ -220,7 +220,7 @@ static int warnupdate(int *oldval,int newval,int *warnval,char *desc,char **look
     return 1;
 }
 
-static int scanandwarnupdate(int *oldval,char *newval,int *warnval,char *desc,char **lookup)
+static int scanandwarnupdate(int *oldval,const char *newval,int *warnval,const char *desc,char **lookup)
 {
     int i;
 
@@ -243,7 +243,7 @@ int vobgroup_set_video_framerate(struct vobgroup *va,int rate)
 
 #define ATTRMATCH(a) (attr==0 || attr==(a))
 
-int vobgroup_set_video_attr(struct vobgroup *va,int attr,char *s)
+int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s)
 {
     int w;
 
@@ -307,7 +307,7 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,char *s)
     exit(1);
 }
 
-int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int attr,char *s)
+int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int attr,const char *s)
 {
     int w;
 
@@ -353,7 +353,7 @@ int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int a
     exit(1);
 }
 
-static int vobgroup_set_audio_attr(struct vobgroup *va,int attr,char *s,int ch)
+static int vobgroup_set_audio_attr(struct vobgroup *va,int attr,const char *s,int ch)
 {
     if( ch>=va->numaudiotracks )
         va->numaudiotracks=ch+1;
@@ -361,7 +361,7 @@ static int vobgroup_set_audio_attr(struct vobgroup *va,int attr,char *s,int ch)
     return audiodesc_set_audio_attr(&va->ad[ch],&va->adwarn[ch],attr,s);
 }
 
-static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,char *s,int ch)
+static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,const char *s,int ch)
 {
     int w;
 
@@ -385,7 +385,7 @@ static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,char *s,int ch)
     exit(1);
 }
 
-static int vobgroup_set_subpic_stream(struct vobgroup *va,int ch,char *m,int id)
+static int vobgroup_set_subpic_stream(struct vobgroup *va,int ch,const char *m,int id)
 {
     int mid;
 
@@ -771,7 +771,7 @@ pts_t getptsspan(const struct pgc *ch)
     return ptsspan;
 }
 
-static char *makevtsdir(char *s)
+static char *makevtsdir(const char *s)
 {
     static char fbuf[1000];
 
@@ -852,7 +852,7 @@ static void checkaddentry(struct pgcgroup *va,int entry)
         forceaddentry(va,entry);
 }
 
-static int getvtsnum(char *fbase)
+static int getvtsnum(const char *fbase)
 {
     static char realfbase[1000];
     int i;
@@ -871,7 +871,7 @@ static int getvtsnum(char *fbase)
     return i;
 }
 
-static void initdir(char *fbase)
+static void initdir(const char *fbase)
 {
     static char realfbase[1000];
 
@@ -1190,7 +1190,7 @@ void pgc_set_stilltime(struct pgc *p,int still)
     p->pauselen=still;
 }
 
-int pgc_set_subpic_stream(struct pgc *p,int ch,char *m,int id)
+int pgc_set_subpic_stream(struct pgc *p,int ch,const char *m,int id)
 {
     int mid;
 
@@ -1291,22 +1291,22 @@ void pgcgroup_add_pgc(struct pgcgroup *ps,struct pgc *p)
     p->pgcgroup=ps;
 }
 
-int pgcgroup_set_video_attr(struct pgcgroup *va,int attr,char *s)
+int pgcgroup_set_video_attr(struct pgcgroup *va,int attr,const char *s)
 {
     return vobgroup_set_video_attr(va->vg,attr,s);
 }
 
-int pgcgroup_set_audio_attr(struct pgcgroup *va,int attr,char *s,int ch)
+int pgcgroup_set_audio_attr(struct pgcgroup *va,int attr,const char *s,int ch)
 {
     return vobgroup_set_audio_attr(va->vg,attr,s,ch);
 }
 
-int pgcgroup_set_subpic_attr(struct pgcgroup *va,int attr,char *s,int ch)
+int pgcgroup_set_subpic_attr(struct pgcgroup *va,int attr,const char *s,int ch)
 {
     return vobgroup_set_subpic_attr(va->vg,attr,s,ch);
 }
 
-int pgcgroup_set_subpic_stream(struct pgcgroup *va,int ch,char *m,int id)
+int pgcgroup_set_subpic_stream(struct pgcgroup *va,int ch,const char *m,int id)
 {
     return vobgroup_set_subpic_stream(va->vg,ch,m,id);
 }
@@ -1332,7 +1332,7 @@ void menugroup_free(struct menugroup *mg)
     free(mg);
 }
 
-void menugroup_add_pgcgroup(struct menugroup *mg,char *lang,struct pgcgroup *pg)
+void menugroup_add_pgcgroup(struct menugroup *mg,const char *lang,struct pgcgroup *pg)
 {
     mg->groups=(struct langgroup *)realloc(mg->groups,(mg->numgroups+1)*sizeof(struct langgroup));
     if( strlen(lang)!=2 ) {
@@ -1346,22 +1346,22 @@ void menugroup_add_pgcgroup(struct menugroup *mg,char *lang,struct pgcgroup *pg)
     mg->numgroups++;
 }
 
-int menugroup_set_video_attr(struct menugroup *va,int attr,char *s)
+int menugroup_set_video_attr(struct menugroup *va,int attr,const char *s)
 {
     return vobgroup_set_video_attr(va->vg,attr,s);
 }
 
-int menugroup_set_audio_attr(struct menugroup *va,int attr,char *s,int ch)
+int menugroup_set_audio_attr(struct menugroup *va,int attr,const char *s,int ch)
 {
     return vobgroup_set_audio_attr(va->vg,attr,s,ch);
 }
 
-int menugroup_set_subpic_attr(struct menugroup *va,int attr,char *s,int ch)
+int menugroup_set_subpic_attr(struct menugroup *va,int attr,const char *s,int ch)
 {
     return vobgroup_set_subpic_attr(va->vg,attr,s,ch);
 }
 
-int menugroup_set_subpic_stream(struct menugroup *va,int ch,char *m,int id)
+int menugroup_set_subpic_stream(struct menugroup *va,int ch,const char *m,int id)
 {
     return vobgroup_set_subpic_stream(va->vg,ch,m,id);
 }
@@ -1384,7 +1384,7 @@ void dvdauthor_enable_allgprm()
     allowallreg=1;
 }
 
-void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,char *fbase)
+void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,const char *fbase)
 {
     DIR *d;
     struct dirent *de;
@@ -1466,7 +1466,7 @@ void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,char *fbase)
     free(vtsdir);
 }
 
-void dvdauthor_vts_gen(struct menugroup *menus,struct pgcgroup *titles,char *fbase)
+void dvdauthor_vts_gen(struct menugroup *menus,struct pgcgroup *titles,const char *fbase)
 {
     int vtsnum,i;
     static char realfbase[1000];

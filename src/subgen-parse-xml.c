@@ -41,7 +41,7 @@ static void printtime(char *b,int t)
             (t/90)%1000);
 }
 
-static unsigned int parsetime(char *t)
+static unsigned int parsetime(const char *t)
 {
     int tf=1;
     int rt=0,n=0,nd=0;
@@ -97,16 +97,16 @@ void spu_begin()
     memset(st,0,sizeof(stinfo));
 }
 
-void spu_image(char *v)        { st->img.fname=utf8tolocal(v); }
-void spu_highlight(char *v)    { st->hlt.fname=utf8tolocal(v); }
-void spu_select(char *v)       { st->sel.fname=utf8tolocal(v); }
-void spu_start(char *v)        { st->spts         = parsetime(v); }
-void spu_end(char *v)          { st->sd           = parsetime(v); }
-void spu_outlinewidth(char *v) { st->outlinewidth = atoi(v);      }
-void spu_xoffset(char *v)      { st->x0 = atoi(v);                }
-void spu_yoffset(char *v)      { st->y0 = atoi(v);                }
+void spu_image(const char *v)        { st->img.fname=utf8tolocal(v); }
+void spu_highlight(const char *v)    { st->hlt.fname=utf8tolocal(v); }
+void spu_select(const char *v)       { st->sel.fname=utf8tolocal(v); }
+void spu_start(const char *v)        { st->spts         = parsetime(v); }
+void spu_end(const char *v)          { st->sd           = parsetime(v); }
+void spu_outlinewidth(const char *v) { st->outlinewidth = atoi(v);      }
+void spu_xoffset(const char *v)      { st->x0 = atoi(v);                }
+void spu_yoffset(const char *v)      { st->y0 = atoi(v);                }
 
-void spu_force(char *v)
+void spu_force(const char *v)
 {
     st->forced = xml_ison(v);
     if( st->forced==-1 ) {
@@ -115,7 +115,7 @@ void spu_force(char *v)
     }
 }
 
-void spu_transparent(char *v)
+void spu_transparent(const char *v)
 {
     int c=0;
 
@@ -126,7 +126,7 @@ void spu_transparent(char *v)
     st->transparentc.t=255;
 }
 
-void spu_autooutline(char *v)
+void spu_autooutline(const char *v)
 {
     if( !strcmp(v,"infer") )
         st->autooutline=1;
@@ -136,7 +136,7 @@ void spu_autooutline(char *v)
     }
 }
 
-void spu_autoorder(char *v)
+void spu_autoorder(const char *v)
 {
     if(!strcmp(v,"rows"))
         st->autoorder=0;
@@ -187,29 +187,29 @@ void action_begin()
     curbutton->autoaction=1;
 }
 
-void button_label(char *v) { curbutton->name  = strdup(v); }
-void button_up(char *v)    { curbutton->up    = strdup(v); }
-void button_down(char *v)  { curbutton->down  = strdup(v); }
-void button_left(char *v)  { curbutton->left  = strdup(v); }
-void button_right(char *v) { curbutton->right = strdup(v); }
-void button_x0(char *v)    { curbutton->r.x0  = atoi(v);   }
-void button_y0(char *v)    { curbutton->r.y0  = atoi(v);   }
-void button_x1(char *v)    { curbutton->r.x1  = atoi(v);   }
-void button_y1(char *v)    { curbutton->r.y1  = atoi(v);   }
+void button_label(const char *v) { curbutton->name  = strdup(v); }
+void button_up(const char *v)    { curbutton->up    = strdup(v); }
+void button_down(const char *v)  { curbutton->down  = strdup(v); }
+void button_left(const char *v)  { curbutton->left  = strdup(v); }
+void button_right(const char *v) { curbutton->right = strdup(v); }
+void button_x0(const char *v)    { curbutton->r.x0  = atoi(v);   }
+void button_y0(const char *v)    { curbutton->r.y0  = atoi(v);   }
+void button_x1(const char *v)    { curbutton->r.x1  = atoi(v);   }
+void button_y1(const char *v)    { curbutton->r.y1  = atoi(v);   }
 
-void textsub_filename(char *v)
+void textsub_filename(const char *v)
 {
     filename=utf8tolocal(v);
 }
 
-void textsub_characterset(char *v)
+void textsub_characterset(const char *v)
 {
 #ifdef HAVE_ICONV
     sub_cp=strdup(v);
 #endif
 }
 
-void textsub_h_alignment(char *v)
+void textsub_h_alignment(const char *v)
 {
     if(!strcmp(v,"left"))
         h_sub_alignment=1;
@@ -225,7 +225,7 @@ void textsub_h_alignment(char *v)
         exit(1);}
 }
 
-void textsub_v_alignment(char *v)
+void textsub_v_alignment(const char *v)
 {
     if(!strcmp(v,"top"))
         sub_alignment=0;
@@ -287,18 +287,18 @@ void textsub_complete()
     }
 }
 
-void textsub_l_margin(char *v)     { sub_left_margin=atoi(v);        }
-void textsub_r_margin(char *v)     { sub_right_margin=atoi(v);       }
-void textsub_b_margin(char *v)     { sub_bottom_margin=atoi(v);      }
-void textsub_t_margin(char *v)     { sub_top_margin=atoi(v);         }
-void textsub_font(char *v)         { sub_font=strdup(v);             }
-void textsub_sub_fps(char *v)      { sub_fps=atof(v);                }
-void textsub_movie_fps(char *v)    { movie_fps=atof(v);              }
-void textsub_movie_width(char* v)  { movie_width=atoi(v);            }
-void textsub_movie_height(char* v) { movie_height=atoi(v);           }
-void textsub_fontsize(char *v)     { text_font_scale_factor=atof(v); }
+void textsub_l_margin(const char *v)     { sub_left_margin=atoi(v);        }
+void textsub_r_margin(const char *v)     { sub_right_margin=atoi(v);       }
+void textsub_b_margin(const char *v)     { sub_bottom_margin=atoi(v);      }
+void textsub_t_margin(const char *v)     { sub_top_margin=atoi(v);         }
+void textsub_font(const char *v)         { sub_font=strdup(v);             }
+void textsub_sub_fps(const char *v)      { sub_fps=atof(v);                }
+void textsub_movie_fps(const char *v)    { movie_fps=atof(v);              }
+void textsub_movie_width(const char* v)  { movie_width=atoi(v);            }
+void textsub_movie_height(const char* v) { movie_height=atoi(v);           }
+void textsub_fontsize(const char *v)     { text_font_scale_factor=atof(v); }
 
-void textsub_force(char *v)
+void textsub_force(const char *v)
 {
     text_forceit = xml_ison(v);
     if( text_forceit ==-1 ) {
@@ -307,7 +307,7 @@ void textsub_force(char *v)
     }
 }
 
-void textsub_transparent(char *v)
+void textsub_transparent(const char *v)
 {
     sscanf(v,"%x",&transparent_color);
     have_transparent=1;
