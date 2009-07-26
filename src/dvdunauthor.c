@@ -689,7 +689,7 @@ static void wdlong(unsigned long l)
     wdest+=4;
 }
 
-static void wdstr(const unsigned char *s)
+static void wdstr(const char *s)
 {
     while(*s)
         wdbyte(*s++);
@@ -729,7 +729,7 @@ static void writepalette(int h,uint32_t *palette)
         memset(sector+20,0xff,2048-20);
 
         wdest=sector+20;
-        wdstr((const unsigned char *)"dvdauthor-data");
+        wdstr("dvdauthor-data");
         wdbyte(1); // version
         wdbyte(1); // subtitle info
         wdbyte(j); // sub number
@@ -770,7 +770,7 @@ static void writebutton(int h,unsigned char *packhdr,hli_t *hli)
     memset(sector+20,0xff,2048-20);
 
     wdest=sector+20;
-    wdstr((const unsigned char *)"dvdauthor-data");
+    wdstr("dvdauthor-data");
     wdbyte(1); // version
     wdbyte(1); // subtitle info
     wdbyte(0); // sub number
@@ -790,7 +790,7 @@ static void writebutton(int h,unsigned char *packhdr,hli_t *hli)
         char nm1[10];
         
         sprintf(nm1,"%d",i+1);
-        wdstr((const unsigned char *)nm1);
+        wdstr(nm1);
         wdshort(0);
         wdbyte(b->auto_action_mode);
         if( b->auto_action_mode != 0 ) {
@@ -800,10 +800,10 @@ static void writebutton(int h,unsigned char *packhdr,hli_t *hli)
             wdshort(b->x_end);
             wdshort(b->y_end);
 
-            sprintf(nm1,"%d",b->up);    wdstr((const unsigned char *)nm1);
-            sprintf(nm1,"%d",b->down);  wdstr((const unsigned char *)nm1);
-            sprintf(nm1,"%d",b->left);  wdstr((const unsigned char *)nm1);
-            sprintf(nm1,"%d",b->right); wdstr((const unsigned char *)nm1);
+            sprintf(nm1,"%d",b->up);    wdstr(nm1);
+            sprintf(nm1,"%d",b->down);  wdstr(nm1);
+            sprintf(nm1,"%d",b->left);  wdstr(nm1);
+            sprintf(nm1,"%d",b->right); wdstr(nm1);
         }
     }
     
