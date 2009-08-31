@@ -134,7 +134,7 @@ sub_data * textsub_init(char *textsub_filename, float textsub_movie_fps, float t
   movie_height=textsub_movie_height;
 #ifdef HAVE_FREETYPE
   if (!vo_font)
-	init_freetype();
+    init_freetype();
 #endif
   vo_init_osd();
 #ifdef ICONV
@@ -150,7 +150,7 @@ sub_data * textsub_init(char *textsub_filename, float textsub_movie_fps, float t
   if ( image_buffer==NULL)
   {
     fprintf(stderr,"ERR: Failed to allocate memory\n");
-	exit(1);
+    exit(1);
   }
   textsub_subdata=sub_read_file(textsub_filename,textsub_movie_fps);
   vo_update_osd(textsub_movie_width,textsub_movie_height);
@@ -176,15 +176,15 @@ textsub_subtitle_type *textsub_find_sub(unsigned long text_sub_pts)
   if ( (vo_sub)&& (current_sub!=sub_last))
   {
     if ( h_sub_alignment!=SUB_ALIGNMENT_DEFAULT)
-	{
-	  vo_sub->alignment=h_sub_alignment;
-	}
-	vo_sub->text_forced=text_forceit;   // Not sure where this should go... PMD
-	sub_num_of_subtitles++;
-	sub_last=current_sub;
-	tsub->start=vo_sub->start;
-	tsub->end=vo_sub->end;
-	tsub->valid=1;
+    {
+      vo_sub->alignment=h_sub_alignment;
+    }
+    vo_sub->text_forced=text_forceit;   // Not sure where this should go... PMD
+    sub_num_of_subtitles++;
+    sub_last=current_sub;
+    tsub->start=vo_sub->start;
+    tsub->end=vo_sub->end;
+    tsub->valid=1;
   }
   return (tsub);
 }
@@ -227,10 +227,10 @@ void textsub_finish()
 static int framenum = 0;
 
 struct pngdata {
-	FILE * fp;
-	png_structp png_ptr;
-	png_infop info_ptr;
-	enum {OK,ERROR} status;
+    FILE * fp;
+    png_structp png_ptr;
+    png_infop info_ptr;
+    enum {OK,ERROR} status;
 };
 
 static struct pngdata create_png (char * fname, int image_width, int image_height, int swapped)
@@ -261,7 +261,7 @@ static struct pngdata create_png (char * fname, int image_width, int image_heigh
     }
 
     if (setjmp(png.png_ptr->jmpbuf)) {
-	if(verbose > 1) fprintf(stderr,"ERR: PNG Internal error!\n");
+    if(verbose > 1) fprintf(stderr,"ERR: PNG Internal error!\n");
         png_destroy_write_struct(&png.png_ptr, &png.info_ptr);
         fclose(png.fp);
         png.status = ERROR;
@@ -270,9 +270,9 @@ static struct pngdata create_png (char * fname, int image_width, int image_heigh
 
     png.fp = fopen (fname, "wb");
     if (png.fp == NULL) {
-	fprintf(stderr,"ERR: PNG Error opening %s for writing!\n", strerror(errno));
-       	png.status = ERROR;
-       	return png;
+    fprintf(stderr,"ERR: PNG Error opening %s for writing!\n", strerror(errno));
+        png.status = ERROR;
+        return png;
     }
 
     if(verbose > 1) fprintf(stderr,"INFO: PNG Init IO\n");
@@ -293,8 +293,8 @@ static struct pngdata create_png (char * fname, int image_width, int image_heigh
     png_write_info(png.png_ptr, png.info_ptr);
 
     if(swapped) {
-    	if(verbose > 1) fprintf(stderr,"INFO: PNG Set BGR Conversion\n");
-    	png_set_bgr(png.png_ptr);
+        if(verbose > 1) fprintf(stderr,"INFO: PNG Set BGR Conversion\n");
+        png_set_bgr(png.png_ptr);
     }
 
     png.status = OK;
@@ -321,19 +321,19 @@ char *draw_image(int p_w, int p_h, unsigned char* p_planes,unsigned int p_stride
     struct pngdata png;
     png_byte *row_pointers[p_h];
 
-	img_name=NULL;
+    img_name=NULL;
     snprintf (buf, 100, "%08d.png", ++framenum);
 
     png = create_png(buf, p_w, p_h, 0);
 
     if(png.status){
-	    fprintf(stderr,"ERR: PNG Error in create_png\n");
-	    return NULL;
+        fprintf(stderr,"ERR: PNG Error in create_png\n");
+        return NULL;
     }
 
     if(verbose > 1) fprintf(stderr,"INFO: PNG Creating Row Pointers\n");
     for ( k = 0; k < p_h; k++ )
-	row_pointers[k] = p_planes+p_stride*k;
+    row_pointers[k] = p_planes+p_stride*k;
 
     //png_write_flush(png.png_ptr);
     //png_set_flush(png.png_ptr, nrows);
@@ -342,9 +342,9 @@ char *draw_image(int p_w, int p_h, unsigned char* p_planes,unsigned int p_stride
     png_write_image(png.png_ptr, row_pointers);
 
     destroy_png(png);
-	img_name=malloc(100);
-	strcpy(img_name,buf);
-	return img_name;
+    img_name=malloc(100);
+    strcpy(img_name,buf);
+    return img_name;
 }
 int main(int argc, char **argv)
 {
@@ -409,18 +409,18 @@ int main(int argc, char **argv)
   last_sub=(&textsub_subs[textsub_subdata->sub_num-1]);
   for ( pts=0;pts<last_sub->end;pts++)
   {
-	textsub_subtitle=textsub_find_sub(pts);
-	if ( textsub_subtitle->image!=NULL)
-	  if (draw_image(movie_width,movie_height,textsub_subtitle->image,movie_width*3)!=NULL)
-	  {
-	    st=malloc(sizeof(stinfo));
+    textsub_subtitle=textsub_find_sub(pts);
+    if ( textsub_subtitle->image!=NULL)
+      if (draw_image(movie_width,movie_height,textsub_subtitle->image,movie_width*3)!=NULL)
+      {
+        st=malloc(sizeof(stinfo));
         memset(st,0,sizeof(stinfo));
-	    strcpy(st->img.fname,img_name);
-	    st->spts=textsub_subtitle->start;
-	    st->sd=(textsub_subtitle->end)-(textsub_subtitle->start);
-	    spus=realloc(spus,(numspus+1)*sizeof(stinfo *));
+        strcpy(st->img.fname,img_name);
+        st->spts=textsub_subtitle->start;
+        st->sd=(textsub_subtitle->end)-(textsub_subtitle->start);
+        spus=realloc(spus,(numspus+1)*sizeof(stinfo *));
         spus[numspus++]=st;
-	  }
+      }
   }
   textsub_finish();
   textsub_statistics();

@@ -124,9 +124,9 @@ a copy of the string. */
 static unsigned char get_next_bits()
 {
     if (!have_bits) {
-	next_bits = sub[ofs++];
-	have_bits = TRUE;
-	return next_bits >> 4;
+    next_bits = sub[ofs++];
+    have_bits = TRUE;
+    return next_bits >> 4;
     }
     have_bits = FALSE;
     return next_bits & 15;
@@ -135,13 +135,13 @@ static unsigned char get_next_bits()
 static unsigned int getpts(unsigned char *buf)
 {
     if (!(buf[1] & 0xc0) ||
-	(buf[2] < 4) || ((buf[3] & 0xe1) != 0x21) ||
-	((buf[5] & 1) != 1) || ((buf[7] & 1) != 1))
-	return -1;
+    (buf[2] < 4) || ((buf[3] & 0xe1) != 0x21) ||
+    ((buf[5] & 1) != 1) || ((buf[7] & 1) != 1))
+    return -1;
     return (buf[7] >> 1) + ((unsigned int) buf[6] << 7) +
-	(((unsigned int) buf[5] & 254) << 14) +
-	((unsigned int) buf[4] << 22) +
-	(((unsigned int) buf[3] & 14) << 29);
+    (((unsigned int) buf[5] & 254) << 14) +
+    ((unsigned int) buf[4] << 22) +
+    (((unsigned int) buf[3] & 14) << 29);
 }
 
 static void addspu(struct spu *s)
@@ -175,8 +175,8 @@ static int dvddecode()
     ofs = -1;
 
     if (debug > 1)
-	fprintf(stderr, "packet: %d bytes, first block offset=%d\n", size,
-		dsize);
+    fprintf(stderr, "packet: %d bytes, first block offset=%d\n", size,
+        dsize);
 
     s=malloc(sizeof(struct spu));
     memset(s,0,sizeof(struct spu));
@@ -194,111 +194,111 @@ static int dvddecode()
     t = read2(sub+dsize);
 
     if (debug > 2)
-	fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", dsize, t, read2(sub+dsize+2));
+    fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", dsize, t, read2(sub+dsize+2));
 
     while (i < size) {
-	c = sub[i];
+    c = sub[i];
 
-	switch (c) {
-	case 0x0:		//force start display
-	    if (debug > 4)
-		fprintf(stderr, "\tcmd(%5d): force start display\n",i);
-	    s->force_display = TRUE;
+    switch (c) {
+    case 0x0:       //force start display
+        if (debug > 4)
+        fprintf(stderr, "\tcmd(%5d): force start display\n",i);
+        s->force_display = TRUE;
             // fall through
-	case 0x01:
-	    if (debug > 4 && c==0x01)
-		fprintf(stderr, "\tcmd(%5d): start display\n",i);
-	    i++;
-	    s->pts[0] = t * 1024 + spts;
-	    break;
+    case 0x01:
+        if (debug > 4 && c==0x01)
+        fprintf(stderr, "\tcmd(%5d): start display\n",i);
+        i++;
+        s->pts[0] = t * 1024 + spts;
+        break;
 
-	case 0x02:
-	    if (debug > 4)
-		fprintf(stderr, "\tcmd(%5d): end display\n",i);
-	    s->pts[1] = t * 1024 + spts;
-	    i++;
-	    break;
+    case 0x02:
+        if (debug > 4)
+        fprintf(stderr, "\tcmd(%5d): end display\n",i);
+        s->pts[1] = t * 1024 + spts;
+        i++;
+        break;
 
-	case 0x03:
-	    if (debug > 4)
-		fprintf(stderr, "\tcmd(%5d): palette=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
+    case 0x03:
+        if (debug > 4)
+        fprintf(stderr, "\tcmd(%5d): palette=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
 
             s->map[0].color=read2(sub+i+1);
-	    i += 3;
-	    break;
+        i += 3;
+        break;
 
-	case 0x04:
-	    if (debug > 4)
-		fprintf(stderr, "\tcmd(%5d): transparency=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
+    case 0x04:
+        if (debug > 4)
+        fprintf(stderr, "\tcmd(%5d): transparency=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
 
             s->map[0].contrast=read2(sub+i+1);
-	    i += 3;
-	    break;
+        i += 3;
+        break;
 
-	case 0x05:
-	    s->x0 = ((((unsigned int) sub[i + 1]) << 4) + (sub[i + 2] >> 4));
-	    s->xd = (((sub[i + 2] & 0x0f) << 8) + sub[i + 3]) - s->x0 + 1;
+    case 0x05:
+        s->x0 = ((((unsigned int) sub[i + 1]) << 4) + (sub[i + 2] >> 4));
+        s->xd = (((sub[i + 2] & 0x0f) << 8) + sub[i + 3]) - s->x0 + 1;
 
-	    s->y0 = ((((unsigned int) sub[i + 4]) << 4) + (sub[i + 5] >> 4));
-	    s->yd = (((sub[i + 5] & 0x0f) << 8) + sub[i + 6]) - s->y0 + 1;
+        s->y0 = ((((unsigned int) sub[i + 4]) << 4) + (sub[i + 5] >> 4));
+        s->yd = (((sub[i + 5] & 0x0f) << 8) + sub[i + 6]) - s->y0 + 1;
 
-	    if (debug > 4)
-		fprintf(stderr, "\tcmd(%5d): image corner=%d,%d, size=%d,%d\n", i, s->x0,
-			s->y0, s->xd, s->yd);
-	    i += 7;
-	    break;
+        if (debug > 4)
+        fprintf(stderr, "\tcmd(%5d): image corner=%d,%d, size=%d,%d\n", i, s->x0,
+            s->y0, s->xd, s->yd);
+        i += 7;
+        break;
 
-	case 0x06:
+    case 0x06:
             if( ofs>=0 )
                 fprintf(stderr,"WARN: image pointer already supplied for this subpicture\n");
-	    ofs = read2(sub+i+1);
-	    ofs1 = read2(sub+i+3);
-	    if (debug > 4)
-		fprintf(stderr, "\tcmd(%5d): image offsets=%d,%d\n", i, ofs,
-			ofs1);
-	    i += 5;
-	    break;
+        ofs = read2(sub+i+1);
+        ofs1 = read2(sub+i+3);
+        if (debug > 4)
+        fprintf(stderr, "\tcmd(%5d): image offsets=%d,%d\n", i, ofs,
+            ofs1);
+        i += 5;
+        break;
 
-	case 0xff:
-	    if (i + 5 > size) {
-		if (debug > 4)
-		    fprintf(stderr,"\tcmd(%5d): end cmd\n",i);
+    case 0xff:
+        if (i + 5 > size) {
+        if (debug > 4)
+            fprintf(stderr,"\tcmd(%5d): end cmd\n",i);
 
-		i = size;
-		break;
-	    }
+        i = size;
+        break;
+        }
 
-	    t = read2(sub + i + 1);
-	    if (debug > 4) {
-		fprintf(stderr, "\tcmd(%5d): end cmd\n",i);
+        t = read2(sub + i + 1);
+        if (debug > 4) {
+        fprintf(stderr, "\tcmd(%5d): end cmd\n",i);
                 fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", i+1, t, read2(sub+i+3));
             }
 
-	    if ((sub[i + 3] != sub[dsize + 2])
-		|| (sub[i + 4] != sub[dsize + 3])) {
-		if (debug > 0) {
-		    fprintf(stderr,
-			    "invalid control header (%02x%02x != %02x%02x) dsize=%d!\n",
-			    sub[i + 3], sub[i + 4], sub[dsize + 2],
-			    sub[dsize + 3], dsize);
-		}
+        if ((sub[i + 3] != sub[dsize + 2])
+        || (sub[i + 4] != sub[dsize + 3])) {
+        if (debug > 0) {
+            fprintf(stderr,
+                "invalid control header (%02x%02x != %02x%02x) dsize=%d!\n",
+                sub[i + 3], sub[i + 4], sub[dsize + 2],
+                sub[dsize + 3], dsize);
+        }
 
-		i = size;
-		break;
-	    }
+        i = size;
+        break;
+        }
 
-	    i += 5;
-	    break;
+        i += 5;
+        break;
 
-	default:
+    default:
             if (debug > 4)
                 fprintf(stderr, "\tcmd(%5d): 0x%x\n", i, c);
-	    if (debug > 0)
-		fprintf(stderr,
-			"invalid sequence in control header (%02x)!\n", c);
-	    return -1;
-	}			/* end switch command */
-    }				/* end while i < size */
+        if (debug > 0)
+        fprintf(stderr,
+            "invalid sequence in control header (%02x)!\n", c);
+        return -1;
+    }           /* end switch command */
+    }               /* end while i < size */
 
     have_bits = FALSE;
     x = y = 0;
@@ -353,7 +353,7 @@ static int dvddecode()
     addspu(s);
 
     return 0;
-}				/* end fuction dvd_decode */
+}               /* end fuction dvd_decode */
 
 
 
@@ -449,26 +449,26 @@ static int write_png(char *file_name,struct spu *s,struct colormap *map,int numm
 
     fp = fopen(file_name, "wb");
     if (!fp) {
-	fprintf(stderr, "error, unable to open/create file: %s\n",
-		file_name);
-	return -1;
+    fprintf(stderr, "error, unable to open/create file: %s\n",
+        file_name);
+    return -1;
     }
 
     png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 
     if (!png_ptr)
-	return -1;
+    return -1;
 
     info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
-	png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-	return -1;
+    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+    return -1;
     }
 
     if (setjmp(png_ptr->jmpbuf)) {
-	png_destroy_write_struct(&png_ptr, &info_ptr);
-	fclose(fp);
-	return -1;
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+    fclose(fp);
+    return -1;
     }
 
     png_init_io(png_ptr, fp);
@@ -486,15 +486,15 @@ static int write_png(char *file_name,struct spu *s,struct colormap *map,int numm
     png_set_compression_method(png_ptr, 8);
 
     if (full_size) {
-	png_set_IHDR(png_ptr, info_ptr, 720, 576,
-		     8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
-		     PNG_COMPRESSION_TYPE_DEFAULT,
-		     PNG_FILTER_TYPE_DEFAULT);
+    png_set_IHDR(png_ptr, info_ptr, 720, 576,
+             8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
+             PNG_COMPRESSION_TYPE_DEFAULT,
+             PNG_FILTER_TYPE_DEFAULT);
     } else {
-	png_set_IHDR(png_ptr, info_ptr, s->xd, s->yd,
-		     8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
-		     PNG_COMPRESSION_TYPE_DEFAULT,
-		     PNG_FILTER_TYPE_DEFAULT);
+    png_set_IHDR(png_ptr, info_ptr, s->xd, s->yd,
+             8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
+             PNG_COMPRESSION_TYPE_DEFAULT,
+             PNG_FILTER_TYPE_DEFAULT);
     }
 
     png_write_info(png_ptr, info_ptr);
@@ -502,41 +502,41 @@ static int write_png(char *file_name,struct spu *s,struct colormap *map,int numm
     png_set_packing(png_ptr);
 
     if (out_buf != NULL) {
-	png_byte *row_pointers[576];
+    png_byte *row_pointers[576];
 
-	if (full_size) {
-	    unsigned char *image;
-	    temp = out_buf;
-	    image = malloc(720 * 576 * 4);
-	    memset(image, 0, 720 * 576 * 4);	// fill image full transparrent
-	    // insert image on the correct position
-	    for (y = s->y0; y < s->y0 + s->yd; y++) {
-		unsigned char *to = &image[y * 720 * 4 + s->x0 * 4];
-		for (x = 0; x < s->xd; x++) {
-		    *to++ = *temp++;
-		    *to++ = *temp++;
-		    *to++ = *temp++;
-		    *to++ = *temp++;
-		}
-	    }
+    if (full_size) {
+        unsigned char *image;
+        temp = out_buf;
+        image = malloc(720 * 576 * 4);
+        memset(image, 0, 720 * 576 * 4);    // fill image full transparrent
+        // insert image on the correct position
+        for (y = s->y0; y < s->y0 + s->yd; y++) {
+        unsigned char *to = &image[y * 720 * 4 + s->x0 * 4];
+        for (x = 0; x < s->xd; x++) {
+            *to++ = *temp++;
+            *to++ = *temp++;
+            *to++ = *temp++;
+            *to++ = *temp++;
+        }
+        }
 
             s->y0 = 0;
             s->x0 = 0;
-	    s->yd = 576;
-	    s->xd = 720;
-	    free(out_buf);
-	    out_buf = image;
-	}
+        s->yd = 576;
+        s->xd = 720;
+        free(out_buf);
+        out_buf = image;
+    }
 
 
-	for (a = 0; a < s->yd; a++) {
-	    row_pointers[a] = out_buf + a * (s->xd * 4);
-	}
+    for (a = 0; a < s->yd; a++) {
+        row_pointers[a] = out_buf + a * (s->xd * 4);
+    }
 
-	png_write_image(png_ptr, row_pointers);
+    png_write_image(png_ptr, row_pointers);
 
-	png_write_end(png_ptr, info_ptr);
-	free(out_buf);
+    png_write_end(png_ptr, info_ptr);
+    free(out_buf);
     }
 
     png_destroy_write_struct(&png_ptr, &info_ptr);
@@ -690,19 +690,19 @@ static void flushspus(unsigned int lasttime)
 static void usage(void)
 {
     fprintf(stderr,
-	    "\nUse: %s [options] [input file] [input file] ...\n\n",
-	    "spuunmux");
+        "\nUse: %s [options] [input file] [input file] ...\n\n",
+        "spuunmux");
     fprintf(stderr, "options:\n");
     fprintf(stderr,
-	    "-o <name>   base name for script and images     [sub]\n");
+        "-o <name>   base name for script and images     [sub]\n");
     fprintf(stderr,
-	    "-v <level>  verbosity level                     [0]\n");
+        "-v <level>  verbosity level                     [0]\n");
     fprintf(stderr,
-	    "-f          resize images to full size          [720x576]\n");
+        "-f          resize images to full size          [720x576]\n");
     fprintf(stderr,
-	    "-s <stream> number of the substream to extract  [0]\n");
+        "-s <stream> number of the substream to extract  [0]\n");
     fprintf(stderr,
-	    "-p <file>   name of file with dvd palette       [none]\n");
+        "-p <file>   name of file with dvd palette       [none]\n");
     fprintf(stderr, "            if palette file ends with .rgb\n");
     fprintf(stderr, "                treated as a RGB\n");
     fprintf(stderr, "                else as a YCbCr color\n");
@@ -733,40 +733,40 @@ int main(int argc, char **argv)
     Inc = inc = 0;
 
     while ((option = getopt(argc, argv, "o:v:fs:p:Vh")) != -1) {
-	switch (option) {
-	case 'o':
-	    base_name = optarg;
-	    break;
-	case 'v':
-	    debug = atoi(optarg);
-	    break;
-	case 'f':
-	    full_size = TRUE;
-	    break;
-	case 's':
-	    stream_number = atoi(optarg);
-	    break;
-	case 'p':
-	    palet_file = optarg;
-	    break;
-	case 'V':
-	    exit(-1);
+    switch (option) {
+    case 'o':
+        base_name = optarg;
+        break;
+    case 'v':
+        debug = atoi(optarg);
+        break;
+    case 'f':
+        full_size = TRUE;
+        break;
+    case 's':
+        stream_number = atoi(optarg);
+        break;
+    case 'p':
+        palet_file = optarg;
+        break;
+    case 'V':
+        exit(-1);
 
-	case 'h':
-	default:
-	    usage();
-	    return -1;
-	}
+    case 'h':
+    default:
+        usage();
+        return -1;
+    }
     }
 
     if (optind < argc) {
-	int n, i;
-	for (i = 0, n = optind; n < argc; n++, i++)
-	    iname[i] = argv[n];
-	Inc = i;
+    int n, i;
+    for (i = 0, n = optind; n < argc; n++, i++)
+        iname[i] = argv[n];
+    Inc = i;
     } else {
-	usage();
-	return -1;
+    usage();
+    return -1;
     }
 
     bps(0, 0, 0, 0);
@@ -817,9 +817,9 @@ int main(int argc, char **argv)
     }
 
     if (strlen(base_name) > 246) {
-	fprintf(stderr,
-		"error: max length of base for filename creation is 246 characters\n");
-	return -1;
+    fprintf(stderr,
+        "error: max length of base for filename creation is 246 characters\n");
+    return -1;
     }
 
     sprintf(nbuf, "%s.xml", base_name);
@@ -833,190 +833,190 @@ int main(int argc, char **argv)
     add_offset = 450; // for rounding purposes
 
     while (inc < Inc) {
-	fd = varied_open(iname[inc], O_RDONLY);
-	if (fd.h == 0) {
-	    fprintf(stderr, "error opening file %s\n", iname[inc]);
+    fd = varied_open(iname[inc], O_RDONLY);
+    if (fd.h == 0) {
+        fprintf(stderr, "error opening file %s\n", iname[inc]);
 
-	    exit(-1);
-	}
+        exit(-1);
+    }
 
-	if (debug > 0)
-	    fprintf(stderr, "file: %s\n", iname[inc]);
+    if (debug > 0)
+        fprintf(stderr, "file: %s\n", iname[inc]);
 
-	inc++;
+    inc++;
 
-	while (fread(&c, 1, 4, fd.h) == 4) {
+    while (fread(&c, 1, 4, fd.h) == 4) {
             c=ntohl(c);
-	    if (c == 0x000001ba) {	// start PS (Program stream)
-		static unsigned int old_system_time = -1;
-		unsigned int new_system_time;
-	      l_01ba:
-		if (debug > 5)
-		    fprintf(stderr, "pack_start_code\n");
+        if (c == 0x000001ba) {  // start PS (Program stream)
+        static unsigned int old_system_time = -1;
+        unsigned int new_system_time;
+          l_01ba:
+        if (debug > 5)
+            fprintf(stderr, "pack_start_code\n");
 
-		if (fread(psbuf, 1, PSBUFSIZE, fd.h) < 1)
-		    break;
+        if (fread(psbuf, 1, PSBUFSIZE, fd.h) < 1)
+            break;
 
-		if ( (psbuf[0] & 0xc0) != 0x40 ) {
-		    if (debug > 1)
-		        fprintf(stderr, "not a MPEG-2 file, skipping.\n");
-		    break;
-		}
+        if ( (psbuf[0] & 0xc0) != 0x40 ) {
+            if (debug > 1)
+                fprintf(stderr, "not a MPEG-2 file, skipping.\n");
+            break;
+        }
 
-		new_system_time = (psbuf[4] >> 3) + (psbuf[3] * 32) +
-		    ((psbuf[2] & 3) * 32 * 256) +
-		    ((psbuf[2] & 0xf8) * 32 * 128) +
-		    (psbuf[1] * 1024 * 1024) +
-		    ((psbuf[0] & 3) * 1024 * 1024 * 256) +
-		    ((psbuf[0] & 0x38) * 1024 * 1024 * 128);
+        new_system_time = (psbuf[4] >> 3) + (psbuf[3] * 32) +
+            ((psbuf[2] & 3) * 32 * 256) +
+            ((psbuf[2] & 0xf8) * 32 * 128) +
+            (psbuf[1] * 1024 * 1024) +
+            ((psbuf[0] & 3) * 1024 * 1024 * 256) +
+            ((psbuf[0] & 0x38) * 1024 * 1024 * 128);
 
-		if (new_system_time < old_system_time) {
-		    if (old_system_time != -1) {
-			if (debug > 0)
-			    printf
-				("Time changed in stream header, use old time as offset for timecode in subtitle stream\n");
-			add_offset += old_system_time;
-		    }
-		}
-		old_system_time = new_system_time;
+        if (new_system_time < old_system_time) {
+            if (old_system_time != -1) {
+            if (debug > 0)
+                printf
+                ("Time changed in stream header, use old time as offset for timecode in subtitle stream\n");
+            add_offset += old_system_time;
+            }
+        }
+        old_system_time = new_system_time;
 
                 flushspus(old_system_time);
 
-		if (debug > 5) {
-		    fprintf(stderr, "system time: %u\n", new_system_time);
-		}
+        if (debug > 5) {
+            fprintf(stderr, "system time: %u\n", new_system_time);
+        }
 
                 c=psbuf[9]&7;
-		if (c) {
+        if (c) {
                     char s[7];
 
-		    if (debug > 5)
-		        fprintf(stderr, "found %d stuffing bytes\n", c);
-		    if (fread(s, 1, c, fd.h) < c)
-		        break;
-		}
+            if (debug > 5)
+                fprintf(stderr, "found %d stuffing bytes\n", c);
+            if (fread(s, 1, c, fd.h) < c)
+                break;
+        }
             } else if( c==0x1b9 ) {
                 if (debug > 5)
                     fprintf(stderr, "end packet\n");
-	    } else {
-		fread(&package_length, 1, 2, fd.h);
+        } else {
+        fread(&package_length, 1, 2, fd.h);
                 package_length=ntohs(package_length);
-		if (package_length != 0) {
+        if (package_length != 0) {
 
-		    switch (c) {
-		    case 0x01bb:
-			if (debug > 5)
-			    fprintf(stderr, "system header\n");
-			break;
-		    case 0x01bf:
-			if (debug > 5)
-			    fprintf(stderr, "private stream 2\n");
-			break;
-		    case 0x01bd:
-			if (debug > 5)
-			    fprintf(stderr, "private stream\n");
-			fread(cbuf, 1, package_length, fd.h);
+            switch (c) {
+            case 0x01bb:
+            if (debug > 5)
+                fprintf(stderr, "system header\n");
+            break;
+            case 0x01bf:
+            if (debug > 5)
+                fprintf(stderr, "private stream 2\n");
+            break;
+            case 0x01bd:
+            if (debug > 5)
+                fprintf(stderr, "private stream\n");
+            fread(cbuf, 1, package_length, fd.h);
 
-			next_word = getpts(cbuf);
-			if (next_word != -1) {
-			    pts = next_word;
-			}
+            next_word = getpts(cbuf);
+            if (next_word != -1) {
+                pts = next_word;
+            }
 
-			next_word = cbuf[2] + 3;
+            next_word = cbuf[2] + 3;
 
-			if (debug > 5)
-			    for (c = 0; c < next_word; c++)
-				fprintf(stderr, "0x%02x ", cbuf[c]);
+            if (debug > 5)
+                for (c = 0; c < next_word; c++)
+                fprintf(stderr, "0x%02x ", cbuf[c]);
 
-			if (debug > 5)
-			    fprintf(stderr, "tid: %d\n", pts);
+            if (debug > 5)
+                fprintf(stderr, "tid: %d\n", pts);
 
-			if ( /*(debug > 1) && */ (cbuf[next_word] == 0x70))
-			    fprintf(stderr, "substr: %d\n",
-				    cbuf[next_word + 1]);
+            if ( /*(debug > 1) && */ (cbuf[next_word] == 0x70))
+                fprintf(stderr, "substr: %d\n",
+                    cbuf[next_word + 1]);
 
-			if (cbuf[next_word] == stream_number + 32) {
-			    if ((debug < 6) && (debug > 1)) {
-				fprintf(stderr,
-					"id: 0x%x 0x%x %d  tid: %d\n",
-					cbuf[next_word], package_length,
-					next_word, pts);
-			    }
+            if (cbuf[next_word] == stream_number + 32) {
+                if ((debug < 6) && (debug > 1)) {
+                fprintf(stderr,
+                    "id: 0x%x 0x%x %d  tid: %d\n",
+                    cbuf[next_word], package_length,
+                    next_word, pts);
+                }
 
-			    if (!subi) {
-				subs =
-				    ((unsigned int) cbuf[next_word + 1] <<
-				     8) + cbuf[next_word + 2];
+                if (!subi) {
+                subs =
+                    ((unsigned int) cbuf[next_word + 1] <<
+                     8) + cbuf[next_word + 2];
 
-				spts = pts;
-			    }
+                spts = pts;
+                }
 
-			    memcpy(sub + subi, cbuf + next_word + 1,
-				   package_length - next_word - 1);
+                memcpy(sub + subi, cbuf + next_word + 1,
+                   package_length - next_word - 1);
 
-			    if (debug > 1) {
-				fprintf(stderr, "found %d bytes of data\n",
-					package_length - next_word - 1);
-			    }
+                if (debug > 1) {
+                fprintf(stderr, "found %d bytes of data\n",
+                    package_length - next_word - 1);
+                }
 
-			    subi += package_length - next_word - 1;
+                subi += package_length - next_word - 1;
 
-			    if (debug > 2) {
-				fprintf(stderr,
-					"subi: %d (0x%x)  subs: %d (0x%x) b-a-1: %d (0x%x)\n",
-					subi, subi, subs, subs,
-					package_length - next_word - 1,
-					package_length - next_word - 1);
-			    }
+                if (debug > 2) {
+                fprintf(stderr,
+                    "subi: %d (0x%x)  subs: %d (0x%x) b-a-1: %d (0x%x)\n",
+                    subi, subi, subs, subs,
+                    package_length - next_word - 1,
+                    package_length - next_word - 1);
+                }
 
-			    if (subs == subi) {
-				subi = 0;
+                if (subs == subi) {
+                subi = 0;
 
-				next_word = dvddecode();
+                next_word = dvddecode();
 
-				if (next_word) {
-				    fprintf(stderr,
-					    "found unreadable subtitle at %.2fs, skipping\n",
-					    (double) spts / 90000);
-				    continue;
-				}
-			    }	/* end if subs == subi */
-			}
+                if (next_word) {
+                    fprintf(stderr,
+                        "found unreadable subtitle at %.2fs, skipping\n",
+                        (double) spts / 90000);
+                    continue;
+                }
+                }   /* end if subs == subi */
+            }
                         package_length=0;
-			break;
-		    case 0x01e0:
+            break;
+            case 0x01e0:
                         if( firstvideo==-1 ) {
                             fread(cbuf, 1, package_length, fd.h);
                             firstvideo=getpts(cbuf);
                             add_offset-=firstvideo;
                             package_length=0;
                         }
-			if (debug > 5)
-			    fprintf(stderr, "video stream 0\n");
-			break;
+            if (debug > 5)
+                fprintf(stderr, "video stream 0\n");
+            break;
                     case 0x01e1:
-		    case 0x01e2:
-		    case 0x01e3:
-		    case 0x01e4:
-		    case 0x01e5:
-		    case 0x01e6:
-		    case 0x01e7:
-		    case 0x01e8:
-		    case 0x01e9:
-		    case 0x01ea:
-		    case 0x01eb:
-		    case 0x01ec:
-		    case 0x01ed:
-		    case 0x01ee:
-		    case 0x01ef:
-			if (debug > 5)
-			    fprintf(stderr, "video stream %d\n",c-0x1e0);
-			break;
-		    case 0x01be:
-			if (debug > 5)
-			    fprintf(stderr, "padding stream %d bytes\n",
-				    package_length);
-			fread(cbuf, 1, package_length, fd.h);
+            case 0x01e2:
+            case 0x01e3:
+            case 0x01e4:
+            case 0x01e5:
+            case 0x01e6:
+            case 0x01e7:
+            case 0x01e8:
+            case 0x01e9:
+            case 0x01ea:
+            case 0x01eb:
+            case 0x01ec:
+            case 0x01ed:
+            case 0x01ee:
+            case 0x01ef:
+            if (debug > 5)
+                fprintf(stderr, "video stream %d\n",c-0x1e0);
+            break;
+            case 0x01be:
+            if (debug > 5)
+                fprintf(stderr, "padding stream %d bytes\n",
+                    package_length);
+            fread(cbuf, 1, package_length, fd.h);
                         if( package_length > 30 ) {
                             int i;
 
@@ -1102,69 +1102,69 @@ int main(int argc, char **argv)
                             }
                         }
                         package_length=0;
-			break;
-		    case 0x01c0:
+            break;
+            case 0x01c0:
                     case 0x01c1:
-		    case 0x01c2:
-		    case 0x01c3:
-		    case 0x01c4:
-		    case 0x01c5:
-		    case 0x01c6:
-		    case 0x01c7:
-		    case 0x01c8:
-		    case 0x01c9:
-		    case 0x01ca:
-		    case 0x01cb:
-		    case 0x01cc:
-		    case 0x01cd:
-		    case 0x01ce:
-		    case 0x01cf:
-		    case 0x01d0:
+            case 0x01c2:
+            case 0x01c3:
+            case 0x01c4:
+            case 0x01c5:
+            case 0x01c6:
+            case 0x01c7:
+            case 0x01c8:
+            case 0x01c9:
+            case 0x01ca:
+            case 0x01cb:
+            case 0x01cc:
+            case 0x01cd:
+            case 0x01ce:
+            case 0x01cf:
+            case 0x01d0:
                     case 0x01d1:
-		    case 0x01d2:
-		    case 0x01d3:
-		    case 0x01d4:
-		    case 0x01d5:
-		    case 0x01d6:
-		    case 0x01d7:
-		    case 0x01d8:
-		    case 0x01d9:
-		    case 0x01da:
-		    case 0x01db:
-		    case 0x01dc:
-		    case 0x01dd:
-		    case 0x01de:
-		    case 0x01df:
-			if (debug > 5)
-			    fprintf(stderr, "audio stream %d\n",c-0x1c0);
-			break;
-		    default:
-			if (debug > 0)
-			    fprintf(stderr, "unknown header %x\n", c);
-			next_word = (c<<16) | package_length;
-			package_length = 2;
-			while (next_word != 0x1ba) {
-			    next_word = next_word << 8;
-			    if (fread(&next_word, 1, 1, fd.h) < 1)
-				break;
-			    package_length++;
-			}
+            case 0x01d2:
+            case 0x01d3:
+            case 0x01d4:
+            case 0x01d5:
+            case 0x01d6:
+            case 0x01d7:
+            case 0x01d8:
+            case 0x01d9:
+            case 0x01da:
+            case 0x01db:
+            case 0x01dc:
+            case 0x01dd:
+            case 0x01de:
+            case 0x01df:
+            if (debug > 5)
+                fprintf(stderr, "audio stream %d\n",c-0x1c0);
+            break;
+            default:
+            if (debug > 0)
+                fprintf(stderr, "unknown header %x\n", c);
+            next_word = (c<<16) | package_length;
+            package_length = 2;
+            while (next_word != 0x1ba) {
+                next_word = next_word << 8;
+                if (fread(&next_word, 1, 1, fd.h) < 1)
+                break;
+                package_length++;
+            }
 
-			if (debug > 0)
-			    fprintf(stderr,
-				    "skipped %d bytes of garbage\n",
-				    package_length);
-			goto l_01ba;
-		    }		/* end switch */
+            if (debug > 0)
+                fprintf(stderr,
+                    "skipped %d bytes of garbage\n",
+                    package_length);
+            goto l_01ba;
+            }       /* end switch */
                     fread(cbuf, 1, package_length, fd.h);
-		}
+        }
 
-	    }			/* end if 0xbd010000 */
+        }           /* end if 0xbd010000 */
 
-	}			/* end while read 4 */
+    }           /* end while read 4 */
 
-	varied_close(fd);
-    }				/* end while inc < Inc */
+    varied_close(fd);
+    }               /* end while inc < Inc */
 
     flushspus(0x7fffffff);
 
@@ -1172,4 +1172,4 @@ int main(int argc, char **argv)
     fclose(fdo);
 
     return 0;
-}				/* end function main */
+}               /* end function main */

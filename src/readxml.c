@@ -55,9 +55,9 @@ static int xml_varied_close(void *context)
 
 int readxml
   (
-	const char *xmlfile, /* filename to read */
-	const struct elemdesc *elems, /* array terminated by entry with null elemname field */
-	const struct elemattr *attrs /* array terminated by entry with null elem field */
+    const char *xmlfile, /* filename to read */
+    const struct elemdesc *elems, /* array terminated by entry with null elemname field */
+    const struct elemattr *attrs /* array terminated by entry with null elem field */
   )
   /* opens and reads an XML file according to the given element and attribute definitions. */
 {
@@ -107,7 +107,7 @@ int readxml
                     }
                     while(xmlTextReaderMoveToNextAttribute(f)) {
                         const char * const nm = (const char *)xmlTextReaderName(f);
-						const char * const v = (const char *)xmlTextReaderValue(f);
+                        const char * const v = (const char *)xmlTextReaderValue(f);
                         int j;
 
                         for( j=0; attrs[j].elem; j++ )
@@ -159,7 +159,7 @@ int readxml
                     return 1;
             }
             curstate=elems[i].parentstate;
-		  /* Note I don't handle sub-tags mixed with content! */
+          /* Note I don't handle sub-tags mixed with content! */
             if( parser_body )
                 free(parser_body);
             parser_body=0;
@@ -192,7 +192,7 @@ int readxml
             if( !parser_body )
                 parser_body=strdup(v); /* first lot of tag content */
             else {
-			  /* append to previous tag content */
+              /* append to previous tag content */
                 parser_body=realloc(parser_body,strlen(parser_body)+strlen(v)+1);
                 strcat(parser_body,v);
             }
@@ -225,12 +225,12 @@ int xml_ison(const char *s)
 
 static iconv_t get_conv()
   /* returns a reusable iconv_t object (allocated on the first call)
-	for converting strings from UTF-8 to the current locale encoding. */
+    for converting strings from UTF-8 to the current locale encoding. */
 {
     static iconv_t ic=(iconv_t)-1; /* initially unallocated */
 
     if( ic==((iconv_t)-1) ) {
-	  /* first call */
+      /* first call */
         char *enc;
 
         errno=0;
@@ -256,7 +256,7 @@ static iconv_t get_conv()
 
 char *utf8tolocal(const char *in)
   /* converts a UTF-8-encoded character string to the current locale encoding,
-	suitable for use for file names. */
+    suitable for use for file names. */
 {
     iconv_t c=get_conv();
     size_t inlen=strlen(in);

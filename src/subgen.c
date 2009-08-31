@@ -45,13 +45,13 @@
 // (9*300*2048)/126
 #define DVDRATE 43886
 
-#define CVD_SUB_CHANNEL		0x0
-#define SVCD_SUB_CHANNEL	0x70
-#define DVD_SUB_CHANNEL		0x20
+#define CVD_SUB_CHANNEL     0x0
+#define SVCD_SUB_CHANNEL    0x70
+#define DVD_SUB_CHANNEL     0x20
 
-#define DVD_SUB		0
-#define CVD_SUB		1
-#define SVCD_SUB	2
+#define DVD_SUB     0
+#define CVD_SUB     1
+#define SVCD_SUB    2
 
 #define psbufs 10
 
@@ -157,7 +157,7 @@ static void mkpesh0(unsigned long int pts)
 /* constructs an MPEG-2 PES header extension with PTS data but no PES extension. */
 {
     header[0] = 0x81; /* original flag set */
-    header[1] = 0x80;	//pts flag
+    header[1] = 0x80;   //pts flag
     header[2] = 5; /* PES header data length */
     header[3] = 0x21 | ((pts >> 29) & 6); /* PTS[31 .. 30] */
     header[4] = pts >> 22; /* PTS[29 .. 22] */
@@ -171,7 +171,7 @@ static void mkpesh1(unsigned long int pts)
 /* constructs an MPEG-2 PES header extension with PTS data and a PES extension. */
 {
     header[0] = 0x81; /* original flag set */
-    header[1] = 0x81;	//pts flag + pes extension flag
+    header[1] = 0x81;   //pts flag + pes extension flag
     header[2] = 8; /* PES header data length */
     header[3] = 0x21 | ((pts >> 29)&6); /* PTS[31 .. 30] */
     header[4] = pts >> 22; /* PTS[29 .. 22] */
@@ -342,7 +342,7 @@ static void swrite(int h,void *b,int l)
 
 static stinfo *getnextsub(void)
 {
-	while(1) {
+    while(1) {
         stinfo *s;
 
         if( spuindex>=numspus )
@@ -350,9 +350,9 @@ static stinfo *getnextsub(void)
         s=spus[spuindex++];
         if( tofs>0 )
             s->spts += tofs;
-/*		fprintf(stderr,"spts: %d\n",s->spts); */
-		fprintf(stderr,"STAT: ");
-	    fprintf(stderr,"%d:%02d:%02d.%03d\r",
+/*      fprintf(stderr,"spts: %d\n",s->spts); */
+        fprintf(stderr,"STAT: ");
+        fprintf(stderr,"%d:%02d:%02d.%03d\r",
             (int)(s->spts/90/1000/60/60),
             (int)(s->spts/90/1000/60)%60,
             (int)(s->spts/90/1000)%60,
@@ -688,7 +688,7 @@ static void mux(int eoinput)
                 }
 
                 /* write padding stream size */
-                bs = htons(b);			//fixa
+                bs = htons(b);          //fixa
                 swrite(fdo, &bs, 2);
 
                 /* write padding end marker ? */
@@ -719,15 +719,15 @@ int main(int argc,char **argv)
     sub = malloc( SUB_BUFFER_MAX + SUB_BUFFER_HEADROOM );
     if(! sub)
     {
-	fprintf(stderr, "ERR: Could not allocate space for sub, aborting.\n");
+    fprintf(stderr, "ERR: Could not allocate space for sub, aborting.\n");
 
-	exit(1);
+    exit(1);
     }
 //fprintf(stderr, "malloc sub=%p\n", sub);
 
     if ( !(cbuf = malloc(65536)) ) {
-	fprintf(stderr, "ERR: Could not allocate space for sub buffer, aborting.\n");
-	exit(1);
+    fprintf(stderr, "ERR: Could not allocate space for sub buffer, aborting.\n");
+    exit(1);
     }
 
     image_init();
@@ -744,7 +744,7 @@ int main(int argc,char **argv)
 
     while( -1 != (optch=getopt(argc,argv,"hm:s:v:P")) ) {
         switch( optch ) {
-	case 'm':
+    case 'm':
             switch(optarg[0]) {
             case 'd':
             case 'D':
@@ -767,13 +767,13 @@ int main(int argc,char **argv)
             }
             break;
 
-	case 's': substr = atoi(optarg); break;
-	case 'v': debug  = atoi(optarg); break;
-	case 'P': progr  = 1;            break;
+    case 's': substr = atoi(optarg); break;
+    case 'v': debug  = atoi(optarg); break;
+    case 'P': progr  = 1;            break;
 
         case 'h': usage();
 
-	default:
+    default:
             fprintf(stderr,"WARN: Getopt returned %d\n",optch);
             usage();
         }
@@ -815,15 +815,15 @@ int main(int argc,char **argv)
     if( spumux_parse(argv[optind]) )
         return -1;
     if(tofs>=0  &&  (debug > 0) )
-	fprintf(stderr, "INFO: Subtitles offset by %fs\n", (double)tofs / 90000);
+    fprintf(stderr, "INFO: Subtitles offset by %fs\n", (double)tofs / 90000);
 
     spuindex=0;
 
     skip=0;
 
     if ( !(sector=malloc(secsize)) ) {
-	fprintf(stderr, "ERR: Could not allocate space for sector buffer, aborting.\n");
-	exit(1);
+    fprintf(stderr, "ERR: Could not allocate space for sector buffer, aborting.\n");
+    exit(1);
     }
 
     newsti=getnextsub();
@@ -843,7 +843,7 @@ int main(int argc,char **argv)
 
         ch=ntohl(c);
 
-	if(ch == 0x1ba) /* PACK header */
+    if(ch == 0x1ba) /* PACK header */
         {
         l_01ba:
             if(progr)
@@ -869,7 +869,7 @@ int main(int argc,char **argv)
             swrite(fdo, &c, 4);
             swrite(fdo, header, psbufs);
         }
-	else if( ch>=0x1bb && ch<=0x1ef ) /* system header */
+    else if( ch>=0x1bb && ch<=0x1ef ) /* system header */
         {
             swrite(fdo, &c, 4);
             if (sread(fdi, &b, 2) != 2) break;
@@ -929,16 +929,16 @@ int main(int argc,char **argv)
 
     if (subno  !=  0xffff)
     {
-	fprintf(stderr,\
+    fprintf(stderr,\
                 "INFO: %d subtitles added, %d subtitles skipped, stream: %d, offset: %.2f\n",\
                 subno + 1, skip, substr, (double)tofs / 90000);
     }
     else
     {
-	fprintf(stderr, "WARN: no subtitles added\n");
-	}
-	textsub_statistics();
-	textsub_finish();
+    fprintf(stderr, "WARN: no subtitles added\n");
+    }
+    textsub_statistics();
+    textsub_finish();
 
     image_shutdown();
 

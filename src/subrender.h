@@ -30,15 +30,15 @@ typedef struct mp_osd_obj_s {
     mp_osd_bbox_t bbox; // bounding box
     mp_osd_bbox_t old_bbox; // the renderer will save bbox here
     union {
-	struct {
-	    void* sub;			// value of vo_sub at last update
-	    int utbl[MAX_UCS+1];	// subtitle text
-	    int xtbl[MAX_UCSLINES];	// x positions
-	    int lines;			// no. of lines
-	} subtitle;
-	struct {
-	    int elems;
-	} progbar;
+    struct {
+        void* sub;          // value of vo_sub at last update
+        int utbl[MAX_UCS+1];    // subtitle text
+        int xtbl[MAX_UCSLINES]; // x positions
+        int lines;          // no. of lines
+    } subtitle;
+    struct {
+        int elems;
+    } progbar;
     } params;
     int stride;
 

@@ -44,9 +44,9 @@
 // osd_text_p is used to mark the lines of subtitles
 struct osd_text_t {
     int osd_kerning, //kerning with the previous word
-	osd_length,  //horizontal length inside the bbox
-	text_length, //number of characters
-	*text;       //characters
+    osd_length,  //horizontal length inside the bbox
+    text_length, //number of characters
+    *text;       //characters
     struct osd_text_t *prev,
                       *next;
 };
@@ -74,28 +74,28 @@ static inline void vo_draw_alpha_rgb24(int w,int h, unsigned char* src, unsigned
         for(x=0;x<w;x++){
             if(srca[x]){
 
-		dst[0]=(((dst[0]*srca[x]))>>8)+src[x];
-		dst[1]=(((dst[1]*srca[x]))>>8)+src[x];
-		dst[2]=(((dst[2]*srca[x]))>>8)+src[x];
-		/* dst[0]=(src[x]>>6)<<6;
-		dst[1]=(src[x]>>6)<<6;
-		dst[2]=(src[x]>>6)<<6; */
-		for (i=0;i<3;i++)
-		{
-			if ( dst[i])
-			{
-				if (dst[i]>=170)
-				  dst[i]=255;
-				else
-				{
-					if (dst[i]>=127)
-					  dst[i]=127;
-					else
-					  dst[i]=1;
-				}
-			}
-		}
-		/* fprintf(stderr,"%d.",src[x]); */
+        dst[0]=(((dst[0]*srca[x]))>>8)+src[x];
+        dst[1]=(((dst[1]*srca[x]))>>8)+src[x];
+        dst[2]=(((dst[2]*srca[x]))>>8)+src[x];
+        /* dst[0]=(src[x]>>6)<<6;
+        dst[1]=(src[x]>>6)<<6;
+        dst[2]=(src[x]>>6)<<6; */
+        for (i=0;i<3;i++)
+        {
+            if ( dst[i])
+            {
+                if (dst[i]>=170)
+                  dst[i]=255;
+                else
+                {
+                    if (dst[i]>=127)
+                      dst[i]=127;
+                    else
+                      dst[i]=1;
+                }
+            }
+        }
+        /* fprintf(stderr,"%d.",src[x]); */
 
             }
             dst+=3; // 24bpp
@@ -117,34 +117,34 @@ static void draw_alpha_buf(mp_osd_obj_t* obj, int x0,int y0, int w,int h, unsign
     unsigned char *a = obj->alpha_buffer  + (y0-obj->bbox.y1)*dststride + (x0-obj->bbox.x1);
     unsigned char *bs = src;
     unsigned char *as = srca;
-	int k=0;
+    int k=0;
 
-	/* fprintf(stderr,"***w:%d x0:%d bbx1:%d bbx2:%d dstsstride:%d y0:%d h:%d bby1:%d bby2:%d ofs:%d ***\n",w,x0,obj->bbox.x1,obj->bbox.x2,dststride,y0,h,obj->bbox.y1,obj->bbox.y2,(y0-obj->bbox.y1)*dststride + (x0-obj->bbox.x1));*/
+    /* fprintf(stderr,"***w:%d x0:%d bbx1:%d bbx2:%d dstsstride:%d y0:%d h:%d bby1:%d bby2:%d ofs:%d ***\n",w,x0,obj->bbox.x1,obj->bbox.x2,dststride,y0,h,obj->bbox.y1,obj->bbox.y2,(y0-obj->bbox.y1)*dststride + (x0-obj->bbox.x1));*/
     if (x0 < obj->bbox.x1 || x0+w > obj->bbox.x2 || y0 < obj->bbox.y1 || y0+h > obj->bbox.y2)
-	  {
-	    fprintf(stderr, "WARN: Text out of range: bbox [%d %d %d %d], txt [%d %d %d %d]\n",
-		obj->bbox.x1, obj->bbox.x2, obj->bbox.y1, obj->bbox.y2,
-		x0, x0+w, y0, y0+h);
-		return;
+      {
+        fprintf(stderr, "WARN: Text out of range: bbox [%d %d %d %d], txt [%d %d %d %d]\n",
+        obj->bbox.x1, obj->bbox.x2, obj->bbox.y1, obj->bbox.y2,
+        x0, x0+w, y0, y0+h);
+        return;
       }
 
     for (i = 0; i < h; i++)
-	  {
-	    for (j = 0; j < w; j++, b++, a++, bs++, as++)
-		  {
-	        if (*b < *bs)
-			  *b = *bs;
-	        if (*as)
-			  {
-				if (*a == 0 || *a > *as)
-				  *a = *as;
-	          }
-	      }
-	   	k+= dstskip;
-		b+= dstskip;
-	    a+= dstskip;
-	    bs+= srcskip;
-	    as+= srcskip;
+      {
+        for (j = 0; j < w; j++, b++, a++, bs++, as++)
+          {
+            if (*b < *bs)
+              *b = *bs;
+            if (*as)
+              {
+                if (*a == 0 || *a > *as)
+                  *a = *as;
+              }
+          }
+        k+= dstskip;
+        b+= dstskip;
+        a+= dstskip;
+        bs+= srcskip;
+        as+= srcskip;
       }
 }
 
@@ -152,17 +152,17 @@ static void draw_alpha_buf(mp_osd_obj_t* obj, int x0,int y0, int w,int h, unsign
 static void alloc_buf(mp_osd_obj_t* obj)
 {
     int len;
-	/* fprintf(stderr,"x1:%d x2:%d y1:%d y2:%d\n",obj->bbox.x1,obj->bbox.x2,obj->bbox.y1,obj->bbox.y2); */
-	if (obj->bbox.x2 < obj->bbox.x1) obj->bbox.x2 = obj->bbox.x1;
+    /* fprintf(stderr,"x1:%d x2:%d y1:%d y2:%d\n",obj->bbox.x1,obj->bbox.x2,obj->bbox.y1,obj->bbox.y2); */
+    if (obj->bbox.x2 < obj->bbox.x1) obj->bbox.x2 = obj->bbox.x1;
     if (obj->bbox.y2 < obj->bbox.y1) obj->bbox.y2 = obj->bbox.y1;
     obj->stride = ((obj->bbox.x2-obj->bbox.x1)+7)&(~7);
     len = obj->stride*(obj->bbox.y2-obj->bbox.y1);
     if (obj->allocated<len) {
-	obj->allocated = len;
-	free(obj->bitmap_buffer);
-	free(obj->alpha_buffer);
-	obj->bitmap_buffer = (unsigned char *)malloc(len);
-	obj->alpha_buffer = (unsigned char *)malloc(len);
+    obj->allocated = len;
+    free(obj->bitmap_buffer);
+    free(obj->alpha_buffer);
+    obj->bitmap_buffer = (unsigned char *)malloc(len);
+    obj->alpha_buffer = (unsigned char *)malloc(len);
     }
     memset(obj->bitmap_buffer, sub_bg_color, len);
     memset(obj->alpha_buffer, sub_bg_alpha, len);
@@ -197,9 +197,9 @@ inline static void vo_update_text_sub(mp_osd_obj_t* obj,int dxs,int dys)
     l=vo_sub->lines;
 
     {
-		struct osd_text_t *osl, *cp_ott, *tmp_ott, *tmp;
-		struct osd_text_p *otp_sub = NULL, *otp_sub_tmp=NULL,	// these are used to store the whole sub text osd
-            *otp, *tmp_otp, *pmt;	// these are used to manage sub text osd coming from a single sub line
+        struct osd_text_t *osl, *cp_ott, *tmp_ott, *tmp;
+        struct osd_text_p *otp_sub = NULL, *otp_sub_tmp=NULL,   // these are used to store the whole sub text osd
+            *otp, *tmp_otp, *pmt;   // these are used to manage sub text osd coming from a single sub line
         /* int *char_seq, char_position, xlimit = dxs * sub_width_p / 100, counter; */
         int *char_seq, char_position, xlimit = dxs -sub_right_margin -sub_left_margin, counter;
 
@@ -208,17 +208,17 @@ inline static void vo_update_text_sub(mp_osd_obj_t* obj,int dxs,int dys)
             l--;
             t=(const unsigned char *)vo_sub->text[i++];
             len=strlen((const char *)t)-1;
-			char_position = 0;
-			char_seq = (int *) malloc((len + 1) * sizeof(int));
+            char_position = 0;
+            char_seq = (int *) malloc((len + 1) * sizeof(int));
 
             prevc = -1;
 
-			otp = NULL;
-			osl = NULL;
+            otp = NULL;
+            osl = NULL;
             cp_ott = NULL;
-			x = 1;
+            x = 1;
 
-			// reading the subtitle words from vo_sub->text[]
+            // reading the subtitle words from vo_sub->text[]
             for (j=0;j<=len;j++){
                 if ((c=t[j])>=0x80){
                     if (sub_utf8){
@@ -238,243 +238,243 @@ inline static void vo_update_text_sub(mp_osd_obj_t* obj,int dxs,int dys)
                 if (!c) c++; // avoid UCS 0
                 render_one_glyph(vo_font, c);
 
-				if (c == ' ') {
-					struct osd_text_t *tmp_ott = (struct osd_text_t *) calloc(1, sizeof(struct osd_text_t));
+                if (c == ' ') {
+                    struct osd_text_t *tmp_ott = (struct osd_text_t *) calloc(1, sizeof(struct osd_text_t));
 
-					if (osl == NULL) {
-						cp_ott = tmp_ott;
-						osl=cp_ott;
-					} else {
-						tmp_ott->prev = cp_ott;
-						cp_ott->next = tmp_ott;
-						tmp_ott->osd_kerning =
-							vo_font->charspace + vo_font->width[' '];
-						cp_ott = tmp_ott;
-					} /*if*/
-					tmp_ott->osd_length = xsize;
-					tmp_ott->text_length = char_position;
-					tmp_ott->text = (int *) malloc(char_position * sizeof(int));
-					for (counter = 0; counter < char_position; ++counter)
-					tmp_ott->text[counter] = char_seq[counter];
-					char_position = 0;
-					xsize = 0;
-					prevc = c;
-				} else {
-					int delta_xsize = vo_font->width[c] + vo_font->charspace + kerning(vo_font, prevc, c);
+                    if (osl == NULL) {
+                        cp_ott = tmp_ott;
+                        osl=cp_ott;
+                    } else {
+                        tmp_ott->prev = cp_ott;
+                        cp_ott->next = tmp_ott;
+                        tmp_ott->osd_kerning =
+                            vo_font->charspace + vo_font->width[' '];
+                        cp_ott = tmp_ott;
+                    } /*if*/
+                    tmp_ott->osd_length = xsize;
+                    tmp_ott->text_length = char_position;
+                    tmp_ott->text = (int *) malloc(char_position * sizeof(int));
+                    for (counter = 0; counter < char_position; ++counter)
+                    tmp_ott->text[counter] = char_seq[counter];
+                    char_position = 0;
+                    xsize = 0;
+                    prevc = c;
+                } else {
+                    int delta_xsize = vo_font->width[c] + vo_font->charspace + kerning(vo_font, prevc, c);
 
-					if (xsize + delta_xsize <= dxs-sub_right_margin-sub_left_margin) {
-						if (!x) x = 1;
-						prevc = c;
-						char_seq[char_position++] = c;
-						xsize += delta_xsize;
-						if ((!suboverlap_enabled) && ((font = vo_font->font[c]) >= 0)) {
-							if (vo_font->pic_a[font]->h > h) {
-							h = vo_font->pic_a[font]->h;
-							} /*if*/
-						} /*if*/
-					} else {
-						if (x) {
-							fprintf(stderr,"WARN: Subtitle word '%s' too long!\n", t);
-							x = 0;
-						} /*if*/
-					} /*if*/
-				} /*if*/
+                    if (xsize + delta_xsize <= dxs-sub_right_margin-sub_left_margin) {
+                        if (!x) x = 1;
+                        prevc = c;
+                        char_seq[char_position++] = c;
+                        xsize += delta_xsize;
+                        if ((!suboverlap_enabled) && ((font = vo_font->font[c]) >= 0)) {
+                            if (vo_font->pic_a[font]->h > h) {
+                            h = vo_font->pic_a[font]->h;
+                            } /*if*/
+                        } /*if*/
+                    } else {
+                        if (x) {
+                            fprintf(stderr,"WARN: Subtitle word '%s' too long!\n", t);
+                            x = 0;
+                        } /*if*/
+                    } /*if*/
+                } /*if*/
             }// for len (all words from subtitle line read)
 
-	    // osl holds an ordered (as they appear in the lines) chain of the subtitle words
-	    {
-			struct osd_text_t *tmp_ott = (struct osd_text_t *) calloc(1, sizeof(struct osd_text_t));
+        // osl holds an ordered (as they appear in the lines) chain of the subtitle words
+        {
+            struct osd_text_t *tmp_ott = (struct osd_text_t *) calloc(1, sizeof(struct osd_text_t));
 
-			if (osl == NULL) {
-				osl = cp_ott = tmp_ott;
-			} else {
-				tmp_ott->prev = cp_ott;
-				cp_ott->next = tmp_ott;
-				tmp_ott->osd_kerning =
-				vo_font->charspace + vo_font->width[' '];
-				cp_ott = tmp_ott;
-			} /*if*/
-			tmp_ott->osd_length = xsize;
-			tmp_ott->text_length = char_position;
-			tmp_ott->text = (int *) malloc(char_position * sizeof(int));
-			for (counter = 0; counter < char_position; ++counter)
-				tmp_ott->text[counter] = char_seq[counter];
-			char_position = 0;
-			xsize = -vo_font->charspace;
-	    }
-		if (osl != NULL) {
-			int value = 0, exit1 = 0, minimum = 0;
+            if (osl == NULL) {
+                osl = cp_ott = tmp_ott;
+            } else {
+                tmp_ott->prev = cp_ott;
+                cp_ott->next = tmp_ott;
+                tmp_ott->osd_kerning =
+                vo_font->charspace + vo_font->width[' '];
+                cp_ott = tmp_ott;
+            } /*if*/
+            tmp_ott->osd_length = xsize;
+            tmp_ott->text_length = char_position;
+            tmp_ott->text = (int *) malloc(char_position * sizeof(int));
+            for (counter = 0; counter < char_position; ++counter)
+                tmp_ott->text[counter] = char_seq[counter];
+            char_position = 0;
+            xsize = -vo_font->charspace;
+        }
+        if (osl != NULL) {
+            int value = 0, exit1 = 0, minimum = 0;
 
-			// otp will contain the chain of the osd subtitle lines coming from the single vo_sub line.
-			otp = tmp_otp = (struct osd_text_p *) calloc(1, sizeof(struct osd_text_p));
-			tmp_otp->ott = osl;
-			for (tmp_ott = tmp_otp->ott; exit1 == 0; ) {
-				while ((tmp_ott != NULL) && (value + tmp_ott->osd_kerning + tmp_ott->osd_length <=xlimit)) {
-					value += tmp_ott->osd_kerning + tmp_ott->osd_length;
-					tmp_ott = tmp_ott->next;
-				} /*while*/
-				if (tmp_ott != NULL) {
-					struct osd_text_p *tmp = (struct osd_text_p *) calloc(1, sizeof(struct osd_text_p));
+            // otp will contain the chain of the osd subtitle lines coming from the single vo_sub line.
+            otp = tmp_otp = (struct osd_text_p *) calloc(1, sizeof(struct osd_text_p));
+            tmp_otp->ott = osl;
+            for (tmp_ott = tmp_otp->ott; exit1 == 0; ) {
+                while ((tmp_ott != NULL) && (value + tmp_ott->osd_kerning + tmp_ott->osd_length <=xlimit)) {
+                    value += tmp_ott->osd_kerning + tmp_ott->osd_length;
+                    tmp_ott = tmp_ott->next;
+                } /*while*/
+                if (tmp_ott != NULL) {
+                    struct osd_text_p *tmp = (struct osd_text_p *) calloc(1, sizeof(struct osd_text_p));
 
-					tmp_otp->value = value;
-					tmp_otp->next = tmp;
-					tmp->prev = tmp_otp;
-					tmp_otp = tmp;
-					tmp_otp->ott = tmp_ott;
-					value = -2 * vo_font->charspace - vo_font->width[' '];
-				} else {
-					tmp_otp->value = value;
-					exit1 = 1;
-				} /*if*/
-			} /*for*/
+                    tmp_otp->value = value;
+                    tmp_otp->next = tmp;
+                    tmp->prev = tmp_otp;
+                    tmp_otp = tmp;
+                    tmp_otp->ott = tmp_ott;
+                    value = -2 * vo_font->charspace - vo_font->width[' '];
+                } else {
+                    tmp_otp->value = value;
+                    exit1 = 1;
+                } /*if*/
+            } /*for*/
 
 #ifdef NEW_SPLITTING
-			// minimum holds the 'sum of the differences in lenght among the lines',
-			// a measure of the eveness of the lenghts of the lines
-			for (tmp_otp = otp; tmp_otp->next != NULL; tmp_otp = tmp_otp->next) {
-				pmt = tmp_otp->next;
-				while (pmt != NULL) {
-					minimum += abs(tmp_otp->value - pmt->value);
-					pmt = pmt->next;
-				} /*while*/
-			} /*for*/
+            // minimum holds the 'sum of the differences in lenght among the lines',
+            // a measure of the eveness of the lenghts of the lines
+            for (tmp_otp = otp; tmp_otp->next != NULL; tmp_otp = tmp_otp->next) {
+                pmt = tmp_otp->next;
+                while (pmt != NULL) {
+                    minimum += abs(tmp_otp->value - pmt->value);
+                    pmt = pmt->next;
+                } /*while*/
+            } /*for*/
 
-			if (otp->next != NULL) {
-				int mem1, mem2;
-				struct osd_text_p *mem, *hold;
+            if (otp->next != NULL) {
+                int mem1, mem2;
+                struct osd_text_p *mem, *hold;
 
-				exit1 = 0;
-				// until the last word of a line can be moved to the beginning of following line
-				// reducing the 'sum of the differences in lenght among the lines', it is done
-				while (exit1 == 0) {
-				hold = NULL;
-				exit1 = 1;
-				for (tmp_otp = otp; tmp_otp->next != NULL; tmp_otp = tmp_otp->next) {
-					pmt = tmp_otp->next;
-					for (tmp = tmp_otp->ott; tmp->next != pmt->ott; tmp = tmp->next);
-					if (pmt->value + tmp->osd_length + pmt->ott->osd_kerning <= xlimit) {
-						mem1 = tmp_otp->value;
-						mem2 = pmt->value;
-						tmp_otp->value = mem1 - tmp->osd_length - tmp->osd_kerning;
-						pmt->value = mem2 + tmp->osd_length + pmt->ott->osd_kerning;
+                exit1 = 0;
+                // until the last word of a line can be moved to the beginning of following line
+                // reducing the 'sum of the differences in lenght among the lines', it is done
+                while (exit1 == 0) {
+                hold = NULL;
+                exit1 = 1;
+                for (tmp_otp = otp; tmp_otp->next != NULL; tmp_otp = tmp_otp->next) {
+                    pmt = tmp_otp->next;
+                    for (tmp = tmp_otp->ott; tmp->next != pmt->ott; tmp = tmp->next);
+                    if (pmt->value + tmp->osd_length + pmt->ott->osd_kerning <= xlimit) {
+                        mem1 = tmp_otp->value;
+                        mem2 = pmt->value;
+                        tmp_otp->value = mem1 - tmp->osd_length - tmp->osd_kerning;
+                        pmt->value = mem2 + tmp->osd_length + pmt->ott->osd_kerning;
 
-						value = 0;
-						for (mem = otp; mem->next != NULL; mem = mem->next) {
-							pmt = mem->next;
-							while (pmt != NULL) {
-								value += abs(mem->value - pmt->value);
-								pmt = pmt->next;
-							} /*while*/
-						} /*for*/
-						if (value < minimum) {
-							minimum = value;
-							hold = tmp_otp;
-							exit1 = 0;
-						} /*if*/
-						tmp_otp->value = mem1;
-						tmp_otp->next->value = mem2;
-					} /*if*/
-				}
-				// merging
-				if (exit1 == 0) {
-					tmp_otp = hold;
-					pmt = tmp_otp->next;
-					for (tmp = tmp_otp->ott; tmp->next != pmt->ott; tmp = tmp->next);
-					mem1 = tmp_otp->value;
-					mem2 = pmt->value;
-					tmp_otp->value = mem1 - tmp->osd_length - tmp->osd_kerning;
-					pmt->value = mem2 + tmp->osd_length + pmt->ott->osd_kerning;
-					pmt->ott = tmp;
-				}//~merging
-				}//~while(exit1 == 0)
-			}//~if(otp->next!=NULL)
+                        value = 0;
+                        for (mem = otp; mem->next != NULL; mem = mem->next) {
+                            pmt = mem->next;
+                            while (pmt != NULL) {
+                                value += abs(mem->value - pmt->value);
+                                pmt = pmt->next;
+                            } /*while*/
+                        } /*for*/
+                        if (value < minimum) {
+                            minimum = value;
+                            hold = tmp_otp;
+                            exit1 = 0;
+                        } /*if*/
+                        tmp_otp->value = mem1;
+                        tmp_otp->next->value = mem2;
+                    } /*if*/
+                }
+                // merging
+                if (exit1 == 0) {
+                    tmp_otp = hold;
+                    pmt = tmp_otp->next;
+                    for (tmp = tmp_otp->ott; tmp->next != pmt->ott; tmp = tmp->next);
+                    mem1 = tmp_otp->value;
+                    mem2 = pmt->value;
+                    tmp_otp->value = mem1 - tmp->osd_length - tmp->osd_kerning;
+                    pmt->value = mem2 + tmp->osd_length + pmt->ott->osd_kerning;
+                    pmt->ott = tmp;
+                }//~merging
+                }//~while(exit1 == 0)
+            }//~if(otp->next!=NULL)
 #endif
 
-			// adding otp (containing splitted lines) to otp chain
-			if (otp_sub == NULL) {
-				otp_sub = otp;
-				for (otp_sub_tmp = otp_sub; otp_sub_tmp->next != NULL; otp_sub_tmp = otp_sub_tmp->next);
-			} else {
-				//updating ott chain
-				tmp = otp_sub->ott;
-				while (tmp->next != NULL) tmp = tmp->next;
-				tmp->next = otp->ott;
-				otp->ott->prev = tmp;
-				//attaching new subtitle line at the end
-				otp_sub_tmp->next = otp;
-				otp->prev = otp_sub_tmp;
-				do
-					otp_sub_tmp = otp_sub_tmp->next;
-				while (otp_sub_tmp->next != NULL);
-			} /*if*/
-	    }//~ if(osl != NULL)
-	} // while(1)
-	// write lines into utbl
-	xtblc = 0;
-	utblc = 0;
-	obj->y = dys - sub_bottom_margin;
-	obj->params.subtitle.lines = 0;
-	for (tmp_otp = otp_sub; tmp_otp != NULL; tmp_otp = tmp_otp->next) {
+            // adding otp (containing splitted lines) to otp chain
+            if (otp_sub == NULL) {
+                otp_sub = otp;
+                for (otp_sub_tmp = otp_sub; otp_sub_tmp->next != NULL; otp_sub_tmp = otp_sub_tmp->next);
+            } else {
+                //updating ott chain
+                tmp = otp_sub->ott;
+                while (tmp->next != NULL) tmp = tmp->next;
+                tmp->next = otp->ott;
+                otp->ott->prev = tmp;
+                //attaching new subtitle line at the end
+                otp_sub_tmp->next = otp;
+                otp->prev = otp_sub_tmp;
+                do
+                    otp_sub_tmp = otp_sub_tmp->next;
+                while (otp_sub_tmp->next != NULL);
+            } /*if*/
+        }//~ if(osl != NULL)
+    } // while(1)
+    // write lines into utbl
+    xtblc = 0;
+    utblc = 0;
+    obj->y = dys - sub_bottom_margin;
+    obj->params.subtitle.lines = 0;
+    for (tmp_otp = otp_sub; tmp_otp != NULL; tmp_otp = tmp_otp->next) {
 
-	    if ((obj->params.subtitle.lines++) >= MAX_UCSLINES)
+        if ((obj->params.subtitle.lines++) >= MAX_UCSLINES)
           {
-			fprintf(stderr,"WARN: max_ucs_lines\n");
+            fprintf(stderr,"WARN: max_ucs_lines\n");
             break;
-		  } /*if*/
-		if (h+sub_top_margin > obj->y) {	// out of the screen so end parsing
-			obj->y -= lasth - vo_font->height;	// correct the y position
-			fprintf(stderr,"WARN: Out of screen at Y: %d\n",obj->y);
-			obj->params.subtitle.lines=obj->params.subtitle.lines-1;
-			break;
-		} /*if*/
-	    xsize = tmp_otp->value;
-	    obj->params.subtitle.xtbl[xtblc++] = ((dxs-sub_right_margin-sub_left_margin - xsize) / 2)+sub_left_margin;
-	    if (xmin > (((dxs-sub_right_margin-sub_left_margin - xsize) / 2)+sub_left_margin))
-			xmin = ((dxs-sub_right_margin-sub_left_margin - xsize) / 2)+sub_left_margin;
-		if (xmax < (((dxs-sub_right_margin-sub_left_margin + xsize) / 2)+sub_left_margin))
-			xmax = ((dxs-sub_right_margin-sub_left_margin + xsize) / 2)+sub_left_margin;
-/* 		fprintf(stderr,"lm %d rm: %d xm:%d xs:%d\n",sub_left_margin,sub_right_margin,xmax,xsize); */
-	    tmp = (tmp_otp->next == NULL) ? NULL : tmp_otp->next->ott;
-	    for (tmp_ott = tmp_otp->ott; tmp_ott != tmp; tmp_ott = tmp_ott->next) {
-			for (counter = 0; counter < tmp_ott->text_length; ++counter) {
-				if (utblc > MAX_UCS) {
-					break;
-				} /*if*/
-				c = tmp_ott->text[counter];
-				render_one_glyph(vo_font, c);
-				obj->params.subtitle.utbl[utblc++] = c;
-				k++;
-			} /*for*/
-			obj->params.subtitle.utbl[utblc++] = ' ';
-	    } /*for*/
-	    obj->params.subtitle.utbl[utblc - 1] = 0;
-		obj->y -= vo_font->height;
-	} /*for*/
-	if ( sub_max_lines<obj->params.subtitle.lines)
-		sub_max_lines=obj->params.subtitle.lines;
-	if ( sub_max_font_height<vo_font->height)
-		sub_max_font_height=vo_font->height;
-	if ( sub_max_bottom_font_height<vo_font->pic_a[vo_font->font[40]]->h)
-		sub_max_bottom_font_height=vo_font->pic_a[vo_font->font[40]]->h;
-	if(obj->params.subtitle.lines)
-	    obj->y = dys - sub_bottom_margin -((obj->params.subtitle.lines) * vo_font->height); /* + vo_font->pic_a[vo_font->font[40]]->h);*/
+          } /*if*/
+        if (h+sub_top_margin > obj->y) {    // out of the screen so end parsing
+            obj->y -= lasth - vo_font->height;  // correct the y position
+            fprintf(stderr,"WARN: Out of screen at Y: %d\n",obj->y);
+            obj->params.subtitle.lines=obj->params.subtitle.lines-1;
+            break;
+        } /*if*/
+        xsize = tmp_otp->value;
+        obj->params.subtitle.xtbl[xtblc++] = ((dxs-sub_right_margin-sub_left_margin - xsize) / 2)+sub_left_margin;
+        if (xmin > (((dxs-sub_right_margin-sub_left_margin - xsize) / 2)+sub_left_margin))
+            xmin = ((dxs-sub_right_margin-sub_left_margin - xsize) / 2)+sub_left_margin;
+        if (xmax < (((dxs-sub_right_margin-sub_left_margin + xsize) / 2)+sub_left_margin))
+            xmax = ((dxs-sub_right_margin-sub_left_margin + xsize) / 2)+sub_left_margin;
+/*      fprintf(stderr,"lm %d rm: %d xm:%d xs:%d\n",sub_left_margin,sub_right_margin,xmax,xsize); */
+        tmp = (tmp_otp->next == NULL) ? NULL : tmp_otp->next->ott;
+        for (tmp_ott = tmp_otp->ott; tmp_ott != tmp; tmp_ott = tmp_ott->next) {
+            for (counter = 0; counter < tmp_ott->text_length; ++counter) {
+                if (utblc > MAX_UCS) {
+                    break;
+                } /*if*/
+                c = tmp_ott->text[counter];
+                render_one_glyph(vo_font, c);
+                obj->params.subtitle.utbl[utblc++] = c;
+                k++;
+            } /*for*/
+            obj->params.subtitle.utbl[utblc++] = ' ';
+        } /*for*/
+        obj->params.subtitle.utbl[utblc - 1] = 0;
+        obj->y -= vo_font->height;
+    } /*for*/
+    if ( sub_max_lines<obj->params.subtitle.lines)
+        sub_max_lines=obj->params.subtitle.lines;
+    if ( sub_max_font_height<vo_font->height)
+        sub_max_font_height=vo_font->height;
+    if ( sub_max_bottom_font_height<vo_font->pic_a[vo_font->font[40]]->h)
+        sub_max_bottom_font_height=vo_font->pic_a[vo_font->font[40]]->h;
+    if(obj->params.subtitle.lines)
+        obj->y = dys - sub_bottom_margin -((obj->params.subtitle.lines) * vo_font->height); /* + vo_font->pic_a[vo_font->font[40]]->h);*/
 
-	// free memory
-	if (otp_sub != NULL) {
-	    for (tmp = otp_sub->ott; tmp->next != NULL; free(tmp->prev)) {
-			free(tmp->text);
-			tmp = tmp->next;
-	    } /*for*/
-	    free(tmp->text);
-	    free(tmp);
+    // free memory
+    if (otp_sub != NULL) {
+        for (tmp = otp_sub->ott; tmp->next != NULL; free(tmp->prev)) {
+            free(tmp->text);
+            tmp = tmp->next;
+        } /*for*/
+        free(tmp->text);
+        free(tmp);
 
-	    for(pmt = otp_sub; pmt->next != NULL; free(pmt->prev)) {
-			pmt = pmt->next;
-	    } /*for*/
-	    free(pmt);
-	} else {
+        for(pmt = otp_sub; pmt->next != NULL; free(pmt->prev)) {
+            pmt = pmt->next;
+        } /*for*/
+        free(pmt);
+    } else {
             fprintf(stderr,"WARN: Subtitles requested but not found.\n");
-	} /*if*/
+    } /*if*/
 
     }
 
@@ -500,7 +500,7 @@ inline static void vo_update_text_sub(mp_osd_obj_t* obj,int dxs,int dys)
 
     /* if ( obj->bbox.x2>=dxs-sub_right_margin-20)
        {
-		   obj->bbox.x2=dxs;
+           obj->bbox.x2=dxs;
        }
 
     */
@@ -528,7 +528,7 @@ inline static void vo_update_text_sub(mp_osd_obj_t* obj,int dxs,int dys)
     if ((l = obj->params.subtitle.lines))
     {
         for(counter = dxs-sub_right_margin-sub_left_margin; i < l; ++i)
-	    if (obj->params.subtitle.xtbl[i] < counter) counter = obj->params.subtitle.xtbl[i];
+        if (obj->params.subtitle.xtbl[i] < counter) counter = obj->params.subtitle.xtbl[i];
         for (i = 0; i < l; ++i)
         {
             switch (obj->alignment&0x3)
@@ -590,11 +590,11 @@ mp_osd_obj_t* new_osd_obj(int type){
 void free_osd_list(){
     mp_osd_obj_t* obj=vo_osd_list;
     while(obj){
-	mp_osd_obj_t* next=obj->next;
-	if (obj->alpha_buffer) free(obj->alpha_buffer);
-	if (obj->bitmap_buffer) free(obj->bitmap_buffer);
-	free(obj);
-	obj=next;
+    mp_osd_obj_t* next=obj->next;
+    if (obj->alpha_buffer) free(obj->alpha_buffer);
+    if (obj->bitmap_buffer) free(obj->bitmap_buffer);
+    free(obj);
+    obj=next;
     }
     vo_osd_list=NULL;
 }
@@ -606,8 +606,8 @@ int vo_update_osd(int dxs,int dys){
 #ifdef HAVE_FREETYPE
     // here is the right place to get screen dimensions
     if (!vo_font || force_load_font) {
-	force_load_font = 0;
-	load_font_ft(dxs, dys);
+    force_load_font = 0;
+    load_font_ft(dxs, dys);
     }
 #endif
 
@@ -619,15 +619,15 @@ int vo_update_osd(int dxs,int dys){
             obj->flags&=~OSDFLAG_BBOX;
             switch(obj->type){
             case OSDTYPE_SUBTITLE:
-		if ( vo_sub)
-		{
+        if ( vo_sub)
+        {
                     obj->dxs=dxs; obj->dys=dys;
                     vo_update_text_sub(obj,dxs,dys);
                     /* obj->dxs=dxs; obj->dys=dys;
                        fprintf(stderr,"x1:%d x2:%d y1:%d y2:%d\n",obj->bbox.x1,obj->bbox.x2,obj->bbox.y1,obj->bbox.y2); */
                     vo_draw_alpha_rgb24( (obj->bbox.x2)-(obj->bbox.x1),(obj->bbox.y2)-(obj->bbox.y1),obj->bitmap_buffer,obj->alpha_buffer,obj->stride,image_buffer+(3*obj->bbox.x1)+(3*(obj->bbox.y1)*movie_width),movie_width*3);
-		}
-		break;
+        }
+        break;
             }
             // check if visibility changed:
             if(vis != (obj->flags&OSDFLAG_VISIBLE) ) obj->flags|=OSDFLAG_CHANGED;
@@ -663,8 +663,8 @@ int vo_osd_changed(int new_value)
     vo_osd_changed_status = new_value;
 
     while(obj){
-	if(obj->type==new_value) obj->flags|=OSDFLAG_FORCE_UPDATE;
-	obj=obj->next;
+    if(obj->type==new_value) obj->flags|=OSDFLAG_FORCE_UPDATE;
+    obj=obj->next;
     }
 
     return ret;

@@ -36,31 +36,31 @@
 
 static char * str_extract_until
   (
-	const char ** src,
-	const char * delim
+    const char ** src,
+    const char * delim
   )
   /* scans *src, looking for the first occurrence of a character in delim. Returns
-	a copy of the prior part of *src if found, and updates *src to point after the
-	delimiter character; else returns a copy of the whole of *src, and sets *src
-	to NULL. Returns NULL iff *src is NULL. */
+    a copy of the prior part of *src if found, and updates *src to point after the
+    delimiter character; else returns a copy of the whole of *src, and sets *src
+    to NULL. Returns NULL iff *src is NULL. */
   {
-	char * result = NULL; /* to begin with */
-	if (*src != NULL)
-	  {
-		const size_t pos = strcspn(*src, delim);
-		if (pos < strlen(*src))
-		  {
-			result = strndup(*src, pos);
-			*src = *src + pos + strspn(*src + pos, delim);
-		  }
-		else
-		  {
-			result = strdup(*src);
-			*src = NULL;
-		  } /*if*/
-	  } /*if*/
-	return
-		result;
+    char * result = NULL; /* to begin with */
+    if (*src != NULL)
+      {
+        const size_t pos = strcspn(*src, delim);
+        if (pos < strlen(*src))
+          {
+            result = strndup(*src, pos);
+            *src = *src + pos + strspn(*src + pos, delim);
+          }
+        else
+          {
+            result = strdup(*src);
+            *src = NULL;
+          } /*if*/
+      } /*if*/
+    return
+        result;
   } /*str_extract_until*/
 
 /* common parsing bits for both command line and XML file */
@@ -70,10 +70,10 @@ static char * str_extract_until
 static int readdvdauthorxml(const char *xmlfile,const char *fb);
 
 static int
-	hadchapter=0,
-	  /* 1 if vob chapters specified via cells (and possibly also "chapters" attribute),
-		2 if only via "chapters" attribute, 0 if neither seen yet */
-	pauselen=0,writeoutput=1;
+    hadchapter=0,
+      /* 1 if vob chapters specified via cells (and possibly also "chapters" attribute),
+        2 if only via "chapters" attribute, 0 if neither seen yet */
+    pauselen=0,writeoutput=1;
 static char *chapters=0;
 
 static void parsevideoopts(struct pgcgroup *va,const char *o)
@@ -84,7 +84,7 @@ static void parsevideoopts(struct pgcgroup *va,const char *o)
             fprintf(stderr,"ERR:  Video option '%s' overrides previous option\n",s);
             exit(1);
         }
-		free(s);
+        free(s);
     }
 }
 
@@ -96,7 +96,7 @@ static void parseaudiotrack(struct pgcgroup *va,const char *o,int c)
             fprintf(stderr,"ERR:  Audio option '%s' on track %d overrides previous option\n",s,c);
             exit(1);
         }
-		free(s);
+        free(s);
     }
 }
 
@@ -106,7 +106,7 @@ static void parseaudioopts(struct pgcgroup *va,const char *o)
     int ch=0;
     while(NULL!=(s=str_extract_until(&o,", "))) {
         parseaudiotrack(va,s,ch);
-		free(s);
+        free(s);
         ch++;
     }
 }
@@ -119,7 +119,7 @@ static void parsesubpicturetrack(struct pgcgroup *va,const char *o,int c)
             fprintf(stderr,"ERR:  Subpicture option '%s' on track %d overrides previous option\n",s,c);
             exit(1);
         }
-		free(s);
+        free(s);
     }
 }
 
@@ -129,7 +129,7 @@ static void parsesubpictureopts(struct pgcgroup *va,const char *o)
     int ch=0;
     while(NULL!=(s=str_extract_until(&o,", "))) {
         parsesubpicturetrack(va,s,ch);
-		free(s);
+        free(s);
         ch++;
     }
 }
@@ -158,7 +158,7 @@ static void parseinstructions(struct pgc *va,const char *b)
         fprintf(stderr,"Unknown instruction block: %s\n",c);
         exit(1);
     }
-	free(c);
+    free(c);
 }
 
 static void parseentries(struct pgc *p,const char *b)
@@ -166,10 +166,10 @@ static void parseentries(struct pgc *p,const char *b)
     char *v;
 
     while(NULL!=(v=str_extract_until(&b,", ")))
-	  {
+      {
         pgc_add_entry(p,v);
-		free(v);
-	  } /*while*/
+        free(v);
+      } /*while*/
 }
 
 static double parsechapter(const char *s)
@@ -213,7 +213,7 @@ static void parsechapters(const char *o,struct source *src,int pauselen)
             lastchap=1;
         } else if( total==last )
             lastchap=1;
-		free(s);
+        free(s);
     }
     source_add_cell(src,last,-1,lastchap,pauselen,0);
 }
@@ -617,34 +617,34 @@ enum {
 
 static struct pgcgroup *titles=0, *curgroup=0;
 static struct menugroup
-	*mg=0, /* current menu group (for titleset or vmgm) */
-	*vmgmmenus=0; /* vmgm menu group */
+    *mg=0, /* current menu group (for titleset or vmgm) */
+    *vmgmmenus=0; /* vmgm menu group */
 static struct pgc *curpgc=0,*fpc=0;
 static struct source *curvob=0;
 static const char
-	*fbase=0, /* output directory name */
-	*buttonname=0; /* name of button currently being defined */
+    *fbase=0, /* output directory name */
+    *buttonname=0; /* name of button currently being defined */
 static int
-	ismenuf=0, /* 0 - vts, 1 - vtsm, 2 - vmgm */
-	istoc=0, /* 1 for vmgm, 0 for titleset */
-	setvideo=0, /* to keep count of <video> tags */
-	setaudio=0, /* to keep count of <audio> tags */
-	setsubpicture=0, /* to keep count of <subpicture> tags */
-	subpmode=DA_NOSUB,
-	  /* for determining context of a <subpicture> tag:
-		DA_NOSUB -- invalid
-		DA_PGC -- inside a <pgc> tag (no "lang" attribute allowed)
-		DA_PGCGROUP -- inside a <menus> or <titles> tag, must come before the <pgc> tags
-	  */
-	hadtoc=0, /* set to 1 when vmgm seen */
-	subpstreamid=-1; /* id attribute of current <stream> saved here */
+    ismenuf=0, /* 0 - vts, 1 - vtsm, 2 - vmgm */
+    istoc=0, /* 1 for vmgm, 0 for titleset */
+    setvideo=0, /* to keep count of <video> tags */
+    setaudio=0, /* to keep count of <audio> tags */
+    setsubpicture=0, /* to keep count of <subpicture> tags */
+    subpmode=DA_NOSUB,
+      /* for determining context of a <subpicture> tag:
+        DA_NOSUB -- invalid
+        DA_PGC -- inside a <pgc> tag (no "lang" attribute allowed)
+        DA_PGCGROUP -- inside a <menus> or <titles> tag, must come before the <pgc> tags
+      */
+    hadtoc=0, /* set to 1 when vmgm seen */
+    subpstreamid=-1; /* id attribute of current <stream> saved here */
 static char *subpstreammode=0; /* mode attribute of current <stream> saved here */
 static int
-	vobbasic,
-	  /* 1 if vob has "chapters" or "pause" attribute,
-		2 if it has <cell> subtags, 0 if neither seen yet */
-	cell_chapter;
-	  /* 1 if cell has chapter attribute, 2 if has program attribute, 0 if neither seen yet */
+    vobbasic,
+      /* 1 if vob has "chapters" or "pause" attribute,
+        2 if it has <cell> subtags, 0 if neither seen yet */
+    cell_chapter;
+      /* 1 if cell has chapter attribute, 2 if has program attribute, 0 if neither seen yet */
 static double cell_starttime,cell_endtime;
 static char menulang[3];
 
@@ -851,7 +851,7 @@ static void video_start()
 {
     if( setvideo ) {
         fprintf(stderr,"ERR:  Already defined video characteristics for this PGC group\n");
-		  /* only one video stream allowed */
+          /* only one video stream allowed */
         parser_err=1;
     } else
         setvideo=1;
@@ -1118,8 +1118,8 @@ static void cell_parsechapter(const char *f)
         exit(1);
     } else if (i)
         cell_chapter=1;
-		  /* override "program" attribute if previously seen -- should really
-			flag presence of both as error? */
+          /* override "program" attribute if previously seen -- should really
+            flag presence of both as error? */
 }
 
 static void cell_parseprogram(const char *f)
@@ -1130,8 +1130,8 @@ static void cell_parseprogram(const char *f)
         exit(1);
     } else if (i && cell_chapter!=1 )
         cell_chapter=2;
-		  /* let "chapter" attribute take precedence if previously seen --
-			should really flag presence of both as error? */
+          /* let "chapter" attribute take precedence if previously seen --
+            should really flag presence of both as error? */
 }
 
 static void cell_pauselen(const char *f)

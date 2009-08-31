@@ -458,7 +458,7 @@ int main(int argc,char **argv)
             int64_t fulltime;
             forceread(buf,8,stdin);
             if((buf[0] & 0xC0) == 0x40) {
-	        forceread(buf+8,2,stdin);
+            forceread(buf+8,2,stdin);
                 scrhi=(buf[0]&0x20)>>5;
                 scr=((buf[0]&0x18)<<27)|
                     ((buf[0]&3)<<28)|
@@ -476,11 +476,11 @@ int main(int argc,char **argv)
                 fulltime*=300;
                 fulltime+=scrext;
                 mpeg2 = 1;
-	    } else if((buf[0] & 0xF0) == 0x20) {
+        } else if((buf[0] & 0xF0) == 0x20) {
                 mpeg2 = 0;
-		fulltime=readpts(buf);
+        fulltime=readpts(buf);
                 fulltime*=300;
-	    } else {
+        } else {
                 if( outputenglish )
                     printf("WARN: unknown pack header version\n");
                 fulltime=0;
@@ -595,28 +595,28 @@ int main(int argc,char **argv)
                 printf("; length=%d",extra+readlen);
                 if( ext ) {
                     int eptr=3;
-		    int hdr=0, has_pts, has_dts, has_std=0, std=0, std_scale=0;
-		    
-		    if((buf[0] & 0xC0) == 0x80) {
-		        mpeg2 = 1;
-			hdr = buf[2]+3;
-			eptr = 3;
-			has_pts = buf[1] & 128;
-			has_dts = buf[1] & 64;
+            int hdr=0, has_pts, has_dts, has_std=0, std=0, std_scale=0;
+            
+            if((buf[0] & 0xC0) == 0x80) {
+                mpeg2 = 1;
+            hdr = buf[2]+3;
+            eptr = 3;
+            has_pts = buf[1] & 128;
+            has_dts = buf[1] & 64;
                     }
                     else {
-		        mpeg2 = 0;
-			while((buf[hdr] == 0xff) && (hdr<sizeof(buf)))
-			    hdr++;
+                mpeg2 = 0;
+            while((buf[hdr] == 0xff) && (hdr<sizeof(buf)))
+                hdr++;
                         if((buf[hdr] & 0xC0) == 0x40) {
-			    has_std = 1;
-			    std_scale = ((buf[hdr]&32)?1024:128);
-			    std = ((buf[hdr]&31)*256+buf[hdr+1])*std_scale;
-			    hdr+=2;
+                has_std = 1;
+                std_scale = ((buf[hdr]&32)?1024:128);
+                std = ((buf[hdr]&31)*256+buf[hdr+1])*std_scale;
+                hdr+=2;
                         } else has_std = 0;
                         eptr = hdr;
-			has_pts = (buf[hdr] & 0xE0) == 0x20;
-			has_dts = (buf[hdr] & 0xF0) == 0x30;
+            has_pts = (buf[hdr] & 0xE0) == 0x20;
+            has_dts = (buf[hdr] & 0xF0) == 0x30;
                     }
 
                     printf("; hdr=%d",hdr);
@@ -634,7 +634,7 @@ int main(int argc,char **argv)
                         eptr+=5;
                         printf("; dts %" PRId64 ".%03" PRId64 " sec",dts/PTSTIME,(dts%PTSTIME)/(PTSTIME/1000));
                     }
-		    if(mpeg2) {
+            if(mpeg2) {
                         if( buf[1] & 32 ) {
                             printf("; escr");
                             eptr+=6;
@@ -677,10 +677,10 @@ int main(int argc,char **argv)
                                 eptr+=2;
                             }
                         }
-		    } else {
+            } else {
                         if(has_std)
                             printf("; pstd=%d (scale=%d)",std, std_scale);
-		    }
+            }
                 }
                 printf("\n");
             }

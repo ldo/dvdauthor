@@ -217,7 +217,7 @@ void textsub_h_alignment(const char *v)
         h_sub_alignment=2;
     else if(!strcmp(v,"center"))
         h_sub_alignment=0;
-	else if(!strcmp(v,"default"))
+    else if(!strcmp(v,"default"))
         h_sub_alignment=4;
 
     else {
@@ -233,7 +233,7 @@ void textsub_v_alignment(const char *v)
         sub_alignment=1;
     else if(!strcmp(v,"bottom"))
         sub_alignment=2;
-	else {
+    else {
         fprintf(stderr,"ERR:  Unknown vertical-alignment type %s\n",v);
         exit(1);}
 }

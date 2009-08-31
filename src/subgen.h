@@ -62,10 +62,10 @@ typedef struct { /* representation of a subpicture and associated buttons */
     int numgroups; /* how many button groups */
     int groupmap[3][4]; /* colour table for each button group, -1 for unused entries in each group */
     button *buttons; /* array of buttons */
-	subtitle *sub_title;
+    subtitle *sub_title;
 } stinfo;
 
-#define SUB_BUFFER_MAX		53220
+#define SUB_BUFFER_MAX      53220
 #define SUB_BUFFER_HEADROOM     1024
 
 extern unsigned char *sub;

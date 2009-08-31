@@ -1,5 +1,5 @@
 /*
-	Decompile VM instructions to human-readable form
+    Decompile VM instructions to human-readable form
 */
 
 #ifndef DVDUNCOMPILE_H_INCLUDED
@@ -28,10 +28,10 @@
 
 void vm_add_mnemonics
   (
-	xmlNodePtr node, /* the node to append the disassembly to */
-	const char *base, /* prepended to every output line for indentation purposes */
-	int ncmd, /* nr of commands */
-	vm_cmd_t *commands /* array */
+    xmlNodePtr node, /* the node to append the disassembly to */
+    const char *base, /* prepended to every output line for indentation purposes */
+    int ncmd, /* nr of commands */
+    vm_cmd_t *commands /* array */
   );
   /* disassembles the specified command sequence as content for the specified XML tag. */
 

@@ -136,16 +136,16 @@ int svcd_encode(stinfo *s)
     subo = 2;
     if (s->sd != -1)
     {
-	store_2(0x2e00);
+    store_2(0x2e00);
         store_4(s->sd);
     }
     else
     {
-	store_2(0x2600);
+    store_2(0x2600);
     } 
  
     if (debug > 2)
-	fprintf(stderr,\
+    fprintf(stderr,\
                 "sd: %d   xd: %d  yd: %d  x0: %d  y0: %d\n", s->sd, s->xd, s->yd, s->x0, s->y0); 
 
     store_2(s->x0);
@@ -154,10 +154,10 @@ int svcd_encode(stinfo *s)
     store_2(s->yd);
     for(c = 0;c<4;c++)
     {
-	store_1(calcY(&epal[c]));
-	store_1(calcCr(&epal[c]));
-	store_1(calcCb(&epal[c]));
-	store_1(epal[c].t);
+    store_1(calcY(&epal[c]));
+    store_1(calcCr(&epal[c]));
+    store_1(calcCb(&epal[c]));
+    store_1(epal[c].t);
     } 
  
     store_1(0); //?????
@@ -168,7 +168,7 @@ int svcd_encode(stinfo *s)
  odd_row: 
     for(; y<s->yd; y += 2)
     {
-	for(x = 0; x<s->xd;x++)
+    for(x = 0; x<s->xd;x++)
         {
             if ((c = s->fimg[y*s->xd+x]) != 0) store_2bit(c);
             else
@@ -189,24 +189,24 @@ int svcd_encode(stinfo *s)
  
     if (!(y&1))
     {
-	if (!(subo&1))
+    if (!(subo&1))
         {
             if (debug>3)
                 fprintf(stderr,\
-			"padded betweed fields with 1 byte to %d\n",subo%4);
+            "padded betweed fields with 1 byte to %d\n",subo%4);
             store_1( 0 );
         }
-	y = 1;
-	sub[l2o] = (subo - l2o - 2) >> 8;
-	sub[l2o+1] = (subo - l2o - 2);
-	goto odd_row;
+    y = 1;
+    sub[l2o] = (subo - l2o - 2) >> 8;
+    sub[l2o+1] = (subo - l2o - 2);
+    goto odd_row;
     } 
  
     store_1( 0 );// no additional commands
     c = 0;
     while (subo&3)
     {
-	store_1( 0 ); c++;
+    store_1( 0 ); c++;
     }
     if (debug>3) fprintf(stderr,"padded with %d byte\n",c);
 
@@ -231,7 +231,7 @@ int cvd_encode(stinfo *s)
     for(y = 0; y < s->yd; y += 2)
     {
     odd_row_cvd: 
-	for(x = 0; x < s->xd;)
+    for(x = 0; x < s->xd;)
         {
             d = s->fimg[y * s->xd + x];
             c = 1;
@@ -243,7 +243,7 @@ int cvd_encode(stinfo *s)
                 store_align();
                 continue;
             }
-	   
+       
             while(c > 3)
             {
                 store_nibble(12 + d);
@@ -256,9 +256,9 @@ int cvd_encode(stinfo *s)
  
     if(!(y & 1))
     {
-	y = 1;
-	ofs1 = subo;
-	goto odd_row_cvd;
+    y = 1;
+    ofs1 = subo;
+    goto odd_row_cvd;
     }  
  
     sub[2] = subo >> 8;
@@ -274,37 +274,37 @@ int cvd_encode(stinfo *s)
     for(c = 0; c < 4; c++)
     {
 //#define nco if (subo<65536) sub[subo++]
-	store_1( 0x24 + c );
-	if(debug > 3)
+    store_1( 0x24 + c );
+    if(debug > 3)
         {
             fprintf(stderr, "c=%d R=%.2f G=%.2f B=%.2f\n",\
                     c, (double)epal[c].r, (double)epal[c].g, (double)epal[c].b);
         }
 
-	store_1( calcY(&epal[c]) );
-	store_1( calcCr(&epal[c]) );
-	store_1( calcCb(&epal[c]) );
+    store_1( calcY(&epal[c]) );
+    store_1( calcCr(&epal[c]) );
+    store_1( calcCb(&epal[c]) );
 
     } /* end for pallette 0-3 */
  
 /* sethighlight  pallette  */
     for(c = 0; c < 4; c++)
     {
-	store_1( 0x2c + c );
-	if(debug > 3)
+    store_1( 0x2c + c );
+    if(debug > 3)
         {
             fprintf(stderr, "c=%d R=%.2f G=%.2f B=%.2f\n",\
                     c, (double)epal[c].r, (double)epal[c].g, (double)epal[c].b);
         }
 
-	store_1( calcY(&epal[c]) );
-	store_1( calcCr(&epal[c]) );
-	store_1( calcCb(&epal[c]) );
+    store_1( calcY(&epal[c]) );
+    store_1( calcCr(&epal[c]) );
+    store_1( calcCb(&epal[c]) );
     } /* end for pallette 4-7 */
 
     if(debug > 3)
     {
-	fprintf(stderr,\
+    fprintf(stderr,\
                 "epal[0].t=%d epal[1].t=%d epal[2].t=%d epal[3].t=%d\n",\
                 epal[0].t, epal[1].t, epal[2].t, epal[3].t);
     }
@@ -330,7 +330,7 @@ int cvd_encode(stinfo *s)
 
     if(debug > 3)
     {
-	fprintf(stderr, "EPALS nco0(2 3h, 2l)=%02x nco1(2 1h,0l)=%02x\n",\
+    fprintf(stderr, "EPALS nco0(2 3h, 2l)=%02x nco1(2 1h,0l)=%02x\n",\
                 sub[subo - 1], sub[subo - 2]);
     }
 
@@ -391,31 +391,31 @@ static void do_rle(int count, int color)
 
     /* a now ranges from 0x4 up, because count is at least 1 */
 
-    if(count >= 64)		// 64 - 255
+    if(count >= 64)     // 64 - 255
     {
-	/* 64-255, 16 bits, 0 0 0 0  0 0 n n  n n n n  n n c c */
-	store_nibble(0);
-	store_nibble( (a & 0xf00) >> 8);
-	store_nibble( (a & 0xf0) >> 4);
-	store_nibble( a & 0xf);
+    /* 64-255, 16 bits, 0 0 0 0  0 0 n n  n n n n  n n c c */
+    store_nibble(0);
+    store_nibble( (a & 0xf00) >> 8);
+    store_nibble( (a & 0xf0) >> 4);
+    store_nibble( a & 0xf);
     }
-    else if(count >= 16)	// 16 - 63
+    else if(count >= 16)    // 16 - 63
     {
-	/* 16 - 63, 12 bits, 0 0 0 0  n n n n  n n c c */
-	store_nibble( 0);
-	store_nibble( (a & 0xf0) >> 4);
-	store_nibble( a & 0xf);
+    /* 16 - 63, 12 bits, 0 0 0 0  n n n n  n n c c */
+    store_nibble( 0);
+    store_nibble( (a & 0xf0) >> 4);
+    store_nibble( a & 0xf);
     }
-    else if(count >= 4)		// 4 - 15
+    else if(count >= 4)     // 4 - 15
     {
-	/* 4-15, 8 bits, 0 0 n n  n n c c */
-	store_nibble( (a & 0xf0) >> 4);
-	store_nibble( a & 0xf);
+    /* 4-15, 8 bits, 0 0 n n  n n c c */
+    store_nibble( (a & 0xf0) >> 4);
+    store_nibble( a & 0xf);
     }
-    else			// 1 - 3
+    else            // 1 - 3
     {
-	/* 1-3, 4 bits, n n c c */
-	store_nibble( a & 0xf );
+    /* 1-3, 4 bits, n n c c */
+    store_nibble( a & 0xf );
     }
 } /* end function do_rle */
 
@@ -449,7 +449,7 @@ static void dvd_encode_row(int y,int xd,unsigned char *icptr)
       encoding a count of zero using the 16-bit format,
       indicates the same pixel value until the end of the line. 
     */
-	
+    
     if( xd != new_pos )
     {
         int count=xd-new_pos;
@@ -547,29 +547,29 @@ int dvd_encode(stinfo *s)
    Rounding up will cause the display to occur one frame late.
 */
 
-	enum /* command opcodes */
-	  {
-		FSTA_DSP = 0, /* forced start display, no arguments */
-		STA_DSP = 1, /* start display, no arguments */
-		STP_DSP = 2, /* stop display, no arguments */
-		SET_COLOR = 3, /* four nibble indexes into CLUT for current PGC = 2 bytes of args */
-		SET_CONTR = 4, /* four nibble contrast/alpha values = 2 bytes of args */
-		SET_DAREA = 5, /* set display area, start X/Y, end X/Y = 6 bytes of args */
-		SET_DSPXA = 6,
-		  /* define pixel data addresses, 2-byte offset to top field data, 2-byte offset to
-			bottom field data = 4 bytes of args */
-		CHG_COLCON = 7,
-		  /* change colour/contrast, 2 bytes param area size (incl itself) + variable nr
-			bytes params: one or more LN_CTLI, each immediately followed by 1 to 8 PX_CTLI.
-			Each LN_CTLI is 4 bytes, consisting of 4 bits of zero, 12 bits of starting line
-			number (must be greater than ending line of previous LN_CTLI, if any), 4 bits
-			of number of following PX_CTLI (must be in [1 .. 8]), and 12 bits of ending line
-			number (must not be less than starting line number).
-			Each PX_CTLI is 6 bytes, consisting of 2 bytes starting col number (must be
-			at least 8 greater than previous PX_CTLI, if any), 2 bytes of colour values
-			as per SET_COLOR, and 2 bytes of new contrast values as per SET_CONTR. */
-		CMD_END = 0xFF /* ends one SP_DCSQ */
-	  };
+    enum /* command opcodes */
+      {
+        FSTA_DSP = 0, /* forced start display, no arguments */
+        STA_DSP = 1, /* start display, no arguments */
+        STP_DSP = 2, /* stop display, no arguments */
+        SET_COLOR = 3, /* four nibble indexes into CLUT for current PGC = 2 bytes of args */
+        SET_CONTR = 4, /* four nibble contrast/alpha values = 2 bytes of args */
+        SET_DAREA = 5, /* set display area, start X/Y, end X/Y = 6 bytes of args */
+        SET_DSPXA = 6,
+          /* define pixel data addresses, 2-byte offset to top field data, 2-byte offset to
+            bottom field data = 4 bytes of args */
+        CHG_COLCON = 7,
+          /* change colour/contrast, 2 bytes param area size (incl itself) + variable nr
+            bytes params: one or more LN_CTLI, each immediately followed by 1 to 8 PX_CTLI.
+            Each LN_CTLI is 4 bytes, consisting of 4 bits of zero, 12 bits of starting line
+            number (must be greater than ending line of previous LN_CTLI, if any), 4 bits
+            of number of following PX_CTLI (must be in [1 .. 8]), and 12 bits of ending line
+            number (must not be less than starting line number).
+            Each PX_CTLI is 6 bytes, consisting of 2 bytes starting col number (must be
+            at least 8 greater than previous PX_CTLI, if any), 2 bytes of colour values
+            as per SET_COLOR, and 2 bytes of new contrast values as per SET_CONTR. */
+        CMD_END = 0xFF /* ends one SP_DCSQ */
+      };
 
     /* set pointer to this command block */
     a = subo;
@@ -638,8 +638,8 @@ int dvd_encode(stinfo *s)
         /* delay to wait before executing next comand */
         duration = (s->sd+512)/1024;
         while( duration >= 65536 ) {
-		  /* duration too long for one command block, generate additional command blocks
-			that do nothing but delay */
+          /* duration too long for one command block, generate additional command blocks
+            that do nothing but delay */
             store_2(65535);
             duration-=65535;
             store_2(next_command_ptr+5);
@@ -669,8 +669,8 @@ int dvd_encode(stinfo *s)
     /* make size even if odd */
     if(subo & 1)
     {
-	/* only if odd length, to make it even */
-	store_1(CMD_END);
+    /* only if odd length, to make it even */
+    store_1(CMD_END);
     }
 
     /* set subtitle packet size */

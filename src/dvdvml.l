@@ -40,108 +40,108 @@ lang_code       \"[a-z]{2}\"
 
 %%
 
-and		{ return _AND_TOK; }
-angle		{ return ANGLE_TOK; }
-audio		{ return AUDIO_TOK; }
+and     { return _AND_TOK; }
+angle       { return ANGLE_TOK; }
+audio       { return AUDIO_TOK; }
 break           { return BREAK_TOK; }
-button		{ return BUTTON_TOK; }
+button      { return BUTTON_TOK; }
 call            { return CALL_TOK; }
-cell		{ return CELL_TOK; }
-chapter		{ return CHAPTER_TOK; }
+cell        { return CELL_TOK; }
+chapter     { return CHAPTER_TOK; }
 counter         { return COUNTER_TOK; }
-else		{ return ELSE_TOK; }
-entry		{ return ENTRY_TOK; }
-eq		{ return EQ_TOK; }
-exit		{ return EXIT_TOK; }
-fpc		{ return FPC_TOK; }
-ge		{ return GE_TOK; }
+else        { return ELSE_TOK; }
+entry       { return ENTRY_TOK; }
+eq      { return EQ_TOK; }
+exit        { return EXIT_TOK; }
+fpc     { return FPC_TOK; }
+ge      { return GE_TOK; }
 goto            { return GOTO_TOK; }
-gt		{ return GT_TOK; }
-if		{ return IF_TOK; }
-jump		{ return JUMP_TOK; }
-le		{ return LE_TOK; }
-lt		{ return LT_TOK; }
-menu		{ return MENU_TOK; }
-ne		{ return NE_TOK; }
+gt      { return GT_TOK; }
+if      { return IF_TOK; }
+jump        { return JUMP_TOK; }
+le      { return LE_TOK; }
+lt      { return LT_TOK; }
+menu        { return MENU_TOK; }
+ne      { return NE_TOK; }
 next            { return NEXT_TOK; }
-not		{ return NOT_TOK; }
-or		{ return _OR_TOK; }
+not     { return NOT_TOK; }
+or      { return _OR_TOK; }
 prev            { return PREV_TOK; }
-program		{ return PROGRAM_TOK; }
-ptt		{ return PTT_TOK; }
+program     { return PROGRAM_TOK; }
+ptt     { return PTT_TOK; }
 random          { return RND_TOK; }
 region          { return REGION_TOK; }
-resume		{ return RESUME_TOK; }
-root		{ return ROOT_TOK; }
-subtitle	{ return SUBTITLE_TOK; }
+resume      { return RESUME_TOK; }
+root        { return ROOT_TOK; }
+subtitle    { return SUBTITLE_TOK; }
 tail            { return TAIL_TOK; }
-title		{ return TITLE_TOK; }
-titleset	{ return TITLESET_TOK; }
+title       { return TITLE_TOK; }
+titleset    { return TITLESET_TOK; }
 top             { return TOP_TOK; }
-vmgm		{ return VMGM_TOK; }
-xor		{ return XOR_TOK; }
+vmgm        { return VMGM_TOK; }
+xor     { return XOR_TOK; }
 
 
-{ws}		;
+{ws}        ;
 
-"="		{ return SET_TOK; }
+"="     { return SET_TOK; }
 
-"+"		{ return ADD_TOK; }
-"-"		{ return SUB_TOK; }
-"*"		{ return MUL_TOK; }
-"/"		{ return DIV_TOK; }
-"%"		{ return MOD_TOK; }
-"&"		{ return BAND_TOK; }
-"|"		{ return BOR_TOK;  }
-"^"		{ return XOR_TOK; }
+"+"     { return ADD_TOK; }
+"-"     { return SUB_TOK; }
+"*"     { return MUL_TOK; }
+"/"     { return DIV_TOK; }
+"%"     { return MOD_TOK; }
+"&"     { return BAND_TOK; }
+"|"     { return BOR_TOK;  }
+"^"     { return XOR_TOK; }
 
-"+="		{ return ADDSET_TOK; }
-"-="		{ return SUBSET_TOK; }
-"*="		{ return MULSET_TOK; }
-"/="		{ return DIVSET_TOK; }
-"%="		{ return MODSET_TOK; }
-"&="		{ return ANDSET_TOK; }
-"|="		{ return ORSET_TOK;  }
-"^="		{ return XORSET_TOK; }
+"+="        { return ADDSET_TOK; }
+"-="        { return SUBSET_TOK; }
+"*="        { return MULSET_TOK; }
+"/="        { return DIVSET_TOK; }
+"%="        { return MODSET_TOK; }
+"&="        { return ANDSET_TOK; }
+"|="        { return ORSET_TOK;  }
+"^="        { return XORSET_TOK; }
 
-"=="		{ return EQ_TOK; }
-"!="		{ return NE_TOK; }
-">="		{ return GE_TOK; }
-">"		{ return GT_TOK; }
-"<="		{ return LE_TOK; }
-"<"		{ return LT_TOK; }
+"=="        { return EQ_TOK; }
+"!="        { return NE_TOK; }
+">="        { return GE_TOK; }
+">"     { return GT_TOK; }
+"<="        { return LE_TOK; }
+"<"     { return LT_TOK; }
 
-"&&"		{ return LAND_TOK; }
-"||"		{ return LOR_TOK; }
-"!"		{ return NOT_TOK; }
+"&&"        { return LAND_TOK; }
+"||"        { return LOR_TOK; }
+"!"     { return NOT_TOK; }
 
 ";"             { return SEMICOLON_TOK; }
 ":"             { return COLON_TOK; }
-"{"		{ return OPENBRACE_TOK; }
-"}"		{ return CLOSEBRACE_TOK; }
-"("		{ return OPENPAREN_TOK; }
-")"		{ return CLOSEPAREN_TOK; }
+"{"     { return OPENBRACE_TOK; }
+"}"     { return CLOSEBRACE_TOK; }
+"("     { return OPENPAREN_TOK; }
+")"     { return CLOSEPAREN_TOK; }
 
 {hex_num}       { sscanf((char *)yytext,"0x%x",&dvdvmlval.int_val);
-		  if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=65536 ) {
-			fprintf(stderr,"ERR:  Integers must be between 0 and 65535, inclusive (%s)\n",yytext);
-			return ERROR_TOK;
-		  }
+          if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=65536 ) {
+            fprintf(stderr,"ERR:  Integers must be between 0 and 65535, inclusive (%s)\n",yytext);
+            return ERROR_TOK;
+          }
                   return NUM_TOK; }
 
 
-{int_num}	{ sscanf((char *)yytext,"%u",&dvdvmlval.int_val);
-		  if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=65536 ) {
-			fprintf(stderr,"ERR:  Integers must be between 0 and 65535, inclusive (%s)\n",yytext);
-			return ERROR_TOK;
-		  }
+{int_num}   { sscanf((char *)yytext,"%u",&dvdvmlval.int_val);
+          if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=65536 ) {
+            fprintf(stderr,"ERR:  Integers must be between 0 and 65535, inclusive (%s)\n",yytext);
+            return ERROR_TOK;
+          }
                   return NUM_TOK; }
 
-{int_num}k	{ sscanf((char *)yytext,"%u",&dvdvmlval.int_val);
-		  if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=64 ) {
-			fprintf(stderr,"ERR:  Integers must be between 0 and 65535, inclusive (%s)\n",yytext);
-			return ERROR_TOK;
-		  }
+{int_num}k  { sscanf((char *)yytext,"%u",&dvdvmlval.int_val);
+          if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=64 ) {
+            fprintf(stderr,"ERR:  Integers must be between 0 and 65535, inclusive (%s)\n",yytext);
+            return ERROR_TOK;
+          }
                   dvdvmlval.int_val*=1024;
                   return NUM_TOK; }
 
@@ -149,7 +149,7 @@ xor		{ return XOR_TOK; }
                   return NUM_TOK; }
 
 
-g{int_num}	{ sscanf((char *)yytext+1,"%u",&dvdvmlval.int_val);
+g{int_num}  { sscanf((char *)yytext+1,"%u",&dvdvmlval.int_val);
                   if( allowallreg ) {
                       if( dvdvmlval.int_val<0 || dvdvmlval.int_val>=16 ) {
                           fprintf(stderr,"ERR:  Can only access g0-g15 (%s)\n",yytext);
@@ -161,19 +161,19 @@ g{int_num}	{ sscanf((char *)yytext+1,"%u",&dvdvmlval.int_val);
                           return ERROR_TOK;
                       }
                   }
-		  return G_TOK; }
+          return G_TOK; }
 
-s{int_num}	{ sscanf((char *)yytext+1,"%u",&dvdvmlval.int_val);
-		  if( dvdvmlval.int_val<0 || dvdvmlval.int_val>23 ) {
-			fprintf(stderr,"ERR:  Can only access s0-s23 (%s)\n",yytext);
-			return ERROR_TOK;
-		  }		
-		  return S_TOK; }
+s{int_num}  { sscanf((char *)yytext+1,"%u",&dvdvmlval.int_val);
+          if( dvdvmlval.int_val<0 || dvdvmlval.int_val>23 ) {
+            fprintf(stderr,"ERR:  Can only access s0-s23 (%s)\n",yytext);
+            return ERROR_TOK;
+          }     
+          return S_TOK; }
 
 {identifier}    { dvdvmlval.str_val = strdup((char *)yytext);
                   return ID_TOK; }
 
 
-.		{ return ERROR_TOK; }
+.       { return ERROR_TOK; }
 
 %%

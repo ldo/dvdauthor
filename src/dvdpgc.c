@@ -1,5 +1,5 @@
 /*
-	dvdauthor -- generation of PGCs within IFO files
+    dvdauthor -- generation of PGCs within IFO files
 */
 /*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
@@ -258,7 +258,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
             fprintf(stderr,"ERR:  Can only have 128 commands for pre, post, and cell commands.\n");
             exit(1);
         }
-	  /* generate command table */
+      /* generate command table */
         write2(buf+d,(postptr-preptr)/8); /* nr pre commands */
         write2(buf+d+2,(cellptr-postptr)/8); /* nr post commands */
         write2(buf+d+4,(cd-cellptr)/8); /* nr cell commands */
@@ -319,7 +319,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                         }
                     }
                     write4(buf+4+d,buildtimeeven(va,s->vob->vi[vi].sectpts[1]-firsttime));
-					  /* cell playback time + frame rate */
+                      /* cell playback time + frame rate */
                     write4(buf+16+d,s->vob->vi[vi].sector); /* last VOBU start sector */
                     write4(buf+20+d,s->vob->vi[vi].lastsector); /* last VOBU end sector */
                     d+=24;
@@ -445,7 +445,7 @@ int CreatePGC(FILE *h,const struct workset *ws,int ismenu)
             ph+=len;
         }
         write4(buf+4,ph-1);
-		  /* end address (last byte of last PGC in last LU) relative to VMGM_PGCI_UT */
+          /* end address (last byte of last PGC in last LU) relative to VMGM_PGCI_UT */
     } else {
         len=createpgcgroup(ws,0,ws->titles,buf);
         if( len<0 )

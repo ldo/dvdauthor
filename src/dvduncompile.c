@@ -1,5 +1,5 @@
 /*
-	Decompile VM instructions to human-readable form
+    Decompile VM instructions to human-readable form
 */
 /* Ogle - A video player
  * Copyright (C) 2000, 2001 Martin Norbäck, Håkan Hjort
@@ -32,14 +32,14 @@
 
 
 static xmlNodePtr
-	output; /* formatted output appended here */
+    output; /* formatted output appended here */
 static const char
-	*outputbase=0;
-	  /* prepended to every line for indentation purposes relative to caller's output */
+    *outputbase=0;
+      /* prepended to every line for indentation purposes relative to caller's output */
 static int
-	indent=0, /* current internal indentation level */
-	isnewline=0, /* am I starting a new line */
-	curline; /* for labelling branch targets */
+    indent=0, /* current internal indentation level */
+    isnewline=0, /* am I starting a new line */
+    curline; /* for labelling branch targets */
 
 typedef struct /* for holding command instruction currently being decoded */
 {
@@ -668,10 +668,10 @@ static void vm_add_mnemonic(vm_cmd_t *command)
 
 void vm_add_mnemonics
   (
-	xmlNodePtr node, /* the node to append the disassembly to */
-	const char *base, /* prepended to every output line for indentation purposes */
-	int ncmd, /* nr of commands */
-	vm_cmd_t *commands /* array */
+    xmlNodePtr node, /* the node to append the disassembly to */
+    const char *base, /* prepended to every output line for indentation purposes */
+    int ncmd, /* nr of commands */
+    vm_cmd_t *commands /* array */
   )
   /* disassembles the specified command sequence as content for the specified XML tag. */
   {
@@ -685,27 +685,27 @@ void vm_add_mnemonics
     for( i=0; i<ncmd; i++ ) {
         curline=i+1;
         for (j = 0; j < ncmd; j++)
-			if /* some instruction has a branch target here */
-			  (
-					commands[j].bytes[0] == 0 /* special instruction */
-				&&
-					(
-						(commands[j].bytes[1] & 15) == 1 /* goto */
-					||
-						(commands[j].bytes[1] & 15) == 3 /* parental control */
-					)
-				&&
-					commands[j].bytes[7] == curline /* target of branch is here */
-			  )
-			  {
-			  /* output label definition for target of branch */
-				indent--;
-				node_newline();
-				node_printf("l%d:",curline);
-				indent++;
-				break;
-			  } /* if; for */
-		vm_add_mnemonic(commands+i);
+            if /* some instruction has a branch target here */
+              (
+                    commands[j].bytes[0] == 0 /* special instruction */
+                &&
+                    (
+                        (commands[j].bytes[1] & 15) == 1 /* goto */
+                    ||
+                        (commands[j].bytes[1] & 15) == 3 /* parental control */
+                    )
+                &&
+                    commands[j].bytes[7] == curline /* target of branch is here */
+              )
+              {
+              /* output label definition for target of branch */
+                indent--;
+                node_newline();
+                node_printf("l%d:",curline);
+                indent++;
+                break;
+              } /* if; for */
+        vm_add_mnemonic(commands+i);
     }
 
     node_newline();

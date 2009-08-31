@@ -13,7 +13,7 @@
 #define SUB_VPLAYER   4
 #define SUB_RT        5
 #define SUB_SSA       6
-#define SUB_DUNNOWHAT 7		// FIXME what format is it ?
+#define SUB_DUNNOWHAT 7     // FIXME what format is it ?
 #define SUB_MPSUB     8
 #define SUB_AQTITLE   9
 #define SUB_SUBVIEWER2 10
@@ -24,9 +24,9 @@
 
 #define MAX_SUBTITLE_FILES 128
 
-#define SUB_ALIGNMENT_HLEFT	1
-#define SUB_ALIGNMENT_HCENTER	0
-#define SUB_ALIGNMENT_HRIGHT	2
+#define SUB_ALIGNMENT_HLEFT 1
+#define SUB_ALIGNMENT_HCENTER   0
+#define SUB_ALIGNMENT_HRIGHT    2
 #define SUB_ALIGNMENT_DEFAULT 4
 
 sub_data* sub_read_file (char *filename, float pts);

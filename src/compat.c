@@ -8,21 +8,21 @@
 #ifndef HAVE_STRNDUP
 char * strndup
   (
-	const char * s,
-	size_t n
+    const char * s,
+    size_t n
   )
   {
-	char * result;
-	size_t l = strlen(s);
-	if (l > n)
-	  {
-		l = n;
-	  } /*if*/
-	result = malloc(l + 1);
-	memcpy(result, s, l);
-	result[l] = 0;
-	return
-		result;
+    char * result;
+    size_t l = strlen(s);
+    if (l > n)
+      {
+        l = n;
+      } /*if*/
+    result = malloc(l + 1);
+    memcpy(result, s, l);
+    result[l] = 0;
+    return
+        result;
   } /*strndup*/
 #endif /*HAVE_STRNDUP*/
 

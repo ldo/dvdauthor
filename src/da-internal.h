@@ -1,5 +1,5 @@
 /*
-	Lower-level definitions for building DVD authoring structures
+    Lower-level definitions for building DVD authoring structures
 */
 /*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
@@ -40,8 +40,8 @@ typedef int64_t pts_t; /* timestamp in units of 90kHz clock */
 
 struct vobuinfo {
     int sector,lastsector,fsect,fnum;
-	int vobcellid; /* cell ID in low byte, VOB ID in rest */
-	int firstvobuincell,lastvobuincell,hasseqend,hasvideo;
+    int vobcellid; /* cell ID in low byte, VOB ID in rest */
+    int firstvobuincell,lastvobuincell,hasseqend,hasvideo;
     pts_t videopts[2],sectpts[2],firstvideopts;
     int numref, firstIfield, numfields, lastrefsect[3]; // why on earth do they want the LAST sector of the ref (I, P) frame?
     unsigned char sectdata[0x26]; // so we don't have to reread it
@@ -182,8 +182,8 @@ struct workset {
 
 extern char *entries[]; /* PGC menu entry types */
 extern int
-	jumppad, /* reserve registers and set up code to allow convenient jumping between titlesets */
-	allowallreg; /* don't reserve any registers for convenience purposes */
+    jumppad, /* reserve registers and set up code to allow convenient jumping between titlesets */
+    allowallreg; /* don't reserve any registers for convenience purposes */
 extern char *pstypes[]; /* PGC types */
 
 void write8(unsigned char *p,unsigned char d0,unsigned char d1,

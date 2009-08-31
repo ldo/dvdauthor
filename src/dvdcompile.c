@@ -455,64 +455,64 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
             int i2=cs->i2;
 
             if( i1==1 && ismenu==2 ) {
-                //	VMGM	VMGM	NOPGC	NOCH
-                //	VMGM	VMGM	NOPGC	CHXX
-                //	VMGM	VMGM	MPGC	NOCH
-                //	VMGM	VMGM	MPGC	CHXX
-                //	VMGM	VMGM	MEPGC	NOCH
-                //	VMGM	VMGM	MEPGC	CHXX
-                //	VMGM	VMGM	TPGC	NOCH
-                //	VMGM	VMGM	TPGC	CHXX
+                //  VMGM    VMGM    NOPGC   NOCH
+                //  VMGM    VMGM    NOPGC   CHXX
+                //  VMGM    VMGM    MPGC    NOCH
+                //  VMGM    VMGM    MPGC    CHXX
+                //  VMGM    VMGM    MEPGC   NOCH
+                //  VMGM    VMGM    MEPGC   CHXX
+                //  VMGM    VMGM    TPGC    NOCH
+                //  VMGM    VMGM    TPGC    CHXX
                 i1=0;
             }
             if( ((i2>0 && i2<128) || (i2==0 && i1==1)) && !ismenu ) {
-                //	VTS	NONE	MPGC	NOCH
-                //	VTS	VMGM	MPGC	NOCH
-                //	VTS	TS	MPGC	NOCH
-                //	VTS	NONE	MPGC	CHXX
-                //	VTS	VMGM	MPGC	CHXX
-                //	VTS	TS	MPGC	CHXX
-                //	VTS	NONE	MEPGC	NOCH
-                //	VTS	VMGM	MEPGC	NOCH
-                //	VTS	TS	MEPGC	NOCH
-                //	VTS	NONE	MEPGC	CHXX
-                //	VTS	VMGM	MEPGC	CHXX
-                //	VTS	TS	MEPGC	CHXX
-                //	VTS	VMGM	NOPGC	NOCH
-                //	VTS	VMGM	NOPGC	CHXX
+                //  VTS NONE    MPGC    NOCH
+                //  VTS VMGM    MPGC    NOCH
+                //  VTS TS  MPGC    NOCH
+                //  VTS NONE    MPGC    CHXX
+                //  VTS VMGM    MPGC    CHXX
+                //  VTS TS  MPGC    CHXX
+                //  VTS NONE    MEPGC   NOCH
+                //  VTS VMGM    MEPGC   NOCH
+                //  VTS TS  MEPGC   NOCH
+                //  VTS NONE    MEPGC   CHXX
+                //  VTS VMGM    MEPGC   CHXX
+                //  VTS TS  MEPGC   CHXX
+                //  VTS VMGM    NOPGC   NOCH
+                //  VTS VMGM    NOPGC   CHXX
 
                 fprintf(stderr,"ERR:  Cannot jump to a menu from a title, use 'call' instead\n");
                 return 0;
             }
             if( i2>0 && i2<128 && cs->i3 && ismenu ) {
-                //	VMGM	NONE	MPGC	CHXX
-                //	VMGM	TS	MPGC	CHXX
-                //	VMGM	NONE	MEPGC	CHXX
-                //	VMGM	TS	MEPGC	CHXX
-                //	VTSM	NONE	MPGC	CHXX
-                //	VTSM	VMGM	MPGC	CHXX
-                //	VTSM	TS	MPGC	CHXX
-                //	VTSM	NONE	MEPGC	CHXX
-                //	VTSM	VMGM	MEPGC	CHXX
-                //	VTSM	TS	MEPGC	CHXX
+                //  VMGM    NONE    MPGC    CHXX
+                //  VMGM    TS  MPGC    CHXX
+                //  VMGM    NONE    MEPGC   CHXX
+                //  VMGM    TS  MEPGC   CHXX
+                //  VTSM    NONE    MPGC    CHXX
+                //  VTSM    VMGM    MPGC    CHXX
+                //  VTSM    TS  MPGC    CHXX
+                //  VTSM    NONE    MEPGC   CHXX
+                //  VTSM    VMGM    MEPGC   CHXX
+                //  VTSM    TS  MEPGC   CHXX
                 fprintf(stderr,"ERR:  Cannot specify chapter when jumping to another menu\n");
                 return 0;
             }
             if( i1 && !i2 ) {
-                //	VTSM	VMGM	NOPGC	CHXX
-                //	VTS	TS	NOPGC	CHXX
-                //	VTSM	TS	NOPGC	CHXX
-                //	VMGM	TS	NOPGC	CHXX
-                //	VTS	TS	NOPGC	NOCH
-                //	VTSM	TS	NOPGC	NOCH
-                //	VMGM	TS	NOPGC	NOCH
+                //  VTSM    VMGM    NOPGC   CHXX
+                //  VTS TS  NOPGC   CHXX
+                //  VTSM    TS  NOPGC   CHXX
+                //  VMGM    TS  NOPGC   CHXX
+                //  VTS TS  NOPGC   NOCH
+                //  VTSM    TS  NOPGC   NOCH
+                //  VMGM    TS  NOPGC   NOCH
                 fprintf(stderr,"ERR:  Cannot omit menu/title if specifying vmgm/titleset\n");
                 return 0;
             }
             if( !i1 && !i2 && !cs->i3 ) {
-                //	VTS	NONE	NOPGC	NOCH
-                //	VTSM	NONE	NOPGC	NOCH
-                //	VMGM	NONE	NOPGC	NOCH
+                //  VTS NONE    NOPGC   NOCH
+                //  VTSM    NONE    NOPGC   NOCH
+                //  VMGM    NONE    NOPGC   NOCH
                 fprintf(stderr,"ERR:  Nop jump statement\n");
                 return 0;
             }
@@ -525,27 +525,27 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
 
             // *** ACTUAL COMPILING
             if( i1>=2 && i2>=120 && i2<128 ) {
-                //	VTSM	TS	MEPGC	NOCH
-                //	VMGM	TS	MEPGC	NOCH
+                //  VTSM    TS  MEPGC   NOCH
+                //  VMGM    TS  MEPGC   NOCH
                 if( i2==120 )
                     i2=123;
                 write8(buf,0x30,0x06,0x00,0x01,i1-1,0x80+(i2-120),0x00,0x00); buf+=8; // JumpSS VTSM vts 1 menu
             } else if( i1>=2 ||
                        ( i1==1 && i2>=128 ) ||
                        ( ismenu==2 && i2>=128 && cs->i3 )) {
-                //	VMGM	TS	TPGC	CHXX
-                //	VTSM	TS	MPGC	NOCH
-                //	VMGM	TS	MPGC	NOCH
-                //	VTS	TS	TPGC	NOCH
-                //	VTSM	TS	TPGC	NOCH
-                //	VMGM	TS	TPGC	NOCH
-                //	VTS	TS	TPGC	CHXX
-                //	VTSM	TS	TPGC	CHXX
-                //	VTS	VMGM	TPGC	NOCH
-                //	VTSM	VMGM	TPGC	NOCH
-                //	VTS	VMGM	TPGC	CHXX
-                //	VTSM	VMGM	TPGC	CHXX
-                //	VMGM	NONE	TPGC	CHXX
+                //  VMGM    TS  TPGC    CHXX
+                //  VTSM    TS  MPGC    NOCH
+                //  VMGM    TS  MPGC    NOCH
+                //  VTS TS  TPGC    NOCH
+                //  VTSM    TS  TPGC    NOCH
+                //  VMGM    TS  TPGC    NOCH
+                //  VTS TS  TPGC    CHXX
+                //  VTSM    TS  TPGC    CHXX
+                //  VTS VMGM    TPGC    NOCH
+                //  VTSM    VMGM    TPGC    NOCH
+                //  VTS VMGM    TPGC    CHXX
+                //  VTSM    VMGM    TPGC    CHXX
+                //  VMGM    NONE    TPGC    CHXX
                 if( jumppad ) {
                     if( !i1 )
                         i1=1;
@@ -557,9 +557,9 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                     return 0;
                 }
             } else if( i1==1 || i2==121 ) {
-                //	VTSM	VMGM	NOPGC	NOCH
-                //	VTSM	VMGM	MPGC	NOCH
-                //	VTSM	VMGM	MEPGC	NOCH
+                //  VTSM    VMGM    NOPGC   NOCH
+                //  VTSM    VMGM    MPGC    NOCH
+                //  VTSM    VMGM    MEPGC   NOCH
                 // cannot error check jumps to the vmgm menu
                 if( !i2 || i2==120 )
                     i2=122;
@@ -572,9 +572,9 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 int numc;
                 char *des;
 
-                //	VTS	NONE	NOPGC	CHXX
-                //	VTSM	NONE	NOPGC	CHXX
-                //	VMGM	NONE	NOPGC	CHXX
+                //  VTS NONE    NOPGC   CHXX
+                //  VTSM    NONE    NOPGC   CHXX
+                //  VMGM    NONE    NOPGC   CHXX
                 if( curpgc==0 ) {
                     fprintf(stderr,"ERR:  Cannot jump to a chapter from a FPC\n");
                     return 0;
@@ -596,10 +596,10 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 write8(buf,0x20,0x05+(cs->i3>>16),0x00,0x00,0x00,0x00,0x00,cs->i3); // LinkPTTN pttn, LinkPGCN pgn, or LinkCN cn
                 buf+=8;
             } else if( i2<128 ) {
-                //	VTSM	NONE	MPGC	NOCH
-                //	VMGM	NONE	MPGC	NOCH
-                //	VTSM	NONE	MEPGC	NOCH
-                //	VMGM	NONE	MEPGC	NOCH
+                //  VTSM    NONE    MPGC    NOCH
+                //  VMGM    NONE    MPGC    NOCH
+                //  VTSM    NONE    MEPGC   NOCH
+                //  VMGM    NONE    MEPGC   NOCH
                 if( !curgroup ) {
                     fprintf(stderr,"ERR:  Cannot jump to menu; none exist\n");
                     return 0;
@@ -629,11 +629,11 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                     write8(buf,0x20,0x04,0x00,0x00,0x00,0x00,0x00,i2&127); // LinkPGCN pgcn
                 buf+=8;
             } else {
-                //	VMGM	NONE	TPGC	NOCH
-                //	VTS	NONE	TPGC	NOCH
-                //	VTSM	NONE	TPGC	NOCH
-                //	VTS	NONE	TPGC	CHXX
-                //	VTSM	NONE	TPGC	CHXX
+                //  VMGM    NONE    TPGC    NOCH
+                //  VTS NONE    TPGC    NOCH
+                //  VTSM    NONE    TPGC    NOCH
+                //  VTS NONE    TPGC    CHXX
+                //  VTSM    NONE    TPGC    CHXX
                 if( ismenu<2 ) {
                     if( i2-128>ws->titles->numpgcs ) {
                         fprintf(stderr,"ERR:  Cannot jump to title #%d, only %d exist\n",i2-128,ws->titles->numpgcs);
@@ -659,81 +659,81 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
             if( !i4 )
                 i4=1;
             if( ismenu ) {
-                //	VTSM	NONE	NOPGC	NOCH
-                //	VMGM	NONE	NOPGC	NOCH
-                //	VTSM	VMGM	NOPGC	NOCH
-                //	VMGM	VMGM	NOPGC	NOCH
-                //	VTSM	TS	NOPGC	NOCH
-                //	VMGM	TS	NOPGC	NOCH
-                //	VTSM	NONE	NOPGC	CHXX
-                //	VMGM	NONE	NOPGC	CHXX
-                //	VTSM	VMGM	NOPGC	CHXX
-                //	VMGM	VMGM	NOPGC	CHXX
-                //	VTSM	TS	NOPGC	CHXX
-                //	VMGM	TS	NOPGC	CHXX
-                //	VTSM	NONE	MPGC	NOCH
-                //	VMGM	NONE	MPGC	NOCH
-                //	VTSM	VMGM	MPGC	NOCH
-                //	VMGM	VMGM	MPGC	NOCH
-                //	VTSM	TS	MPGC	NOCH
-                //	VMGM	TS	MPGC	NOCH
-                //	VTSM	NONE	MPGC	CHXX
-                //	VMGM	NONE	MPGC	CHXX
-                //	VTSM	VMGM	MPGC	CHXX
-                //	VMGM	VMGM	MPGC	CHXX
-                //	VTSM	TS	MPGC	CHXX
-                //	VMGM	TS	MPGC	CHXX
-                //	VTSM	NONE	MEPGC	NOCH
-                //	VMGM	NONE	MEPGC	NOCH
-                //	VTSM	VMGM	MEPGC	NOCH
-                //	VMGM	VMGM	MEPGC	NOCH
-                //	VTSM	TS	MEPGC	NOCH
-                //	VMGM	TS	MEPGC	NOCH
-                //	VTSM	NONE	MEPGC	CHXX
-                //	VMGM	NONE	MEPGC	CHXX
-                //	VTSM	VMGM	MEPGC	CHXX
-                //	VMGM	VMGM	MEPGC	CHXX
-                //	VTSM	TS	MEPGC	CHXX
-                //	VMGM	TS	MEPGC	CHXX
-                //	VTSM	NONE	TPGC	NOCH
-                //	VMGM	NONE	TPGC	NOCH
-                //	VTSM	VMGM	TPGC	NOCH
-                //	VMGM	VMGM	TPGC	NOCH
-                //	VTSM	TS	TPGC	NOCH
-                //	VMGM	TS	TPGC	NOCH
-                //	VTSM	NONE	TPGC	CHXX
-                //	VMGM	NONE	TPGC	CHXX
-                //	VTSM	VMGM	TPGC	CHXX
-                //	VMGM	VMGM	TPGC	CHXX
-                //	VTSM	TS	TPGC	CHXX
-                //	VMGM	TS	TPGC	CHXX
+                //  VTSM    NONE    NOPGC   NOCH
+                //  VMGM    NONE    NOPGC   NOCH
+                //  VTSM    VMGM    NOPGC   NOCH
+                //  VMGM    VMGM    NOPGC   NOCH
+                //  VTSM    TS  NOPGC   NOCH
+                //  VMGM    TS  NOPGC   NOCH
+                //  VTSM    NONE    NOPGC   CHXX
+                //  VMGM    NONE    NOPGC   CHXX
+                //  VTSM    VMGM    NOPGC   CHXX
+                //  VMGM    VMGM    NOPGC   CHXX
+                //  VTSM    TS  NOPGC   CHXX
+                //  VMGM    TS  NOPGC   CHXX
+                //  VTSM    NONE    MPGC    NOCH
+                //  VMGM    NONE    MPGC    NOCH
+                //  VTSM    VMGM    MPGC    NOCH
+                //  VMGM    VMGM    MPGC    NOCH
+                //  VTSM    TS  MPGC    NOCH
+                //  VMGM    TS  MPGC    NOCH
+                //  VTSM    NONE    MPGC    CHXX
+                //  VMGM    NONE    MPGC    CHXX
+                //  VTSM    VMGM    MPGC    CHXX
+                //  VMGM    VMGM    MPGC    CHXX
+                //  VTSM    TS  MPGC    CHXX
+                //  VMGM    TS  MPGC    CHXX
+                //  VTSM    NONE    MEPGC   NOCH
+                //  VMGM    NONE    MEPGC   NOCH
+                //  VTSM    VMGM    MEPGC   NOCH
+                //  VMGM    VMGM    MEPGC   NOCH
+                //  VTSM    TS  MEPGC   NOCH
+                //  VMGM    TS  MEPGC   NOCH
+                //  VTSM    NONE    MEPGC   CHXX
+                //  VMGM    NONE    MEPGC   CHXX
+                //  VTSM    VMGM    MEPGC   CHXX
+                //  VMGM    VMGM    MEPGC   CHXX
+                //  VTSM    TS  MEPGC   CHXX
+                //  VMGM    TS  MEPGC   CHXX
+                //  VTSM    NONE    TPGC    NOCH
+                //  VMGM    NONE    TPGC    NOCH
+                //  VTSM    VMGM    TPGC    NOCH
+                //  VMGM    VMGM    TPGC    NOCH
+                //  VTSM    TS  TPGC    NOCH
+                //  VMGM    TS  TPGC    NOCH
+                //  VTSM    NONE    TPGC    CHXX
+                //  VMGM    NONE    TPGC    CHXX
+                //  VTSM    VMGM    TPGC    CHXX
+                //  VMGM    VMGM    TPGC    CHXX
+                //  VTSM    TS  TPGC    CHXX
+                //  VMGM    TS  TPGC    CHXX
                 fprintf(stderr,"ERR:  Cannot 'call' a menu from another menu, use 'jump' instead\n");
                 return 0;
             }
             if( i2==0 || i2>=128 ) {
-                //	VTS	NONE	NOPGC	NOCH
-                //	VTS	VMGM	NOPGC	NOCH
-                //	VTS	TS	NOPGC	NOCH
-                //	VTS	NONE	NOPGC	CHXX
-                //	VTS	VMGM	NOPGC	CHXX
-                //	VTS	TS	NOPGC	CHXX
-                //	VTS	NONE	TPGC	NOCH
-                //	VTS	VMGM	TPGC	NOCH
-                //	VTS	TS	TPGC	NOCH
-                //	VTS	NONE	TPGC	CHXX
-                //	VTS	VMGM	TPGC	CHXX
-                //	VTS	TS	TPGC	CHXX
+                //  VTS NONE    NOPGC   NOCH
+                //  VTS VMGM    NOPGC   NOCH
+                //  VTS TS  NOPGC   NOCH
+                //  VTS NONE    NOPGC   CHXX
+                //  VTS VMGM    NOPGC   CHXX
+                //  VTS TS  NOPGC   CHXX
+                //  VTS NONE    TPGC    NOCH
+                //  VTS VMGM    TPGC    NOCH
+                //  VTS TS  TPGC    NOCH
+                //  VTS NONE    TPGC    CHXX
+                //  VTS VMGM    TPGC    CHXX
+                //  VTS TS  TPGC    CHXX
 
                 fprintf(stderr,"ERR:  Cannot 'call' another title, use 'jump' instead\n");
                 return 0;
             }
             if( cs->i3!=0 ) {
-                //	VTS	NONE	MPGC	CHXX
-                //	VTS	VMGM	MPGC	CHXX
-                //	VTS	TS	MPGC	CHXX
-                //	VTS	NONE	MEPGC	CHXX
-                //	VTS	VMGM	MEPGC	CHXX
-                //	VTS	TS	MEPGC	CHXX
+                //  VTS NONE    MPGC    CHXX
+                //  VTS VMGM    MPGC    CHXX
+                //  VTS TS  MPGC    CHXX
+                //  VTS NONE    MEPGC   CHXX
+                //  VTS VMGM    MEPGC   CHXX
+                //  VTS TS  MEPGC   CHXX
                 fprintf(stderr,"ERR:  Cannot 'call' a chapter within a menu\n");
                 return 0;
             }
@@ -745,8 +745,8 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
 
 
             if( cs->i1>=2 ) {
-                //	VTS	TS	MPGC	NOCH
-                //	VTS	TS	MEPGC	NOCH
+                //  VTS TS  MPGC    NOCH
+                //  VTS TS  MEPGC   NOCH
                 if( jumppad ) {
                     write8(buf,0x71,0x00,0x00,0x0F,i2,cs->i1,0x00,0x00); buf+=8;
                     write8(buf,0x71,0x00,0x00,0x0E,0x00,cs->i3,0x00,0x00); buf+=8;
@@ -756,7 +756,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                     return 0;
                 }
             } else if( cs->i1==0 && i2<120 ) {
-                //	VTS	NONE	MPGC	NOCH
+                //  VTS NONE    MPGC    NOCH
                 if( jumppad ) {
                     write8(buf,0x71,0x00,0x00,0x0F,i2,0x00,0x00,0x00); buf+=8;
                     write8(buf,0x30,0x08,0x00,0x00,i4,0x87,0x00,0x00); buf+=8;
@@ -765,8 +765,8 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                     return 0;
                 }
             } else if( cs->i1==1 ) {
-                //	VTS	VMGM	MPGC	NOCH
-                //	VTS	VMGM	MEPGC	NOCH
+                //  VTS VMGM    MPGC    NOCH
+                //  VTS VMGM    MEPGC   NOCH
                 // we cannot provide error checking when jumping to a VMGM
                 if( i2==120 )
                     i2=122;
@@ -778,7 +778,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
             } else {
                 int i,j;
 
-                //	VTS	NONE	MEPGC	NOCH
+                //  VTS NONE    MEPGC   NOCH
                 if( i2==120 )
                     i2=127;
                     

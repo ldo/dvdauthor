@@ -1,5 +1,5 @@
 /*
-	dvdauthor -- generation of IFO and BUP files
+    dvdauthor -- generation of IFO and BUP files
 */
 /*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
@@ -286,7 +286,7 @@ static int Create_PTT_SRPT(FILE *h,const struct pgcgroup *t)
                         buf[1+p]=j+1; /* PGCN low byte */
                         buf[3+p]=pgm; /* PGN low byte */
                         p+=4;
-				  /* fallthru */
+                  /* fallthru */
                     case 2: /* program only */
                         pgm++;
                     }
@@ -347,7 +347,7 @@ static void BuildAVInfo(unsigned char *buf,const struct vobgroup *va)
            |((va->vd.vcaption&1)?0x80:0) /* caption=field1 (line-21 closed-captioning, NTSC only) */
            |((va->vd.vcaption&2)?0x40:0) /* caption=field2 (line-21 closed-captioning, NTSC only) */
            |((va->vd.vres-1)<<3)); /* resolution code */
-		/* bit rate always VBR, letterbox-cropped unset, PAL film flag unset for now */
+        /* bit rate always VBR, letterbox-cropped unset, PAL film flag unset for now */
     buf[3]=va->numaudiotracks; /* nr audio streams, low byte */
     for( i=0; i<va->numaudiotracks; i++ ) { /* fill in menu/title audio attributes */
         buf[4+i*8]=(va->ad[i].aformat-1)<<6; /* audio coding mode */
@@ -355,28 +355,28 @@ static void BuildAVInfo(unsigned char *buf,const struct vobgroup *va)
             buf[4+i*8]|=4; /* language type = as per language code */
             memcpy(buf+6+i*8,va->ad[i].lang,2); /* language code */
         }
-	  /* multichannel extension not supported for now */
+      /* multichannel extension not supported for now */
         if( va->ad[i].adolby==AD_SURROUND ) { /* for title audio, not menu audio */
             buf[4+i*8]|=2; /* application mode = surround */
             buf[11+i*8]=8; /* suitable for Dolby surround decoding */
         }
-	  /* karaoke options not supported for now */
+      /* karaoke options not supported for now */
 
         buf[5+i*8]=
             ((va->ad[i].aquant-1)<<6)  | /* quantization/DRC */
             ((va->ad[i].asample-1)<<4) | /* sample rate */
             (va->ad[i].achannels-1); /* nr channels - 1 */
 
-	  /* audio code extension (buf[9 + i * 8], title audio only) currently left unspecified */
+      /* audio code extension (buf[9 + i * 8], title audio only) currently left unspecified */
     }
     buf[0x55]=va->numsubpicturetracks; /* nr subpicture streams, low byte */
     for( i=0; i<va->numsubpicturetracks; i++ ) {
-	  /* coding mode always RLE */
+      /* coding mode always RLE */
         if( va->sp[i].slangp==AL_LANG ) { /* for title subpicture, not menu subpicture */
             buf[0x56+i*6]=1; /* language type = as per language code */
             memcpy(buf+0x58+i*6,va->sp[i].lang,2); /* language code */
         }
-	/* title code extension (buf[0x56 + i * 6 + 5], title subpicture only) currently left unspecified */
+    /* title code extension (buf[0x56 + i * 6 + 5], title subpicture only) currently left unspecified */
     }
 }
 
@@ -483,7 +483,7 @@ void WriteIFOs(const char *fbase,const struct workset *ws)
         WriteIFO(h,ws);
         fclose(h);
     } else
-	  /* dummy write */
+      /* dummy write */
         WriteIFO(0,ws);
 }
 
@@ -516,14 +516,14 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,const char *fname)
     }
 
     write4(buf+0xd0,i);
-	  /* sector pointer to VMG_VTS_ATRT (copies of VTS audio/subpicture atts) */
-	  /* I will output it immediately following IFO header */
+      /* sector pointer to VMG_VTS_ATRT (copies of VTS audio/subpicture atts) */
+      /* I will output it immediately following IFO header */
     i+=(8+ws->ts->numvts*0x30c+2047)/2048; /* round up size of VMG_VTS_ATRT to whole sectors */
 
     if( jumppad || forcemenus ) {
         write4(buf+0xd8,i);
-		  /* sector pointer to VMGM_C_ADT (menu cell address table) */
-		  /* I make it follow VMG_VTS_ATRT */
+          /* sector pointer to VMGM_C_ADT (menu cell address table) */
+          /* I make it follow VMG_VTS_ATRT */
         i+=CreateCallAdr(0,ws->menus->vg); /* how much room it will need */
 
         write4(buf+0xdc,i); /* sector pointer to VMGM_VOBU_ADMAP (menu VOBU address map) */
@@ -604,7 +604,7 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,const char *fname)
         CreatePGC(h,ws,2);
 
     /* VMG_VTS_ATRT contains copies of menu and title attributes from all titlesets */
-	/* output immediately following IFO header, as promised above */
+    /* output immediately following IFO header, as promised above */
     memset(buf,0,2048);
     j=8+ws->ts->numvts*4;
     write2(buf,ws->ts->numvts); /* number of titlesets */
@@ -613,12 +613,12 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,const char *fname)
         write4(buf+8+i*4,j+i*0x308); /* offset to VTS_ATRT i */
     nfwrite(buf,j,h);
     for( i=0; i<ws->ts->numvts; i++ ) /* output each VTS_ATRT */
-	  {
+      {
         write4(buf,0x307); /* end address */
         memcpy(buf+4,ws->ts->vts[i].vtscat,4);
-		  /* VTS_CAT (copy of bytes 0x22 .. 0x25 of VTS IFO) */
+          /* VTS_CAT (copy of bytes 0x22 .. 0x25 of VTS IFO) */
         memcpy(buf+8,ws->ts->vts[i].vtssummary,0x300);
-		  /* copy of VTS attributes (bytes 0x100 onwards of VTS IFO) */
+          /* copy of VTS attributes (bytes 0x100 onwards of VTS IFO) */
         nfwrite(buf,0x308,h);
         j+=0x308;
       } /*for*/
