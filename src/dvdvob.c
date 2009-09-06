@@ -1104,7 +1104,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                         buf[1026] == 1
                     &&
                         buf[1027] == 0xbf // 2nd private2
-                  ) /* looks like a NAV PACK */
+                  ) /* looks like a NAV PACK, which means the start of a new VOBU */
                   {
                     struct vobuinfo *vi;
                     if (thisvob->numvobus)
@@ -1112,15 +1112,20 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                     // fprintf(stderr,"INFO: vobu\n");
                     hadfirstvobu = 1; /* NAV PACK starts a VOBU */
                     thisvob->numvobus++;
-                    if (thisvob->numvobus > thisvob->maxvobus)
+                    if (thisvob->numvobus > thisvob->maxvobus) /* need more space */
                       {
                         if (!thisvob->maxvobus)
-                            thisvob->maxvobus = 1;
+                            thisvob->maxvobus = 1; /* first allocation */
                         else
                             thisvob->maxvobus <<= 1;
-                        thisvob->vi = (struct vobuinfo *)realloc(thisvob->vi, thisvob->maxvobus * sizeof(struct vobuinfo));
+                              /* resize in powers of 2 to reduce reallocation calls */
+                        thisvob->vi = (struct vobuinfo *)realloc
+                          (
+                            /*ptr =*/ thisvob->vi,
+                            /*size =*/ thisvob->maxvobus * sizeof(struct vobuinfo)
+                          );
                       } /*if*/
-                    vi = &thisvob->vi[thisvob->numvobus - 1];
+                    vi = &thisvob->vi[thisvob->numvobus - 1]; /* for the new VOBU */
                     memset(vi, 0, sizeof(struct vobuinfo));
                     vi->sector = cursect;
                     vi->fsect = fsect;
@@ -1644,7 +1649,7 @@ void MarkChapters(struct vobgroup *va)
                 va->allpgcs[i]->numcells+=c->ecellid-c->scellid;
                 if( c->scellid!=c->ecellid && c->ischapter ) {
                     va->allpgcs[i]->numprograms++;
-                    if( c->ischapter==1 )
+                    if( c->ischapter==1 ) /* chapter & program */
                         va->allpgcs[i]->numchapters++;
                     if( va->allpgcs[i]->numprograms>=256 ) {
                         fprintf(stderr,"ERR:  PGC %d has too many programs (%d, 256 allowed)\n",i+1,va->allpgcs[i]->numprograms);

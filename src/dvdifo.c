@@ -288,7 +288,7 @@ static int Create_PTT_SRPT(FILE *h,const struct pgcgroup *t)
                         p+=4;
                   /* fallthru */
                     case 2: /* program only */
-                        pgm++;
+                        pgm++; /* just to keep right count for next chapter */
                     }
             }
         

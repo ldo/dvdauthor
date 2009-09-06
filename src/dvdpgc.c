@@ -277,7 +277,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
 
             for( k=0; k<si->numcells; k++ ) {
                 if( si->cells[k].scellid==si->cells[k].ecellid )
-                    continue;
+                    continue; /* no cells */
                 if( si->cells[k].ischapter )
                     buf[d++]=j; /* entry cell nr */
                 j+=si->cells[k].ecellid-si->cells[k].scellid;

@@ -38,7 +38,7 @@ enum {AS_NONE=0,AS_48KHZ=1,AS_96KHZ=2}; /* values for audiodesc.asample */
 
 typedef int64_t pts_t; /* timestamp in units of 90kHz clock */
 
-struct vobuinfo {
+struct vobuinfo { /* describes a VOBU in a VOB */
     int sector,lastsector,fsect,fnum;
     int vobcellid; /* cell ID in low byte, VOB ID in rest */
     int firstvobuincell,lastvobuincell,hasseqend,hasvideo;
@@ -68,15 +68,17 @@ struct subpicdesc { /* describes a subpicture stream */
     unsigned char idmap[4]; // (128 | id) if defined
 };
 
-struct cell {
+struct cell { /* describes one or more cells within a source video file */
     pts_t startpts,endpts;
-    int ischapter,pauselen; // ischapter: 1 = chapter&program, 2=program only
-    int scellid,ecellid;
+    int ischapter; // 1 = chapter&program, 2 = program only, 0 = neither
+    int pauselen;
+    int scellid; /* start cell */
+    int ecellid; /* end cell + 1 */
     struct vm_statement *cs;
 };
 
 struct source { /* describes an input video file */
-    char *fname;
+    char *fname; /* name of file */
     int numcells; /* nr elements in cells */
     struct cell *cells; /* array */
     struct vob *vob; /* containing vob */
@@ -95,10 +97,11 @@ struct audchannel {
 
 struct vob {
     char *fname;
-    int numvobus,maxvobus;
+    int numvobus; /* used portion of vi array */
+    int maxvobus; /* allocated size of vi array */
     int vobid,numcells;
     struct pgc *progchain; // used for colorinfo and buttons
-    struct vobuinfo *vi;
+    struct vobuinfo *vi; /* array of VOBUs in the VOB */
     // 0-31: top two bits are the audio type, bottom 3 bits are the channel id
     // 32-63: bottom five bits are subpicture id
     struct audchannel audch[64];
@@ -151,16 +154,21 @@ struct menugroup {
 };
 
 struct vobgroup {
-    int numaudiotracks, numsubpicturetracks, numvobs, numallpgcs;
-    struct pgc **allpgcs;
-    struct vob **vobs;
+    int numaudiotracks, numsubpicturetracks;
+    int numvobs; /* size of vobs array */
+    int numallpgcs; /* size of allpgcs array */
+    struct pgc **allpgcs; /* array of pointers to PGCs */
+    struct vob **vobs; /* array of pointers to VOBs */
     struct videodesc vd,vdwarn;
     struct audiodesc ad[8],adwarn[8];
     struct subpicdesc sp[32],spwarn[32];
 };
 
-struct vtsdef {
-    int hasmenu,numtitles,*numchapters,numsectors;
+struct vtsdef { /* describes a VTS */
+    int hasmenu;
+    int numtitles; /* length of numchapters array */
+    int *numchapters; /* number of chapters in each title */
+    int numsectors;
     char vtssummary[0x300],vtscat[4];
 };
 

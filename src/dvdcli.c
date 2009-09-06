@@ -456,7 +456,7 @@ int main(int argc,char **argv)
         case 'm':
             FLUSHPGC;
             usedtocflag=1; // force -T to occur before -m
-            hadchapter=0;
+            hadchapter=0; /* reset for new menu */
             curva=0;
             break;
 
@@ -467,7 +467,7 @@ int main(int argc,char **argv)
             }
             FLUSHPGC;
             usedtocflag=1;
-            hadchapter=0;
+            hadchapter=0; /* reset for new title */
             curva=1;
             break;
             
@@ -531,9 +531,10 @@ int main(int argc,char **argv)
             
             source_set_filename(curvob,optarg);
             if( hadchapter==2 )
-                hadchapter=1;
+                hadchapter=1; /* chapters already specified */
             else
                 source_add_cell(curvob,0,-1,!hadchapter,0,0);
+                  /* default to single chapter for entire source file */
             pgc_add_source(curpgc,curvob);
             curvob=0;
             break;
@@ -551,6 +552,7 @@ int main(int argc,char **argv)
                 parsechapters(optarg,curvob,0);
             else
                 source_add_cell(curvob,0,-1,1,0,0);
+                  /* default to single chapter for entire source file */
             break;
 
         default:
@@ -1083,6 +1085,7 @@ static void vob_end()
             hadchapter=1;
         } else
             source_add_cell(curvob,0,-1,!hadchapter,pauselen,0);
+              /* default to single chapter for entire source file */
     }
     pgc_add_source(curpgc,curvob);
     curvob=0;

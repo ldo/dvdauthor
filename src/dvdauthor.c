@@ -796,43 +796,51 @@ static void jp_force_menu(struct menugroup *mg,int type)
 }
 
 static void ScanIfo(struct toc_summary *ts,char *ifo)
-{
+  /* scans another existing VTS IFO file and puts info about it
+    into *ts for inclusion in the VMG. */
+  {
     static unsigned char buf[2048];
     struct vtsdef *vd;
     int i,first;
-    FILE *h=fopen(ifo,"rb");
-    if( !h ) {
-        fprintf(stderr,"ERR:  cannot open %s: %s\n",ifo,strerror(errno));
+    FILE * const h = fopen(ifo, "rb");
+    if (!h)
+      {
+        fprintf(stderr, "ERR:  cannot open %s: %s\n", ifo, strerror(errno));
         exit(1);
-    }
-    if( ts->numvts+1 >= MAXVTS ) {
+      } /*if*/
+    if (ts->numvts + 1 >= MAXVTS)
+      {
+      /* shouldn't occur */
         fprintf(stderr,"ERR:  Too many VTSs\n");
         exit(1);
-    }
-    fread(buf,1,2048,h);
-    vd=&ts->vts[ts->numvts];
-    if( read4(buf+0xc0)!=0 )
-        vd->hasmenu=1;
+      } /*if*/
+    fread(buf, 1, 2048, h);
+    vd = &ts->vts[ts->numvts]; /* where to put new entry */
+    if (read4(buf + 0xc0) != 0) /* start sector of menu VOB */
+        vd->hasmenu = 1;
     else
-        vd->hasmenu=0;
-    vd->numsectors=read4(buf+0xc)+1;
-    memcpy(vd->vtscat,buf+0x22,4);
-    memcpy(vd->vtssummary,buf+0x100,0x300);
-    fread(buf,1,2048,h); // VTS_PTT_SRPT is 2nd sector
+        vd->hasmenu = 0;
+    vd->numsectors = read4(buf + 0xc) + 1; /* last sector of title set (last sector of BUP) */
+    memcpy(vd->vtscat, buf + 0x22, 4); /* VTS category */
+    memcpy(vd->vtssummary, buf + 0x100, 0x300); /* attributes of streams in VTS and VTSM */
+    fread(buf, 1, 2048, h); // VTS_PTT_SRPT is 2nd sector
     // we only need to read the 1st sector of it because we only need the
     // pgc pointers
-    vd->numtitles=read2(buf);
-    vd->numchapters=(int *)malloc(sizeof(int)*vd->numtitles);
-    first=8+vd->numtitles*4;
-    for( i=0; i<vd->numtitles-1; i++ ) {
-        int n=read4(buf+12+i*4);
-        vd->numchapters[i]=(n-first)/4;
-        first=n;
-    }
-    vd->numchapters[i]=(read4(buf+4)+1-first)/4;
+    vd->numtitles = read2(buf); /* nr titles */
+    vd->numchapters = (int *)malloc(sizeof(int) * vd->numtitles);
+      /* array of nr chapters in each title */
+    first = 8 + vd->numtitles * 4; /* offset to VTS_PTT for first title */
+    for (i = 0; i < vd->numtitles - 1; i++)
+      {
+        const int n = read4(buf + 12 + i * 4); /* offset to VTS_PTT for next title */
+        vd->numchapters[i] = (n - first) / 4; /* difference from previous offset gives nr chapters for this title */
+        first = n;
+      } /*for*/
+    vd->numchapters[i] = (read4(buf + 4) /* end address (last byte of last VTS_PTT) */ + 1 - first) / 4;
+      /* nr chapters for last title */
     fclose(h);
     ts->numvts++;
-}
+  } /*ScanIfo*/
 
 static void forceaddentry(struct pgcgroup *va,int entry)
 {
@@ -1100,8 +1108,8 @@ int source_add_cell(struct source *v,double starttime,double endtime,int chap,in
 {
     struct cell *c;
 
-    v->cells=realloc(v->cells,(v->numcells+1)*sizeof(struct cell));
-    c=v->cells+v->numcells;
+    v->cells=realloc(v->cells,(v->numcells+1)*sizeof(struct cell)); /* space for a new cell */
+    c=v->cells+v->numcells; /* the newly-added cell */
     v->numcells++;
     c->startpts=starttime*90000+.5;
     c->endpts=endtime*90000+.5;
@@ -1385,12 +1393,12 @@ void dvdauthor_enable_allgprm()
 }
 
 void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,const char *fbase)
-{
+  {
     DIR *d;
     struct dirent *de;
     char *vtsdir;
     int i;
-    static struct toc_summary ts;
+    static struct toc_summary ts; /* static avoids having to initialize it! */
     static char fbuf[1000];
     static char ifonames[101][14];
     struct workset ws;
@@ -1411,60 +1419,78 @@ void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,const char *fbas
     // create base entry, if not already existing
     memset(&ts,0,sizeof(struct toc_summary));
     vtsdir=makevtsdir(fbase);
-    for( i=0; i<101; i++ )
-        ifonames[i][0]=0;
+    for (i = 0; i < 101; i++)
+        ifonames[i][0] = 0; /* mark all name entries as unused */
     d=opendir(vtsdir);
-    while ((de=readdir(d))!=0) {
-        i=strlen(de->d_name);
-        if( i==12 && !strcasecmp(de->d_name+i-6,"_0.IFO") &&
-            !strncasecmp(de->d_name,"VTS_",4)) {
-            i=(de->d_name[4]-'0')*10+(de->d_name[5]-'0');
-            if( ifonames[i][0] ) {
-                fprintf(stderr,"ERR:  Two different names for the same titleset: %s and %s\n",ifonames[i],de->d_name);
+    while ((de = readdir(d)) != 0)
+      {
+      /* look for existing titlesets */
+        i = strlen(de->d_name);
+        if
+          (
+                i == 12
+             &&
+                !strcasecmp(de->d_name + i - 6, "_0.IFO")
+             &&
+                !strncasecmp(de->d_name, "VTS_", 4)
+             /* name is of form VTS_nn_0.IFO */
+          )
+          {
+            i = (de->d_name[4] - '0') * 10 + (de->d_name[5] - '0');
+            if (ifonames[i][0]) /* title set nr already seen!? will actually never happen */
+              {
+                fprintf(stderr, "ERR:  Two different names for the same titleset: %s and %s\n",
+                    ifonames[i], de->d_name);
                 exit(1);
-            }
-            if( !i ) {
-                fprintf(stderr,"ERR:  Cannot have titleset #0 (%s)\n",de->d_name);
+              } /*if*/
+            if (!i)
+              {
+                fprintf(stderr,"ERR:  Cannot have titleset #0 (%s)\n", de->d_name);
                 exit(1);
-            }
-            strcpy(ifonames[i],de->d_name);
-        }
-    }
+              } /*if*/
+            strcpy(ifonames[i], de->d_name);
+          } /*if*/
+      } /*while*/
     closedir(d);
-    for( i=1; i<=99; i++ ) {
-        if( !ifonames[i][0] )
+    for (i = 1; i <= 99; i++)
+      {
+        if (!ifonames[i][0])
             break;
-        sprintf(fbuf,"%s/%s",vtsdir,ifonames[i]);
-        fprintf(stderr,"INFO: Scanning %s\n",fbuf);
-        ScanIfo(&ts,fbuf);
-    }
-    for( ; i<=99; i++ )
-        if( ifonames[i][0] ) {
-            fprintf(stderr,"ERR:  Titleset #%d (%s) does not immediately follow the last titleset\n",i,ifonames[i]);
+        sprintf(fbuf, "%s/%s", vtsdir, ifonames[i]);
+        fprintf(stderr, "INFO: Scanning %s\n",fbuf);
+        ScanIfo(&ts, fbuf); /* collect info about existing titleset for inclusion in new VMG IFO */
+      } /*for*/
+    for (; i <= 99; i++) /* look for discontiguously-assigned title nrs (error) */
+        if (ifonames[i][0])
+          {
+            fprintf(stderr, "ERR:  Titleset #%d (%s) does not immediately follow the last titleset\n",i,ifonames[i]);
             exit(1);
-        }
-    if( !ts.numvts ) {
+          } /*if; for*/
+    if (!ts.numvts)
+      {
         fprintf(stderr,"ERR:  No .IFO files to process\n");
         exit(1);
-    }
-    if( menus->vg->numvobs ) {
-        fprintf(stderr,"INFO: Creating menu for TOC\n");
+      } /*if*/
+    if (menus->vg->numvobs)
+      {
+        fprintf(stderr, "INFO: Creating menu for TOC\n");
         sprintf(fbuf,"%s/VIDEO_TS.VOB",vtsdir);
-        FindVobus(fbuf,menus->vg,2);
+        FindVobus(fbuf, menus->vg, 2);
         MarkChapters(menus->vg);
-        setattr(menus->vg,2);
-        fprintf(stderr,"\n");
-        FixVobus(fbuf,menus->vg,&ws,2);
-    }
-    sprintf(fbuf,"%s/VIDEO_TS.IFO",vtsdir);
-    TocGen(&ws,fpc,fbuf);
-    sprintf(fbuf,"%s/VIDEO_TS.BUP",vtsdir); /* same thing again, backup copy */
-    TocGen(&ws,fpc,fbuf);
-    for( i=0; i<ts.numvts; i++ )
-        if( ts.vts[i].numchapters )
+        setattr(menus->vg, 2);
+        fprintf(stderr, "\n");
+        FixVobus(fbuf, menus->vg, &ws, 2);
+      } /*if*/
+  /* (re)generate VMG IFO */
+    sprintf(fbuf, "%s/VIDEO_TS.IFO", vtsdir);
+    TocGen(&ws, fpc, fbuf);
+    sprintf(fbuf, "%s/VIDEO_TS.BUP", vtsdir); /* same thing again, backup copy */
+    TocGen(&ws, fpc, fbuf);
+    for (i = 0; i < ts.numvts; i++)
+        if (ts.vts[i].numchapters)
             free(ts.vts[i].numchapters);
     free(vtsdir);
-}
+  } /*dvdauthor_vmgm_gen*/
 
 void dvdauthor_vts_gen(struct menugroup *menus,struct pgcgroup *titles,const char *fbase)
 {
