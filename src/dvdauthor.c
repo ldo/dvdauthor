@@ -934,21 +934,32 @@ static int getvtsnum(const char *fbase)
     return i;
 }
 
-static void initdir(const char *fbase)
+static void initdir(const char * fbase)
   /* creates the top-level DVD-video subdirectories within the output directory,
     if they don't already exist. */
-{
+  {
     static char realfbase[1000];
-
-    if( fbase ) {
-      /* fixme: not checking for protection failures */
-        mkdir(fbase,0777);
+    if (fbase)
+      {
+        if (mkdir(fbase, 0777) && errno != EEXIST)
+          {
+            fprintf(stderr, "ERR: cannot create dir %s: %s\n", fbase, strerror(errno));
+            exit(1);
+          } /*if*/
         sprintf(realfbase,"%s/VIDEO_TS",fbase);
-        mkdir(realfbase,0777);
+        if (mkdir(realfbase, 0777) && errno != EEXIST)
+          {
+            fprintf(stderr, "ERR: cannot create dir %s: %s\n", realfbase, strerror(errno));
+            exit(1);
+          } /*if*/
         sprintf(realfbase,"%s/AUDIO_TS",fbase);
-        mkdir(realfbase,0777);
-    }
-}
+        if (mkdir(realfbase, 0777) && errno != EEXIST)
+          {
+            fprintf(stderr, "ERR: cannot create dir %s: %s\n", realfbase, strerror(errno));
+            exit(1);
+          } /*if*/
+      } /*if*/
+  } /*initdir*/
 
 static struct colorinfo *colorinfo_new()
 {
