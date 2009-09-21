@@ -909,11 +909,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
         vsi.firstgop=1;
 
         fprintf(stderr,"\nSTAT: Processing %s...\n",thisvob->fname);
-        vf=varied_open(thisvob->fname,O_RDONLY);
-        if( !vf.h ) {
-            fprintf(stderr,"ERR:  Error opening %s: %s\n",thisvob->fname,strerror(errno));
-            exit(1);
-        }
+        vf=varied_open(thisvob->fname, O_RDONLY, "input video file");
         memset(mp2hdr, 0, 8 * sizeof(struct mp2info));
         while(1) {
             if( fsect == 524272 ) {

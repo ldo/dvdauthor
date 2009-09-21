@@ -223,12 +223,8 @@ static void readpalette(struct pgc *p,const char *fname)
     int i,rgbf;
     struct vfile h;
 
-    h=varied_open(fname,O_RDONLY);
+    h=varied_open(fname, O_RDONLY, "palette file");
     
-    if( !h.h ) {
-        fprintf(stderr,"ERR:  Cannot open palette file '%s'\n",fname);
-        exit(1);
-    }
     /* write out colors, the hex is the 0yuv combined in one integer 00yyuuvv */
     i=strlen(fname);
     rgbf=( i>=4 && !strcasecmp(fname+i-4,".rgb") );

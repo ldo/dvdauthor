@@ -833,12 +833,7 @@ int main(int argc, char **argv)
     add_offset = 450; // for rounding purposes
 
     while (inc < Inc) {
-    fd = varied_open(iname[inc], O_RDONLY);
-    if (fd.h == 0) {
-        fprintf(stderr, "error opening file %s\n", iname[inc]);
-
-        exit(-1);
-    }
+    fd = varied_open(iname[inc], O_RDONLY, "input file");
 
     if (debug > 0)
         fprintf(stderr, "file: %s\n", iname[inc]);

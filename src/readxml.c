@@ -65,7 +65,7 @@ int readxml
     xmlTextReaderPtr f;
     struct vfile fd;
 
-    fd=varied_open(xmlfile,O_RDONLY);
+    fd=varied_open(xmlfile, O_RDONLY, "XML file");
     f=xmlReaderForIO(xml_varied_read,xml_varied_close,&fd,xmlfile,NULL,0);
     if(!f) {
         fprintf(stderr,"ERR:  Unable to open XML file %s\n",xmlfile);

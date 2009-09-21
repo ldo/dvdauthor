@@ -113,9 +113,19 @@ char * strndup
 #define FT_GLYPH_H <freetype/ftglyph.h>
 #endif
 
-struct vfile {
-    FILE *h;
-    int ftype;
-};
-extern struct vfile varied_open(const char *fname,int mode);
-extern void varied_close(struct vfile vf);
+/* values for vfile.ftype */
+#define VFTYPE_FILE 0
+#define VFTYPE_PIPE 1
+#define VFTYPE_REDIR 2
+struct vfile
+  {
+    FILE * h;
+    int ftype, mode;
+  } /*vfile*/;
+struct vfile varied_open
+  (
+    const char * fname,
+    int mode, /* either O_RDONLY or O_WRONLY, nothing more */
+    const char * what /* description of what I'm trying to open, for error message */
+  );
+void varied_close(struct vfile vf);
