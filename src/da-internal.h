@@ -39,12 +39,14 @@ enum {AS_NONE=0,AS_48KHZ=1,AS_96KHZ=2}; /* values for audiodesc.asample */
 typedef int64_t pts_t; /* timestamp in units of 90kHz clock */
 
 struct vobuinfo { /* describes a VOBU in a VOB */
-    int sector,lastsector,fsect,fnum;
+    int sector,lastsector;
+    int fsect; /* sector number within VOB file */
+    int fnum; /* number of VOB file within titleset */
     int vobcellid; /* cell ID in low byte, VOB ID in rest */
     int firstvobuincell,lastvobuincell,hasseqend,hasvideo;
     pts_t videopts[2],sectpts[2],firstvideopts;
     int numref, firstIfield, numfields, lastrefsect[3]; // why on earth do they want the LAST sector of the ref (I, P) frame?
-    unsigned char sectdata[0x26]; // so we don't have to reread it
+    unsigned char sectdata[0x26]; // PACK and system header, so we don't have to reread it
 };
 
 struct colorinfo { /* a colour table for subpictures */
@@ -91,7 +93,8 @@ struct audpts {
 
 struct audchannel {
     struct audpts *audpts;
-    int numaudpts,maxaudpts;
+    int numaudpts; /* used portion of audpts array */
+    int maxaudpts; /* allocated size of audpts array */
     struct audiodesc ad,adwarn; // use for quant and channels
 };
 
@@ -200,8 +203,8 @@ void write8(unsigned char *p,unsigned char d0,unsigned char d1,
             unsigned char d6,unsigned char d7);
 void write4(unsigned char *p,unsigned int v);
 void write2(unsigned char *p,unsigned int v);
-unsigned int read4(unsigned char *p);
-unsigned int read2(unsigned char *p);
+unsigned int read4(const unsigned char *p);
+unsigned int read2(const unsigned char *p);
 int getsubpmask(const struct videodesc *vd);
 int getratedenom(const struct vobgroup *va);
 int findvobu(const struct vob *va,pts_t pts,int l,int h);

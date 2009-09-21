@@ -153,6 +153,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
     buf[2]=p->numprograms;
     buf[3]=p->numcells;
     write4(buf+4,buildtimeeven(va,getptsspan(p))); /* playback time + frame rate */
+  /* buf[8 .. 11] -- prohibited user ops -- none for now */
     for( i=0; i<va->numaudiotracks; i++ ) {
         if( va->ad[i].aid )
             buf[12+i*2]=0x80|(va->ad[i].aid-1); /* PGC_AST_CTL, audio stream control */

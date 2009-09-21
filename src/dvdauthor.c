@@ -44,6 +44,8 @@ int jumppad=0;
 // prohibits certain convenience features
 int allowallreg=0;
 
+/* video/audio/subpicture attribute keywords -- note they are all unique to allow
+  xxx_ANY attribute setting to work */
 static char *vmpegdesc[4]={"","mpeg1","mpeg2",0};
 static char *vresdesc[6]={"","720xfull","704xfull","352xfull","352xhalf",0};
 static char *vformatdesc[4]={"","ntsc","pal",0};
@@ -61,17 +63,21 @@ static char *vratedesc[9]={"",
                            "60.0"
 };
 static char *aformatdesc[6]={"","ac3","mp2","pcm","dts",0};
+  /* audio formats */
 static char *aquantdesc[6]={"","16bps","20bps","24bps","drc",0};
 static char *adolbydesc[3]={"","surround",0};
 static char *alangdesc[4]={"","nolang","lang",0};
 static char *achanneldesc[10]={"","1ch","2ch","3ch","4ch","5ch","6ch","7ch","8ch",0};
 static char *asampledesc[4]={"","48khz","96khz",0};
+  /* audio sample rates */
 
 char *entries[9]={"","","title","root","subtitle","audio","angle","ptt",0};
+  /* entry menu types */
 
 char *pstypes[3]={"VTS","VTSM","VMGM"};
 
 static char *smodedesc[6]={"","normal","widescreen","letterbox","panscan",0};
+  /* subpicture usage modes */
 
 static const int colors[16]={ /* default contents for new colour tables */
     0x1000000,
@@ -96,9 +102,12 @@ static const int colors[16]={ /* default contents for new colour tables */
 };
 
 static int ratedenom[9]={0,90090,90000,90000,90090,90000,90000,90090,90000};
+  /* corresponding to vratedesc */
 static int evenrate[9]={0,    24,   24,   25,   30,   30,   50,   60,   60};
+  /* corresponding to vratedesc */
 
 static int getratecode(const struct vobgroup *va)
+  /* returns the frame rate code if specified, else the default. */
 {
     if( va->vd.vframerate )
         return va->vd.vframerate;
@@ -112,6 +121,7 @@ int getratedenom(const struct vobgroup *va)
 }
 
 pts_t getframepts(const struct vobgroup *va)
+  /* returns the number of clock units per frame. */
 {
     int rc=getratecode(va);
 
@@ -119,11 +129,15 @@ pts_t getframepts(const struct vobgroup *va)
 }
 
 static int tobcd(int v)
+  /* separates the two decimal digits of v into two hex nibbles. This is used
+    for encoding cell and PGC playback times. */
 {
     return (v/10)*16+v%10;
 }
 
 static unsigned int buildtimehelper(const struct vobgroup *va,int64_t num,int64_t denom)
+  /* returns a BCD-encoded representation hhmmssff of num/denom seconds including
+    the frame rate. */
 {
     int hr,min,sec,fr,rc;
     int64_t frate;
@@ -135,7 +149,7 @@ static unsigned int buildtimehelper(const struct vobgroup *va,int64_t num,int64_
         frate=25;
         rc=1;
     }
-    num+=denom/(frate*2)+1;
+    num+=denom/(frate*2)+1; /* so duration will be rounded to nearest whole frame time */
     sec=num/denom;
     min=sec/60;
     hr=tobcd(min/60);
@@ -147,6 +161,9 @@ static unsigned int buildtimehelper(const struct vobgroup *va,int64_t num,int64_
 }
 
 unsigned int buildtimeeven(const struct vobgroup *va,int64_t num)
+  /* returns a BCD-encoded representation hhmmssff of num/denom seconds, where
+    denom is computed according to va->vd.vframerate. This is used for encoding
+    cell and PGC playback times. */
 {
     int rc=getratecode(va);
 
@@ -161,6 +178,7 @@ int getaudch(const struct vobgroup *va,int a)
 }
 
 void write8(unsigned char *p,unsigned char d0,unsigned char d1,unsigned char d2,unsigned char d3,unsigned char d4,unsigned char d5,unsigned char d6,unsigned char d7)
+/* stores 8 bytes beginning at address p. */
 {
     p[0]=d0;
     p[1]=d1;
@@ -173,6 +191,7 @@ void write8(unsigned char *p,unsigned char d0,unsigned char d1,unsigned char d2,
 }
 
 void write4(unsigned char *p,unsigned int v)
+/* inserts a four-byte integer in big-endian format beginning at address p. */
 {
     p[0]=(v>>24)&255;
     p[1]=(v>>16)&255;
@@ -181,22 +200,27 @@ void write4(unsigned char *p,unsigned int v)
 }
 
 void write2(unsigned char *p,unsigned int v)
+/* inserts a two-byte integer in big-endian format beginning at address p. */
 {
     p[0]=(v>>8)&255;
     p[1]=v&255;
 }
 
-unsigned int read4(unsigned char *p)
+unsigned int read4(const unsigned char *p)
+/* extracts a four-byte integer in big-endian format beginning at address p. */
 {
     return (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3];
 }
 
-unsigned int read2(unsigned char *p)
+unsigned int read2(const unsigned char *p)
+/* extracts a two-byte integer in big-endian format beginning at address p. */
 {
     return (p[0]<<8)|p[1];
 }
 
 static int findsubpmode(const char *m)
+  /* returns the code corresponding to the specified subpicture usage mode name, or
+    -1 if unrecognized. */
 {
     int i;
 
@@ -207,6 +231,9 @@ static int findsubpmode(const char *m)
 }
 
 static int warnupdate(int *oldval,int newval,int *warnval,const char *desc,char **lookup)
+  /* updates *oldval to newval if not yet set (i.e. = 0), does nothing if it is already newval,
+    otherwise if it was set to something else, outputs a warning and sets *warnval to newval.
+    Returns 1 iff such a warning was output, else 0. */
 {
     if( oldval[0]==0 ) {
         oldval[0]=newval;
@@ -221,6 +248,11 @@ static int warnupdate(int *oldval,int newval,int *warnval,const char *desc,char 
 }
 
 static int scanandwarnupdate(int *oldval,const char *newval,int *warnval,const char *desc,char **lookup)
+  /* updates *oldval to the index of the entry matching the name newval in the array lookup if
+    found and *oldval was not yet set (i.e. = 0). Does nothing if it was already set to the value,
+    otherwise if it was set to something else, outputs a warning and sets *warnval to the
+    new value. Returns 0 if newval could not be recognized, 1 if *oldval was updated or was
+    already the right value, and 2 if the warning was output. */
 {
     int i;
 
@@ -231,19 +263,26 @@ static int scanandwarnupdate(int *oldval,const char *newval,int *warnval,const c
 }
 
 int vobgroup_set_video_framerate(struct vobgroup *va,int rate)
+  /* sets the video frame rate code (should be VR_PAL or VR_NTSC only). Returns 1 if
+    the framerate was already set to something different, else 0. */
 {
     int w;
 
     if( !va->vd.vframerate && rate!=VR_PAL && rate!=VR_NTSC )
         fprintf(stderr,"WARN: not a valid DVD frame rate: %s\n",vratedesc[rate]);
     w=scanandwarnupdate(&va->vd.vframerate,vratedesc[rate],&va->vdwarn.vframerate,"frame rate",vratedesc);
+      /* did I just convert the code to a keyword string, only to look up that keyword in the same array again? */
     if(w) return w-1;
     return 0;
 }
 
 #define ATTRMATCH(a) (attr==0 || attr==(a))
+  /* does the attribute code match either the specified value or the xxx_ANY value */
 
 int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s)
+  /* sets the specified video attribute (might be VIDEO_ANY) to the specified keyword value.
+    Returns 1 if the attribute was already set to a different value, else 0.
+    Aborts the program on an unrecognizable value. */
 {
     int w;
 
@@ -308,6 +347,9 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s)
 }
 
 int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int attr,const char *s)
+  /* sets the specified audio attribute (might be AUDIO_ANY) to the specified keyword value.
+    Returns 1 if the attribute was already set to a different value, else 0.
+    Aborts the program on an unrecognizable value. */
 {
     int w;
 
@@ -362,6 +404,9 @@ static int vobgroup_set_audio_attr(struct vobgroup *va,int attr,const char *s,in
 }
 
 static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,const char *s,int ch)
+  /* sets the specified subpicture attribute (might be SPU_ANY) to the specified keyword value.
+    Returns 1 if the attribute was already set to a different value, else 0.
+    Aborts the program on an unrecognizable value. */
 {
     int w;
 
@@ -370,14 +415,17 @@ static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,const char *s,i
 
     if (ATTRMATCH(SPU_ANY)) {
         w=scanandwarnupdate(&va->sp[ch].slangp,s,&va->spwarn[ch].slangp,"subpicture language",alangdesc);
+          /* fixme: note this lang/nolang setting can only be specified on the command line,
+            not the XML file */
         if(w) return w-1;
     }
 
     if(ATTRMATCH(SPU_LANG) && 2==strlen(s)) {
         w=warnupdate(&va->sp[ch].slangp,AL_LANG,&va->spwarn[ch].slangp,"subpicture language",alangdesc);
+          /* turn on lang */
         if(va->sp[ch].lang[0] || va->sp[ch].lang[1])
-            w=1;
-        va->sp[ch].lang[0]=tolower(s[0]);
+            w=1; /* language code already set */
+        va->sp[ch].lang[0]=tolower(s[0]); /* note I don't actually validate the language code */
         va->sp[ch].lang[1]=tolower(s[1]);
         return w;
     }
@@ -408,6 +456,7 @@ static int vobgroup_set_subpic_stream(struct vobgroup *va,int ch,const char *m,i
 }
 
 static void inferattr(int *a,int def)
+  /* defaults *a to def if not already set. */
 {
     if( a[0]!=0 ) return;
     a[0]=def;
@@ -434,6 +483,7 @@ static void setattr(struct vobgroup *va,int pstype)
 {
     int i;
 
+  /* warn user about defaulting settings not already determined */
     if( va->vd.vmpeg==VM_NONE )
         fprintf(stderr,"WARN: video mpeg version was not autodetected\n");
     if( va->vd.vres==VS_NONE )
@@ -444,7 +494,7 @@ static void setattr(struct vobgroup *va,int pstype)
         fprintf(stderr,"WARN: aspect ratio was not autodetected\n");
     inferattr(&va->vd.vmpeg,  VM_MPEG2);
     inferattr(&va->vd.vres,   VS_720H);
-    inferattr(&va->vd.vformat,VF_NTSC);
+    inferattr(&va->vd.vformat,VF_NTSC); /* fixme: should be a user-configurable setting */
     inferattr(&va->vd.vaspect,VA_4x3);
 
     if( va->vd.vaspect==VA_4x3 ) {
@@ -633,8 +683,6 @@ static void setattr(struct vobgroup *va,int pstype)
             if( mask&(1<<m) )
                 continue;
 
-
-
             for( l=0; l<32; l++ ) {
                 int mainid=-1;
 
@@ -709,6 +757,7 @@ static void setattr(struct vobgroup *va,int pstype)
 }
 
 int findcellvobu(const struct vob *va,int cellid)
+/* finds the element of array va that includes the cell with ID cellid. */
 {
     int l=0,h=va->numvobus-1;
     if( h<l )
@@ -718,7 +767,7 @@ int findcellvobu(const struct vob *va,int cellid)
         return 0;
     if( cellid>va->vi[h].vobcellid )
         return h+1;
-    while(l<h) {
+    while(l<h) { /* search by binary chop */
         int m=(l+h)/2;
         if( cellid<=va->vi[m].vobcellid )
             h=m;
@@ -729,6 +778,7 @@ int findcellvobu(const struct vob *va,int cellid)
 }
 
 pts_t getcellpts(const struct vob *va,int cellid)
+/* returns the duration of the specified cell. */
 {
     int s=findcellvobu(va,cellid),e=findcellvobu(va,cellid+1);
     if( s==e ) return 0;
@@ -736,6 +786,7 @@ pts_t getcellpts(const struct vob *va,int cellid)
 }
 
 int findvobu(const struct vob *va,pts_t pts,int l,int h)
+/* finds the element of array va, within indexes l and h, that includes time pts. */
 {
     // int l=0,h=va->numvobus-1;
 
@@ -745,7 +796,7 @@ int findvobu(const struct vob *va,pts_t pts,int l,int h)
         return l-1;
     if( pts>=va->vi[h].sectpts[1] )
         return h+1;
-    while(l<h) {
+    while(l<h) { /* search by binary chop */
         int m=(l+h+1)/2;
         if( pts < va->vi[m].sectpts[0] )
             h=m-1;
@@ -756,14 +807,15 @@ int findvobu(const struct vob *va,pts_t pts,int l,int h)
 }
 
 pts_t getptsspan(const struct pgc *ch)
+  /* returns the duration of the specified PGC. */
 {
     int s,c,ci;
     pts_t ptsspan=0;
 
     for( s=0; s<ch->numsources; s++ ) {
-        const struct source *sc=ch->sources[s];
+        const struct source * const sc = ch->sources[s];
         for( c=0; c<sc->numcells; c++ ) {
-            const struct cell *cl=&sc->cells[c];
+            const struct cell *const cl = &sc->cells[c];
             for( ci=cl->scellid; ci<cl->ecellid; ci++ )
                 ptsspan+=getcellpts(sc->vob,ci);
         }
@@ -772,6 +824,8 @@ pts_t getptsspan(const struct pgc *ch)
 }
 
 static char *makevtsdir(const char *s)
+  /* returns the full pathname of the VIDEO_TS subdirectory within s if non-NULL,
+    else returns NULL. */
 {
     static char fbuf[1000];
 
@@ -846,7 +900,7 @@ static void forceaddentry(struct pgcgroup *va,int entry)
 {
     if( !va->numpgcs && !jumppad )
         return;
-    if( !(va->allentries&entry) ) {
+    if( !(va->allentries&entry) ) { /* entry not already present */
         if( va->numpgcs )
             va->pgcs[0]->entries|=entry;
         va->allentries|=entry;
@@ -861,6 +915,7 @@ static void checkaddentry(struct pgcgroup *va,int entry)
 }
 
 static int getvtsnum(const char *fbase)
+  /* returns the next unused titleset number within output directory fbase. */
 {
     static char realfbase[1000];
     int i;
@@ -872,7 +927,7 @@ static int getvtsnum(const char *fbase)
         sprintf(realfbase,"%s/VIDEO_TS/VTS_%02d_0.IFO",fbase,i);
         h=fopen(realfbase,"rb");
         if( !h )
-            break;
+            break; /* doesn't look like this number is in use */
         fclose(h);
     }
     fprintf(stderr,"STAT: Picking VTS %02d\n",i);
@@ -880,10 +935,13 @@ static int getvtsnum(const char *fbase)
 }
 
 static void initdir(const char *fbase)
+  /* creates the top-level DVD-video subdirectories within the output directory,
+    if they don't already exist. */
 {
     static char realfbase[1000];
 
     if( fbase ) {
+      /* fixme: not checking for protection failures */
         mkdir(fbase,0777);
         sprintf(realfbase,"%s/VIDEO_TS",fbase);
         mkdir(realfbase,0777);
@@ -1012,15 +1070,16 @@ static void pgcgroup_createvobs(struct pgcgroup *p,struct vobgroup *v)
 }
 
 static void validatesummary(struct pgcgroup *va)
+/* merges the info for all pgcs and validates the collected settings for a pgcgroup. */
 {
     int i,err=0,allowedentries;
 
     switch(va->pstype) {
-    case 1: allowedentries=0xf8; break;
-    case 2: allowedentries=4; break;
+    case 1: allowedentries=0xf8; break; /* VTSM -- all entry menu types allowed except title */
+    case 2: allowedentries=4; break; /* VMGM -- title entry menu type only */
         // case 0:
-    default:
-        allowedentries=0; break;
+    default: /* VTS */
+        allowedentries=0; break; /* no entry menu types */
     }
 
     for( i=0; i<va->numpgcs; i++ ) {
@@ -1030,6 +1089,7 @@ static void validatesummary(struct pgcgroup *va)
             s->cells[s->numcells-1].pauselen=255;
         }
         if( va->allentries & p->entries ) {
+          /* this pgc adds entry menus already seen */
             int j;
 
             for( j=0; j<8; j++ )
@@ -1038,6 +1098,7 @@ static void validatesummary(struct pgcgroup *va)
             err=1;
         }
         if( p->entries & ~allowedentries ) {
+          /* disallowed entry menu types present--report them */
             int j;
 
             for( j=0; j<8; j++ )

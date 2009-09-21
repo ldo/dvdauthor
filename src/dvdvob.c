@@ -63,7 +63,7 @@ static unsigned char videoslidebuf[15]={255,255,255,255, 255,255,255, 0,0,0,0, 0
 #define DVD_FFREW_HALFSEC 45000
 // #define DVD_FFREW_HALFSEC (getratedenom(va)>>1)
 
-static pts_t calcpts(struct vobgroup *va,int cancomplain,int *didcomplain,pts_t *align,pts_t basepts,int nfields)
+static pts_t calcpts(const struct vobgroup *va,int cancomplain,int *didcomplain,pts_t *align,pts_t basepts,int nfields)
 {
     // I assume pts should round down?  That seems to be how mplex deals with it
     // also see later comment
@@ -82,7 +82,7 @@ static pts_t calcpts(struct vobgroup *va,int cancomplain,int *didcomplain,pts_t 
     return (*align+nfields*fpts)/2;
 }
 
-static int findnextvideo(struct vob *va, int cur, int dir)
+static int findnextvideo(const struct vob *va, int cur, int dir)
 {
     // find next (dir=1) or previous(dir=-1) vobu with video
     int i, numvobus;
@@ -101,15 +101,16 @@ static int findnextvideo(struct vob *va, int cur, int dir)
     }
 }
 
-static int findaudsect(struct vob *va,int aind,pts_t pts0,pts_t pts1)
+static int findaudsect(const struct vob *va,int aind,pts_t pts0,pts_t pts1)
+/* finds the audpts entry, starting from aind, that includes the time pts0 .. pts1. */
 {
-    struct audchannel *ach=&va->audch[aind];
+    const struct audchannel * const ach = &va->audch[aind];
     int l=0,h=ach->numaudpts-1;
 
     if( h<l )
         return -1;
     while(h>l) {
-        int m=(l+h+1)/2;
+        int m=(l+h+1)/2; /* binary search */
         if( pts0<ach->audpts[m].pts[0] )
             h=m-1;
         else
@@ -120,7 +121,7 @@ static int findaudsect(struct vob *va,int aind,pts_t pts0,pts_t pts1)
     return ach->audpts[l].sect;
 }
 
-static int findvobubysect(struct vob *va,int sect)
+static int findvobubysect(const struct vob *va,int sect)
 {
     int l=0,h=va->numvobus-1;
 
@@ -129,7 +130,7 @@ static int findvobubysect(struct vob *va,int sect)
     if( sect<va->vi[0].sector )
         return -1;
     while(l<h) {
-        int m=(l+h+1)/2;
+        int m=(l+h+1)/2; /* binary search */
         if( sect < va->vi[m].sector )
             h=m-1;
         else
@@ -138,14 +139,14 @@ static int findvobubysect(struct vob *va,int sect)
     return l;
 }
 
-static int findspuidx(struct vob *va,int ach,pts_t pts0)
+static int findspuidx(const struct vob *va,int ach,pts_t pts0)
 {
     int l=0,h=va->audch[ach].numaudpts-1;
 
     if( h<l )
         return -1;
     while(h>l) {
-        int m=(l+h+1)/2;
+        int m=(l+h+1)/2; /* binary search */
         if( pts0<va->audch[ach].audpts[m].pts[0] )
             h=m-1;
         else
@@ -154,7 +155,7 @@ static int findspuidx(struct vob *va,int ach,pts_t pts0)
     return l;
 }
 
-static unsigned int getsect(struct vob *va,int curvobnum,int jumpvobnum,int skip,unsigned notfound)
+static unsigned int getsect(const struct vob *va,int curvobnum,int jumpvobnum,int skip,unsigned notfound)
 {
     if( skip ) {
         int l,h,i;
@@ -875,14 +876,18 @@ static void audio_scan_pcm(struct audchannel *ach,unsigned char *buf,int len)
 }
 
 int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
+/* generates output VOB files for a menu or titleset. ismenu = 0 for a titleset, 1 for a VTS menu, 2 for a VMG menu. */
 {
     unsigned char *buf;
-    int cursect=0,fsect=-1,vnum,outnum=-ismenu+1;
+    int cursect=0;
+    int fsect=-1; /* sector nr in current output VOB file */
+    int vnum;
+    int outnum = -ismenu + 1; /* +ve for a titleset, in which case used to generate output VOB file names */
     int vobid=0;
     struct mp2info {
         int hdrptr;
         unsigned char buf[6];
-    } mp2hdr[8];
+    } mp2hdr[8]; /* enough for the allowed 8 audio streams */
     struct colorremap *crs;
     
     crs=malloc(sizeof(struct colorremap)*32);
@@ -909,15 +914,16 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
             fprintf(stderr,"ERR:  Error opening %s: %s\n",thisvob->fname,strerror(errno));
             exit(1);
         }
-        memset(mp2hdr,0,8*sizeof(struct mp2info));
+        memset(mp2hdr, 0, 8 * sizeof(struct mp2info));
         while(1) {
             if( fsect == 524272 ) {
+              /* VOB file reached maximum allowed size */
                 writeclose();
                 if( outnum<=0 ) {
                     fprintf(stderr,"\nERR:  Menu VOB reached 1gb\n");
                     exit(1);
                 }
-                outnum++;
+                outnum++; /* for naming next VOB file */
                 fsect=-1;
             }
             buf=writegrabbuf();
@@ -1034,24 +1040,24 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                                 }
                             }
                             break;
-                        }
+                        } /*case 3*/
                         default:
                             fprintf(stderr,"ERR: dvd info packet command within subtitle: %d\n",buf[i]);
                             exit(1);
-                        }
-                    }
+                        } /*switch*/
+                    } /*while*/
 
                     break;
-                }
+                } /*case 1*/
                         
                 default:
                     fprintf(stderr,"ERR: unknown dvd info packet type: %d\n",buf[i+1]);
                     exit(1);
-                }
+                } /*switch*/
 
                 writeundo(); /* drop private data from output */
                 continue;
-            }
+              } /*if*/
             if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == 0xba) /* PACK header */
               {
                 const pts_t newscr = readscr(buf + 4);
@@ -1066,6 +1072,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
               } /*if*/
             transpose_ts(buf,-backoffs);
             if( fsect == -1 ) {
+              /* start a new VOB file */
                 char newname[200];
                 fsect=0;
                 if( fbase ) {
@@ -1277,30 +1284,31 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                   }
                 else /* regular MPEG audio */
                   {
-                    int len = endop - dptr;
-                    int index = buf[17] & 7;
+                    const int len = endop - dptr; /* length of packet data */
+                    const int index = buf[17] & 7; /* audio stream ID */
                     audch = 8 | index;                      // mp2
                     memcpy(mp2hdr[index].buf + 3, buf + dptr, 3);
                     while (mp2hdr[index].hdrptr + 4 <= len)
                       {
-                        unsigned char *h;
+                        const unsigned char * h;
                         if (mp2hdr[index].hdrptr < 0)
                             h = mp2hdr[index].buf + 3 + mp2hdr[index].hdrptr;
+                              /* overlap from previous */
                         else
                             h = buf + dptr + mp2hdr[index].hdrptr;
                         if (!mpa_valid(h))
                           {
-                            mp2hdr[index].hdrptr++;
+                            mp2hdr[index].hdrptr++; /* try the next likely offset */
                             continue;
                           } /*if*/
                         if (mp2hdr[index].hdrptr < 0)
                             backpts1 += 2160;
                         else
                             pts1 += 2160;
-                        mp2hdr[index].hdrptr += mpa_len(h);
+                        mp2hdr[index].hdrptr += mpa_len(h); /* to next header */
                       } /*while*/
                     mp2hdr[index].hdrptr -= len;
-                    memcpy(mp2hdr[index].buf, buf +dptr + len - 3, 3);
+                    memcpy(mp2hdr[index].buf, buf + dptr + len - 3, 3);
                     audiodesc_set_audio_attr(&thisvob->audch[audch].ad, &thisvob->audch[audch]. adwarn, AUDIO_SAMPLERATE, "48khz");
                   } /*if*/
                 if (haspts)
@@ -1320,49 +1328,55 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                   }
                 else if (haspts)
                   {
-                    struct audchannel *ach=&thisvob->audch[audch];
+                    struct audchannel * const ach = &thisvob->audch[audch];
 
-                    if( ach->numaudpts>=ach->maxaudpts ) {
-                        if( ach->maxaudpts )
-                            ach->maxaudpts<<=1;
+                    if (ach->numaudpts >= ach->maxaudpts) { /* need more space */
+                        if (ach->maxaudpts)
+                            ach->maxaudpts <<= 1;
+                              /* resize in powers of 2 to reduce reallocation calls */
                         else
-                            ach->maxaudpts=1;
-                        ach->audpts=(struct audpts *)realloc(ach->audpts,ach->maxaudpts*sizeof(struct audpts));
-                    }
-                    if( ach->numaudpts ) {
+                            ach->maxaudpts = 1; /* first allocation */
+                        ach->audpts = (struct audpts *)realloc
+                          (
+                            /*ptr =*/ ach->audpts,
+                            /*size =*/ ach->maxaudpts * sizeof(struct audpts)
+                          );
+                    } /*if*/
+                    if (ach->numaudpts) {
                         // we cannot compute the length of a DTS audio packet
                         // so just backfill if it is one
                         // otherwise, for mp2 add any pts to the previous
                         // sector for a header that spanned two sectors
-                        if( (audch&0x38) == 0x18 ) // is this DTS?
-                            ach->audpts[ach->numaudpts-1].pts[1]=pts0;
+                        if ((audch & 0x38) == 0x18) // is this DTS?
+                            ach->audpts[ach->numaudpts - 1].pts[1] = pts0;
                         else
-                            ach->audpts[ach->numaudpts-1].pts[1]+=backpts1;
+                            ach->audpts[ach->numaudpts - 1].pts[1] += backpts1;
 
-                        if( ach->audpts[ach->numaudpts-1].pts[1]<pts0 ) {
-                            if( audch>=32 )
+                        if (ach->audpts[ach->numaudpts - 1].pts[1] < pts0) {
+                            if (audch >= 32)
                                 goto noshow;
-                            fprintf(stderr,"WARN: Discontinuity of %" PRId64" in audio channel %d; please remultiplex input.\n",pts0-ach->audpts[ach->numaudpts-1].pts[1],audch);
+                            fprintf(stderr, "WARN: Discontinuity of %" PRId64" in audio channel %d; please remultiplex input.\n", pts0 - ach->audpts[ach->numaudpts - 1].pts[1], audch);
                             // fprintf(stderr,"last=%d, this=%d\n",ach->audpts[ach->numaudpts-1].pts[1],pts0);
-                        } else if( ach->audpts[ach->numaudpts-1].pts[1]>pts0 )
-                            fprintf(stderr,"WARN: Audio pts for channel %d moves backwards by %" PRId64 "; please remultiplex input.\n",audch,ach->audpts[ach->numaudpts-1].pts[1]-pts0);
+                        } else if (ach->audpts[ach->numaudpts - 1].pts[1] > pts0)
+                            fprintf(stderr, "WARN: Audio pts for channel %d moves backwards by %" PRId64 "; please remultiplex input.\n", audch, ach->audpts[ach->numaudpts - 1].pts[1] - pts0);
                         else
                             goto noshow;
-                        fprintf(stderr,"WARN: Previous sector: ");
-                        printpts(ach->audpts[ach->numaudpts-1].pts[0]);
-                        fprintf(stderr," - ");
-                        printpts(ach->audpts[ach->numaudpts-1].pts[1]);
-                        fprintf(stderr,"\nWARN: Current sector: ");
+                        fprintf(stderr, "WARN: Previous sector: ");
+                        printpts(ach->audpts[ach->numaudpts - 1].pts[0]);
+                        fprintf(stderr, " - ");
+                        printpts(ach->audpts[ach->numaudpts - 1].pts[1]);
+                        fprintf(stderr, "\nWARN: Current sector: ");
                         printpts(pts0);
-                        fprintf(stderr," - ");
+                        fprintf(stderr, " - ");
                         printpts(pts1);
-                        fprintf(stderr,"\n");
-                        ach->audpts[ach->numaudpts-1].pts[1]=pts0;
-                    }
+                        fprintf(stderr, "\n");
+                        ach->audpts[ach->numaudpts - 1].pts[1] = pts0;
+                    } /*if*/
                 noshow:
-                    ach->audpts[ach->numaudpts].pts[0]=pts0;
-                    ach->audpts[ach->numaudpts].pts[1]=pts1;
-                    ach->audpts[ach->numaudpts].sect=cursect;
+                  /* fill in new entry */
+                    ach->audpts[ach->numaudpts].pts[0] = pts0;
+                    ach->audpts[ach->numaudpts].pts[1] = pts1;
+                    ach->audpts[ach->numaudpts].sect = cursect;
                     ach->numaudpts++;
                   } /*if*/
               } /*if*/
@@ -1532,7 +1546,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                 }
             }
             fprintf(stderr,"\n");
-        }
+        } /*if*/
     } /*for*/
     writeclose();
     printvobustatus(va,cursect);
@@ -1769,34 +1783,36 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
             memcpy(buf,vi->sectdata,0x26);
             write4(buf+0x26,0x1bf); // private stream 2
             write2(buf+0x2a,0x3d4); // length
-            buf[0x2c]=0;
+            buf[0x2c]=0; /* substream ID, 0 = PCI */
             memset(buf+0x2d,0,0x400-0x2d);
             write4(buf+0x400,0x1bf); // private stream 2
             write2(buf+0x404,0x3fa); // length
-            buf[0x406]=1;
+            buf[0x406]=1; /* substream ID, 1 = DSI */
             memset(buf+0x407,0,0x7ff-0x407);
 
             scr=readscr(buf+4);
 
-            write4(buf+0x2d,vi->sector);
-            write4(buf+0x39,vi->sectpts[0]); // vobu_s_ptm
-            write4(buf+0x3d,vi->sectpts[1]); // vobu_e_ptm
+            write4(buf+0x2d,vi->sector); /* sector number of this block */
+          /* buf[0x35 .. 0x38] -- prohibited user ops -- none for now */
+            write4(buf+0x39,vi->sectpts[0]); /* start presentation time (vobu_s_ptm) */
+            write4(buf+0x3d,vi->sectpts[1]); /* end presentation time (vobu_e_ptm) */
             if( vi->hasseqend ) // if sequence_end_code
                 write4(buf+0x41,vi->videopts[1]); // vobu_se_e_ptm
             write4(buf+0x45,buildtimeeven(va,vi->sectpts[0]-p->vi[vi->firstvobuincell].sectpts[0])); // total guess
+              /* c_eltm -- cell elapsed time + frame rate */
                 
             if( p->progchain->numbuttons ) {
                 struct pgc *pg=p->progchain;
                 int mask=getsubpmask(&va->vd),ng,grp;
                 char idmap[3];
 
-                write2(buf+0x8d,1);
-                write4(buf+0x8f,p->vi[0].sectpts[0]);
-                write4(buf+0x93,-1);
-                write4(buf+0x97,-1);
+                write2(buf+0x8d,1); /* highlight status = all new highlight information for this VOBU */
+                write4(buf+0x8f,p->vi[0].sectpts[0]); /* highlight start time */
+                write4(buf+0x93,-1); /* highlight end time */
+                write4(buf+0x97,-1); /* button selection end time (ignore user after this) */
 
                 ng=0;
-                write2(buf+0x9b,0);
+                write2(buf+0x9b,0); /* button groupings */
                 for( j=0; j<4; j++ )
                     if( mask&(1<<j) ) {
                         assert(ng<3);
@@ -1806,8 +1822,8 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
                     }
                 assert(ng>0);
 
-                buf[0x9e]=pg->numbuttons;
-                buf[0x9f]=pg->numbuttons;
+                buf[0x9e]=pg->numbuttons; /* number of buttons */
+                buf[0x9f]=pg->numbuttons; /* number of numerically-selected buttons */
                 memcpy(buf+0xa3,p->buttoncoli,24);
                 for( grp=0; grp<ng; grp++ ) {
                     unsigned char *boffs=buf+0xbb+18*(grp*36/ng);
@@ -1949,7 +1965,7 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
                 write(h,buf,2048);
             }
             curvob++;
-            if( !(curvob&15) ) 
+            if (!(curvob&15))
                 fprintf(stderr,"STAT: fixing VOBU at %dMB (%d/%d, %d%%)\r",vi->sector/512,curvob+1,totvob,curvob*100/totvob);
         }
     }

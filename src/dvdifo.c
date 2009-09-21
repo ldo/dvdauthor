@@ -279,8 +279,8 @@ static int Create_PTT_SRPT(FILE *h,const struct pgcgroup *t)
         write4(buf+8+j*4,p); /* offset to VTS_PTT for title */
         for( i=0; i<pgc->numsources; i++ ) /* generate the associated VTS_PTT entries */
             for( k=0; k<pgc->sources[i]->numcells; k++ ) {
-                const struct cell *c=&pgc->sources[i]->cells[k];
-                if( c->scellid!=c->ecellid )
+                const struct cell * const c = &pgc->sources[i]->cells[k];
+                if (c->scellid != c->ecellid)
                     switch(c->ischapter ) {
                     case 1: /* chapter & program */
                         buf[1+p]=j+1; /* PGCN low byte */
@@ -308,21 +308,23 @@ static int Create_TT_SRPT(FILE *h,const struct toc_summary *ts,int vtsstart /* s
 
     memset(buf,0,BIGWRITEBUFLEN);
 
-    j=vtsstart;
-    tn=0;
-    p=8;
+    j = vtsstart;
+    tn = 0;
+    p = 8; /* offset to first entry */
     for( i=0; i<ts->numvts; i++ ) {
         for( k=0; k<ts->vts[i].numtitles; k++ ) {
-            buf[0 + p]=0x3c; /* title type = jump/link/call may be found in all places */
-            buf[1 + p]=0x1; /* number of angles always 1 for now */
-            write2(buf+2+p,ts->vts[i].numchapters[k]); /* number of chapters (PTTs) */
-            buf[6 + p]=i+1; /* video titleset number, VTSN */
-            buf[7 + p]=k+1; /* title nr within VTS, VTS_TTN */
-            write4(buf+8+p,j); // start sector for VTS
+            buf[0 + p] = 0x3c;
+              /* title type = one sequential PGC, jump/link/call may be found in all places,
+                PTT & time play/search uops not inhibited */
+            buf[1 + p] = 0x1; /* number of angles always 1 for now */
+            write2(buf + 2 + p, ts->vts[i].numchapters[k]); /* number of chapters (PTTs) */
+            buf[6 + p] = i + 1; /* video titleset number, VTSN */
+            buf[7 + p] = k + 1; /* title nr within VTS, VTS_TTN */
+            write4(buf + 8 + p, j); // start sector for VTS
             tn++;
-            p+=12;
+            p += 12; /* offset to next entry */
         }
-        j+=ts->vts[i].numsectors;
+        j += ts->vts[i].numsectors;
     }
     write2(buf,tn); // # of titles
     write4(buf+4,p-1); /* end address (last byte of last entry) */

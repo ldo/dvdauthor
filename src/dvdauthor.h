@@ -48,6 +48,8 @@ void pgc_set_buttongroup(struct pgc *p,int index,unsigned char *map);
 void pgc_set_stilltime(struct pgc *p,int still);
 int pgc_set_subpic_stream(struct pgc *p,int ch,const char *m,int id);
 
+/* used to indicate which video/audio/subpicture attribute is being set to a particular
+  keyword value, or xxx_ANY (= 0) to match whichever one I can */
 enum { VIDEO_ANY=0, VIDEO_MPEG, VIDEO_FORMAT, VIDEO_ASPECT, VIDEO_RESOLUTION, VIDEO_WIDESCREEN, VIDEO_FRAMERATE, VIDEO_CAPTION };
 enum { AUDIO_ANY=0, AUDIO_FORMAT, AUDIO_QUANT, AUDIO_DOLBY, AUDIO_LANG, AUDIO_CHANNELS, AUDIO_SAMPLERATE };
 enum { SPU_ANY=0, SPU_LANG };
