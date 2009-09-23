@@ -794,8 +794,8 @@ static void printvobustatus(struct vobgroup *va,int cursect)
     for( j=0; j<va->numvobs; j++ )
         nv+=va->vobs[j]->numvobus;
 
-    // fprintf(stderr,"STAT: VOBU %d at %dMB, %d PGCS, %d:%02d:%02d\r",nv,cursect/512,va->numallpgcs,total/324000000,(total%324000000)/5400000,(total%5400000)/90000);
-    fprintf(stderr,"STAT: VOBU %d at %dMB, %d PGCS\r",nv,cursect/512,va->numallpgcs);
+    // fprintf(stderr,"STAT: VOBU %d at %dMB, %d PGCs, %d:%02d:%02d\r",nv,cursect/512,va->numallpgcs,total/324000000,(total%324000000)/5400000,(total%5400000)/90000);
+    fprintf(stderr,"STAT: VOBU %d at %dMB, %d PGCs\r",nv,cursect/512,va->numallpgcs);
 }
 
 static void audio_scan_ac3(struct audchannel *ach,unsigned char *buf,int sof,int len)
@@ -1401,7 +1401,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                 const int ml = read2(buf + 18) /* PES packet length */ + 20 /* fixed PES header length */; /* total length of packet */
                 const int st = buf[dptr]; /* sub-stream ID */
                 dptr++; /* skip sub-stream ID */
-                if ((st & 0xf8) == 0x20)
+                if ((st & 0xe0) == 0x20)
                   { /* subpicture stream */
                     procremap(&crs[st & 31], buf + dptr, ml - dptr, &thisvob->audch[st].audpts[thisvob->audch[st].numaudpts - 1].pts[1]);
                   } /*if*/
