@@ -102,7 +102,7 @@ char * strndup
 
 #define PACKAGE_HEADER(x) PACKAGE_NAME "::" x ", version " PACKAGE_VERSION ".\nBuild options:" BUILDSPEC "\nSend bugs to <" PACKAGE_BUGREPORT ">\n\n"
 
-#ifdef ICONV_CONV
+#ifdef ICONV_CONST
 #define ICONV_CAST (const char **)
 #else
 #define ICONV_CAST (char **)
