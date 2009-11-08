@@ -1594,8 +1594,16 @@ void MarkChapters(struct vobgroup *va)
                 int v;
                 
                 v=findnearestvobu(va,s->vob,s->cells[k].startpts);
-                if( v>=0 && v<s->vob->numvobus )
-                    s->vob->vi[v].vobcellid=1;
+                if (v >= 0 && v < s->vob->numvobus)
+                  {
+                    if (s->cells[k].ischapter) /* from Wolfgang Wershofen */
+                      {
+                        fprintf(stderr, "CHAPTERS: VTS[%d/%d] ", i + 1, j + 1);
+                        printpts(s->vob->vi[v].sectpts[0] - s->vob->vi[0].sectpts[0]);
+                        fprintf(stderr, "\n");
+                      } /*if*/
+                    s->vob->vi[v].vobcellid = 1;
+                  } /*if*/
                 s->cells[k].scellid=v;
 
                 if( lastcellid!=v &&
