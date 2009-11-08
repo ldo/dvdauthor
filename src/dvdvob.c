@@ -1057,9 +1057,15 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
             if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == 0xba) /* PACK header */
               {
                 const pts_t newscr = readscr(buf + 4);
-                if (newscr < lastscr)
+                if (newscr == 0 && lastscr > 0) /* suggestion from Philippe Sarazin */
                   {
-                    fprintf(stderr,"ERR:  SCR moves backwards, remultiplex input.\n");
+                    backoffs -= lastscr;
+                    fprintf(stderr, "\nWARN: SCR reset. New back offset = %d\n", backoffs);
+                  }
+                else if (newscr < lastscr)
+                  {
+                    fprintf(stderr, "ERR: SCR moves backwards, remultiplex input: %d < %d\n",
+                        newscr, lastscr);
                     exit(1);
                   } /*if*/
                 lastscr = newscr;
