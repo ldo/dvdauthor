@@ -1057,14 +1057,16 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
             if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == 0xba) /* PACK header */
               {
                 const pts_t newscr = readscr(buf + 4);
-                if (newscr == 0 && lastscr > 0) /* suggestion from Philippe Sarazin */
+                if (newscr == 0 && lastscr > 0)
+                  /* suggestion from Philippe Sarazin -- alternatively, Shaun Jackman suggests
+                    simply treating newscr < lastscr as a warning and continuing */
                   {
                     backoffs -= lastscr;
-                    fprintf(stderr, "\nWARN: SCR reset. New back offset = %d\n", backoffs);
+                    fprintf(stderr, "\nWARN: SCR reset. New back offset = %ld\n", backoffs);
                   }
                 else if (newscr < lastscr)
                   {
-                    fprintf(stderr, "ERR: SCR moves backwards, remultiplex input: %d < %d\n",
+                    fprintf(stderr, "ERR: SCR moves backwards, remultiplex input: %ld < %ld\n",
                         newscr, lastscr);
                     exit(1);
                   } /*if*/
