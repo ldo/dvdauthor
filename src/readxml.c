@@ -265,7 +265,7 @@ char *utf8tolocal(const char *in)
     char *out=r;
     size_t v;
 
-    v=iconv(c,ICONV_CAST &in,&inlen,&out,&outlen);
+    v=iconv(c, (char **)&in,&inlen,&out,&outlen);
     if(v==-1) {
         fprintf(stderr,"ERR:  Cannot convert UTF8 string '%s': %s\n",in,strerror(errno));
         exit(1);

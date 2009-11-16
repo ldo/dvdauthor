@@ -1018,7 +1018,7 @@ subtitle* subcp_recode (subtitle *sub)
         ileft = strlen(ip);
         oleft = ICBUFFSIZE - 1;
 
-        if (iconv(icdsc, ICONV_CAST &ip, &ileft,
+        if (iconv(icdsc, &ip, &ileft,
               &op,&oleft) == (size_t)(  -1)) {
             fprintf(stderr,"WARN: Error recoding line (1). *%s* ip:%s il:%" PRIdPTR " op:%s ol:%" PRIdPTR " l:%d\n",sub->text[1],ip,ileft,op,oleft,l);
             l++;
@@ -1057,7 +1057,7 @@ subtitle* subcp_recode1 (subtitle *sub)
      ileft = strlen(ip);
      oleft = ICBUFFSIZE - 1;
 
-     if (iconv(icdsc, ICONV_CAST &ip, &ileft,
+     if (iconv(icdsc, &ip, &ileft,
           &op, &oleft) == (size_t)(-1)) {
     fprintf(stderr,"INFO: Error recoding line (2).\n");
     return sub;

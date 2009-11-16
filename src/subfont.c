@@ -768,7 +768,7 @@ static FT_ULong decode_char(iconv_t *cd, char c) {
     size_t inbytesleft = 1;
     size_t outbytesleft = sizeof(FT_ULong);
 
-    iconv(*cd, ICONV_CAST &inbuf, &inbytesleft, &outbuf, &outbytesleft);
+    iconv(*cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
     o=ntohl(o);
     // if (count==-1) o = 0; // not OK, at least my iconv() returns E2BIG for all
     if (outbytesleft!=0) o = 0;

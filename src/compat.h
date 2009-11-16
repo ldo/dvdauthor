@@ -102,12 +102,6 @@ char * strndup
 
 #define PACKAGE_HEADER(x) PACKAGE_NAME "::" x ", version " PACKAGE_VERSION ".\nBuild options:" BUILDSPEC "\nSend bugs to <" PACKAGE_BUGREPORT ">\n\n"
 
-#ifdef ICONV_CONST
-#define ICONV_CAST (const char **)
-#else
-#define ICONV_CAST (char **)
-#endif
-
 #ifndef HAVE_FT2BUILD_H
 #define FT_FREETYPE_H <freetype/freetype.h>
 #define FT_GLYPH_H <freetype/ftglyph.h>
