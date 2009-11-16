@@ -114,13 +114,13 @@ char * strndup
 #endif
 
 /* values for vfile.ftype */
-#define VFTYPE_FILE 0
-#define VFTYPE_PIPE 1
-#define VFTYPE_REDIR 2
-struct vfile
+#define VFTYPE_FILE 0 /* an actual file I opened */
+#define VFTYPE_PIPE 1 /* an actual pipe I opened to/from a child process */
+#define VFTYPE_REDIR 2 /* a redirection to/from another already-opened file */
+struct vfile /* for keeping track of files opened by varied_open */
   {
-    FILE * h;
-    int ftype, mode;
+    FILE * h; /* do your I/O to/from this */
+    int ftype, mode; /* for use by varied_close */
   } /*vfile*/;
 struct vfile varied_open
   (
@@ -128,4 +128,14 @@ struct vfile varied_open
     int mode, /* either O_RDONLY or O_WRONLY, nothing more */
     const char * what /* description of what I'm trying to open, for error message */
   );
+  /* opens the file fname, which can be an ordinary file name or take one of the
+    following special forms:
+        "-" -- refers to standard input (if mode is O_RDONLY) or output (if O_WRONLY)
+        "&n" -- (n integer) refers to the already-opened file handle n
+        "cmd|" -- spawns cmd as a subprocess and reads from its standard output
+        "|cmd" -- spawns cmd as a subprocess and writes to its standard input.
+
+    Will abort the process on any errors.
+  */
 void varied_close(struct vfile vf);
+  /* closes a file previously opened by varied_open. */
