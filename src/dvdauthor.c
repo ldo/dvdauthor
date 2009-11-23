@@ -345,6 +345,7 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s)
             else if (v % 9 == 0)
                 va->vd.vformat = VF_PAL;
           } /*if*/
+        free((char *)s1);
         return w;
       } /*if*/
 
