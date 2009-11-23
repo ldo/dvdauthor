@@ -306,12 +306,20 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s)
         if(w) return w-1;
     }
 
-    if( ATTRMATCH(VIDEO_CAPTION) ) {
-        if( !strcasecmp(s,"field1") )
-            va->vd.vcaption|=1;
-        else if( !strcasecmp(s,"field2") )
-            va->vd.vcaption|=2;
-    }
+    if (ATTRMATCH(VIDEO_CAPTION))
+      {
+        w = va->vd.vcaption;
+        if (!strcasecmp(s, "field1"))
+            va->vd.vcaption |= 1;
+        else if (!strcasecmp(s, "field2"))
+            va->vd.vcaption |= 2;
+        else
+          {
+            fprintf(stderr, "ERR:  Cannot parse video caption '%s'\n", s);
+            exit(1);
+          } /*if*/
+        return w;
+      } /*if*/
 
     if (ATTRMATCH(VIDEO_RESOLUTION) && strstr(s, "x"))
       {
