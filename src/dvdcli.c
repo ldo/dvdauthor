@@ -683,7 +683,7 @@ static int parse_pause(const char *f)
     if( !strcmp(f,"inf") )
         return 255;
     else
-        return atoi(f);
+        return strtounsigned(f, "pause time");
 }
 
 static void dvdauthor_workdir(const char *s)
@@ -969,7 +969,7 @@ static void stream_start()
 
 static void substream_id(const char *c)
 {
-    subpstreamid=atoi(c);
+    subpstreamid=strtounsigned(c, "subpicture stream id");
     if( subpstreamid<0 || subpstreamid>=32 ) {
         fprintf(stderr,"ERR:  Subpicture stream id must be 0-31: '%s'.\n",c);
         parser_err=1;

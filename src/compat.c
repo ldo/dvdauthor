@@ -2,9 +2,42 @@
 
 #include "compat.h"
 
+#include <limits.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <errno.h>
+
+unsigned int strtounsigned
+  (
+    const char * s,
+    const char * what /* description of what I'm trying to convert, for error message */
+  )
+  /* parses s as an unsigned decimal integer, returning its value. Aborts the
+    program on error. */
+  {
+    char * s_end;
+    unsigned long result;
+    errno = 0;
+    result = strtoul(s, &s_end, 10);
+    if (errno == 0)
+      {
+        if (*s_end != '\0')
+          {
+            errno = EINVAL;
+          }
+        else if (result > UINT_MAX)
+          {
+            errno = ERANGE;
+          }
+      } /*if*/
+    if (errno != 0)
+      {
+        fprintf(stderr, "ERR: %d converting %s \"%s\" -- %s\n", errno, what, s, strerror(errno));
+        exit(1);
+      } /*if*/
+    return result;
+  } /*strtounsigned*/
+
 
 #ifndef HAVE_STRNDUP
 char * strndup

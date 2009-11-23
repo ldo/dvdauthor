@@ -313,35 +313,41 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s)
             va->vd.vcaption|=2;
     }
 
-    if( ATTRMATCH(VIDEO_RESOLUTION) && strstr(s,"x") ) {
-        int h=atoi(s),v,r,w;
-        char *s2=strstr(s,"x")+1;
+    if (ATTRMATCH(VIDEO_RESOLUTION) && strstr(s, "x"))
+      {
+        const int splitpos = strstr(s, "x") - s;
+        const char * const s1 = strndup(s, splitpos);
+        const char * const s2 = s + splitpos + 1;
+        const int h = strtounsigned(s1, "horizontal resolution");
+        int v, r, w;
 
-        if(isdigit(s2[0]))
-            v=atoi(s2);
-        else if(!strcasecmp(s2,"full") || !strcasecmp(s2,"high"))
-            v=384;
+        if (isdigit(s2[0]))
+            v = strtounsigned(s2, "vertical resolution");
+        else if (!strcasecmp(s2, "full") || !strcasecmp(s2, "high"))
+            v = 384;
         else
-            v=383;
+            v = 383;
        
-        if( h>704 )
-            r=VS_720H;
-        else if( h>352 )
-            r=VS_704H;
-        else if( v>=384 )
-            r=VS_352H;
+        if (h > 704)
+            r = VS_720H;
+        else if (h > 352)
+            r = VS_704H;
+        else if (v >= 384)
+            r = VS_352H;
         else
-            r=VS_352L;
-        w=warnupdate(&va->vd.vres,r,&va->vdwarn.vres,"resolution",vresdesc);
+            r = VS_352L;
+        w = warnupdate(&va->vd.vres, r, &va->vdwarn.vres, "resolution", vresdesc);
 
-        if( va->vd.vformat==VF_NONE ) {
-            if( !(v%5) )
-                va->vd.vformat=VF_NTSC;
-            else if( !(v%9) )
-                va->vd.vformat=VF_PAL;
-        }
+        if (va->vd.vformat == VF_NONE)
+          {
+            if (v % 5 == 0)
+                va->vd.vformat = VF_NTSC;
+            else if (v % 9 == 0)
+                va->vd.vformat = VF_PAL;
+          } /*if*/
         return w;
-    }
+      } /*if*/
+
     fprintf(stderr,"ERR:  Cannot parse video option '%s'\n",s);
     exit(1);
 }

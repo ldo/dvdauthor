@@ -738,13 +738,13 @@ int main(int argc, char **argv)
         base_name = optarg;
         break;
     case 'v':
-        debug = atoi(optarg);
+        debug = strtounsigned(optarg, "verbosity");
         break;
     case 'f':
         full_size = TRUE;
         break;
     case 's':
-        stream_number = atoi(optarg);
+        stream_number = strtounsigned(optarg, "stream number");
         break;
     case 'p':
         palet_file = optarg;

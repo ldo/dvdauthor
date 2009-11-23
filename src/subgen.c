@@ -767,8 +767,8 @@ int main(int argc,char **argv)
             }
             break;
 
-    case 's': substr = atoi(optarg); break;
-    case 'v': debug  = atoi(optarg); break;
+    case 's': substr = strtounsigned(optarg, "substream id"); break;
+    case 'v': debug  = strtounsigned(optarg, "verbosity"); break;
     case 'P': progr  = 1;            break;
 
         case 'h': usage();

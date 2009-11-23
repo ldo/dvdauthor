@@ -282,7 +282,7 @@ int main(int argc,char **argv)
     while( -1 != (oc=getopt(argc,argv,"ha:v:o:msd:u")) ) {
         switch(oc) {
         case 'd':
-            audiodrop=atoi(optarg);
+            audiodrop=strtounsigned(optarg, "audio drop count");
             break;
 
         case 'a':
@@ -291,7 +291,7 @@ int main(int argc,char **argv)
                 fprintf(stderr,"can only output one stream to stdout at a time\n; use -o to output more than\none stream\n");
                 exit(1);
             }
-            outputstream=((oc=='a')?0xc0:0xe0)+atoi(optarg);
+            outputstream=((oc=='a')?0xc0:0xe0)+strtounsigned(optarg, "stream id");
             break;
 
         case 'm':

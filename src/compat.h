@@ -80,7 +80,13 @@
 
 #define BUILDSPEC BUILDSPEC_GETOPT BUILDSPEC_MAGICK BUILDSPEC_ICONV BUILDSPEC_FREETYPE BUILDSPEC_FRIBIDI
 
-
+unsigned int strtounsigned
+  (
+    const char * s,
+    const char * what /* description of what I'm trying to convert, for error message */
+  );
+  /* parses s as an unsigned decimal integer, returning its value. Aborts the
+    program on error. */
 
 #ifndef HAVE_STRNDUP
 char * strndup

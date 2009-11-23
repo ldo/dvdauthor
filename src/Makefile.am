@@ -31,7 +31,7 @@ spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) $(FRIBIDI_LIBS) $(LIB
 spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h
 spuunmux_LDADD = -lpng -lz -lm
 
-mpeg2desc_SOURCES = mpeg2desc.c
+mpeg2desc_SOURCES = mpeg2desc.c compat.c
 
 edit = sed \
     -e 's,@sysconfdir\@,$(sysconfdir),g' \

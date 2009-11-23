@@ -102,9 +102,9 @@ void spu_highlight(const char *v)    { st->hlt.fname=utf8tolocal(v); }
 void spu_select(const char *v)       { st->sel.fname=utf8tolocal(v); }
 void spu_start(const char *v)        { st->spts         = parsetime(v); }
 void spu_end(const char *v)          { st->sd           = parsetime(v); }
-void spu_outlinewidth(const char *v) { st->outlinewidth = atoi(v);      }
-void spu_xoffset(const char *v)      { st->x0 = atoi(v);                }
-void spu_yoffset(const char *v)      { st->y0 = atoi(v);                }
+void spu_outlinewidth(const char *v) { st->outlinewidth = strtounsigned(v, "spu outlinewidth");      }
+void spu_xoffset(const char *v)      { st->x0 = strtounsigned(v, "spu xoffset");                }
+void spu_yoffset(const char *v)      { st->y0 = strtounsigned(v, "spu yoffset");                }
 
 void spu_force(const char *v)
 {
@@ -192,10 +192,10 @@ void button_up(const char *v)    { curbutton->up    = strdup(v); }
 void button_down(const char *v)  { curbutton->down  = strdup(v); }
 void button_left(const char *v)  { curbutton->left  = strdup(v); }
 void button_right(const char *v) { curbutton->right = strdup(v); }
-void button_x0(const char *v)    { curbutton->r.x0  = atoi(v);   }
-void button_y0(const char *v)    { curbutton->r.y0  = atoi(v);   }
-void button_x1(const char *v)    { curbutton->r.x1  = atoi(v);   }
-void button_y1(const char *v)    { curbutton->r.y1  = atoi(v);   }
+void button_x0(const char *v)    { curbutton->r.x0  = strtounsigned(v, "button x0");   }
+void button_y0(const char *v)    { curbutton->r.y0  = strtounsigned(v, "button y0");   }
+void button_x1(const char *v)    { curbutton->r.x1  = strtounsigned(v, "button x1");   }
+void button_y1(const char *v)    { curbutton->r.y1  = strtounsigned(v, "button y1");   }
 
 void textsub_filename(const char *v)
 {
@@ -287,15 +287,15 @@ void textsub_complete()
     }
 }
 
-void textsub_l_margin(const char *v)     { sub_left_margin=atoi(v);        }
-void textsub_r_margin(const char *v)     { sub_right_margin=atoi(v);       }
-void textsub_b_margin(const char *v)     { sub_bottom_margin=atoi(v);      }
-void textsub_t_margin(const char *v)     { sub_top_margin=atoi(v);         }
+void textsub_l_margin(const char *v)     { sub_left_margin=strtounsigned(v, "textsub left-margin");        }
+void textsub_r_margin(const char *v)     { sub_right_margin=strtounsigned(v, "textsub right-margin");       }
+void textsub_b_margin(const char *v)     { sub_bottom_margin=strtounsigned(v, "textsub bottom-margin");      }
+void textsub_t_margin(const char *v)     { sub_top_margin=strtounsigned(v, "textsub top-margin");         }
 void textsub_font(const char *v)         { sub_font=strdup(v);             }
 void textsub_sub_fps(const char *v)      { sub_fps=atof(v);                }
 void textsub_movie_fps(const char *v)    { movie_fps=atof(v);              }
-void textsub_movie_width(const char* v)  { movie_width=atoi(v);            }
-void textsub_movie_height(const char* v) { movie_height=atoi(v);           }
+void textsub_movie_width(const char* v)  { movie_width=strtounsigned(v, "textsub movie-width");            }
+void textsub_movie_height(const char* v) { movie_height=strtounsigned(v, "textsub movie-height");           }
 void textsub_fontsize(const char *v)     { text_font_scale_factor=atof(v); }
 
 void textsub_force(const char *v)
