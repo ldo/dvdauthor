@@ -86,9 +86,9 @@ struct source { /* describes an input video file */
     struct vob *vob; /* containing vob */
 };
 
-struct audpts {
-    pts_t pts[2];
-    int asect;
+struct audpts { /* describes a packet in an audio stream */
+    pts_t pts[2]; /* start and end time of packet */
+    int asect; /* sector number in source file */
 };
 
 struct audchannel {

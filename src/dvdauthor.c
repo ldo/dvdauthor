@@ -703,7 +703,7 @@ static void setattr
                           {
                             pgc->subpmap[l][m] = 128 + k;
                             used = 1; // keep looping in case it's referenced multiple times
-                          } /*if; for; for */
+                          } /*if; for; for*/
                 if (used)
                     continue;
                 // Find a subpicture slot that is not used
@@ -738,7 +738,6 @@ noinfer:
             for (l = 0; l < 32; l++)
               {
                 int mainid = -1;
-
                 for (m = 0; m < 4; m++)
                   {
                     if ((mask & 1 << m) == 0 && (pgc->subpmap[l][m] & 128) == 128)
@@ -794,7 +793,6 @@ noinfer:
     for (i = 0; i < 32; i++)
       {
         int j, k, fnd;
-
         fnd = 0;
         for (j = 0; j < va->numallpgcs; j++) 
             for (k = 0; k < 4; k++)

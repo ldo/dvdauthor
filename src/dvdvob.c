@@ -798,7 +798,8 @@ static void printvobustatus(struct vobgroup *va,int cursect)
     fprintf(stderr,"STAT: VOBU %d at %dMB, %d PGCs\r",nv,cursect/512,va->numallpgcs);
 }
 
-static void audio_scan_ac3(struct audchannel *ach,unsigned char *buf,int sof,int len)
+static void audio_scan_ac3(struct audchannel *ach,const unsigned char *buf,int sof,int len)
+  /* gets information about AC3 audio. */
 {
     uint32_t parse;
     int acmod,lfeon,nch=0;
@@ -813,6 +814,7 @@ static void audio_scan_ac3(struct audchannel *ach,unsigned char *buf,int sof,int
         fprintf(stderr,"WARN: Unknown AC3 sample rate: %d\n",parse>>30);
     }
     audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_SAMPLERATE,"48khz");
+  /* now figure out how many channels are present ... (yes, all this code) */
     parse<<=8;
     // check bsid
     if( (parse>>27)!=8 && (parse>>27)!=6 ) // must be v6 or v8
@@ -823,23 +825,19 @@ static void audio_scan_ac3(struct audchannel *ach,unsigned char *buf,int sof,int
     // acmod gives # of channels
     acmod=(parse>>29);
     parse<<=3;
-    // skip cmixlev?
-    if( (acmod&1) && (acmod!=1) )
-        parse<<=2;
-    // skip surmixlev?
-    if( acmod&4 )
-        parse<<=2;
-    // dsurmod
-    if( acmod==2 ) {
-        if( (parse>>30)==2 ) 
+    if( (acmod&1) && (acmod!=1) ) /* centre channel present */
+        parse<<=2; /* skip cmixlev */
+    if( acmod&4 ) /* surround channel(s) present */
+        parse<<=2; /* skip surmixlev */
+    if( acmod==2 ) { /* simple stereo */
+      /* process dsurmod */
+        if( (parse>>30)==2 ) /* 2 => Dolby Surround encoded, 1 => not encoded, 0 => not indicated, 3 => reserved */
             audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_DOLBY,"surround");
         // else if( (parse>>30)==1 )
         // audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_DOLBY,"nosurround");
         parse<<=2;
     }
-    // lfeon
-    lfeon=(parse>>31);
-
+    lfeon=(parse>>31); /* low-frequency effects on */
     // calc # channels
     switch(acmod) {
     case 0: nch=2; break;
@@ -851,17 +849,19 @@ static void audio_scan_ac3(struct audchannel *ach,unsigned char *buf,int sof,int
     case 6: nch=4; break;
     case 7: nch=5; break;
     }
-    if( lfeon ) nch++;
+    if( lfeon ) nch++; /* include LFE channel */
     sprintf(attr,"%dch",nch);
     audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_CHANNELS,attr);
 }
 
-static void audio_scan_dts(struct audchannel *ach,unsigned char *buf,int sof,int len)
+static void audio_scan_dts(struct audchannel *ach,const unsigned char *buf,int sof,int len)
+  /* gets information about DTS audio. */
 {
-/* can't do anything */
+/* could determine number of channels and sampling rate, but I'm not bothering for now */
 }
 
-static void audio_scan_pcm(struct audchannel *ach,unsigned char *buf,int len)
+static void audio_scan_pcm(struct audchannel *ach,const unsigned char *buf,int len)
+  /* gets information about LPCM audio. */
 {
     char attr[6];
 
@@ -869,10 +869,11 @@ static void audio_scan_pcm(struct audchannel *ach,unsigned char *buf,int len)
     case 0: audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_QUANT,"16bps"); break;
     case 1: audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_QUANT,"20bps"); break;
     case 2: audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_QUANT,"24bps"); break;
+  /* case 3: illegal */
     }
-    sprintf(attr,"%dkhz",48*(1+((buf[1]>>4)&1)));
+    sprintf(attr,"%dkhz",48*(1+((buf[1]>>4)&1))); /* 48 or 96kHz */
     audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_SAMPLERATE,attr);
-    sprintf(attr,"%dch",(buf[1]&7)+1);
+    sprintf(attr,"%dch",(buf[1]&7)+1); /* nr channels */
     audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_CHANNELS,attr);
 }
 
@@ -880,8 +881,8 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
 /* generates output VOB files for a menu or titleset. ismenu = 0 for a titleset, 1 for a VTS menu, 2 for a VMG menu. */
 {
     unsigned char *buf;
-    int cursect=0;
-    int fsect=-1; /* sector nr in current output VOB file */
+    int cursect=0; /* sector nr in input file */
+    int fsect=-1; /* sector nr in current output VOB file, -ve => not opened yet */
     int vnum;
     int outnum = -ismenu + 1; /* +ve for a titleset, in which case used to generate output VOB file names */
     int vobid=0;
@@ -1260,6 +1261,9 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                   {
                     const int sid = buf[dptr]; /* sub-stream ID */
                     const int offs = read2(buf + dptr + 2);
+                      /* offset to audio sample frame which corresponds to PTS value */
+                    const int nrframes = buf[dptr + 1];
+                      /* nr audio sample frames beginning in this packet */
                     switch (sid & 0xf8)
                       {
                     case 0x20:                          // subpicture
@@ -1269,16 +1273,17 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                          audch = sid;
                     break;
                     case 0x80:                          // ac3 audio
-                        pts1 += 2880 * buf[dptr + 1];
+                        pts1 += 2880 * nrframes;
                         audch = sid & 7;
                         audio_scan_ac3(&thisvob->audch[audch], buf + dptr + 4, offs - 1, endop - (dptr + 4));
                     break;
                     case 0x88:                          // dts audio
+                      /* pts1 += 960 * nrframes; */ /* why not? */
                         audch = 24 | (sid & 7);
                         audio_scan_dts(&thisvob->audch[audch], buf + dptr + 4, offs - 1, endop - (dptr + 4));
                     break;
                     case 0xa0:                          // pcm audio
-                        pts1 += 150 * buf[dptr + 1];
+                        pts1 += 150 * nrframes;
                         audch = 16 | (sid & 7);
                         audio_scan_pcm(&thisvob->audch[audch], buf + dptr + 4, endop - (dptr + 4));
                     break;
@@ -1307,7 +1312,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                             continue;
                           } /*if*/
                         if (mp2hdr[index].hdrptr < 0)
-                            backpts1 += 2160;
+                            backpts1 += 2160; /* how much time to add to end of previous packet */
                         else
                             pts1 += 2160;
                         mp2hdr[index].hdrptr += mpa_len(h); /* to next header */
@@ -1316,6 +1321,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                     memcpy(mp2hdr[index].buf, buf + dptr + len - 3, 3);
                     audiodesc_set_audio_attr(&thisvob->audch[audch].ad, &thisvob->audch[audch]. adwarn, AUDIO_SAMPLERATE, "48khz");
                   } /*if*/
+              /* at this point, pts1 is the duration of the audio in the packet */
                 if (haspts)
                   {
                     pts0 = readpts(buf + 23);
@@ -1330,6 +1336,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                 if (audch < 0 || audch >= 64)
                   {
                     fprintf(stderr,"WARN: Invalid audio channel %d\n",audch);
+                  /* and ignore */
                   }
                 else if (haspts)
                   {
@@ -1359,7 +1366,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
 
                         if (ach->audpts[ach->numaudpts - 1].pts[1] < pts0) {
                             if (audch >= 32)
-                                goto noshow;
+                                goto noshow; /* not audio */
                             fprintf(stderr, "WARN: Discontinuity of %" PRId64" in audio channel %d; please remultiplex input.\n", pts0 - ach->audpts[ach->numaudpts - 1].pts[1], audch);
                             // fprintf(stderr,"last=%d, this=%d\n",ach->audpts[ach->numaudpts-1].pts[1],pts0);
                         } else if (ach->audpts[ach->numaudpts - 1].pts[1] > pts0)
