@@ -90,10 +90,10 @@ static int findnextvideo(const struct vob *va, int cur, int dir)
     numvobus = va->numvobus;
     switch(dir){
     case 1:  // forward
-        for(i = cur+1; i < numvobus; i++) if(va->vi[i].hasvideo) return i;
+        for(i = cur+1; i < numvobus; i++) if(va->vobu[i].hasvideo) return i;
         return -1;
     case -1: // backward
-        for(i = cur-1; i > -1; i--) if(va->vi[i].hasvideo) return i;
+        for(i = cur-1; i > -1; i--) if(va->vobu[i].hasvideo) return i;
         return -1;
     default:
         // ??
@@ -118,7 +118,7 @@ static int findaudsect(const struct vob *va,int aind,pts_t pts0,pts_t pts1)
     }
     if( ach->audpts[l].pts[0] > pts1 )
         return -1;
-    return ach->audpts[l].sect;
+    return ach->audpts[l].asect;
 }
 
 static int findvobubysect(const struct vob *va,int sect)
@@ -127,11 +127,11 @@ static int findvobubysect(const struct vob *va,int sect)
 
     if( h<0 )
         return -1;
-    if( sect<va->vi[0].sector )
+    if( sect<va->vobu[0].sector )
         return -1;
     while(l<h) {
         int m=(l+h+1)/2; /* binary search */
-        if( sect < va->vi[m].sector )
+        if( sect < va->vobu[m].sector )
             h=m-1;
         else
             l=m;
@@ -169,7 +169,7 @@ static unsigned int getsect(const struct vob *va,int curvobnum,int jumpvobnum,in
             h=curvobnum-1;
         }
         for( i=l; i<=h; i++ )
-            if( va->vi[i].hasvideo )
+            if( va->vobu[i].hasvideo )
                 break;
         if( i<=h )
             skip=0x40000000;
@@ -177,10 +177,10 @@ static unsigned int getsect(const struct vob *va,int curvobnum,int jumpvobnum,in
             skip=0;
     }
     if( jumpvobnum < 0 || jumpvobnum >= va->numvobus || 
-        va->vi[jumpvobnum].vobcellid != va->vi[curvobnum].vobcellid )
+        va->vobu[jumpvobnum].vobcellid != va->vobu[curvobnum].vobcellid )
         return notfound|skip;
-    return abs(va->vi[jumpvobnum].sector-va->vi[curvobnum].sector)
-        |(va->vi[jumpvobnum].hasvideo?0x80000000:0)
+    return abs(va->vobu[jumpvobnum].sector-va->vobu[curvobnum].sector)
+        |(va->vobu[jumpvobnum].hasvideo?0x80000000:0)
         |skip;
 }
 
@@ -615,7 +615,7 @@ static void scanvideoframe(struct vobgroup *va,unsigned char *buf,struct vobuinf
 
 static void finishvideoscan(struct vobgroup *va,int vob,int prevsect,struct vscani *vsi)
 {
-    struct vobuinfo *lastvi=&va->vobs[vob]->vi[va->vobs[vob]->numvobus-1];
+    struct vobuinfo *lastvi=&va->vobs[vob]->vobu[va->vobs[vob]->numvobus-1];
     int i;
 
     memset(videoslidebuf+7,0,7);
@@ -858,6 +858,7 @@ static void audio_scan_ac3(struct audchannel *ach,unsigned char *buf,int sof,int
 
 static void audio_scan_dts(struct audchannel *ach,unsigned char *buf,int sof,int len)
 {
+/* can't do anything */
 }
 
 static void audio_scan_pcm(struct audchannel *ach,unsigned char *buf,int len)
@@ -1130,13 +1131,13 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                         else
                             thisvob->maxvobus <<= 1;
                               /* resize in powers of 2 to reduce reallocation calls */
-                        thisvob->vi = (struct vobuinfo *)realloc
+                        thisvob->vobu = (struct vobuinfo *)realloc
                           (
-                            /*ptr =*/ thisvob->vi,
+                            /*ptr =*/ thisvob->vobu,
                             /*size =*/ thisvob->maxvobus * sizeof(struct vobuinfo)
                           );
                       } /*if*/
-                    vi = &thisvob->vi[thisvob->numvobus - 1]; /* for the new VOBU */
+                    vi = &thisvob->vobu[thisvob->numvobus - 1]; /* for the new VOBU */
                     memset(vi, 0, sizeof(struct vobuinfo));
                     vi->sector = cursect;
                     vi->fsect = fsect;
@@ -1147,7 +1148,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                     vi->numref = 0;
                     vi->hasseqend = 0;
                     vi->hasvideo = 0;
-                    memcpy(thisvob->vi[thisvob->numvobus-1].sectdata, buf, 0x26); // save pack and system header; the rest will be reconstructed later
+                    memcpy(thisvob->vobu[thisvob->numvobus-1].sectdata, buf, 0x26); // save pack and system header; the rest will be reconstructed later
                     if (!(thisvob->numvobus & 15)) /* time to let user know progress */
                         printvobustatus(va,cursect);
                     vsi.lastrefsect = 0;
@@ -1164,7 +1165,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                 writeundo(); /* ignore it */
                 continue;
               } /*if*/
-            thisvob->vi[thisvob->numvobus - 1].lastsector = cursect;
+            thisvob->vobu[thisvob->numvobus - 1].lastsector = cursect;
 
             i = 14;
             j = -1;
@@ -1213,7 +1214,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                     buf[17] == 0xe0 /* video stream */
               )
               {
-                struct vobuinfo * const vi = &thisvob->vi[thisvob->numvobus - 1];
+                struct vobuinfo * const vi = &thisvob->vobu[thisvob->numvobus - 1];
                 vi->hasvideo = 1;
                 scanvideoframe(va, buf, vi, cursect, prevvidsect, &vsi);
                 if
@@ -1254,7 +1255,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                 const int dptr = buf[22] /* PES header data length */ + 23; /* offset to packet data */
                 const int endop = read2(buf + 18) /* PES packet length */ + 20 /* fixed PES header length */; /* end of packet */
                 int audch;
-                const int haspts = (buf[21] & 128);
+                const int haspts = (buf[21] & 128) != 0;
                 if (buf[17] == 0xbd) /* private stream 1 -- DVD audio or subpicture */
                   {
                     const int sid = buf[dptr]; /* sub-stream ID */
@@ -1270,7 +1271,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                     case 0x80:                          // ac3 audio
                         pts1 += 2880 * buf[dptr + 1];
                         audch = sid & 7;
-                        audio_scan_ac3(&thisvob->audch[audch], buf+dptr+4, offs - 1, endop - (dptr + 4));
+                        audio_scan_ac3(&thisvob->audch[audch], buf + dptr + 4, offs - 1, endop - (dptr + 4));
                     break;
                     case 0x88:                          // dts audio
                         audch = 24 | (sid & 7);
@@ -1380,7 +1381,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                   /* fill in new entry */
                     ach->audpts[ach->numaudpts].pts[0] = pts0;
                     ach->audpts[ach->numaudpts].pts[1] = pts1;
-                    ach->audpts[ach->numaudpts].sect = cursect;
+                    ach->audpts[ach->numaudpts].asect = cursect;
                     ach->numaudpts++;
                   } /*if*/
               } /*if*/
@@ -1442,7 +1443,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                 int complain=0, j;
 
                 for( j=0; j<thisvob->numvobus; j++ ) {
-                    struct vobuinfo *vi=thisvob->vi+j;
+                    struct vobuinfo *vi=thisvob->vobu+j;
                     
                     if( vi->hasvideo ) {
                         if( pts_align==-1 ) {
@@ -1477,7 +1478,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
             
             // guess at non-video vobus
             for( i=0; i<thisvob->numvobus; i++ ) {
-                struct vobuinfo *vi=thisvob->vi+i;
+                struct vobuinfo *vi=thisvob->vobu+i;
                 if( !vi->hasvideo ) {
                     int j,k;
                     pts_t firstaudiopts=-1,p;
@@ -1485,7 +1486,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                     for( j=0; j<32; j++ ) {
                         struct audchannel *ach=thisvob->audch+j;
                         for( k=0; k<ach->numaudpts; k++ )
-                            if( ach->audpts[k].sect>=vi->sector ) {
+                            if( ach->audpts[k].asect>=vi->sector ) {
                                 if( firstaudiopts==-1 || ach->audpts[k].pts[0]<firstaudiopts )
                                     firstaudiopts=ach->audpts[k].pts[0];
                                 break;
@@ -1497,13 +1498,13 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                     }
                     if( i ) {
                         pts_t frpts=getframepts(va);
-                        p=firstaudiopts-thisvob->vi[i-1].sectpts[0];
+                        p=firstaudiopts-thisvob->vobu[i-1].sectpts[0];
                         // ensure this is a multiple of a framerate, just to be nice
                         p+=frpts-1;
                         p-=p%frpts;
-                        p+=thisvob->vi[i-1].sectpts[0];
-                        assert(p>=thisvob->vi[i-1].sectpts[1]);
-                        thisvob->vi[i-1].sectpts[1]=p;
+                        p+=thisvob->vobu[i-1].sectpts[0];
+                        assert(p>=thisvob->vobu[i-1].sectpts[1]);
+                        thisvob->vobu[i-1].sectpts[1]=p;
                     } else {
                         fprintf(stderr,"ERR:  Cannot infer pts for VOBU if there is no audio or video and it is the\nERR:  first VOBU.\n");
                         exit(1);
@@ -1517,8 +1518,8 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                             p=finalaudiopts;
                         else
                             p=vi->sectpts[0]+getframepts(va); // add one frame of a buffer, so we don't have a zero (or less) length vobu
-                    } else if( thisvob->vi[i+1].hasvideo ) // if the next vobu has video, use the start of the video as the end of this vobu
-                        p=thisvob->vi[i+1].sectpts[0];
+                    } else if( thisvob->vobu[i+1].hasvideo ) // if the next vobu has video, use the start of the video as the end of this vobu
+                        p=thisvob->vobu[i+1].sectpts[0];
                     else // the next vobu is an audio only vobu, and will backfill the pts as necessary
                         continue;
                     if( p<=vi->sectpts[0] ) {
@@ -1530,11 +1531,11 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
             }
 
             fprintf(stderr,"\nINFO: Video pts = ");
-            printpts(thisvob->vi[0].videopts[0]);
+            printpts(thisvob->vobu[0].videopts[0]);
             fprintf(stderr," .. ");
             for( i=thisvob->numvobus-1; i>=0; i-- )
-                if( thisvob->vi[i].hasvideo ) {
-                    printpts(thisvob->vi[i].videopts[1]);
+                if( thisvob->vobu[i].hasvideo ) {
+                    printpts(thisvob->vobu[i].videopts[1]);
                     break;
                 }
             if( i<0 )
@@ -1572,10 +1573,10 @@ static int findnearestvobu(struct vobgroup *pg,struct vob *va,pts_t pts)
 
     if( h<0 )
         return -1;
-    pts+=va->vi[0].sectpts[0];
+    pts+=va->vobu[0].sectpts[0];
     i=findvobu(va,pts,l,h);
     if( i+1<va->numvobus && i>=0 &&
-        pabs(pts-va->vi[i+1].sectpts[0])<pabs(pts-va->vi[i].sectpts[0]) )
+        pabs(pts-va->vobu[i+1].sectpts[0])<pabs(pts-va->vobu[i].sectpts[0]) )
         i++;
     return i;
 }
@@ -1599,22 +1600,22 @@ void MarkChapters(struct vobgroup *va)
                     if (s->cells[k].ischapter) /* from Wolfgang Wershofen */
                       {
                         fprintf(stderr, "CHAPTERS: VTS[%d/%d] ", i + 1, j + 1);
-                        printpts(s->vob->vi[v].sectpts[0] - s->vob->vi[0].sectpts[0]);
+                        printpts(s->vob->vobu[v].sectpts[0] - s->vob->vobu[0].sectpts[0]);
                         fprintf(stderr, "\n");
                       } /*if*/
-                    s->vob->vi[v].vobcellid = 1;
+                    s->vob->vobu[v].vobcellid = 1;
                   } /*if*/
                 s->cells[k].scellid=v;
 
                 if( lastcellid!=v &&
-                    s->vob->vi[v].firstIfield!=0) {
+                    s->vob->vobu[v].firstIfield!=0) {
                     fprintf(stderr,"WARN: GOP may not be closed on cell %d of source %s of pgc %d\n",k+1,s->fname,i+1);
                 }
 
                 if( s->cells[k].endpts>=0 ) {
                     v=findnearestvobu(va,s->vob,s->cells[k].endpts);
                     if( v>=0 && v<s->vob->numvobus )
-                        s->vob->vi[v].vobcellid=1;
+                        s->vob->vobu[v].vobcellid=1;
                 } else
                     v=s->vob->numvobus;
                 s->cells[k].ecellid=v;
@@ -1626,9 +1627,9 @@ void MarkChapters(struct vobgroup *va)
     for( i=0; i<va->numvobs; i++ ) {
         int cellvobu=0;
         int cellid=0;
-        va->vobs[i]->vi[0].vobcellid=1;
+        va->vobs[i]->vobu[0].vobcellid=1;
         for( j=0; j<va->vobs[i]->numvobus; j++ ) {
-            struct vobuinfo *v=&va->vobs[i]->vi[j];
+            struct vobuinfo *v=&va->vobs[i]->vobu[j];
             if( v->vobcellid ) {
                 cellid++;
                 cellvobu=j;
@@ -1638,7 +1639,7 @@ void MarkChapters(struct vobgroup *va)
         }
         cellvobu=va->vobs[i]->numvobus-1;
         for( j=cellvobu; j>=0; j-- ) {
-            struct vobuinfo *v=&va->vobs[i]->vi[j];
+            struct vobuinfo *v=&va->vobs[i]->vobu[j];
             v->lastvobuincell=cellvobu;
             if(v->firstvobuincell==j )
                 cellvobu=j-1;
@@ -1661,14 +1662,14 @@ void MarkChapters(struct vobgroup *va)
                 if( c->scellid<0 )
                     c->scellid=1;
                 else if( c->scellid<s->vob->numvobus )
-                    c->scellid=s->vob->vi[c->scellid].vobcellid&255;
+                    c->scellid=s->vob->vobu[c->scellid].vobcellid&255;
                 else
                     c->scellid=s->vob->numcells+1;
 
                 if( c->ecellid<0 )
                     c->ecellid=1;
                 else if( c->ecellid<s->vob->numvobus )
-                    c->ecellid=s->vob->vi[c->ecellid].vobcellid&255;
+                    c->ecellid=s->vob->vobu[c->ecellid].vobcellid&255;
                 else
                     c->ecellid=s->vob->numcells+1;
 
@@ -1721,7 +1722,7 @@ static pts_t getcellvideopts(const struct vobgroup *va,int vcid,int w)
     // we use sectpts instead of videopts because sometimes you will
     // present the last video frame for a long time; we want to know
     // the last presented time stamp: sectpts
-    return v->vi[vi].sectpts[w];
+    return v->vobu[vi].sectpts[w];
 }
 
 static pts_t calcaudiodiff(const struct vobgroup *va,int vcid,int ach,int w)
@@ -1772,7 +1773,7 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
         struct vob *p=va->vobs[pn];
 
         for( i=0; i<p->numvobus; i++ ) {
-            struct vobuinfo *vi=&p->vi[i];
+            struct vobuinfo *vi=&p->vobu[i];
             static unsigned char buf[2048];
 
             if( vi->fnum!=fnum ) {
@@ -1810,7 +1811,7 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
             write4(buf+0x3d,vi->sectpts[1]); /* end presentation time (vobu_e_ptm) */
             if( vi->hasseqend ) // if sequence_end_code
                 write4(buf+0x41,vi->videopts[1]); // vobu_se_e_ptm
-            write4(buf+0x45,buildtimeeven(va,vi->sectpts[0]-p->vi[vi->firstvobuincell].sectpts[0])); // total guess
+            write4(buf+0x45,buildtimeeven(va,vi->sectpts[0]-p->vobu[vi->firstvobuincell].sectpts[0])); // total guess
               /* c_eltm -- cell elapsed time + frame rate */
                 
             if( p->progchain->numbuttons ) {
@@ -1819,7 +1820,7 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
                 char idmap[3];
 
                 write2(buf+0x8d,1); /* highlight status = all new highlight information for this VOBU */
-                write4(buf+0x8f,p->vi[0].sectpts[0]); /* highlight start time */
+                write4(buf+0x8f,p->vobu[0].sectpts[0]); /* highlight start time */
                 write4(buf+0x93,-1); /* highlight end time */
                 write4(buf+0x97,-1); /* button selection end time (ignore user after this) */
 
@@ -1892,8 +1893,8 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
             write2(buf+0x41f,vi->vobcellid>>8);
             buf[0x422]=vi->vobcellid;
             write4(buf+0x423,read4(buf+0x45));
-            write4(buf+0x433,p->vi[0].sectpts[0]);
-            write4(buf+0x437,p->vi[p->numvobus-1].sectpts[1]);
+            write4(buf+0x433,p->vobu[0].sectpts[0]);
+            write4(buf+0x437,p->vobu[p->numvobus-1].sectpts[1]);
 
             write4(buf+0x4f1,getsect(p,i,findnextvideo(p,i,1),0,0xbfffffff));
             write4(buf+0x541,getsect(p,i,i+1,0,0x3fffffff));
@@ -1933,12 +1934,12 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
                     if( id>=0 && 
                         ach->audpts[id].pts[0]<vi->sectpts[1] &&
                         ach->audpts[id].pts[1]>=vi->sectpts[0] )
-                        s=findvobubysect(p,ach->audpts[id].sect);
+                        s=findvobubysect(p,ach->audpts[id].asect);
                     else if( (id<0 || ach->audpts[id].pts[1]<vi->sectpts[0]) &&
                              (id+1==ach->numaudpts || ach->audpts[id+1].pts[0]>=vi->sectpts[1]) )
                         s=i;
                     else
-                        s=findvobubysect(p,ach->audpts[id+1].sect);
+                        s=findvobubysect(p,ach->audpts[id+1].asect);
                     id=(s<i);
                     s=getsect(p,i,s,0,0x7fffffff)&0x7fffffff;
                     if(!s)

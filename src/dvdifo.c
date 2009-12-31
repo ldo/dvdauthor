@@ -52,14 +52,14 @@ static const struct vobuinfo *globalfindvobu(const struct pgc *ch,int pts)
             int fv=findcellvobu(sc->vob,cl->scellid);
 
             if( pts < 0 )
-                return &sc->vob->vi[fv];
+                return &sc->vob->vobu[fv];
 
             for( ci=cl->scellid; ci<cl->ecellid; ci++ )
                 span+=getcellpts(sc->vob,ci);
             if( pts<span ) {
-                int r=findvobu(sc->vob,pts+sc->vob->vi[fv].sectpts[0],
+                int r=findvobu(sc->vob,pts+sc->vob->vobu[fv].sectpts[0],
                                fv,sc->vob->numvobus-1);
-                return &sc->vob->vi[r];
+                return &sc->vob->vobu[r];
             }
             pts-=span;
         }
@@ -67,7 +67,7 @@ static const struct vobuinfo *globalfindvobu(const struct pgc *ch,int pts)
     // return last vob
     // if( ch->numsources ) {
     // struct vob *s=ch->sources[ch->numsources-1];
-    // return &s->vi[s->numvobus-1];
+    // return &s->vobu[s->numvobus-1];
     // }
     return 0;
 }
@@ -78,7 +78,7 @@ static int getvoblen(const struct vobgroup *va)
 
     for( i=va->numvobs-1; i>=0; i-- )
         if( va->vobs[i]->numvobus )
-            return va->vobs[i]->vi[va->vobs[i]->numvobus-1].lastsector+1;
+            return va->vobs[i]->vobu[va->vobs[i]->numvobus-1].lastsector+1;
     return 0;
 }
 
@@ -209,17 +209,17 @@ static int CreateCallAdr(FILE *h,const struct vobgroup *va)
     for( k=0; k<va->numvobs; k++ ) {
         const struct vob *c=va->vobs[k];
         for( i=0; i<c->numvobus; i++ ) {
-            if( !i || c->vi[i].vobcellid!=c->vi[i-1].vobcellid ) { /* starting a new cell */
+            if( !i || c->vobu[i].vobcellid!=c->vobu[i-1].vobcellid ) { /* starting a new cell */
                 if( i ) {
-                    write4(buf+p+8,c->vi[i-1].lastsector); /* ending sector within VOB in previous entry */
+                    write4(buf+p+8,c->vobu[i-1].lastsector); /* ending sector within VOB in previous entry */
                     p+=12;
                 }
-                write2(buf+p,c->vi[i].vobcellid>>8); /* VOBidn */
-                buf[p+2]=c->vi[i].vobcellid; /* CELLidn */
-                write4(buf+p+4,c->vi[i].sector); /* starting sector within VOB */
+                write2(buf+p,c->vobu[i].vobcellid>>8); /* VOBidn */
+                buf[p+2]=c->vobu[i].vobcellid; /* CELLidn */
+                write4(buf+p+4,c->vobu[i].sector); /* starting sector within VOB */
             }
         }
-        write4(buf+p+8,c->vi[i-1].lastsector); /* ending sector within VOB in last entry */
+        write4(buf+p+8,c->vobu[i-1].lastsector); /* ending sector within VOB in last entry */
         p+=12;
     }
     write4(buf+4,p-1);
@@ -246,7 +246,7 @@ static void CreateVOBUAD(FILE *h,const struct vobgroup *va)
     for( j=0; j<va->numvobs; j++ ) {
         const struct vob *p=va->vobs[j];
         for( i=0; i<p->numvobus; i++ ) {
-            write4(buf,p->vi[i].sector);
+            write4(buf,p->vobu[i].sector);
             nfwrite(buf,4,h);
         }
     }

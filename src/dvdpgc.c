@@ -306,8 +306,8 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                     j=id;
 
                     vi=findcellvobu(s->vob,l);
-                    firsttime=s->vob->vi[vi].sectpts[0];
-                    write4(buf+8+d,s->vob->vi[vi].sector);
+                    firsttime=s->vob->vobu[vi].sectpts[0];
+                    write4(buf+8+d,s->vob->vobu[vi].sector);
                     vi=findcellvobu(s->vob,l+1)-1;
                     if( l==s->cells[k].ecellid-1 ) {
                         if( s->cells[k].pauselen>0 ) {
@@ -319,10 +319,10 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                             notseamless=1; // cells with commands are not seamless
                         }
                     }
-                    write4(buf+4+d,buildtimeeven(va,s->vob->vi[vi].sectpts[1]-firsttime));
+                    write4(buf+4+d,buildtimeeven(va,s->vob->vobu[vi].sectpts[1]-firsttime));
                       /* cell playback time + frame rate */
-                    write4(buf+16+d,s->vob->vi[vi].sector); /* last VOBU start sector */
-                    write4(buf+20+d,s->vob->vi[vi].lastsector); /* last VOBU end sector */
+                    write4(buf+16+d,s->vob->vobu[vi].sector); /* last VOBU start sector */
+                    write4(buf+20+d,s->vob->vobu[vi].lastsector); /* last VOBU end sector */
                     d+=24;
                 }
         }

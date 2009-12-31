@@ -88,7 +88,7 @@ struct source { /* describes an input video file */
 
 struct audpts {
     pts_t pts[2];
-    int sect;
+    int asect;
 };
 
 struct audchannel {
@@ -99,15 +99,17 @@ struct audchannel {
 };
 
 struct vob {
-    char *fname;
-    int numvobus; /* used portion of vi array */
-    int maxvobus; /* allocated size of vi array */
+    char *fname; /* name of file */
+    int numvobus; /* used portion of vobu array */
+    int maxvobus; /* allocated size of vobu array */
     int vobid,numcells;
     struct pgc *progchain; // used for colorinfo and buttons
-    struct vobuinfo *vi; /* array of VOBUs in the VOB */
-    // 0-31: top two bits are the audio type, bottom 3 bits are the channel id
-    // 32-63: bottom five bits are subpicture id
+    struct vobuinfo *vobu; /* array of VOBUs in the VOB */
     struct audchannel audch[64];
+      /* index meaning:
+        0-31: top two bits are the audio type (0 => AC3, 1 => MPEG, 2 => PCM, 3 => DTS),
+            bottom 3 bits are the channel id
+        32-63: bottom five bits are subpicture id */
     unsigned char buttoncoli[24];
 };
 
@@ -157,14 +159,18 @@ struct menugroup {
 };
 
 struct vobgroup {
-    int numaudiotracks, numsubpicturetracks;
+    int numaudiotracks; /* size of used part of ad/adwarn arrays */
+    int numsubpicturetracks; /* size of used part of sp/spwarn arrays */
     int numvobs; /* size of vobs array */
     int numallpgcs; /* size of allpgcs array */
     struct pgc **allpgcs; /* array of pointers to PGCs */
     struct vob **vobs; /* array of pointers to VOBs */
-    struct videodesc vd,vdwarn;
-    struct audiodesc ad[8],adwarn[8];
-    struct subpicdesc sp[32],spwarn[32];
+    struct videodesc vd; /* describes the video stream */
+    struct videodesc vdwarn; /* for saving attribute value mismatches */
+    struct audiodesc ad[8]; /* describes the audio streams */
+    struct audiodesc adwarn[8]; /* for saving attribute value mismatches */
+    struct subpicdesc sp[32]; /* describes the subpicture streams */
+    struct subpicdesc spwarn[32]; /* for saving attribute value mismatches */
 };
 
 struct vtsdef { /* describes a VTS */

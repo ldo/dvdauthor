@@ -412,7 +412,7 @@ int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int a
 
 static int vobgroup_set_audio_attr(struct vobgroup *va,int attr,const char *s,int ch)
 {
-    if( ch>=va->numaudiotracks )
+    if( ch>=va->numaudiotracks ) /* assert ch = va->numaudiotracks + 1 */
         va->numaudiotracks=ch+1;
 
     return audiodesc_set_audio_attr(&va->ad[ch],&va->adwarn[ch],attr,s);
@@ -494,282 +494,359 @@ int getsubpmask(const struct videodesc *vd)
     return mask;
 }
 
-static void setattr(struct vobgroup *va,int pstype)
-{
+static void setattr
+  (
+    struct vobgroup * va,
+    int pstype /* 0 => titleset, 1 => VTS menu, 2 => VMG menu */
+  )
+  /* matches up video, audio and subpicture tracks that the user specified with
+    those actually found. */
+  {
     int i;
 
   /* warn user about defaulting settings not already determined */
-    if( va->vd.vmpeg==VM_NONE )
+    if (va->vd.vmpeg == VM_NONE)
         fprintf(stderr,"WARN: video mpeg version was not autodetected\n");
-    if( va->vd.vres==VS_NONE )
+    if (va->vd.vres == VS_NONE)
         fprintf(stderr,"WARN: video resolution was not autodetected\n");
-    if( va->vd.vformat==VF_NONE )
+    if (va->vd.vformat == VF_NONE)
         fprintf(stderr,"WARN: video format was not autodetected\n");
-    if( va->vd.vaspect==VA_NONE )
+    if (va->vd.vaspect == VA_NONE)
         fprintf(stderr,"WARN: aspect ratio was not autodetected\n");
-    inferattr(&va->vd.vmpeg,  VM_MPEG2);
-    inferattr(&va->vd.vres,   VS_720H);
-    inferattr(&va->vd.vformat,VF_NTSC); /* fixme: should be a user-configurable setting */
-    inferattr(&va->vd.vaspect,VA_4x3);
-
-    if( va->vd.vaspect==VA_4x3 ) {
-        if( va->vd.vwidescreen == VW_NOLETTERBOX || va->vd.vwidescreen == VW_NOPANSCAN ) {
-            fprintf(stderr,"ERR:  widescreen conversion should not be set to either noletterbox or nopanscan for 4:3 source material.\n");
+  /* default the undetermined settings */
+    inferattr(&va->vd.vmpeg, VM_MPEG2);
+    inferattr(&va->vd.vres,  VS_720H);
+    inferattr(&va->vd.vformat, VF_NTSC); /* fixme: should be a user-configurable setting */
+    inferattr(&va->vd.vaspect, VA_4x3);
+  /* check for incompatible combinations of aspect/widescreen settings */
+    if (va->vd.vaspect == VA_4x3)
+      {
+        if (va->vd.vwidescreen == VW_NOLETTERBOX || va->vd.vwidescreen == VW_NOPANSCAN)
+          {
+            fprintf
+              (
+                stderr,
+                "ERR:  widescreen conversion should not be set to either noletterbox or"
+                    " nopanscan for 4:3 source material.\n"
+              );
             exit(1);
-        }
-    } else {
-        if( va->vd.vwidescreen == VW_CROP ) {
-            fprintf(stderr,"ERR:  widescreen conversion should not be set to crop for 16:9 source material.\n");
+          } /*if*/
+      }
+    else
+      {
+        if (va->vd.vwidescreen == VW_CROP)
+          {
+            fprintf
+              (
+                stderr,
+                "ERR:  widescreen conversion should not be set to crop for 16:9 source material.\n"
+              );
             exit(1);
-        }
-    }
+          } /*if*/
+      } /*if*/
 
-    for( i=0; i<32; i++ ) {
-        int id=(i>>2)+1, f=(i&3)+1, j,fnd; // note this does not follow the normal stream order
-        struct audchannel *fad=0;
-        int matchidx,matchcnt;
+    for (i = 0; i < 32; i++)
+      {
+      /* collect all the appropriate audio tracks for this vobgroup, matching up
+        the descriptions specified by the user with those actually found in the
+        movie files */
+        const int id = (i >> 2) + 1;
+        const int afmt = (i & 3) + 1; // note this does not follow the normal stream order
+          /* afmt = 1 => AC3, 2 => MPEG audio, 3 => PCM, 4 => DTS, in order of preference */
+        int j, fnd;
+        struct audchannel *fad = 0;
+        int matchidx, bestmatchcount;
 
-        fnd=0;
-        for( j=0; j<va->numvobs; j++ ) {
-            fad=&va->vobs[j]->audch[id-1+(f-1)*8];
-            if( fad->numaudpts ) {
-                fnd=1;
+        fnd = 0;
+        for (j = 0; j < va->numvobs; j++)
+          {
+            fad = &va->vobs[j]->audch[id - 1 + (afmt - 1) * 8];
+            if (fad->numaudpts) /* audio track actually present */
+              {
+                fnd = 1;
                 break;
-            }
-        }
-        if( !fnd )
+              } /*if*/
+          } /*for*/
+        if (!fnd)
             continue;
 
         // do we already know about this stream?
-        fnd=0;
-        for( j=0; j<va->numaudiotracks; j++ )
-            if( va->ad[j].aformat==f && va->ad[j].aid==id )
-                fnd=1;
-        if( fnd )
+        fnd = 0;
+        for (j = 0; j < va->numaudiotracks; j++)
+            if (va->ad[j].aformat == afmt && va->ad[j].aid == id)
+              {
+                fnd = 1;
+                break;
+              } /*if; for*/
+        if (fnd)
             continue;
 
-        matchcnt=-1;
-        matchidx=-1;
+        bestmatchcount = -1;
+        matchidx = -1;
         // maybe we know about this type of stream but haven't matched the id yet?
-        for( j=0; j<va->numaudiotracks; j++ )
-            if( va->ad[j].aid==0 ) {
-                int c=0;
-
-#define ACMPV(setting,val) \
-                if( va->ad[j].setting!=0 && val!=0 && va->ad[j].setting!=val ) continue; \
-                if( va->ad[j].setting==val ) c++
-
-#define ACMP(setting) ACMPV(setting,fad->ad.setting)
-
-                ACMPV(aformat,f);
-                ACMP(aquant);
-                ACMP(adolby);
-                ACMP(achannels);
-                ACMP(asample);
-
+        for (j = 0; j < va->numaudiotracks; j++)
+            if (va->ad[j].aid == 0)
+              {
+                int thismatchcount = 0; /* will exceed bestmatchcount first time, at least */
+#define ACMPV(setting, val) \
+              /* how does va->ad[j] match fad->ad, not counting undetermined values? Let me count the ways... */ \
+                if (va->ad[j].setting != 0 && val != 0 && va->ad[j].setting != val) \
+                    continue; /* mismatch on determined value */ \
+                if (va->ad[j].setting == val) \
+                    thismatchcount++;
+#define ACMP(setting) ACMPV(setting, fad->ad.setting)
+                ACMPV(aformat, afmt)
+                ACMP(aquant)
+                ACMP(adolby)
+                ACMP(achannels)
+                ACMP(asample)
 #undef ACMP
 #undef ACMPV
-
-                if( c>matchcnt ) {
-                    matchcnt=c;
-                    matchidx=j;
-                }
-                fnd=1;
-            }
-        if( !fnd ) {
+                if (thismatchcount > bestmatchcount)
+                  {
+                    bestmatchcount = thismatchcount;
+                    matchidx = j;
+                  } /*if*/
+                fnd = 1;
+              } /*if; for*/
+        if (!fnd)
+          {
             // guess we need to add this stream
-            j=va->numaudiotracks++;
-        } else
-            j=matchidx;
-
-        va->ad[j].aformat=f;
-        va->ad[j].aid=id;
-        warnupdate(&va->ad[j].aquant,
+            j = va->numaudiotracks++; /* new entry */
+          }
+        else
+            j = matchidx; /* replace previous best match */
+        va->ad[j].aformat = afmt;
+        va->ad[j].aid = id;
+        (void)warnupdate(&va->ad[j].aquant,
                    fad->ad.aquant,
                    &va->adwarn[j].aquant,
                    "audio quantization",
                    aquantdesc);
-        warnupdate(&va->ad[j].adolby,
+        (void)warnupdate(&va->ad[j].adolby,
                    fad->ad.adolby,
                    &va->adwarn[j].adolby,
                    "surround",
                    adolbydesc);
-        warnupdate(&va->ad[j].achannels,
+        (void)warnupdate(&va->ad[j].achannels,
                    fad->ad.achannels,
                    &va->adwarn[j].achannels,
                    "number of channels",
                    achanneldesc);
-        warnupdate(&va->ad[j].asample,
+        (void)warnupdate(&va->ad[j].asample,
                    fad->ad.asample,
                    &va->adwarn[j].asample,
                    "sampling rate",
                    asampledesc);
-    }
-
-    for( i=0; i<va->numaudiotracks; i++ ) {
-        if( va->ad[i].aformat==AF_NONE ) {
-            fprintf(stderr,"WARN: audio stream %d was not autodetected\n",i);
-        }
-        inferattr(&va->ad[i].aformat,AF_MP2);
-        switch(va->ad[i].aformat) {
+      } /*for*/
+    for (i = 0; i < va->numaudiotracks; i++)
+      {
+      /* fill in the blanks in the tracks I've just collected */
+        if (va->ad[i].aformat == AF_NONE)
+          {
+            fprintf(stderr, "WARN: audio stream %d was not autodetected\n", i);
+          } /*if*/
+        inferattr(&va->ad[i].aformat, AF_MP2);
+        switch(va->ad[i].aformat)
+          {
         case AF_AC3:
         case AF_DTS:
-            inferattr(&va->ad[i].aquant,AQ_DRC);
-            inferattr(&va->ad[i].achannels,6);
-            break;
-
+            inferattr(&va->ad[i].aquant, AQ_DRC);
+            inferattr(&va->ad[i].achannels, 6);
+        break;
         case AF_MP2:
-            inferattr(&va->ad[i].aquant,AQ_20);
-            inferattr(&va->ad[i].achannels,2);
-            break;
-            
+            inferattr(&va->ad[i].aquant, AQ_20);
+            inferattr(&va->ad[i].achannels, 2);
+        break;
         case AF_PCM:
-            inferattr(&va->ad[i].achannels,2);
-            inferattr(&va->ad[i].aquant,AQ_16);
-            break;
-        }
-        inferattr(&va->ad[i].asample,AS_48KHZ);
-    }
+            inferattr(&va->ad[i].achannels, 2);
+            inferattr(&va->ad[i].aquant, AQ_16);
+        break;
+          } /*switch*/
+        inferattr(&va->ad[i].asample, AS_48KHZ);
+      } /*for*/
 
-    for( i=0; i<va->numallpgcs; i++ ) {
+    for (i = 0; i < va->numallpgcs; i++)
+      {
         int j, k, l, m, used, mask;
-        struct pgc *pgc=va->allpgcs[i];
+        struct pgc * const pgc = va->allpgcs[i];
 
-        mask=getsubpmask(&va->vd);
+        mask = getsubpmask(&va->vd);
 
         // If any of the subpicture streams were manually set for this PGC, assume
         // they all were set and don't try to infer anything (in case a VOB is used
         // by multiple PGC's, but only some subpictures are exposed in one PGC and others
         // in the other PGC)
-        for( m=0; m<4; m++ )
-            if( pgc->subpmap[0][m] )
+        for (m = 0; m < 4; m++)
+            if (pgc->subpmap[0][m])
                 goto noinfer;
 
-        for( j=0; j<pgc->numsources; j++ ) {
-            struct vob *vob=pgc->sources[j]->vob;
+        for (j = 0; j < pgc->numsources; j++)
+          {
+            const struct vob * const vob = pgc->sources[j]->vob;
 
-            for( k=0; k<32; k++ ) {
+            for (k = 0; k < 32; k++)
+              {
                 // Does this subpicture stream exist in the VOB?  if not, skip
-                if( !vob->audch[k+32].numaudpts )
+                if (!vob->audch[k+32].numaudpts)
                     continue;
                 // Is this subpicture stream already referenced by the subpicture table?  if so, skip
-                for( l=0; l<32; l++ )
-                    for( m=0; m<4; m++ )
-                        if( pgc->subpmap[l][m]==128+k )
+                for (l = 0; l < 32; l++)
+                    for (m = 0; m < 4; m++)
+                        if (pgc->subpmap[l][m] == 128 + k)
                             goto handled;
                 // Is this subpicture id defined by the vobgroup?
-                used=0;
-                for( l=0; l<va->numsubpicturetracks; l++ )
-                    for( m=0; m<4; m++ )
-                        if( va->sp[l].idmap[m]==128+k && pgc->subpmap[l][m]==0 ) {
-                            pgc->subpmap[l][m]=128+k;
-                            used=1; // keep looping in case it's referenced multiple times
-                        }
-                if( used )
+                used = 0;
+                for (l = 0; l < va->numsubpicturetracks; l++)
+                    for (m = 0; m < 4; m++)
+                        if (va->sp[l].idmap[m] == 128 + k && pgc->subpmap[l][m] == 0)
+                          {
+                            pgc->subpmap[l][m] = 128 + k;
+                            used = 1; // keep looping in case it's referenced multiple times
+                          } /*if; for; for */
+                if (used)
                     continue;
                 // Find a subpicture slot that is not used
-                for( l=0; l<32; l++ ) {
+                for (l = 0; l < 32; l++)
+                  {
                     // Is this slot defined by the vobgroup?  If so, it can't be used
-                    if( l<va->numsubpicturetracks ) {
-                        for( m=0; m<4; m++ )
-                            if( va->sp[l].idmap[m] )
+                    if (l < va->numsubpicturetracks)
+                      {
+                        for (m = 0; m < 4; m++)
+                            if (va->sp[l].idmap[m])
                                 goto next;
-                    }
+                      } /*if*/
                     // Is this slot defined by the pgc?  If so, it can't be used
-                    for( m=0; m<4; m++ )
-                        if( pgc->subpmap[l][m] )
+                    for (m = 0; m < 4; m++)
+                        if (pgc->subpmap[l][m])
                             goto next;
-
                     break;
-
-                next: ;
-                }
-                assert(l<32);
+next: ;
+                  } /*for*/
+                assert(l < 32);
                 // Set all the appropriate stream ids
-                for( m=0; m<4; m++ )
-                    pgc->subpmap[l][m] = (mask&(1<<m))  ?  128+k  :  127;
-                    
-            handled: ;
-            }
-        }
-
-    noinfer:
-        for( m=0; m<4; m++ ) {
-            if( mask&(1<<m) )
+                for (m = 0; m < 4; m++)
+                    pgc->subpmap[l][m] = (mask & 1 << m) != 0 ? 128 + k : 127;
+handled: ;
+              } /*for*/
+          } /*for*/
+noinfer:
+        for (m = 0; m < 4; m++)
+          {
+            if ((mask & 1 << m) != 0)
                 continue;
+            for (l = 0; l < 32; l++)
+              {
+                int mainid = -1;
 
-            for( l=0; l<32; l++ ) {
-                int mainid=-1;
-
-                for( m=0; m<4; m++ ) {
-                    if( !(mask&(1<<m)) && (pgc->subpmap[l][m]&128)==128 ) {
-                        fprintf(stderr,"WARN: PGC %d has the subtitle set for stream %d, mode %s which is illegal given the video characteristics.  Forcibly removing.\n",i,l,smodedesc[m+1]);
-                        pgc->subpmap[l][m]=127;
-                    }
-                    if( pgc->subpmap[l][m]&128 ) {
-                        if( mainid==-1 )
-                            mainid=pgc->subpmap[l][m]&127;
-                        else if( mainid>=0 && mainid!=(pgc->subpmap[l][m]&127) )
-                            mainid=-2;
-                    }
-                }
-
+                for (m = 0; m < 4; m++)
+                  {
+                    if ((mask & 1 << m) == 0 && (pgc->subpmap[l][m] & 128) == 128)
+                      {
+                        fprintf
+                          (
+                            stderr,
+                            "WARN: PGC %d has the subtitle set for stream %d, mode %s"
+                                " which is illegal given the video characteristics.  Forcibly"
+                                " removing.\n",
+                            i,
+                            l,
+                            smodedesc[m + 1]
+                          );
+                        pgc->subpmap[l][m] = 127;
+                      } /*if*/
+                    if (pgc->subpmap[l][m] & 128)
+                      {
+                        if (mainid == -1)
+                            mainid = pgc->subpmap[l][m] & 127;
+                        else if (mainid >= 0 && mainid != (pgc->subpmap[l][m] & 127))
+                            mainid = -2;
+                      } /*if*/
+                  } /*for*/
                 // if no streams are set for this subpicture, ignore it
-                if( mainid==-1 )
+                if (mainid == -1)
                     continue;
                 // if any streams aren't set that should be (because of the mask), then set them to the main stream
-                for( m=0; m<4; m++ ) {
-                    if( !(mask&(1<<m)) )
+                for (m = 0; m < 4; m++)
+                  {
+                    if ((mask & 1 << m) == 0)
                         continue;
-                    if( !(pgc->subpmap[l][m]&128) ) {
-                        if( mainid<0 )
-                            fprintf(stderr,"WARN:  Cannot infer the stream id for subpicture %d mode %s in PGC %d; please manually specify.\n",l,smodedesc[m+1],i);
+                    if ((pgc->subpmap[l][m] & 128) == 0)
+                      {
+                        if (mainid < 0)
+                            fprintf
+                              (
+                                stderr,
+                                "WARN:  Cannot infer the stream id for subpicture %d mode %s"
+                                    " in PGC %d; please manually specify.\n",
+                                l,
+                                smodedesc[m+1],
+                                i
+                              );
                         else
-                            pgc->subpmap[l][m]=128+mainid;
-                    }
-                }
-            }   
-        }
-    }
+                            pgc->subpmap[l][m] = 128 + mainid;
+                      } /*if*/
+                  } /*for*/
+              } /*for*/
+          } /*for*/
+      } /*for*/
 
-    for( i=0; i<32; i++ ) {
+    for (i = 0; i < 32; i++)
+      {
         int j, k, fnd;
 
-        fnd=0;
-        for( j=0; j<va->numallpgcs; j++ ) 
-            for( k=0; k<4; k++ )
-                if( va->allpgcs[j]->subpmap[i][k] )
-                    fnd=1;
-        if( !fnd )
+        fnd = 0;
+        for (j = 0; j < va->numallpgcs; j++) 
+            for (k = 0; k < 4; k++)
+                if (va->allpgcs[j]->subpmap[i][k])
+                    fnd = 1;
+        if (!fnd)
             continue;
-      
         // guess we need to add this stream
-        if( i >= va->numsubpicturetracks )
-            va->numsubpicturetracks=i+1;
-    }
+        if (i >= va->numsubpicturetracks)
+            va->numsubpicturetracks = i + 1;
+      } /*for*/
 
-    if( va->numsubpicturetracks>1 && pstype!=0 ) {
-        fprintf(stderr,"WARN: Too many subpicture tracks for a menu; 1 is allowed, %d are present.  Perhaps you want different streams for normal/widescreen/letterbox/panscan instead of actually having multiple streams?\n",va->numsubpicturetracks);
-    }
+    if (va->numsubpicturetracks > 1 && pstype != 0)
+      {
+        fprintf
+          (
+            stderr,
+            "WARN: Too many subpicture tracks for a menu; 1 is allowed, %d are present."
+                "  Perhaps you want different streams for normal/widescreen/letterbox/panscan"
+                " instead of actually having multiple streams?\n",
+            va->numsubpicturetracks
+          );
+      } /*if*/
 
-    fprintf(stderr,"INFO: Generating %s with the following video attributes:\n",pstypes[pstype]);
-    fprintf(stderr,"INFO: MPEG version: %s\n",vmpegdesc[va->vd.vmpeg]);
-    fprintf(stderr,"INFO: TV standard: %s\n",vformatdesc[va->vd.vformat]);
-    fprintf(stderr,"INFO: Aspect ratio: %s\n",vaspectdesc[va->vd.vaspect]);
-    fprintf(stderr,"INFO: Resolution: %dx%d\n",
-            va->vd.vres!=VS_720H?(va->vd.vres==VS_704H?704:352):720,
-            (va->vd.vres==VS_352L?240:480)*(va->vd.vformat==VF_PAL?6:5)/5);
-    for( i=0; i<va->numaudiotracks; i++ ) {
-        fprintf(stderr,"INFO: Audio ch %d format: %s/%s, %s %s",i,aformatdesc[va->ad[i].aformat],achanneldesc[va->ad[i].achannels],asampledesc[va->ad[i].asample],aquantdesc[va->ad[i].aquant]);
-        if( va->ad[i].adolby==AD_SURROUND )
-            fprintf(stderr,", surround");
-        if( va->ad[i].alangp==AL_LANG )
-            fprintf(stderr,", '%c%c'",va->ad[i].lang[0],va->ad[i].lang[1]);
-        fprintf(stderr,"\n");
-        if( !va->ad[i].aid )
-            fprintf(stderr,"WARN: Audio ch %d is not used!\n",i);
-    }
-}
+    fprintf(stderr, "INFO: Generating %s with the following video attributes:\n", pstypes[pstype]);
+    fprintf(stderr, "INFO: MPEG version: %s\n", vmpegdesc[va->vd.vmpeg]);
+    fprintf(stderr, "INFO: TV standard: %s\n", vformatdesc[va->vd.vformat]);
+    fprintf(stderr, "INFO: Aspect ratio: %s\n", vaspectdesc[va->vd.vaspect]);
+    fprintf(stderr, "INFO: Resolution: %dx%d\n",
+            va->vd.vres != VS_720H ? (va->vd.vres == VS_704H ? 704 : 352) : 720,
+            (va->vd.vres == VS_352L ? 240 : 480) * (va->vd.vformat == VF_PAL ? 6 : 5) / 5);
+    for (i = 0; i < va->numaudiotracks; i++)
+      {
+        fprintf
+          (
+            stderr,
+            "INFO: Audio ch %d format: %s/%s,  %s %s",
+            i,
+            aformatdesc[va->ad[i].aformat],
+            achanneldesc[va->ad[i].achannels],
+            asampledesc[va->ad[i].asample],
+            aquantdesc[va->ad[i].aquant]
+          );
+        if (va->ad[i].adolby == AD_SURROUND)
+            fprintf(stderr, ", surround");
+        if (va->ad[i].alangp == AL_LANG)
+            fprintf(stderr, ", '%c%c'", va->ad[i].lang[0], va->ad[i].lang[1]);
+        fprintf(stderr, "\n");
+        if (!va->ad[i].aid)
+            fprintf(stderr, "WARN: Audio ch %d is not used!\n", i);
+      } /*for*/
+  } /*setattr*/
 
 int findcellvobu(const struct vob *va,int cellid)
 /* finds the element of array va that includes the cell with ID cellid. */
@@ -778,13 +855,13 @@ int findcellvobu(const struct vob *va,int cellid)
     if( h<l )
         return 0;
     cellid=(cellid&255)|(va->vobid*256);
-    if( cellid<va->vi[0].vobcellid )
+    if( cellid<va->vobu[0].vobcellid )
         return 0;
-    if( cellid>va->vi[h].vobcellid )
+    if( cellid>va->vobu[h].vobcellid )
         return h+1;
     while(l<h) { /* search by binary chop */
         int m=(l+h)/2;
-        if( cellid<=va->vi[m].vobcellid )
+        if( cellid<=va->vobu[m].vobcellid )
             h=m;
         else
             l=m+1;
@@ -797,7 +874,7 @@ pts_t getcellpts(const struct vob *va,int cellid)
 {
     int s=findcellvobu(va,cellid),e=findcellvobu(va,cellid+1);
     if( s==e ) return 0;
-    return va->vi[e-1].sectpts[1]-va->vi[s].sectpts[0];
+    return va->vobu[e-1].sectpts[1]-va->vobu[s].sectpts[0];
 }
 
 int findvobu(const struct vob *va,pts_t pts,int l,int h)
@@ -807,13 +884,13 @@ int findvobu(const struct vob *va,pts_t pts,int l,int h)
 
     if( h<l )
         return l-1;
-    if( pts<va->vi[l].sectpts[0] )
+    if( pts<va->vobu[l].sectpts[0] )
         return l-1;
-    if( pts>=va->vi[h].sectpts[1] )
+    if( pts>=va->vobu[h].sectpts[1] )
         return h+1;
     while(l<h) { /* search by binary chop */
         int m=(l+h+1)/2;
-        if( pts < va->vi[m].sectpts[0] )
+        if( pts < va->vobu[m].sectpts[0] )
             h=m-1;
         else
             l=m;
@@ -1006,8 +1083,8 @@ static void vob_free(struct vob *v)
 
     if( v->fname )
         free(v->fname);
-    if( v->vi )
-        free(v->vi);
+    if( v->vobu )
+        free(v->vobu);
     for( i=0; i<64; i++ )
         if( v->audch[i].audpts )
             free(v->audch[i].audpts);
