@@ -49,9 +49,13 @@
 
 // this doesn't really belong here, but it was easiest
 #ifdef HAVE_MAGICK
-#define BUILDSPEC_MAGICK " magick"
+#define BUILDSPEC_MAGICK " imagemagick"
+#else
+#ifdef HAVE_GMAGICK
+#define BUILDSPEC_MAGICK " graphicsmagick"
 #else
 #define BUILDSPEC_MAGICK ""
+#endif
 #endif
 
 #ifdef HAVE_GETOPT_LONG

@@ -28,7 +28,7 @@
 #include <fcntl.h>
 #include <math.h>
 
-#ifdef HAVE_MAGICK
+#if defined(HAVE_MAGICK) || defined(HAVE_GMAGICK)
 #include <stdarg.h>
 #include <magick/api.h>
 #else
@@ -154,7 +154,7 @@ static void createimage(pict *s,int w,int h)
     }
 }
 
-#ifdef HAVE_MAGICK
+#if defined(HAVE_MAGICK) || defined(HAVE_GMAGICK)
 static int read_magick(pict *s)
 /* uses ImageMagick to read image s from s->fname. */
 {
@@ -182,7 +182,13 @@ static int read_magick(pict *s)
     for( y=0; y<im->rows; y++ ) {
         char pdata[MAXX*4];
 
-        if(!ExportImagePixels(im,0,y,im->columns,1,"RGBA",CharPixel,pdata,&ei)) {
+        if(!
+#ifdef HAVE_MAGICK
+           ExportImagePixels
+#else // HAVE_GMAGICK
+           DispatchImage
+#endif
+           (im,0,y,im->columns,1,"RGBA",CharPixel,pdata,&ei)) {
             fprintf(stderr,"ERR: Extracting row %d from %s (%s,%s)\n",y,s->fname,ei.reason,ei.description);
             CatchException(&ei);
             MagickError(ei.severity,ei.reason,ei.description);
@@ -196,7 +202,8 @@ static int read_magick(pict *s)
             p.g=pdata[x*4+1];
             p.b=pdata[x*4+2];
             // the meaning of RGBA swapped with ImageMagick 6.0.0...
-#if MagickLibVersion >= 0x600
+            // ...but not with GraphicsMagick
+#if defined(HAVE_MAGICK) && MagickLibVersion >= 0x600
             p.t=pdata[x*4+3];
 #else
             p.t=255-pdata[x*4+3];
@@ -336,7 +343,7 @@ static int read_pic(stinfo *s,pict *p)
     {
         if( !p->fname )
             return 0;
-#ifdef HAVE_MAGICK
+#if defined(HAVE_MAGICK) || defined(HAVE_GMAGICK)
         r=read_magick(p);
 #else
         r=read_png(p);
@@ -1074,14 +1081,14 @@ int process_subtitle(stinfo *s)
 
 void image_init()
 {
-#ifdef HAVE_MAGICK
+#if defined(HAVE_MAGICK) || defined(HAVE_GMAGICK)
     InitializeMagick(NULL);
 #endif
 }
 
 void image_shutdown()
 {
-#ifdef HAVE_MAGICK
+#if defined(HAVE_MAGICK) || defined(HAVE_GMAGICK)
     DestroyMagick();
 #endif
 }

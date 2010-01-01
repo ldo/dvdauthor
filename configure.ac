@@ -27,9 +27,9 @@ AC_CHECK_FUNCS( \
 	setmode \
 )
 
-AC_CHECK_PROGS(MAGICKCONFIG, [Magick-config GraphicsMagick-config])
-
 usemagick=0
+
+AC_CHECK_PROGS(MAGICKCONFIG, [Magick-config])
 if test -n "$MAGICKCONFIG"; then
    ac_save_CPPFLAGS="$CPPFLAGS"
    ac_save_LIBS="$LIBS"
@@ -37,11 +37,31 @@ if test -n "$MAGICKCONFIG"; then
    MAGICK_LIBS="`$MAGICKCONFIG --ldflags` `$MAGICKCONFIG --libs`"
    CPPFLAGS="$CPPFLAGS $MAGICK_CPPFLAGS"
    LIBS="$MAGICK_LIBS $LIBS"
-   AC_CHECK_FUNC(ExportImagePixels, usemagick=1, AC_MSG_NOTICE([ImageMagick/GraphicsMagick does not support the function
-        ExportImagePixels.  Please upgrade to ImageMagick 5.5.7 or newer (or
-        the corresponding GraphicsMagick version)]))
+   AC_CHECK_FUNC(ExportImagePixels, usemagick=1, AC_MSG_NOTICE([ImageMagick does not support the function
+        ExportImagePixels.  Please upgrade to ImageMagick 5.5.7 or newer]))
    CPPFLAGS="$ac_save_CPPFLAGS"
    LIBS="$ac_save_LIBS"
+   if test "$usemagick" = 1; then
+      AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available])
+   fi
+fi
+
+if test "$usemagick" != 1; then
+   AC_CHECK_PROGS(GMAGICKCONFIG, [GraphicsMagick-config])
+   if test -n "$GMAGICKCONFIG"; then
+      ac_save_CPPFLAGS="$CPPFLAGS"
+      ac_save_LIBS="$LIBS"
+      MAGICK_CPPFLAGS="`$GMAGICKCONFIG --cppflags`"
+      MAGICK_LIBS="`$GMAGICKCONFIG --ldflags` `$GMAGICKCONFIG --libs`"
+      CPPFLAGS="$CPPFLAGS $MAGICK_CPPFLAGS"
+      LIBS="$MAGICK_LIBS $LIBS"
+      AC_CHECK_FUNC(DispatchImage, usemagick=1)
+      CPPFLAGS="$ac_save_CPPFLAGS"
+      LIBS="$ac_save_LIBS"
+      if test "$usemagick" = 1; then
+         AC_DEFINE(HAVE_GMAGICK, 1, [Whether the GraphicsMagick libraries are available])
+      fi
+   fi
 fi
 
 if test "$usemagick" != 1; then
@@ -50,8 +70,6 @@ if test "$usemagick" != 1; then
    AC_CHECK_LIB(png, png_sig_cmp, test, AC_MSG_ERROR([You must have libpng(-devel) installed]), -lz -lm)
    MAGICK_CPPFLAGS=
    MAGICK_LIBS="-lpng -lz -lm"
-else
-   AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick or GraphicsMagick libraries are available])
 fi
 
 AC_SUBST(MAGICK_CPPFLAGS)
