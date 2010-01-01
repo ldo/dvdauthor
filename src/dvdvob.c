@@ -1064,11 +1064,11 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                     simply treating newscr < lastscr as a warning and continuing */
                   {
                     backoffs -= lastscr;
-                    fprintf(stderr, "\nWARN: SCR reset. New back offset = %ld\n", backoffs);
+                    fprintf(stderr, "\nWARN: SCR reset. New back offset = %" PRId64"\n", backoffs);
                   }
                 else if (newscr < lastscr)
                   {
-                    fprintf(stderr, "ERR: SCR moves backwards, remultiplex input: %ld < %ld\n",
+                    fprintf(stderr, "ERR: SCR moves backwards, remultiplex input: %" PRId64" < %" PRId64"\n",
                         newscr, lastscr);
                     exit(1);
                   } /*if*/
