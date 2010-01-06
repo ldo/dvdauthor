@@ -951,7 +951,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
               {
                 // private dvdauthor data, interpret and remove from final stream
                 int i=35;
-                if (buf[i] != 1)
+                if (buf[i] != 2)
                   {
                     fprintf(stderr,"ERR: dvd info packet is version %d\n",buf[i]);
                     exit(1);
@@ -1023,19 +1023,17 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
 
                                 i+=2; // skip modifier
                                 bi->autoaction=buf[i++];
-                                if( !bi->autoaction ) {
-                                    bi->grp=buf[i];
-                                    bi->x1=read2(buf+i+1);
-                                    bi->y1=read2(buf+i+3);
-                                    bi->x2=read2(buf+i+5);
-                                    bi->y2=read2(buf+i+7);
-                                    i+=9;
-                                    // up down left right
-                                    bi->up=readpstr(buf,&i);
-                                    bi->down=readpstr(buf,&i);
-                                    bi->left=readpstr(buf,&i);
-                                    bi->right=readpstr(buf,&i);
-                                }
+                               bi->grp=buf[i];
+                               bi->x1=read2(buf+i+1);
+                               bi->y1=read2(buf+i+3);
+                               bi->x2=read2(buf+i+5);
+                               bi->y2=read2(buf+i+7);
+                               i+=9;
+                               // up down left right
+                               bi->up=readpstr(buf,&i);
+                               bi->down=readpstr(buf,&i);
+                               bi->left=readpstr(buf,&i);
+                               bi->right=readpstr(buf,&i);
                             }
                             break;
                         } /*case 3*/
@@ -1862,20 +1860,16 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
                             continue;
                         bi=&b->stream[k];
 
-                        if( bi->autoaction ) {
-                            boffs[3]=64;
-                        } else {
-                            boffs[0]=(bi->grp*64)|(bi->x1>>4);
-                            boffs[1]=(bi->x1<<4)|(bi->x2>>8);
-                            boffs[2]=bi->x2;
-                            boffs[3]=(bi->y1>>4);
-                            boffs[4]=(bi->y1<<4)|(bi->y2>>8);
-                            boffs[5]=bi->y2;
-                            boffs[6]=findbutton(pg,bi->up,(j==0)?pg->numbuttons:j);
-                            boffs[7]=findbutton(pg,bi->down,(j+1==pg->numbuttons)?1:j+2);
-                            boffs[8]=findbutton(pg,bi->left,(j==0)?pg->numbuttons:j);
-                            boffs[9]=findbutton(pg,bi->right,(j+1==pg->numbuttons)?1:j+2);
-                        }
+                       boffs[0]=(bi->grp*64)|(bi->x1>>4);
+                       boffs[1]=(bi->x1<<4)|(bi->x2>>8);
+                       boffs[2]=bi->x2;
+                       boffs[3]=(bi->autoaction ? 64 : 0)|(bi->y1>>4);
+                       boffs[4]=(bi->y1<<4)|(bi->y2>>8);
+                       boffs[5]=bi->y2;
+                       boffs[6]=findbutton(pg,bi->up,(j==0)?pg->numbuttons:j);
+                       boffs[7]=findbutton(pg,bi->down,(j+1==pg->numbuttons)?1:j+2);
+                       boffs[8]=findbutton(pg,bi->left,(j==0)?pg->numbuttons:j);
+                       boffs[9]=findbutton(pg,bi->right,(j+1==pg->numbuttons)?1:j+2);
                         rbuf=vm_compile(compilebuf,compilebuf,ws,pg->pgcgroup,pg,b->cs,ismenu);
                         if( rbuf-compilebuf==8 ) {
                             memcpy(boffs+10,compilebuf,8);

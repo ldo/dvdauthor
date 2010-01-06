@@ -730,7 +730,7 @@ static void writepalette(int h,uint32_t *palette)
 
         wdest=sector+20;
         wdstr("dvdauthor-data");
-        wdbyte(1); // version
+        wdbyte(2); // version
         wdbyte(1); // subtitle info
         wdbyte(j); // sub number
 
@@ -771,7 +771,7 @@ static void writebutton(int h,unsigned char *packhdr,hli_t *hli)
 
     wdest=sector+20;
     wdstr("dvdauthor-data");
-    wdbyte(1); // version
+    wdbyte(2); // version
     wdbyte(1); // subtitle info
     wdbyte(0); // sub number
 
@@ -793,18 +793,16 @@ static void writebutton(int h,unsigned char *packhdr,hli_t *hli)
         wdstr(nm1);
         wdshort(0);
         wdbyte(b->auto_action_mode);
-        if( b->auto_action_mode != 0 ) {
-            wdbyte(b->btn_coln);
-            wdshort(b->x_start);
-            wdshort(b->y_start);
-            wdshort(b->x_end);
-            wdshort(b->y_end);
+       wdbyte(b->btn_coln);
+       wdshort(b->x_start);
+       wdshort(b->y_start);
+       wdshort(b->x_end);
+       wdshort(b->y_end);
 
-            sprintf(nm1,"%d",b->up);    wdstr(nm1);
-            sprintf(nm1,"%d",b->down);  wdstr(nm1);
-            sprintf(nm1,"%d",b->left);  wdstr(nm1);
-            sprintf(nm1,"%d",b->right); wdstr(nm1);
-        }
+       sprintf(nm1,"%d",b->up);    wdstr(nm1);
+       sprintf(nm1,"%d",b->down);  wdstr(nm1);
+       sprintf(nm1,"%d",b->left);  wdstr(nm1);
+       sprintf(nm1,"%d",b->right); wdstr(nm1);
     }
     
     if( write(h,sector,2048) < 2048 ) {

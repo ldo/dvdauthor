@@ -102,7 +102,7 @@ static uint64_t gts, nextgts;
 dvdauthor-data
 012345678901234
 
-db 1 (version)
+db 2 (version)
 
 db 1 (subtitle info)
 db subnum
@@ -131,10 +131,9 @@ per button:
    db name (null terminated)
    dw modifier
    db auto
-   if not auto action:
-      db colormap
-      dw x1, y1, x2, y2
-      db up, down, left, right
+   db colormap
+   dw x1, y1, x2, y2
+   db up, down, left, right
 */
 
 static void mkpackh(uint64_t time, unsigned int muxrate, unsigned char stuffing)
@@ -510,7 +509,7 @@ static void mux(int eoinput)
 
             wdest=sector;
             wdstr("dvdauthor-data");
-            wdbyte(1); // version
+            wdbyte(2); // version
             wdbyte(1); // subtitle info
             wdbyte(substr); // sub number
             wdlong(cursti->spts); // start pts
@@ -562,22 +561,20 @@ static void mux(int eoinput)
                     wdstr(b->name);
                     wdshort(0);
                     wdbyte(b->autoaction);
-                    if( !b->autoaction ) {
-                        wdbyte(b->grp);
-                        wdshort(b->r.x0);
-                        wdshort(b->r.y0);
-                        wdshort(b->r.x1);
-                        wdshort(b->r.y1);
-                        if( (b->r.y0&1) || (b->r.y1&1) )
-                            fprintf(stderr,"WARN: Button y coordinates are odd for button %s: %dx%d-%dx%d; they may not display properly.\n",b->name,b->r.x0,b->r.y0,b->r.x1,b->r.y1);
-                        sprintf(nm1,"%d",i?i:(cursti->numbuttons));
-                        sprintf(nm2,"%d",(i+1!=cursti->numbuttons)?(i+2):1);
-                        // fprintf(stderr,"BUTTON NAVIGATION FOR %s: up=%s down=%s left=%s right=%s (%s %s)\n",b->name,b->up,b->down,b->left,b->right,nm1,nm2);
-                        wdstr(b->up?b->up:nm1);
-                        wdstr(b->down?b->down:nm2);
-                        wdstr(b->left?b->left:nm1);
-                        wdstr(b->right?b->right:nm2);
-                    }
+                   wdbyte(b->grp);
+                   wdshort(b->r.x0);
+                   wdshort(b->r.y0);
+                   wdshort(b->r.x1);
+                   wdshort(b->r.y1);
+                   if( (b->r.y0&1) || (b->r.y1&1) )
+                       fprintf(stderr,"WARN: Button y coordinates are odd for button %s: %dx%d-%dx%d; they may not display properly.\n",b->name,b->r.x0,b->r.y0,b->r.x1,b->r.y1);
+                   sprintf(nm1,"%d",i?i:(cursti->numbuttons));
+                   sprintf(nm2,"%d",(i+1!=cursti->numbuttons)?(i+2):1);
+                   // fprintf(stderr,"BUTTON NAVIGATION FOR %s: up=%s down=%s left=%s right=%s (%s %s)\n",b->name,b->up,b->down,b->left,b->right,nm1,nm2);
+                   wdstr(b->up?b->up:nm1);
+                   wdstr(b->down?b->down:nm2);
+                   wdstr(b->left?b->left:nm1);
+                   wdstr(b->right?b->right:nm2);
                 }
             }
 

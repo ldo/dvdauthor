@@ -649,13 +649,10 @@ static void write_spu(struct spu *s,struct dispdetails *d)
         fprintf(fdo,">\n");
         for( i=0; i<d->numbuttons; i++ ) {
             struct button *b=d->buttons+i;
-            if( b->autoaction ) 
-                fprintf(fdo,"\t\t\t<action name=\"%s\" />\n",b->name);
-            else {
-                fprintf(fdo,"\t\t\t<button name=\"%s\" x0=\"%d\" y0=\"%d\" x1=\"%d\" y1=\"%d\" up=\"%s\" down=\"%s\" left=\"%s\" right=\"%s\" />\n",
-                        b->name,b->x1,b->y1,b->x2,b->y2,
-                        b->up,b->down,b->left,b->right);
-            }
+           fprintf(fdo,"\t\t\t<%s name=\"%s\" x0=\"%d\" y0=\"%d\" x1=\"%d\" y1=\"%d\" up=\"%s\" down=\"%s\" left=\"%s\" right=\"%s\" />\n",
+                   b->autoaction ? "action" : "button", b->name,
+                   b->x1,b->y1,b->x2,b->y2,
+                   b->up,b->down,b->left,b->right);
         }
         fprintf(fdo,"\t\t</spu>\n");
     } else
@@ -1020,7 +1017,7 @@ int main(int argc, char **argv)
                             if( strcmp((const char *)cbuf+i,"dvdauthor-data") )
                                 break;
                             i=15;
-                            if( cbuf[i]!=1 )
+                            if( cbuf[i]!=2 )
                                 break;
                             switch(cbuf[i+1]) {
                             case 1: // subtitle/menu color and button information
@@ -1069,25 +1066,23 @@ int main(int argc, char **argv)
                                             b->name=readpstr(cbuf,&i);
                                             i+=2;
                                             b->autoaction=cbuf[i++];
-                                            if(!b->autoaction) {
-                                                b->grp=cbuf[i];
-                                                b->x1=read2(cbuf+i+1);
-                                                b->y1=read2(cbuf+i+3);
-                                                b->x2=read2(cbuf+i+5);
-                                                b->y2=read2(cbuf+i+7);
-                                                i+=9;
-                                                // up down left right
-                                                b->up=readpstr(cbuf,&i);
-                                                b->down=readpstr(cbuf,&i);
-                                                b->left=readpstr(cbuf,&i);
-                                                b->right=readpstr(cbuf,&i);
-                                            }
+                                           b->grp=cbuf[i];
+                                           b->x1=read2(cbuf+i+1);
+                                           b->y1=read2(cbuf+i+3);
+                                           b->x2=read2(cbuf+i+5);
+                                           b->y2=read2(cbuf+i+7);
+                                           i+=9;
+                                           // up down left right
+                                           b->up=readpstr(cbuf,&i);
+                                           b->down=readpstr(cbuf,&i);
+                                           b->left=readpstr(cbuf,&i);
+                                           b->right=readpstr(cbuf,&i);
                                         }
                                         break;
                                     }
                                         
                                     default:
-                                        fprintf(stderr,"ERR:  unknown dvd info packet command: %d\n",cbuf[i]);
+                                        fprintf(stderr,"ERR:  unknown dvd info packet command: %d, offset %d\n",cbuf[i], i);
                                         exit(1);
                                     }
                                 }

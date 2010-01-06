@@ -678,7 +678,7 @@ static void findbestbindir(stinfo *s,button *b,char **dest,int a)
     if( *dest ) return;
     // fprintf(stderr,"locating nearest button from %s, angle %d\n",b->name,a);
     for( i=0; i<s->numbuttons; i++ )
-        if( b!=&s->buttons[i] && !s->buttons[i].autoaction ) {
+        if( b!=&s->buttons[i] ) {
             int na,nd;
 
             if( buttonrelpos(&s->buttons[i].r,&b->r,&na,&nd) ) {
@@ -828,7 +828,7 @@ static void detectbuttons(stinfo *s)
         // ok add rectangle 'j'
 
         for( i=0; i<s->numbuttons; i++ )
-            if( s->buttons[i].r.x0<0 && !s->buttons[i].autoaction )
+            if( s->buttons[i].r.x0<0 )
                 break;
         if( i==s->numbuttons ) {
             s->numbuttons++;
