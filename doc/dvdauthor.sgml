@@ -96,7 +96,7 @@ systems by avoiding extra filesystem accesses.</para>
 <listitem><para>The destination directory to store the DVD-Video file structure in.</para></listitem></varlistentry>
 
 <varlistentry><term><literal>-j</literal></term><term><literal>--jumppad</literal></term>
-<listitem><para>foo</para></listitem></varlistentry>
+<listitem><para>Enables the creation of jumppads, which allow greater flexibility in choosing jump/call desinations.</para></listitem></varlistentry>
 
 <varlistentry><term><literal>-g</literal></term><term><literal>--allgprm</literal></term>
 <listitem><para>Enable the use of all 16 general purpose registers.  Prohibits the use of jumppad and some complex expressions that require temporary registers.</para></listitem></varlistentry>
@@ -293,7 +293,8 @@ possible to just list the language attribute and let
 
 <varlistentry><term><literal>&lt;subpicture
 lang="<replaceable>language</replaceable>" /&gt;</literal></term>
-<listitem><para>foo</para></listitem></varlistentry>
+<listitem><para>Manually configures a subpicture/subtitle stream for this pgcgroup.
+List once for each language.</para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;pgc
 [entry="<replaceable>entries</replaceable>"]
@@ -355,17 +356,18 @@ menu found, or if there is no menu it will jump to the first title..
 
 <varlistentry><term><literal>&lt;vob file="<replaceable>file.mpg</replaceable>" [chapters="<replaceable>chapter-list</replaceable>"] [pause="<replaceable>seconds</replaceable>|inf"] /&gt;</literal></term>
 <listitem><para>
-foo
+Specifies an input video file for a menu or title, with optional chapter points and pause at the end.
 </para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;cell [start="<replaceable>timestamp</replaceable>"] [end="<replaceable>timestamp</replaceable>"] [chapter="1|on|yes" | program="1|on|yes"] [pause="<replaceable>seconds</replaceable>|inf"] /&gt;</literal></term>
 <listitem><para>
-foo
+An alternative way of specifying chapters in a title.
 </para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;button [name="<replaceable>buttonname</replaceable>"]&gt; <replaceable>commands;</replaceable> &lt;/button&gt;</literal></term>
 <listitem><para>
-foo
+Specifies the commands to be executed when the user selects the button with the specified name.
+You define button names and placements with <command>spumux</command>.
 </para></listitem></varlistentry>
 
 </variablelist>
