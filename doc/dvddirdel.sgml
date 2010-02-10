@@ -1,4 +1,18 @@
 <refentry>
+  <refentryinfo>
+    <address>
+      &dhemail;
+    </address>
+    <author>
+      &dhfirstname;
+      &dhsurname;
+    </author>
+    <copyright>
+      <year>2003</year>
+      <holder>&dhusername;</holder>
+    </copyright>
+    &dhdate;
+  </refentryinfo>
   <refmeta>
     <refentrytitle>dvddirdel</refentrytitle>
     <manvolnum>1</manvolnum>

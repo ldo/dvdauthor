@@ -1,4 +1,4 @@
-<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V3.1//EN" [
+<!doctype book PUBLIC "-//OASIS//DTD DocBook V4.1//EN" [
 <!ENTITY examples SYSTEM "examples.sgml">
 <!ENTITY iso639 SYSTEM "iso639.sgml">
 <!ENTITY dvdauthor SYSTEM "dvdauthor.sgml">
@@ -7,6 +7,18 @@
 <!ENTITY mpeg2desc SYSTEM "mpeg2desc.sgml">
 <!ENTITY spumux SYSTEM "spumux.sgml">
 <!ENTITY spuunmux SYSTEM "spuunmux.sgml">
+
+<!ENTITY dhfirstname "<firstname>Marc</firstname>">
+<!ENTITY dhsurname   "<surname>Leeman</surname>">
+<!ENTITY dhdate      "<date>Fri Dec 30 19:47:26 CET 2005</date>">
+<!ENTITY dhsection   "<manvolnum>1</manvolnum>">
+<!ENTITY dhemail     "<email>marc.leeman@gmail.com</email>">
+<!ENTITY dhusername  "Marc Leeman">
+
+<!ENTITY debian      "<productname>Debian</productname>">
+<!ENTITY gnu         "<acronym>GNU</acronym>">
+<!ENTITY gpl         "&gnu; <acronym>GPL</acronym>">
+
 ]>
 <book id="index"><title>DVDAuthor</title>
 &examples;

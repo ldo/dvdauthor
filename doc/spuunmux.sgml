@@ -1,4 +1,18 @@
-<refentry id="spuunmux">
+<refentry>
+  <refentryinfo>
+    <address>
+      &dhemail;
+    </address>
+    <author>
+      &dhfirstname;
+      &dhsurname;
+    </author>
+    <copyright>
+      <year>2003</year>
+      <holder>&dhusername;</holder>
+    </copyright>
+    &dhdate;
+  </refentryinfo>
   <refmeta>
     <refentrytitle>spuunmux</refentrytitle>
     <manvolnum>1</manvolnum>
