@@ -1,4 +1,8 @@
 /*
+    Utility to extract audio/video streams and dump information about
+    packetes in an MPEG stream.
+*/
+/*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
  *
  * This program is free software; you can redistribute it and/or modify
@@ -583,15 +587,46 @@ int main(int argc,char **argv)
             readlen=forceread(buf,(extra>sizeof(buf))?sizeof(buf):extra,stdin);
             extra-=readlen;
             if( outputenglish ) {
-                if( ntohl(hdr)==0x1bd ) { // private stream 1
-                    int sid=buf[3+buf[2]];
-                    switch( sid&0xe0 ) {
-                    case 0x20: printf(", subpicture %d",sid&0x1f); break;
-                    case 0x80: printf(", audio %d",sid&0x1f); break;
-                    case 0xa0: printf(", lpcm %d",sid&0x1f); break;
-                    default: printf(", substream id 0x%02x",sid); break;
-                    }
-                }
+                if (ntohl(hdr) == 0x1bd) // private stream 1
+                  {
+                    const int sid = buf[3 + buf[2]]; /* substream ID is first byte after header */
+                    switch (sid & 0xf8)
+                      {
+                    case 0x20:
+                    case 0x28:
+                    case 0x30:
+                    case 0x38:
+                        printf(", subpicture %d", sid & 0x1f);
+                    break;
+                    case 0x80:
+                        printf(", AC3 audio %d", sid & 7);
+                    break;
+                    case 0x88:
+                        printf(", DTS audio %d", sid & 7);
+                    case 0xa0:
+                        printf(", LPCM audio %d", sid & 7);
+                    break;
+                    default:
+                        printf(", substream id 0x%02x", sid);
+                    break;
+                      } /*switch*/
+                  }
+                else if (ntohl(hdr) == 0x1bf) // private stream 2
+                  {
+                    const int sid = buf[0];
+                    switch (sid)
+                      {
+                    case 0:
+                        printf(", PCI");
+                    break;
+                    case 1:
+                        printf(", DSI");
+                    break;
+                    default:
+                        printf(", substream id 0x%02x", sid);
+                    break;
+                      } /*switch*/
+                  } /*if*/
                 printf("; length=%d",extra+readlen);
                 if( ext ) {
                     int eptr=3;
