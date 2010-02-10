@@ -47,6 +47,7 @@ struct vscani {
 
 static pts_t timeline[19]={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
                            20,60,120,240};
+  /* various time steps for VOBU offsets needed in DSI packet, in units of half a second */
 
 #define BIGWRITEBUFLEN (16*2048)
 static unsigned char bigwritebuf[BIGWRITEBUFLEN];
@@ -155,34 +156,60 @@ static int findspuidx(const struct vob *va,int ach,pts_t pts0)
     return l;
 }
 
-static unsigned int getsect(const struct vob *va,int curvobnum,int jumpvobnum,int skip,unsigned notfound)
-{
-    if( skip ) {
-        int l,h,i;
-
+static unsigned int getsect
+  (
+    const struct vob * va,
+    int curvobunum, /* the VOBU number I'm jumping from */
+    int jumpvobunum, /* the VOBU number I'm jumping to */
+    int skip, /* whether to set the skipping-more-than-one-VOBU bit */
+    unsigned notfound /* what to return if there is no matching VOBU */
+  )
+  /* computes relative VOBU offsets needed at various points in a DSI packet,
+    including the mask bit that indicates a backward jump, and optionally the
+    one indicating skipping multiple video VOBUs as well. */
+  {
+    if (skip)
+      {
+        int l, h, i;
         // only set skip bit if one of the VOBU's from here to there contain video
-        if( curvobnum<jumpvobnum ) {
-            l=curvobnum+1;
-            h=jumpvobnum-1;
-        } else {
-            l=jumpvobnum+1;
-            h=curvobnum-1;
-        }
-        for( i=l; i<=h; i++ )
-            if( va->vobu[i].hasvideo )
-                break;
-        if( i<=h )
-            skip=0x40000000;
+      /* hmm, this page <http://www.mpucoder.com/DVD/dsi_pkt.html> doesn't say
+        it has to contain video */
+        if (curvobunum < jumpvobunum)
+          {
+            l = curvobunum + 1;
+            h = jumpvobunum - 1;
+          }
         else
-            skip=0;
-    }
-    if( jumpvobnum < 0 || jumpvobnum >= va->numvobus || 
-        va->vobu[jumpvobnum].vobcellid != va->vobu[curvobnum].vobcellid )
-        return notfound|skip;
-    return abs(va->vobu[jumpvobnum].sector-va->vobu[curvobnum].sector)
-        |(va->vobu[jumpvobnum].hasvideo?0x80000000:0)
-        |skip;
-}
+          {
+            l = jumpvobunum + 1;
+            h = curvobunum - 1;
+          } /*if*/
+        for (i = l; i <= h; i++)
+            if (va->vobu[i].hasvideo)
+                break; /* found an in-between VOBU containing video */
+        if (i <= h)
+            skip = 0x40000000;
+        else
+            skip = 0;
+      } /*if*/
+    if
+      (
+          jumpvobunum < 0
+      ||
+          jumpvobunum >= va->numvobus
+      || 
+          va->vobu[jumpvobunum].vobcellid != va->vobu[curvobunum].vobcellid
+            /* never cross cells */
+      )
+        return
+            notfound | skip;
+    return
+            abs(va->vobu[jumpvobunum].sector - va->vobu[curvobunum].sector)
+        |
+            (va->vobu[jumpvobunum].hasvideo ? 0x80000000 : 0)
+        |
+            skip;
+  } /*getsect*/
 
 static pts_t readscr(const unsigned char *buf)
 {
@@ -224,7 +251,7 @@ static void writepts(unsigned char *buf,pts_t pts)
     write2(buf+3,(pts<<1)|1);
 }
 
-static int findbutton(struct pgc *pg,char *dest,int dflt)
+static int findbutton(const struct pgc *pg,char *dest,int dflt)
 {
     int i;
 
@@ -960,7 +987,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
 
                 case 1: // subtitle/menu color and button information
                 {
-                    int st=buf[i+2]&31;
+                    int substreamid=buf[i+2]&31;
                     i+=3;
                     i+=8; // skip start pts and end pts
                     while(buf[i]!=0xff) {
@@ -968,15 +995,15 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                         case 1: // new colormap
                         {
                             int j;
-                            crs[st].origmap=thisvob->progchain->ci;
+                            crs[substreamid].origmap=thisvob->progchain->ci;
                             for( j=0; j<buf[i+1]; j++ ) {
-                                crs[st].newcolors[j]=0x1000000|
+                                crs[substreamid].newcolors[j]=0x1000000|
                                     (buf[i+2+3*j]<<16)|
                                     (buf[i+3+3*j]<<8)|
                                     (buf[i+4+3*j]);
                             }
                             for( ; j<16; j++ )
-                                crs[st].newcolors[j]=j;
+                                crs[substreamid].newcolors[j]=j;
                             i+=2+3*buf[i+1];
                             break;
                         }
@@ -986,10 +1013,10 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
 
                             memcpy(thisvob->buttoncoli,buf+i+2,buf[i+1]*8);
                             for( j=0; j<buf[i+1]; j++ ) {
-                                remapbyte(&crs[st],thisvob->buttoncoli+j*8+0);
-                                remapbyte(&crs[st],thisvob->buttoncoli+j*8+1);
-                                remapbyte(&crs[st],thisvob->buttoncoli+j*8+4);
-                                remapbyte(&crs[st],thisvob->buttoncoli+j*8+5);
+                                remapbyte(&crs[substreamid],thisvob->buttoncoli+j*8+0);
+                                remapbyte(&crs[substreamid],thisvob->buttoncoli+j*8+1);
+                                remapbyte(&crs[substreamid],thisvob->buttoncoli+j*8+4);
+                                remapbyte(&crs[substreamid],thisvob->buttoncoli+j*8+5);
                             }
                             i+=2+8*buf[i+1];
                             break;
@@ -1019,7 +1046,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
                                     bi=&b->stream[b->numstream++];
                                 }
 
-                                bi->st=st;
+                                bi->substreamid=substreamid;
 
                                 i+=2; // skip modifier
                                 bi->autoaction=buf[i++];
@@ -1763,230 +1790,365 @@ int calcaudiogap(const struct vobgroup *va,int vcid0,int vcid1,int ach)
 }
 
 void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *ws,int ismenu)
-{
-    int h=-1;
-    int i,j,pn,fnum=-2;
+/* fills in the NAV packs (i.e. PCI and DSI packets) for each VOBU in the already-written output VOB files. */
+  {
+    int outvob = -1;
+    int vobuindex, j, pn, fnum = -2;
     pts_t scr;
-    int vff,vrew,totvob,curvob;
+    int vff, vrew;
+    int totvob, curvob; /* for displaying statistics */
 
-    totvob=0;
-    for( pn=0; pn<va->numvobs; pn++ )
-        totvob+=va->vobs[pn]->numvobus;
-    curvob=0;
+    totvob = 0;
+    for (pn = 0; pn < va->numvobs; pn++)
+        totvob += va->vobs[pn]->numvobus;
+    curvob = 0;
 
-    for( pn=0; pn<va->numvobs; pn++ ) {
-        struct vob *p=va->vobs[pn];
-
-        for( i=0; i<p->numvobus; i++ ) {
-            struct vobuinfo *vi=&p->vobu[i];
+    for (pn = 0; pn < va->numvobs; pn++)
+      {
+        const struct vob * const thisvob = va->vobs[pn];
+        for (vobuindex = 0; vobuindex < thisvob->numvobus; vobuindex++)
+          {
+            const struct vobuinfo * const thisvobu = &thisvob->vobu[vobuindex];
             static unsigned char buf[2048];
 
-            if( vi->fnum!=fnum ) {
+            if (thisvobu->fnum != fnum)
+              {
+              /* time to start a new output file */
                 char fname[200];
-                if( h >= 0 )
-                    close(h);
-                fnum=vi->fnum;
-                if( fbase ) {
-                    if( fnum==-1 )
-                        strcpy(fname,fbase);
+                if (outvob >= 0)
+                    close(outvob);
+                fnum = thisvobu->fnum;
+                if (fbase)
+                  {
+                    if (fnum == -1)
+                        strcpy(fname, fbase);
                     else
-                        sprintf(fname,"%s_%d.VOB",fbase,fnum);
-                    h=open(fname,O_WRONLY|O_BINARY);
-                    if( h < 0 ) {
-                        fprintf(stderr,"\nERR:  Error opening %s: %s\n",fname,strerror(errno));
+                        sprintf(fname, "%s_%d.VOB", fbase, fnum);
+                    outvob = open(fname, O_WRONLY | O_BINARY);
+                    if (outvob < 0)
+                      {
+                        fprintf
+                          (
+                            stderr,
+                            "\nERR:  Error %d opening %s: %s\n",
+                            errno,
+                            fname,
+                            strerror(errno)
+                          );
                         exit(1);
-                    }
-                }
-            }
-            memcpy(buf,vi->sectdata,0x26);
-            write4(buf+0x26,0x1bf); // private stream 2
-            write2(buf+0x2a,0x3d4); // length
-            buf[0x2c]=0; /* substream ID, 0 = PCI */
-            memset(buf+0x2d,0,0x400-0x2d);
-            write4(buf+0x400,0x1bf); // private stream 2
-            write2(buf+0x404,0x3fa); // length
-            buf[0x406]=1; /* substream ID, 1 = DSI */
-            memset(buf+0x407,0,0x7ff-0x407);
+                      } /*if*/
+                  } /*if*/
+              } /*if*/
 
-            scr=readscr(buf+4);
+            memcpy(buf, thisvobu->sectdata, 0x26);
+            write4(buf + 0x26, 0x1bf); // private stream 2
+            write2(buf + 0x2a, 0x3d4); // length
+            buf[0x2c] = 0; /* substream ID, 0 = PCI */
+            memset(buf + 0x2d,0, 0x400 - 0x2d);
+            write4(buf + 0x400, 0x1bf); // private stream 2
+            write2(buf + 0x404, 0x3fa); // length
+            buf[0x406] = 1; /* substream ID, 1 = DSI */
+            memset(buf + 0x407, 0, 0x7ff - 0x407);
 
-            write4(buf+0x2d,vi->sector); /* sector number of this block */
+            scr = readscr(buf + 4);
+
+            write4(buf + 0x2d, thisvobu->sector); /* sector number of this block */
           /* buf[0x35 .. 0x38] -- prohibited user ops -- none for now */
-            write4(buf+0x39,vi->sectpts[0]); /* start presentation time (vobu_s_ptm) */
-            write4(buf+0x3d,vi->sectpts[1]); /* end presentation time (vobu_e_ptm) */
-            if( vi->hasseqend ) // if sequence_end_code
-                write4(buf+0x41,vi->videopts[1]); // vobu_se_e_ptm
-            write4(buf+0x45,buildtimeeven(va,vi->sectpts[0]-p->vobu[vi->firstvobuincell].sectpts[0])); // total guess
-              /* c_eltm -- cell elapsed time + frame rate */
+            write4(buf + 0x39, thisvobu->sectpts[0]); /* start presentation time (vobu_s_ptm) */
+            write4(buf + 0x3d, thisvobu->sectpts[1]); /* end presentation time (vobu_e_ptm) */
+            if (thisvobu->hasseqend) // if sequence_end_code
+                write4(buf + 0x41, thisvobu->videopts[1]); // vobu_se_e_ptm
+            write4
+              (
+                buf + 0x45,
+                buildtimeeven
+                  (
+                    va,
+                    thisvobu->sectpts[0] - thisvob->vobu[thisvobu->firstvobuincell].sectpts[0]
+                  ) // total guess
+              );
+              /* c_eltm -- BCD cell elapsed time + frame rate */
                 
-            if( p->progchain->numbuttons ) {
-                struct pgc *pg=p->progchain;
-                int mask=getsubpmask(&va->vd),ng,grp;
+            if (thisvob->progchain->numbuttons)
+              {
+              /* fill in PCI packet with button info */
+                const struct pgc * const pg = thisvob->progchain;
+                int mask = getsubpmask(&va->vd), nrgrps, grp;
                 char idmap[3];
 
-                write2(buf+0x8d,1); /* highlight status = all new highlight information for this VOBU */
-                write4(buf+0x8f,p->vobu[0].sectpts[0]); /* highlight start time */
-                write4(buf+0x93,-1); /* highlight end time */
-                write4(buf+0x97,-1); /* button selection end time (ignore user after this) */
+                write2(buf + 0x8d, 1); /* highlight status = all new highlight information for this VOBU */
+                write4(buf + 0x8f, thisvob->vobu[0].sectpts[0]); /* highlight start time */
+                write4(buf + 0x93, -1); /* highlight end time */
+                write4(buf + 0x97, -1); /* button selection end time (ignore user after this) */
 
-                ng=0;
-                write2(buf+0x9b,0); /* button groupings */
-                for( j=0; j<4; j++ )
-                    if( mask&(1<<j) ) {
-                        assert(ng<3);
-                        idmap[ng]=j;
-                        write2(buf+0x9b,read2(buf+0x9b)+0x1000+(((1<<j)>>1)<<(2-ng)*4));
-                        ng++;
-                    }
-                assert(ng>0);
+                nrgrps = 0;
+                write2(buf + 0x9b, 0); /* button groupings, none to begin with */
+                for (j = 0; j < 4; j++)
+                    if (mask & (1 << j))
+                      {
+                        assert(nrgrps < 3);
+                        idmap[nrgrps] = j;
+                        write2
+                          (
+                            buf + 0x9b,
+                                read2(buf + 0x9b)
+                            +
+                                0x1000 /* add another button group */
+                            +
+                                (
+                                    ((1 << j) >> 1)
+                                      /* panscan/letterbox/normal bit for widescreen,
+                                        0 for narrowscreen */
+                                <<
+                                    (2 - nrgrps) * 4
+                                      /* bit-shifted into appropriate button group nibble */
+                                )
+                          );
+                        nrgrps++;
+                      } /*if; for*/
+                assert(nrgrps > 0);
 
-                buf[0x9e]=pg->numbuttons; /* number of buttons */
-                buf[0x9f]=pg->numbuttons; /* number of numerically-selected buttons */
-                memcpy(buf+0xa3,p->buttoncoli,24);
-                for( grp=0; grp<ng; grp++ ) {
-                    unsigned char *boffs=buf+0xbb+18*(grp*36/ng);
-                    int sid=pg->subpmap[0][(int)idmap[grp]]&127;
+                buf[0x9e] = pg->numbuttons; /* number of buttons */
+                buf[0x9f] = pg->numbuttons; /* number of numerically-selected buttons */
+                memcpy(buf + 0xa3, thisvob->buttoncoli, 24);
+                for (grp = 0; grp < nrgrps; grp++)
+                  {
+                    unsigned char *boffs = buf + 0xbb + 18 * (grp * 36 / nrgrps);
+                      /* divide BTN_IT entries equally among all groups -- does this matter? */
+                    const int sid = pg->subpmap[0][(int)idmap[grp]] & 127;
 
-                    for( j=0; j<pg->numbuttons; j++ ) {
-                        static unsigned char compilebuf[128*8],*rbuf;
-                        struct button *b=pg->buttons+j;
-                        struct buttoninfo *bi;
+                    for (j = 0; j < pg->numbuttons; j++)
+                      /* fixme: no check against overrunning allocated portion of BTN_IT array? */
+                      {
+                        static unsigned char compilebuf[128 * 8], *rbuf;
+                        const struct button * const b = pg->buttons + j;
+                        const struct buttoninfo *bi;
                         int k;
 
-                        for( k=0; k<b->numstream; k++ )
-                            if( b->stream[k].st==sid )
+                        for (k = 0; k < b->numstream; k++)
+                            if (b->stream[k].substreamid == sid)
                                 break;
-                        if( k==b->numstream )
-                            continue;
-                        bi=&b->stream[k];
+                        if (k == b->numstream)
+                            continue; /* no matching button def for this substream */
+                        bi = &b->stream[k];
 
-                       boffs[0]=(bi->grp*64)|(bi->x1>>4);
-                       boffs[1]=(bi->x1<<4)|(bi->x2>>8);
-                       boffs[2]=bi->x2;
-                       boffs[3]=(bi->autoaction ? 64 : 0)|(bi->y1>>4);
-                       boffs[4]=(bi->y1<<4)|(bi->y2>>8);
-                       boffs[5]=bi->y2;
-                       boffs[6]=findbutton(pg,bi->up,(j==0)?pg->numbuttons:j);
-                       boffs[7]=findbutton(pg,bi->down,(j+1==pg->numbuttons)?1:j+2);
-                       boffs[8]=findbutton(pg,bi->left,(j==0)?pg->numbuttons:j);
-                       boffs[9]=findbutton(pg,bi->right,(j+1==pg->numbuttons)?1:j+2);
-                        rbuf=vm_compile(compilebuf,compilebuf,ws,pg->pgcgroup,pg,b->cs,ismenu);
-                        if( rbuf-compilebuf==8 ) {
-                            memcpy(boffs+10,compilebuf,8);
-                        } else if( allowallreg ) {
-                            fprintf(stderr,"ERR:  Button command is too complex to fit in one instruction, and allgprm==true.\n");
+                      /* construct BTN_IT -- Button Information Table entry */
+                        boffs[0] = (bi->grp * 64) | (bi->x1 >> 4);
+                        boffs[1] = (bi->x1 << 4) | (bi->x2 >> 8);
+                        boffs[2] = bi->x2;
+                        boffs[3] = (bi->autoaction ? 64 : 0) | (bi->y1 >> 4);
+                        boffs[4] = (bi->y1 << 4) | (bi->y2 >> 8);
+                        boffs[5] = bi->y2;
+                        boffs[6] = findbutton(pg, bi->up, (j == 0) ? pg->numbuttons : j);
+                        boffs[7] = findbutton(pg, bi->down, (j + 1 == pg->numbuttons) ? 1 : j + 2);
+                        boffs[8] = findbutton(pg, bi->left, (j == 0) ? pg->numbuttons : j);
+                        boffs[9] = findbutton(pg, bi->right, (j + 1 == pg->numbuttons) ? 1 : j + 2);
+                        rbuf = vm_compile(compilebuf, compilebuf, ws, pg->pgcgroup, pg, b->cs, ismenu);
+                        if (rbuf - compilebuf == 8)
+                          {
+                            memcpy(boffs + 10, compilebuf, 8);
+                          }
+                        else if (allowallreg)
+                          {
+                            fprintf
+                              (
+                                stderr,
+                                "ERR:  Button command is too complex to fit in one instruction,"
+                                    " and allgprm==true.\n"
+                              );
                             exit(1);
-                        } else
-                            write8(boffs+10,0x71,0x01,0x00,0x0F,0x00,j+1,0x00,0x0d); // g[15]=j && linktailpgc
-                        boffs+=18;
-                    }
-                }
-            }
+                          }
+                        else
+                            write8(boffs + 10, 0x71, 0x01, 0x00, 0x0F, 0x00, j + 1, 0x00, 0x0d);
+                              // g[15] = j && linktailpgc
+                        boffs += 18;
+                      } /*for j*/
+                  } /*for grp*/
+              } /* if thisvob->progchain->numbuttons */
 
-            write4(buf+0x407,scr);
-            write4(buf+0x40b,vi->sector); // current lbn
-            if( vi->numref>0 ) {
-                for( j=0; j<vi->numref; j++ )
-                    write4(buf+0x413+j*4,vi->lastrefsect[j]-vi->sector);
-                for( ; j<3; j++ )
-                    write4(buf+0x413+j*4,vi->lastrefsect[vi->numref-1]-vi->sector);
-            }
-            write2(buf+0x41f,vi->vobcellid>>8);
-            buf[0x422]=vi->vobcellid;
-            write4(buf+0x423,read4(buf+0x45));
-            write4(buf+0x433,p->vobu[0].sectpts[0]);
-            write4(buf+0x437,p->vobu[p->numvobus-1].sectpts[1]);
-
-            write4(buf+0x4f1,getsect(p,i,findnextvideo(p,i,1),0,0xbfffffff));
-            write4(buf+0x541,getsect(p,i,i+1,0,0x3fffffff));
-            write4(buf+0x545,getsect(p,i,i-1,0,0x3fffffff));
-            write4(buf+0x595,getsect(p,i,findnextvideo(p,i,-1),0,0xbfffffff));
-            for( j=0; j<va->numaudiotracks; j++ ) {
-                int s=getaudch(va,j);
-
-                if( s>=0 )
-                    s=findaudsect(p,s,vi->sectpts[0],vi->sectpts[1]);
-
-                if( s>=0 ) {
-                    s=s-vi->sector;
-                    if( s > 0x1fff || s < -(0x1fff)) {
-                        fprintf(stderr,"\nWARN: audio sector out of range: %d (vobu #%d, pts ",s,i);
-                        printpts(vi->sectpts[0]);
-                        fprintf(stderr,")\n");
-                        s=0;
-                    }
-                    if( s < 0 )
-                        s=(-s)|0x8000;
-                } else
-                    s=0x3fff;
-                write2(buf+0x599+j*2,s);
-            }
-            for( j=0; j<va->numsubpicturetracks; j++ ) {
-                struct audchannel *ach=&p->audch[j|32];
+          /* fill in DSI packet */
+            write4(buf + 0x407, scr);
+            write4(buf + 0x40b, thisvobu->sector); // current lbn
+            if (thisvobu->numref > 0)
+              {
+              /* up to three reference frame relative end blocks */
+                for (j = 0; j < thisvobu->numref; j++)
+                    write4(buf + 0x413 + j * 4, thisvobu->lastrefsect[j] - thisvobu->sector);
+                for (; j < 3; j++) /* duplicate last one if less than 3 */
+                    write4(buf + 0x413 + j * 4, thisvobu->lastrefsect[thisvobu->numref - 1] - thisvobu->sector);
+              } /*if*/
+            write2(buf + 0x41f, thisvobu->vobcellid >> 8); /* VOB number */
+            buf[0x422] = thisvobu->vobcellid; /* cell number within VOB */
+            write4(buf + 0x423, read4(buf + 0x45)); /* cell elapsed time, BCD + frame rate */
+          /* interleaved unit stuff not supported for now */
+            write4(buf + 0x433, thisvob->vobu[0].sectpts[0]);
+              /* time of first video frame in first GOP of VOB */
+            write4(buf + 0x437, thisvob->vobu[thisvob->numvobus - 1].sectpts[1]);
+              /* time of last video frame in last GOP of VOB */
+          /* audio gap stuff not supported for now */
+          /* seamless angle stuff not supported for now */
+            write4
+              (
+                buf + 0x4f1,
+                getsect(thisvob, vobuindex, findnextvideo(thisvob, vobuindex, 1), 0, 0xbfffffff)
+              );
+              /* offset to next VOBU with video */
+          /* offset to next VOBU at various times forward filled in below */
+            write4(buf + 0x541, getsect(thisvob, vobuindex, vobuindex + 1, 0, 0x3fffffff));
+              /* offset to next VOBU */
+            write4(buf + 0x545, getsect(thisvob, vobuindex, vobuindex - 1, 0, 0x3fffffff));
+              /* offset to previous VOBU */
+          /* offset to previous VOBU at various times backward filled in below */
+            write4
+              (
+                buf + 0x595,
+                getsect(thisvob, vobuindex, findnextvideo(thisvob, vobuindex, -1), 0, 0xbfffffff)
+              );
+              /* offset to previous VOBU with video */
+            for (j = 0; j < va->numaudiotracks; j++)
+              {
+                int s = getaudch(va, j);
+                if (s >= 0)
+                    s = findaudsect(thisvob, s, thisvobu->sectpts[0], thisvobu->sectpts[1]);
+                if (s >= 0)
+                  {
+                    s = s - thisvobu->sector;
+                    if (s > 0x1fff || s < -(0x1fff))
+                      {
+                        fprintf
+                          (
+                            stderr,
+                            "\nWARN: audio sector out of range: %d (vobu #%d, pts ",
+                            s,
+                            vobuindex
+                          );
+                        printpts(thisvobu->sectpts[0]);
+                        fprintf(stderr, ")\n");
+                        s = 0;
+                      } /*if*/
+                    if (s < 0)
+                        s = (-s) | 0x8000; /* absolute value + backward-direction flag */
+                  }
+                else
+                    s = 0x3fff; /* no more audio for this stream */
+                write2(buf + 0x599 + j * 2, s);
+                  /* relative offset to first audio packet in this stream for this VOBU */
+              } /*for*/
+            for (j = 0; j < va->numsubpicturetracks; j++)
+              {
+                const struct audchannel * const ach = &thisvob->audch[j | 32];
                 int s;
-
-                if( ach->numaudpts ) {
-                    int id=findspuidx(p,j|32,vi->sectpts[0]);
-                    
+                if (ach->numaudpts)
+                  {
+                    int id = findspuidx(thisvob, j | 32, thisvobu->sectpts[0]);
                     // if overlaps A, point to A
-                    // else if (A before here or doesn't exist) and (B after here or doesn't exist), point to here
+                    // else if (A before here or doesn't exist) and (B after here or doesn't exist),
+                    //     point to here
                     // else point to B
-
-                    if( id>=0 && 
-                        ach->audpts[id].pts[0]<vi->sectpts[1] &&
-                        ach->audpts[id].pts[1]>=vi->sectpts[0] )
-                        s=findvobubysect(p,ach->audpts[id].asect);
-                    else if( (id<0 || ach->audpts[id].pts[1]<vi->sectpts[0]) &&
-                             (id+1==ach->numaudpts || ach->audpts[id+1].pts[0]>=vi->sectpts[1]) )
-                        s=i;
+                    if
+                      (
+                            id >= 0
+                        && 
+                            ach->audpts[id].pts[0] < thisvobu->sectpts[1]
+                        &&
+                            ach->audpts[id].pts[1] >= thisvobu->sectpts[0]
+                      )
+                        s = findvobubysect(thisvob, ach->audpts[id].asect);
+                    else if
+                      (
+                            (id < 0 || ach->audpts[id].pts[1] < thisvobu->sectpts[0])
+                         &&
+                            (
+                                id + 1 == ach->numaudpts
+                            ||
+                                ach->audpts[id + 1].pts[0] >= thisvobu->sectpts[1]
+                            )
+                      )
+                        s = vobuindex;
                     else
-                        s=findvobubysect(p,ach->audpts[id+1].asect);
-                    id=(s<i);
-                    s=getsect(p,i,s,0,0x7fffffff)&0x7fffffff;
-                    if(!s)
-                        s=0x7fffffff;
-                    if(s!=0x7fffffff && id)
-                        s|=0x80000000;
-                } else
-                    s=0;
-                write4(buf+0x5a9+j*4,s);
-            }
-            write4(buf+0x40f,vi->lastsector-vi->sector);
-            vff=i;
-            vrew=i;
-            for( j=0; j<19; j++ ) {
-                int nff,nrew;
-
-                nff=findvobu(p,vi->sectpts[0]+timeline[j]*DVD_FFREW_HALFSEC,
-                             vi->firstvobuincell,
-                             vi->lastvobuincell);
+                        s = findvobubysect(thisvob, ach->audpts[id + 1].asect);
+                    id = (s < vobuindex);
+                    s = getsect(thisvob, vobuindex, s, 0, 0x7fffffff) & 0x7fffffff;
+                    if (!s) /* same VOBU */
+                        s = 0x7fffffff;
+                          /* indicates current or later VOBU, no explicit forward offsets */
+                    if (s != 0x7fffffff && id)
+                        s |= 0x80000000; /* indicates offset to prior VOBU */
+                  }
+                else
+                    s = 0; /* doesn't exist */
+                write4(buf + 0x5a9 + j * 4, s);
+                  /* relative offset to VOBU (NAV pack) containing subpicture data
+                    for this stream for this VOBU */
+              } /*for*/
+            write4(buf + 0x40f, thisvobu->lastsector - thisvobu->sector);
+              /* relative offset to last sector of VOBU */
+            vff = vobuindex;
+            vrew = vobuindex;
+            for (j = 0; j < 19; j++)
+              {
+              /* fill in offsets to next/previous VOBUs at various time steps */
+                int nff, nrew;
+                nff = findvobu
+                  (
+                    thisvob,
+                    thisvobu->sectpts[0] + timeline[j] * DVD_FFREW_HALFSEC,
+                    thisvobu->firstvobuincell,
+                    thisvobu->lastvobuincell
+                  );
                 // a hack -- the last vobu in the cell shouldn't have any forward ptrs
                 // EXCEPT this hack violates both Grosse Pointe Blank and Bullitt -- what was I thinking?
-                // if( i==vi->lastvobuincell )
-                // nff=i+1;
+                // if (i == thisvobu->lastvobuincell)
+                //      nff = i + 1;
+                nrew = findvobu
+                  (
+                    thisvob,
+                    thisvobu->sectpts[0] - timeline[j] * DVD_FFREW_HALFSEC,
+                    thisvobu->firstvobuincell,
+                    thisvobu->lastvobuincell
+                  );
+              /* note table entries are in order of decreasing time step */
+                write4
+                  (
+                    buf + 0x53d - j * 4, /* forward jump */
+                    getsect(thisvob, vobuindex, nff, j >= 15 && nff > vff + 1, 0x3fffffff)
+                  );
+                write4
+                  (
+                    buf + 0x549 + j * 4, /* backward jump */
+                    getsect(thisvob, vobuindex, nrew, j >= 15 && nrew < vrew - 1, 0x3fffffff)
+                  );
+                vff = nff;
+                vrew = nrew;
+              } /*for*/
 
-                nrew=findvobu(p,vi->sectpts[0]-timeline[j]*DVD_FFREW_HALFSEC,
-                              vi->firstvobuincell,
-                              vi->lastvobuincell);
-                write4(buf+0x53d-j*4,getsect(p,i,nff,j>=15 && nff>vff+1,0x3fffffff));
-                write4(buf+0x549+j*4,getsect(p,i,nrew,j>=15 && nrew<vrew-1,0x3fffffff));
-                vff=nff;
-                vrew=nrew;
-            }
-
-            if( h!=-1 ) {
-                lseek(h,vi->fsect*2048,SEEK_SET);
-                write(h,buf,2048);
-            }
+          /* NAV pack all done, write it out */
+            if (outvob != -1)
+              {
+              /* fixme: check for write errors */
+                lseek(outvob, thisvobu->fsect * 2048, SEEK_SET);
+                  /* where the NAV pack should go */
+                write(outvob, buf, 2048);
+                  /* update it */
+              } /*if*/
             curvob++;
-            if (!(curvob&15))
-                fprintf(stderr,"STAT: fixing VOBU at %dMB (%d/%d, %d%%)\r",vi->sector/512,curvob+1,totvob,curvob*100/totvob);
-        }
-    }
-    if( h!=-1 )
-        close(h);
-    if( totvob>0 )
-        fprintf(stderr,"STAT: fixed %d VOBUS                         ",totvob);
-    fprintf(stderr,"\n");
-}
+            if (!(curvob & 15)) /* time for another progress update */
+                fprintf
+                  (
+                    stderr,
+                    "STAT: fixing VOBU at %dMB (%d/%d, %d%%)\r",
+                    thisvobu->sector / 512,
+                    curvob + 1,
+                    totvob,
+                    curvob * 100 / totvob
+                  );
+          } /*for vobuindex*/
+      } /*for pn*/
+    if (outvob != -1)
+      /* fixme: should do an fsync or fdatasync and check for write errors */
+        close(outvob);
+    if (totvob > 0)
+        fprintf(stderr, "STAT: fixed %d VOBUS                         ", totvob);
+    fprintf(stderr, "\n");
+  } /*FixVobus*/
 

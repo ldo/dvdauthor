@@ -478,6 +478,13 @@ static void inferattr(int *a,int def)
 }
 
 int getsubpmask(const struct videodesc *vd)
+/* returns a 4-bit mask with meaning as follows:
+    3  2  1  0
+    |  |  |  \ narrowscreen footage
+    |  |  \widescreen footage, crop on narrowscreen display
+    |  \widescreen footage, letterbox on narrowscreen display
+    \widescreen footage, pan&scan on narrowscreen display
+*/
 {
     int mask=0;
 
@@ -489,7 +496,7 @@ int getsubpmask(const struct videodesc *vd)
     switch( vd->vwidescreen ) {
     case VW_NOLETTERBOX: mask&=-1-4; break;
     case VW_NOPANSCAN:   mask&=-1-8; break;
-    case VW_CROP:        mask|=2;    break;
+    case VW_CROP:        mask|=2;    break; /* redundant? crop bit already set */
     }
     return mask;
 }

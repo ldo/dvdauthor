@@ -91,8 +91,8 @@ struct audpts { /* describes a packet in an audio stream */
     int asect; /* sector number in source file */
 };
 
-struct audchannel {
-    struct audpts *audpts;
+struct audchannel { /* describes information collected from an audio stream */
+    struct audpts *audpts; /* array */
     int numaudpts; /* used portion of audpts array */
     int maxaudpts; /* allocated size of audpts array */
     struct audiodesc ad,adwarn; // use for quant and channels
@@ -105,7 +105,7 @@ struct vob {
     int vobid,numcells;
     struct pgc *progchain; // used for colorinfo and buttons
     struct vobuinfo *vobu; /* array of VOBUs in the VOB */
-    struct audchannel audch[64];
+    struct audchannel audch[64]; /* audio and subpicture info */
       /* index meaning:
         0-31: top two bits are the audio type (0 => AC3, 1 => MPEG, 2 => PCM, 3 => DTS),
             bottom 3 bits are the channel id
@@ -113,27 +113,28 @@ struct vob {
     unsigned char buttoncoli[24];
 };
 
-struct buttoninfo {
-    int st;
-    int autoaction;
-    int x1,y1,x2,y2;
-    char *up,*down,*left,*right;
+struct buttoninfo { /* describes a button within a single subpicture stream */
+    int substreamid; /* substream ID as specified to spumux */
+    int autoaction; /* true for auto-action button */
+    int x1,y1,x2,y2; /* button bounds */
+    char *up,*down,*left,*right; /* names of neighbouring buttons */
     int grp;
 };
 
 #define MAXBUTTONSTREAM 3
-struct button {
-    char *name;
-    struct vm_statement *cs;
-    struct buttoninfo stream[MAXBUTTONSTREAM];
-    int numstream;
+struct button { /* describes a button including versions across different subpicture streams */
+    char *name; /* button name */
+    struct vm_statement *cs; /* associated commands */
+    struct buttoninfo stream[MAXBUTTONSTREAM]; /* stream-specific descriptions */
+    int numstream; /* nr of stream entries actually used */
 };
 
 struct pgc {
-    int numsources, numbuttons;
+    int numsources; /* length of sources array */
+    int numbuttons; /* length of buttons array */
     int numchapters,numprograms,numcells,entries,pauselen;
-    struct source **sources;
-    struct button *buttons;
+    struct source **sources; /* array */
+    struct button *buttons; /* array */
     struct vm_statement *prei,*posti;
     struct colorinfo *ci;
     struct pgcgroup *pgcgroup;
