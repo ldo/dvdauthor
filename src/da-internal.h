@@ -51,7 +51,7 @@ struct vobuinfo { /* describes a VOBU in a VOB */
 
 struct colorinfo { /* a colour table for subpictures */
     int refcount; /* shared structure */
-    int colors[16];
+    int color[16];
 };
 
 struct videodesc { /* describes a video stream */
@@ -76,7 +76,7 @@ struct cell { /* describes one or more cells within a source video file */
     int pauselen;
     int scellid; /* start cell */
     int ecellid; /* end cell + 1 */
-    struct vm_statement *cs;
+    struct vm_statement *commands;
 };
 
 struct source { /* describes an input video file */
@@ -124,7 +124,7 @@ struct buttoninfo { /* describes a button within a single subpicture stream */
 #define MAXBUTTONSTREAM 3
 struct button { /* describes a button including versions across different subpicture streams */
     char *name; /* button name */
-    struct vm_statement *cs; /* associated commands */
+    struct vm_statement *commands; /* associated commands */
     struct buttoninfo stream[MAXBUTTONSTREAM]; /* stream-specific descriptions */
     int numstream; /* nr of stream entries actually used */
 };
@@ -136,7 +136,7 @@ struct pgc {
     struct source **sources; /* array */
     struct button *buttons; /* array */
     struct vm_statement *prei,*posti;
-    struct colorinfo *ci;
+    struct colorinfo *colors;
     struct pgcgroup *pgcgroup;
     unsigned char subpmap[32][4]; // (128|id) if known; 127 if not present
 };

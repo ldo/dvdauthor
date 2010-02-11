@@ -93,13 +93,15 @@ static int genjumppad(unsigned char *buf,int ismenu,int entry,const struct works
     } else if( jumppad && ismenu==2 && entry==2 ) {
         // *** VMGM jumppad
         // remap all VMGM TITLE X -> TITLESET X TITLE Y
-        k=129;
-        for( i=0; i<ws->titlesets->numvts; i++ )
-            for( j=0; j<ws->titlesets->vts[i].numtitles; j++ ) {
-                write8(cbuf,0x71,0xA0,0x0F,0x0F,j+129,i+2,k,1); 
-                cbuf+=8;
+        k = 129;
+        for (i = 0; i < ws->titlesets->numvts; i++)
+            for (j = 0; j < ws->titlesets->vts[i].numtitles; j++)
+              {
+                write8(cbuf, 0x71, 0xA0, 0x0F, 0x0F, j + 129, i + 2, k, 1);
+                  /* if g15 == k << 8 | 1 then g15 = j + 129 << 8 | i + 2 */
+                cbuf += 8;
                 k++;
-            }
+              } /*for; for*/
         // move TITLE out of g[15] into g[14] (to mate up with CHAPTER)
         // then put title/chapter into g[15], and leave titleset in g[14]
         write8(cbuf,0x63,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]+=g[15]
@@ -107,10 +109,11 @@ static int genjumppad(unsigned char *buf,int ismenu,int entry,const struct works
         write8(cbuf,0x64,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]-=g[15]
         write8(cbuf,0x62,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]<->g[15]
         // For each titleset, delegate to the appropriate submenu
-        for( i=0; i<ws->titlesets->numvts; i++ ) {
-            write8(cbuf,0x71,0x00,0x00,0x0D,0x00,i+2,0x00,0x00); cbuf+=8; // g[13]=(i+1)*256;
+        for (i = 0; i < ws->titlesets->numvts; i++)
+          {
+            write8(cbuf,0x71,0x00,0x00,0x0D,0x00,i+2,0x00,0x00); cbuf+=8; // g[13]=(i+2)*256;
             write8(cbuf,0x30,0x26,0x00,0x01,i+1,0x87,0x0E,0x0D); cbuf+=8; // if g[14]==g[13] then JumpSS VTSM i+1, ROOT
-        }
+          } /*for*/
         // set g[15]=0 so we don't leak dirty registers to other PGC's
         write8(cbuf,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); cbuf+=8; // g[15]=0;
     }
@@ -119,140 +122,177 @@ static int genjumppad(unsigned char *buf,int ismenu,int entry,const struct works
 
 static int jumppgc(unsigned char *buf,int pgc,int ismenu,int entry,const struct workset *ws,const struct pgcgroup *curgroup)
 {
-    int base=0xEC,ncmd,offs;
-    offs=base+8;
-    
-    offs+=genjumppad(buf+offs,ismenu,entry,ws,curgroup);
-    
-    if( pgc>0 )
-        write8(buf+offs,0x20,0x04,0x00,0x00,0x00,0x00,0x00,pgc); // LinkPGCN pgc
+    int base = 0xEC, ncmd, offs;
+    offs = base + 8; /* room for command table header */
+    offs += genjumppad(buf + offs, ismenu, entry, ws, curgroup);
+    if (pgc > 0)
+        write8(buf + offs, 0x20, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, pgc); // LinkPGCN pgc
     else
-        write8(buf+offs,0x30,0x06,0x00,0x00,0x00,0x00,0x00,0x00); // JumpSS FP
-    offs+=8;
-
-    ncmd=(offs-base)/8-1;
-    if( ncmd>128 ) {
-        fprintf(stderr,"ERR:  Too many titlesets/titles/menus/etc for jumppad to handle.  Reduce complexity and/or disable\njumppad.\n");
+        write8(buf + offs, 0x30, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00); // JumpSS FP
+    offs += 8;
+    ncmd = (offs - base) / 8 - 1;
+    if (ncmd > 128)
+      {
+        fprintf
+          (
+            stderr,
+            "ERR:  Too many titlesets/titles/menus/etc for jumppad to handle."
+                "  Reduce complexity and/or disable\njumppad.\n"
+          );
         exit(1);
-    }
-    buf[0xE5]=base;
-    buf[base+1]=ncmd;
-    write2(buf+base+6, 7+8*ncmd);
+      } /*if*/
+    buf[0xE5] = base; /* offset within PGC to command table, low byte */
+    buf[base + 1] = ncmd; /* number of pre commands, low byte */
+    write2(buf + base + 6, 7 + 8 * ncmd);
     return offs;
 }
 
 static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgroup *group,int pgc,int ismenu,int entry)
+/* generates a PGC. */
 {
-    const struct vobgroup *va=(ismenu?ws->menus->vg:ws->titles->vg);
-    const struct pgc *p=group->pgcs[pgc];
+    const struct vobgroup *va = (ismenu ? ws->menus->vg : ws->titles->vg);
+    const struct pgc * const thispgc = group->pgcs[pgc];
     int i,j,d;
 
   /* buf[0], buf[1] don't seem to be used */
 
     // PGC header starts at buf[16]
-    buf[2]=p->numprograms;
-    buf[3]=p->numcells;
-    write4(buf+4,buildtimeeven(va,getptsspan(p))); /* playback time + frame rate */
+    buf[2] = thispgc->numprograms;
+    buf[3] = thispgc->numcells;
+    write4(buf + 4, buildtimeeven(va, getptsspan(thispgc))); /* BCD playback time + frame rate */
   /* buf[8 .. 11] -- prohibited user ops -- none for now */
-    for( i=0; i<va->numaudiotracks; i++ ) {
-        if( va->ad[i].aid )
-            buf[12+i*2]=0x80|(va->ad[i].aid-1); /* PGC_AST_CTL, audio stream control */
-    }
-    for( i=0; i<va->numsubpicturetracks; i++ ) {
+    for (i = 0; i < va->numaudiotracks; i++)
+      {
+        if (va->ad[i].aid)
+            buf[12 + i * 2] = 0x80 | (va->ad[i].aid - 1); /* PGC_AST_CTL, audio stream control */
+      } /*for*/
+    for (i = 0; i < va->numsubpicturetracks; i++)
+      {
         int m, e;
+        e = 0;
+        for (m = 0; m < 4; m++)
+            if (thispgc->subpmap[i][m] & 128)
+              {
+                buf[28 + i * 4 + m] = thispgc->subpmap[i][m] & 127;
+                  /* PGC_SPST_CTL, subpicture stream control */
+                e = 1;
+              } /*if; for*/
+        if (e)
+            buf[28 + i * 4] |= 0x80; /* set stream-available flag */
+      } /*for*/
+    buf[163] = thispgc->pauselen; // PGC stilltime
+    for (i = 0; i < 16; i++) /* colour lookup table (0, Y, Cr, Cb) */
+        write4
+          (
+            buf + 164 + i * 4,
+            thispgc->colors->color[i] < 0x1000000 ? thispgc->colors->color[i] : 0x108080
+          );
 
-        e=0;
-        for( m=0; m<4; m++ )
-            if( p->subpmap[i][m]&128 ) {
-                buf[28+i*4+m]=p->subpmap[i][m]&127; /* PGC_SPST_CTL, subpicture stream control */
-                e=1;
-            }
-        if( e )
-            buf[28+i*4]|=0x80; /* set stream-available flag */
-    }
-    buf[163]=p->pauselen; // PGC stilltime
-    for( i=0; i<16; i++ )
-        write4(buf+164+i*4,p->ci->colors[i]<0x1000000?p->ci->colors[i]:0x108080);
-
-    d=0xEC; /* start assembling commands here */
+    d = 0xEC; /* start assembling commands here */
 
     // command table
     {
         unsigned char *cd=buf+d+8,*preptr,*postptr,*cellptr;
 
-        preptr=cd;
-        cd+=genjumppad(cd,ismenu,entry,ws,group);
-        if( p->prei ) {
-            cd=vm_compile(preptr,cd,ws,p->pgcgroup,p,p->prei,ismenu);
-            if(!cd) {
-                fprintf(stderr,"ERR:  in %s pgc %d, <pre>\n",pstypes[ismenu],pgc);
+        preptr = cd; /* start of pre commands */
+        cd += genjumppad(cd, ismenu, entry, ws, group);
+        if (thispgc->prei)
+          {
+            cd = vm_compile(preptr, cd, ws, thispgc->pgcgroup, thispgc, thispgc->prei, ismenu);
+            if (!cd)
+              {
+                fprintf(stderr, "ERR:  in %s pgc %d, <pre>\n", pstypes[ismenu], pgc);
                 exit(1);
-            }
-        } else if( p->numbuttons ) {
-            write8(cd,0x56,0x00,0x00,0x00,4*1,0x00,0x00,0x00); cd+=8; // set active button to be #1
-        }
+              } /*if*/
+          }
+        else if (thispgc->numbuttons)
+          {
+            write8(cd, 0x56, 0x00, 0x00, 0x00, 4 * 1, 0x00, 0x00, 0x00); cd+=8;
+              // set active button to be #1
+          } /*if*/
 
-        postptr=cd;
-        if( p->numbuttons && !allowallreg ) {
-            write8(cd,0x61,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00);  // g[14]=g[15]
-            write8(cd+8,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); // g[15]=0
-            cd+=8*(p->numbuttons+2);
-        }
-        if( p->posti ) {
-            cd=vm_compile(postptr,cd,ws,p->pgcgroup,p,p->posti,ismenu);
-            if(!cd) {
-                fprintf(stderr,"ERR:  in %s pgc %d, <post>\n",pstypes[ismenu],pgc);
+        postptr = cd; /* start of post commands */
+        if (thispgc->numbuttons && !allowallreg)
+          {
+          /* transfer sequence for button instructions too long to fit in PCI packet */
+          /* enter with g15 = button number */
+            write8(cd, 0x61, 0x00, 0x00, 0x0E, 0x00, 0x0F, 0x00, 0x00);  // g[14]=g[15]
+            write8(cd + 8, 0x71, 0x00, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x00); // g[15]=0
+            cd += 8 * (thispgc->numbuttons + 2);
+              /* transfer to individual button sequences--reserve space to be filled in below */
+          } /*if*/
+        if (thispgc->posti)
+          {
+            cd = vm_compile(postptr, cd, ws, thispgc->pgcgroup, thispgc, thispgc->posti, ismenu);
+            if (!cd)
+              {
+                fprintf(stderr, "ERR:  in %s pgc %d, <post>\n", pstypes[ismenu], pgc);
                 exit(1);
-            }
-        } else {
-            write8(cd,0x30,0x01,0x00,0x00,0x00,0x00,0x00,0x00); // exit
-            cd+=8;
-        }
-        if( p->numbuttons && !allowallreg ) {
-            unsigned char *buttonptr=cd;
-
-            for( i=0; i<p->numbuttons; i++ ) {
-                const struct button *b=&p->buttons[i];
-                unsigned char *cdd=vm_compile(postptr,cd,ws,p->pgcgroup,p,b->cs,ismenu);
-
-                if(!cdd) {
-                    fprintf(stderr,"ERR:  in %s pgc %d, button %s\n",pstypes[ismenu],pgc,b->name);
+              } /*if*/
+          }
+        else
+          {
+            write8(cd, 0x30, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00); // exit
+            cd += 8;
+          } /*if*/
+        if (thispgc->numbuttons && !allowallreg)
+          {
+          /* compile and insert all the button instructions that wouldn't fit
+            in the PCI packets in the VOB */
+            unsigned char *buttonptr = cd;
+            for (i = 0; i < thispgc->numbuttons; i++)
+              {
+                const struct button * const thisbutton = &thispgc->buttons[i];
+                unsigned char * cdd = vm_compile(postptr, cd, ws, thispgc->pgcgroup, thispgc, thisbutton->commands, ismenu);
+                if (!cdd)
+                  {
+                    fprintf(stderr, "ERR:  in %s pgc %d, button %s\n", pstypes[ismenu], pgc, thisbutton->name);
                     exit(1);
-                }
-
-                if( cdd==cd+8 ) {
+                  } /*if*/
+                if (cdd == cd + 8)
+                  {
                     // the button fits in one command; assume it went in the vob itself
-                    memset(postptr+i*8+16,0,8); // nop
-                    memset(cd,0,8); // reset the just compiled command, since it was test written to part of the pgc structure
-                } else {
-                    write8(postptr+i*8+16,0x00,0xa1,0x00,0x0E,0x00,i+1,0x00,(cd-postptr)/8+1);
-                    cd=cdd;
-                }
-            }
+                    memset(postptr + i * 8 + 16, 0, 8); // nop
+                    memset(cd, 0, 8);
+                      // reset the just compiled command, since it was test written
+                      // to part of the pgc structure
+                  }
+                else
+                  {
+                    write8(postptr + i * 8 + 16, 0x00, 0xa1, 0x00, 0x0E, 0x00, i + 1, 0x00, (cd - postptr) / 8 + 1);
+                      /* if g14 == i + 1 then goto (cd - postptr) / 8 + 1 */
+                      /* insert entry in transfer table */
+                    cd = cdd;
+                  } /*if*/
+              } /*for*/
+            if (cd == buttonptr)
+                memset(postptr, 0, 16);
+                  /* no button transfer sequences generated, nop the register transfer */
+          } /*if*/
 
-            if( cd==buttonptr )
-                memset(postptr,0,16); // nop the register transfer
-        }
+        vm_optimize(postptr, postptr, &cd);
 
-        vm_optimize(postptr,postptr,&cd);
-
-        cellptr=cd;
-        for( i=0; i<p->numsources; i++ )
-            for( j=0; j<p->sources[i]->numcells; j++ ) {
-                const struct cell *c=&p->sources[i]->cells[j];
-                if( c->cs ) {
-                    unsigned char *cdd=vm_compile(cellptr,cd,ws,p->pgcgroup,p,c->cs,ismenu);
-                    if( !cdd ) {
-                        fprintf(stderr,"ERR:  in %s pgc %d, <cell>\n",pstypes[ismenu],pgc);
+        cellptr = cd;
+        for (i = 0; i < thispgc->numsources; i++)
+            for (j = 0; j < thispgc->sources[i]->numcells; j++)
+              {
+                const struct cell * const thiscell = &thispgc->sources[i]->cells[j];
+                if (thiscell->commands)
+                  {
+                    unsigned char *cdd = vm_compile(cellptr, cd, ws, thispgc->pgcgroup, thispgc, thiscell->commands, ismenu);
+                    if (!cdd)
+                      {
+                        fprintf(stderr, "ERR:  in %s pgc %d, <cell>\n", pstypes[ismenu], pgc);
                         exit(1);
-                    }
-                    if( cdd!=cd+8 ) {
-                        fprintf(stderr,"ERR:  Cell command can only compile to one VM instruction.\n");
+                      } /*if*/
+                    if (cdd != cd + 8)
+                      {
+                        fprintf(stderr, "ERR:  Cell command can only compile to one VM instruction.\n");
                         exit(1);
-                    }
-                    cd=cdd;
-                }
-            }
+                      } /*if*/
+                    cd = cdd;
+                  } /*if*/
+              } /*for; for*/
         
         write2(buf+228,d); /* offset to commands */
         if( cd-(buf+d)-8>128*8 ) { // can only have 128 commands
@@ -267,14 +307,14 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
         d=cd-buf;
     }
 
-    if( p->numsources ) {
+    if( thispgc->numsources ) {
         int cellline,notseamless;
 
         write2(buf+230,d); /* offset to program map */
         j=1;
-        for( i=0; i<p->numsources; i++ ) {
+        for( i=0; i<thispgc->numsources; i++ ) {
             int k;
-            const struct source *si=p->sources[i];
+            const struct source *si=thispgc->sources[i];
 
             for( k=0; k<si->numcells; k++ ) {
                 if( si->cells[k].scellid==si->cells[k].ecellid )
@@ -290,9 +330,9 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
         j=-1;
         cellline=1;
         notseamless=1;
-        for( i=0; i<p->numsources; i++ ) {
+        for( i=0; i<thispgc->numsources; i++ ) {
             int k,l,m,firsttime;
-            const struct source *s=p->sources[i];
+            const struct source *s=thispgc->sources[i];
 
             for( k=0; k<s->numcells; k++ )
                 for( l=s->cells[k].scellid; l<s->cells[k].ecellid; l++ ) {
@@ -314,7 +354,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                             buf[2+d]=s->cells[k].pauselen; /* cell still time */
                             notseamless=1; // cells with stilltime are not seamless
                         }
-                        if( s->cells[k].cs ) {
+                        if( s->cells[k].commands ) {
                             buf[3+d]=cellline++; /* cell command nr */
                             notseamless=1; // cells with commands are not seamless
                         }
@@ -328,9 +368,9 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
         }
 
         write2(buf+234,d); /* offset to cell position information table */
-        for( i=0; i<p->numsources; i++ ) {
+        for( i=0; i<thispgc->numsources; i++ ) {
             int j,k;
-            const struct source *s=p->sources[i];
+            const struct source *s=thispgc->sources[i];
 
             for( j=0; j<s->numcells; j++ )
                 for( k=s->cells[j].scellid; k<s->cells[j].ecellid; k++ ) {

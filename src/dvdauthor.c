@@ -79,7 +79,7 @@ char *pstypes[3]={"VTS","VTSM","VMGM"};
 static char *smodedesc[6]={"","normal","widescreen","letterbox","panscan",0};
   /* subpicture usage modes */
 
-static const int colors[16]={ /* default contents for new colour tables */
+static const int default_colors[16]={ /* default contents for new colour tables */
     0x1000000,
     0x1000000,
     0x1000000,
@@ -1065,7 +1065,7 @@ static struct colorinfo *colorinfo_new()
 {
     struct colorinfo *ci=malloc(sizeof(struct colorinfo));
     ci->refcount=1;
-    memcpy(ci->colors,colors,16*sizeof(int));
+    memcpy(ci->color,default_colors,16*sizeof(int));
     return ci;
 }
 
@@ -1142,7 +1142,7 @@ static void pgcgroup_pushci(struct pgcgroup *p,int warn)
     int i,j,ii,jj;
 
     for( i=0; i<p->numpgcs; i++ ) {
-        if( !p->pgcs[i]->ci )
+        if( !p->pgcs[i]->colors )
             continue;
         for( j=0; j<p->pgcs[i]->numsources; j++ ) {
             struct vob *v=p->pgcs[i]->sources[j]->vob;
@@ -1150,10 +1150,10 @@ static void pgcgroup_pushci(struct pgcgroup *p,int warn)
             for( ii=0; ii<p->numpgcs; ii++ )
                 for( jj=0; jj<p->pgcs[ii]->numsources; jj++ )
                     if( v==p->pgcs[ii]->sources[jj]->vob ) {
-                        if( !p->pgcs[ii]->ci ) {
-                            p->pgcs[ii]->ci=p->pgcs[i]->ci;
-                            p->pgcs[ii]->ci->refcount++;
-                        } else if( p->pgcs[ii]->ci!=p->pgcs[i]->ci && warn) {
+                        if( !p->pgcs[ii]->colors ) {
+                            p->pgcs[ii]->colors=p->pgcs[i]->colors;
+                            p->pgcs[ii]->colors->refcount++;
+                        } else if( p->pgcs[ii]->colors!=p->pgcs[i]->colors && warn) {
                             fprintf(stderr,"WARN: Conflict in colormap between PGC %d and %d\n",i,ii);
                         }
                     }
@@ -1173,8 +1173,8 @@ static void pgcgroup_createvobs(struct pgcgroup *p,struct vobgroup *v)
             vobgroup_addvob(v,p->pgcs[i],p->pgcs[i]->sources[j]);
     pgcgroup_pushci(p,0);
     for( i=0; i<p->numpgcs; i++ )
-        if( !p->pgcs[i]->ci ) {
-            p->pgcs[i]->ci=colorinfo_new();
+        if( !p->pgcs[i]->colors ) {
+            p->pgcs[i]->colors=colorinfo_new();
             pgcgroup_pushci(p,0);
         }
     pgcgroup_pushci(p,1);
@@ -1268,8 +1268,8 @@ static void source_free(struct source *s)
         free(s->fname);
     if( s->cells ) {
         for( i=0; i<s->numcells; i++ )
-            if( s->cells[i].cs )
-                statement_free(s->cells[i].cs);
+            if( s->cells[i].commands )
+                statement_free(s->cells[i].commands);
         free(s->cells);
     }
     // vob is a reference created by vobgroup_addvob
@@ -1288,9 +1288,9 @@ int source_add_cell(struct source *v,double starttime,double endtime,int chap,in
     c->ischapter=chap;
     c->pauselen=pause;
     if( cmd )
-        c->cs=vm_parse(cmd);
+        c->commands=vm_parse(cmd);
     else
-        c->cs=0;
+        c->commands=0;
     return 0;
 }
 
@@ -1305,8 +1305,8 @@ static void button_freecontents(struct button *b)
 
     if( b->name )
         free(b->name);
-    if( b->cs )
-        statement_free(b->cs);
+    if( b->commands )
+        statement_free(b->commands);
     for( i=0; i<b->numstream; i++ ) {
         if( b->stream[i].up    ) free(b->stream[i].up);
         if( b->stream[i].down  ) free(b->stream[i].down);
@@ -1340,8 +1340,8 @@ void pgc_free(struct pgc *p)
         statement_free(p->prei);
     if( p->posti )
         statement_free(p->posti);
-    if( p->ci )
-        colorinfo_free(p->ci);
+    if( p->colors )
+        colorinfo_free(p->colors);
     // don't free the pgcgroup; it's an upward reference
     free(p);
 }
@@ -1361,8 +1361,8 @@ void pgc_set_post(struct pgc *p,const char *cmd)
 void pgc_set_color(struct pgc *p,int index,int color)
 {
     assert(index>=0 && index<16);
-    if( !p->ci ) p->ci=colorinfo_new();
-    p->ci->colors[index]=color;
+    if( !p->colors ) p->colors=colorinfo_new();
+    p->colors->color[index]=color;
 }
 
 void pgc_set_stilltime(struct pgc *p,int still)
@@ -1435,7 +1435,7 @@ int pgc_add_button(struct pgc *p,const char *name,const char *cmd)
         sprintf(nm,"%d",p->numbuttons);
         bs->name=strdup(nm);
     }
-    bs->cs=vm_parse(cmd);
+    bs->commands=vm_parse(cmd);
     return 0;
 }
 
