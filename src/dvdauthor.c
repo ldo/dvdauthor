@@ -935,16 +935,18 @@ static char *makevtsdir(const char *s)
 
 // jumppad requires the existance of a menu to operate
 // if no languages exist, create an english one
-static void jp_force_menu(struct menugroup *mg,int type)
-{
+static void jp_force_menu(struct menugroup *mg, int type)
+  {
     struct pgcgroup *pg;
 
-    if( !jumppad ) return;
-    if( mg->numgroups ) return;
-    fprintf(stderr,"WARN: The use of jumppad requires a menu; creating a dummy ENGLISH menu\n");
-    pg=pgcgroup_new(type);
-    menugroup_add_pgcgroup(mg,"en",pg);
-}
+    if (!jumppad)
+        return;
+    if (mg->numgroups)
+        return;
+    fprintf(stderr, "WARN: The use of jumppad requires a menu; creating a dummy ENGLISH menu\n");
+    pg = pgcgroup_new(type);
+    menugroup_add_pgcgroup(mg, "en", pg);
+  } /*jp_force_menu*/
 
 static void ScanIfo(struct toc_summary *ts,char *ifo)
   /* scans another existing VTS IFO file and puts info about it
@@ -993,23 +995,24 @@ static void ScanIfo(struct toc_summary *ts,char *ifo)
     ts->numvts++;
   } /*ScanIfo*/
 
-static void forceaddentry(struct pgcgroup *va,int entry)
-{
-    if( !va->numpgcs && !jumppad )
+static void forceaddentry(struct pgcgroup *va, int entry)
+  {
+    if (!va->numpgcs && !jumppad)
         return;
-    if( !(va->allentries&entry) ) { /* entry not already present */
-        if( va->numpgcs )
-            va->pgcs[0]->entries|=entry;
-        va->allentries|=entry;
+    if (!(va->allentries & entry)) /* entry not already present */
+      {
+        if (va->numpgcs)
+            va->pgcs[0]->entries |= entry;
+        va->allentries |= entry;
         va->numentries++;
-    }
-}
+      } /*if*/
+  } /*forceaddentry*/
 
-static void checkaddentry(struct pgcgroup *va,int entry)
-{
-    if( va->numpgcs )
-        forceaddentry(va,entry);
-}
+static void checkaddentry(struct pgcgroup *va, int entry)
+  {
+    if (va->numpgcs)
+        forceaddentry(va, entry);
+  } /*checkaddentry*/
 
 static int getvtsnum(const char *fbase)
   /* returns the next unused titleset number within output directory fbase. */
@@ -1561,7 +1564,8 @@ void dvdauthor_enable_allgprm()
     allowallreg=1;
 }
 
-void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,const char *fbase)
+void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fbase)
+  /* generates a VMG, taking into account all already-generated titlesets. */
   {
     DIR *d;
     struct dirent *de;
@@ -1572,25 +1576,26 @@ void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,const char *fbas
     static char ifonames[101][14];
     struct workset ws;
 
-    if( !fbase ) // can't really make a vmgm without titlesets
+    if (!fbase) // can't really make a vmgm without titlesets
         return;
-    ws.ts=&ts;
-    ws.menus=menus;
-    ws.titles=0;
-    jp_force_menu(menus,2);
-    for( i=0; i<menus->numgroups; i++ ) {
+    ws.titlesets = &ts;
+    ws.menus = menus;
+    ws.titles = 0;
+    jp_force_menu(menus, 2);
+    for (i = 0; i < menus->numgroups; i++)
+      {
         validatesummary(menus->groups[i].pg);
-        pgcgroup_createvobs(menus->groups[i].pg,menus->vg);
-        forceaddentry(menus->groups[i].pg,4);
-    }
-    fprintf(stderr,"INFO: dvdauthor creating table of contents\n");
+        pgcgroup_createvobs(menus->groups[i].pg, menus->vg);
+        forceaddentry(menus->groups[i].pg, 4); /* entry=title */
+      } /*for*/
+    fprintf(stderr, "INFO: dvdauthor creating table of contents\n");
     initdir(fbase);
     // create base entry, if not already existing
-    memset(&ts,0,sizeof(struct toc_summary));
-    vtsdir=makevtsdir(fbase);
+    memset(&ts, 0, sizeof(struct toc_summary));
+    vtsdir = makevtsdir(fbase);
     for (i = 0; i < 101; i++)
         ifonames[i][0] = 0; /* mark all name entries as unused */
-    d=opendir(vtsdir);
+    d = opendir(vtsdir);
     while ((de = readdir(d)) != 0)
       {
       /* look for existing titlesets */
@@ -1643,7 +1648,7 @@ void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,const char *fbas
     if (menus->vg->numvobs)
       {
         fprintf(stderr, "INFO: Creating menu for TOC\n");
-        sprintf(fbuf,"%s/VIDEO_TS.VOB",vtsdir);
+        sprintf(fbuf, "%s/VIDEO_TS.VOB", vtsdir);
         FindVobus(fbuf, menus->vg, 2);
         MarkChapters(menus->vg);
         setattr(menus->vg, 2);
@@ -1661,49 +1666,55 @@ void dvdauthor_vmgm_gen(struct pgc *fpc,struct menugroup *menus,const char *fbas
     free(vtsdir);
   } /*dvdauthor_vmgm_gen*/
 
-void dvdauthor_vts_gen(struct menugroup *menus,struct pgcgroup *titles,const char *fbase)
-{
-    int vtsnum,i;
+void dvdauthor_vts_gen(struct menugroup *menus, struct pgcgroup *titles, const char *fbase)
+  /* generates a VTS (titleset). */
+  {
+    int vtsnum, i;
     static char realfbase[1000];
     struct workset ws;
 
-    fprintf(stderr,"INFO: dvdauthor creating VTS\n");
+    fprintf(stderr, "INFO: dvdauthor creating VTS\n");
     initdir(fbase);
-    ws.ts=0;
-    ws.menus=menus;
-    ws.titles=titles;
-    jp_force_menu(menus,1);
-    for( i=0; i<menus->numgroups; i++ ) {
+    ws.titlesets = 0;
+    ws.menus = menus;
+    ws.titles = titles;
+    jp_force_menu(menus, 1);
+    for (i = 0; i < menus->numgroups; i++)
+      {
         validatesummary(menus->groups[i].pg);
-        pgcgroup_createvobs(menus->groups[i].pg,menus->vg);
-        forceaddentry(menus->groups[i].pg,0x80);
-        checkaddentry(menus->groups[i].pg,0x08);
-    }
+        pgcgroup_createvobs(menus->groups[i].pg, menus->vg);
+        forceaddentry(menus->groups[i].pg, 0x80); /* entry=ptt? */
+        checkaddentry(menus->groups[i].pg, 0x08); /* entry=root */
+      } /*for*/
     validatesummary(titles);
-    pgcgroup_createvobs(titles,titles->vg);
-    if( titles->numpgcs==0 ) {
-        fprintf(stderr,"ERR:  no titles defined\n");
+    pgcgroup_createvobs(titles, titles->vg);
+    if (titles->numpgcs == 0)
+      {
+        fprintf(stderr, "ERR:  no titles defined\n");
         exit(1);
-    }
-    vtsnum=getvtsnum(fbase);
-    if( fbase ) {
-        sprintf(realfbase,"%s/VIDEO_TS/VTS_%02d",fbase,vtsnum);
-        fbase=realfbase;
-    }
-    if( menus->vg->numvobs ) {
-        FindVobus(fbase,menus->vg,1);
+      } /*if*/
+    vtsnum = getvtsnum(fbase);
+    if (fbase)
+      {
+        sprintf(realfbase, "%s/VIDEO_TS/VTS_%02d", fbase, vtsnum);
+        fbase = realfbase;
+      } /*if*/
+    if (menus->vg->numvobs)
+      {
+        FindVobus(fbase, menus->vg, 1);
         MarkChapters(menus->vg);
-        setattr(menus->vg,1);
-    }
-    FindVobus(fbase,titles->vg,0);
+        setattr(menus->vg, 1);
+      } /*if*/
+    FindVobus(fbase, titles->vg, 0);
     MarkChapters(titles->vg);
-    setattr(titles->vg,0);
-    if( !menus->vg->numvobs ) { // for undefined menus, we'll just copy the video type of the title
-        menus->vg->vd=titles->vg->vd;
-    }
-    fprintf(stderr,"\n");
-    WriteIFOs(fbase,&ws);
-    if( menus->vg->numvobs )
-        FixVobus(fbase,menus->vg,&ws,1);
-    FixVobus(fbase,titles->vg,&ws,0);
-}
+    setattr(titles->vg, 0);
+    if (!menus->vg->numvobs) // for undefined menus, we'll just copy the video type of the title
+      {
+        menus->vg->vd = titles->vg->vd;
+      } /*if*/
+    fprintf(stderr, "\n");
+    WriteIFOs(fbase, &ws);
+    if (menus->vg->numvobs)
+        FixVobus(fbase, menus->vg, &ws, 1);
+    FixVobus(fbase, titles->vg, &ws, 0);
+  } /*dvdauthor_vts_gen*/

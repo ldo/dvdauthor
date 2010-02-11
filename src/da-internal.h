@@ -179,7 +179,8 @@ struct vtsdef { /* describes a VTS */
     int numtitles; /* length of numchapters array */
     int *numchapters; /* number of chapters in each title */
     int numsectors;
-    char vtssummary[0x300],vtscat[4];
+    char vtssummary[0x300]; /* copy of VTS attributes (bytes 0x100 onwards of VTS IFO) */
+    char vtscat[4]; /* VTS_CAT (copy of bytes 0x22 .. 0x25 of VTS IFO) */
 };
 
 // keeps TT_SRPT within 1 sector
@@ -191,7 +192,7 @@ struct toc_summary {
 };
 
 struct workset {
-    const struct toc_summary *ts;
+    const struct toc_summary *titlesets;
     const struct menugroup *menus;
     const struct pgcgroup *titles;
 };

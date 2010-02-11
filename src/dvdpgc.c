@@ -94,8 +94,8 @@ static int genjumppad(unsigned char *buf,int ismenu,int entry,const struct works
         // *** VMGM jumppad
         // remap all VMGM TITLE X -> TITLESET X TITLE Y
         k=129;
-        for( i=0; i<ws->ts->numvts; i++ )
-            for( j=0; j<ws->ts->vts[i].numtitles; j++ ) {
+        for( i=0; i<ws->titlesets->numvts; i++ )
+            for( j=0; j<ws->titlesets->vts[i].numtitles; j++ ) {
                 write8(cbuf,0x71,0xA0,0x0F,0x0F,j+129,i+2,k,1); 
                 cbuf+=8;
                 k++;
@@ -107,7 +107,7 @@ static int genjumppad(unsigned char *buf,int ismenu,int entry,const struct works
         write8(cbuf,0x64,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]-=g[15]
         write8(cbuf,0x62,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]<->g[15]
         // For each titleset, delegate to the appropriate submenu
-        for( i=0; i<ws->ts->numvts; i++ ) {
+        for( i=0; i<ws->titlesets->numvts; i++ ) {
             write8(cbuf,0x71,0x00,0x00,0x0D,0x00,i+2,0x00,0x00); cbuf+=8; // g[13]=(i+1)*256;
             write8(cbuf,0x30,0x26,0x00,0x01,i+1,0x87,0x0E,0x0D); cbuf+=8; // if g[14]==g[13] then JumpSS VTSM i+1, ROOT
         }
