@@ -904,14 +904,14 @@ static void audio_scan_pcm(struct audchannel *ach,const unsigned char *buf,int l
     audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_CHANNELS,attr);
 }
 
-int FindVobus(const char *fbase,struct vobgroup *va,int ismenu)
-/* generates output VOB files for a menu or titleset. ismenu = 0 for a titleset, 1 for a VTS menu, 2 for a VMG menu. */
+int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
+/* generates output VOB files for a menu or titleset. */
 {
     unsigned char *buf;
     int cursect=0; /* sector nr in input file */
     int fsect=-1; /* sector nr in current output VOB file, -ve => not opened yet */
     int vnum;
-    int outnum = -ismenu + 1; /* +ve for a titleset, in which case used to generate output VOB file names */
+    int outnum = -(int)ismenu + 1; /* +ve for a titleset, in which case used to generate output VOB file names */
     int vobid=0;
     struct mp2info {
         int hdrptr;
@@ -1789,7 +1789,7 @@ int calcaudiogap(const struct vobgroup *va,int vcid0,int vcid1,int ach)
     return 1;
 }
 
-void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *ws,int ismenu)
+void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *ws,vtypes ismenu)
 /* fills in the NAV packs (i.e. PCI and DSI packets) for each VOBU in the already-written output VOB files. */
   {
     int outvob = -1;

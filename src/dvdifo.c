@@ -529,7 +529,7 @@ static void WriteIFO(FILE *h, const struct workset *ws)
     // sect 1: VTS_PTT_SRPT
     Create_PTT_SRPT(h, ws->titles);
    
-    // sect 2: VTS_PGCIT
+    // sect 2: VTS_PGCI
     CreatePGC(h, ws, 0);
 
     if( jumppad || forcemenus )

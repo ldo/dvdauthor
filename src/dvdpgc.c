@@ -60,37 +60,44 @@ for VTSM root menu:
 
 */
 
-static int genjumppad(unsigned char *buf,int ismenu,int entry,const struct workset *ws,const struct pgcgroup *curgroup)
+static int genjumppad(unsigned char *buf,vtypes ismenu,int entry,const struct workset *ws,const struct pgcgroup *curgroup)
 /* generates the jumppad if the user wants it. */
-{
-    unsigned char *cbuf=buf;
-    int i,j,k;
-
-    if( jumppad && ismenu==1 && entry==7 ) {
+  {
+    unsigned char *cbuf = buf;
+    int i, j, k;
+    if (jumppad && ismenu == VTYPE_VTSM && entry == 7)
+      {
         // *** VTSM jumppad
         write8(cbuf,0x61,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]=g[15];
         write8(cbuf,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); cbuf+=8; // g[15]=0;
         // menu entry jumptable
-        for( i=2; i<8; i++ ) {
-            for( j=0; j<curgroup->numpgcs; j++ )
-                if( curgroup->pgcs[j]->entries&(1<<i) ) {
+        for (i = 2; i < 8; i++)
+          {
+            for (j = 0; j < curgroup->numpgcs; j++)
+                if (curgroup->pgcs[j]->entries & (1 << i))
+                  {
                     write8(cbuf,0x20,0xA4,0x00,0x0E,i+120,0x00,0x00,j+1); cbuf+=8; // if g[14]==0xXX00 then LinkPGCN XX
-                }
-        }
+                  } /*if; for*/
+          } /*for*/
         // menu jumptable
-        for( i=0; i<curgroup->numpgcs; i++ ) {
+        for (i = 0; i < curgroup->numpgcs; i++)
+          {
             write8(cbuf,0x20,0xA4,0x00,0x0E,i+1,0x00,0x00,i+1); cbuf+=8; // if g[14]==0xXX00 then LinkPGCN XX
-        }
+          } /*for*/
         // title/chapter jumptable
-        for( i=0; i<ws->titles->numpgcs; i++ ) {
+        for (i = 0; i < ws->titles->numpgcs; i++)
+          {
             write8(cbuf,0x71,0x00,0x00,0x0D,i+129,0,0x00,0x00); cbuf+=8; // g[13]=(i+1)*256;
             write8(cbuf,0x30,0x23,0x00,0x00,0x00,i+1,0x0E,0x0D); cbuf+=8; // if g[15]==g[13] then JumpSS VTSM i+1, ROOT
-            for( j=0; j<ws->titles->pgcs[i]->numchapters; j++ ) {
+            for (j = 0; j < ws->titles->pgcs[i]->numchapters; j++)
+              {
                 write8(cbuf,0x71,0x00,0x00,0x0D,i+129,j+1,0x00,0x00); cbuf+=8; // g[13]=(i+1)*256;
                 write8(cbuf,0x30,0x25,0x00,j+1,0x00,i+1,0x0E,0x0D); cbuf+=8; // if g[15]==g[13] then JumpSS VTSM i+1, ROOT
-            }
-        }
-    } else if( jumppad && ismenu==2 && entry==2 ) {
+              } /*for*/
+          } /*for*/
+      }
+    else if (jumppad && ismenu == VTYPE_VMGM && entry == 2)
+      {
         // *** VMGM jumppad
         // remap all VMGM TITLE X -> TITLESET X TITLE Y
         k = 129;
@@ -116,12 +123,12 @@ static int genjumppad(unsigned char *buf,int ismenu,int entry,const struct works
           } /*for*/
         // set g[15]=0 so we don't leak dirty registers to other PGC's
         write8(cbuf,0x71,0x00,0x00,0x0F,0x00,0x00,0x00,0x00); cbuf+=8; // g[15]=0;
-    }
+      } /*if*/
     return cbuf-buf;
-}
+  } /*genjumppad*/
 
-static int jumppgc(unsigned char *buf,int pgc,int ismenu,int entry,const struct workset *ws,const struct pgcgroup *curgroup)
-{
+static int jumppgc(unsigned char *buf,int pgc,vtypes ismenu,int entry,const struct workset *ws,const struct pgcgroup *curgroup)
+  {
     int base = 0xEC, ncmd, offs;
     offs = base + 8; /* room for command table header */
     offs += genjumppad(buf + offs, ismenu, entry, ws, curgroup);
@@ -145,14 +152,14 @@ static int jumppgc(unsigned char *buf,int pgc,int ismenu,int entry,const struct 
     buf[base + 1] = ncmd; /* number of pre commands, low byte */
     write2(buf + base + 6, 7 + 8 * ncmd);
     return offs;
-}
+  } /*jumppgc*/
 
-static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgroup *group,int pgc,int ismenu,int entry)
-/* generates a PGC. */
+static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgroup *group,int pgc,vtypes ismenu,int entry)
+/* generates a PGC entry for an IFO file in buf. */
 {
-    const struct vobgroup *va = (ismenu ? ws->menus->vg : ws->titles->vg);
+    const struct vobgroup *va = (ismenu != VTYPE_VTS ? ws->menus->vg : ws->titles->vg);
     const struct pgc * const thispgc = group->pgcs[pgc];
-    int i,j,d;
+    int i, j, d;
 
   /* buf[0], buf[1] don't seem to be used */
 
@@ -191,7 +198,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
     d = 0xEC; /* start assembling commands here */
 
     // command table
-    {
+      {
         unsigned char *cd=buf+d+8,*preptr,*postptr,*cellptr;
 
         preptr = cd; /* start of pre commands */
@@ -294,209 +301,241 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                   } /*if*/
               } /*for; for*/
         
-        write2(buf+228,d); /* offset to commands */
-        if( cd-(buf+d)-8>128*8 ) { // can only have 128 commands
-            fprintf(stderr,"ERR:  Can only have 128 commands for pre, post, and cell commands.\n");
+        write2(buf + 228, d); /* offset to commands */
+        if (cd - (buf + d) - 8 > 128 * 8) // can only have 128 commands
+          {
+            fprintf(stderr, "ERR:  Can only have 128 commands for pre, post, and cell commands.\n");
             exit(1);
-        }
-      /* generate command table */
-        write2(buf+d,(postptr-preptr)/8); /* nr pre commands */
-        write2(buf+d+2,(cellptr-postptr)/8); /* nr post commands */
-        write2(buf+d+4,(cd-cellptr)/8); /* nr cell commands */
-        write2(buf+d+6,cd-(buf+d)-1); // last byte
-        d=cd-buf;
-    }
+          } /*if*/
+      /* fill in command table header */
+        write2(buf + d, (postptr - preptr) / 8); /* nr pre commands */
+        write2(buf + d + 2, (cellptr - postptr) / 8); /* nr post commands */
+        write2(buf + d + 4, (cd - cellptr) / 8); /* nr cell commands */
+        write2(buf + d + 6, cd - (buf + d) - 1); /* end address relative to command table */
+        d = cd - buf;
+      }
 
-    if( thispgc->numsources ) {
-        int cellline,notseamless;
-
-        write2(buf+230,d); /* offset to program map */
-        j=1;
-        for( i=0; i<thispgc->numsources; i++ ) {
+    if (thispgc->numsources)
+      {
+      /* fill in program map, cell playback info table and cell position info table */
+        int cellline, notseamless;
+        write2(buf + 230, d); /* offset to program map */
+        j = 1;
+        for (i = 0; i < thispgc->numsources; i++)
+          { /* generate the program map */
             int k;
-            const struct source *si=thispgc->sources[i];
-
-            for( k=0; k<si->numcells; k++ ) {
-                if( si->cells[k].scellid==si->cells[k].ecellid )
+            const struct source * const thissource = thispgc->sources[i];
+            for (k = 0; k < thissource->numcells; k++)
+              {
+                if (thissource->cells[k].scellid == thissource->cells[k].ecellid)
                     continue; /* no cells */
-                if( si->cells[k].ischapter )
-                    buf[d++]=j; /* entry cell nr */
-                j+=si->cells[k].ecellid-si->cells[k].scellid;
-            }
-        }
-        d+=d&1; /* round up to word boundary */
+                if (thissource->cells[k].ischapter)
+                    buf[d++] = j; /* entry cell nr */
+                j += thissource->cells[k].ecellid - thissource->cells[k].scellid;
+              } /*for*/
+          } /*for*/
+        d += d & 1; /* round up to word boundary */
 
-        write2(buf+232,d); /* offset to cell playback information table */
-        j=-1;
-        cellline=1;
-        notseamless=1;
-        for( i=0; i<thispgc->numsources; i++ ) {
-            int k,l,m,firsttime;
-            const struct source *s=thispgc->sources[i];
-
-            for( k=0; k<s->numcells; k++ )
-                for( l=s->cells[k].scellid; l<s->cells[k].ecellid; l++ ) {
-                    int id=s->vob->vobid*256+l,vi;
-                    for( m=0; m<va->numaudiotracks; m++ )
-                        if( j>=0 && getaudch(va,m)>=0 && calcaudiogap(va,j,id,getaudch(va,m)) )
-                            notseamless=1;
-                    buf[d]=(notseamless?0:8)|(j+1!=id?2:0); // if this is the first cell of the source, then set 'STC_discontinuity', otherwise set 'seamless presentation'
-                    notseamless=0;
+        write2(buf + 232, d); /* offset to cell playback information table */
+        j = -1;
+        cellline = 1;
+        notseamless = 1;
+        for (i = 0; i < thispgc->numsources; i++)
+          { /* generate the cell playback information table */
+            int k, l, m, firsttime;
+            const struct source * const thissource = thispgc->sources[i];
+            for (k = 0; k < thissource->numcells; k++)
+                for (l = thissource->cells[k].scellid; l < thissource->cells[k].ecellid; l++)
+                  {
+                    int id = thissource->vob->vobid * 256 + l, vi;
+                    for (m = 0; m < va->numaudiotracks; m++)
+                        if
+                          (
+                                j >= 0
+                            &&
+                                getaudch(va, m) >= 0
+                            &&
+                                calcaudiogap(va, j, id, getaudch(va, m))
+                          )
+                            notseamless = 1;
+                    buf[d] =
+                            (notseamless ? 0 : 8 /* seamless multiplex */)
+                        |
+                            (j + 1 != id ? 2 /* SCR discontinuity */ : 0);
+                              // if this is the first cell of the source, then set 'STC_discontinuity', otherwise set 'seamless presentation'
+                    notseamless = 0;
                     // you can't set the seamless presentation on the first cell or else a/v sync problems will occur
-                    j=id;
+                    j = id;
 
-                    vi=findcellvobu(s->vob,l);
-                    firsttime=s->vob->vobu[vi].sectpts[0];
-                    write4(buf+8+d,s->vob->vobu[vi].sector);
-                    vi=findcellvobu(s->vob,l+1)-1;
-                    if( l==s->cells[k].ecellid-1 ) {
-                        if( s->cells[k].pauselen>0 ) {
-                            buf[2+d]=s->cells[k].pauselen; /* cell still time */
-                            notseamless=1; // cells with stilltime are not seamless
-                        }
-                        if( s->cells[k].commands ) {
-                            buf[3+d]=cellline++; /* cell command nr */
-                            notseamless=1; // cells with commands are not seamless
-                        }
-                    }
-                    write4(buf+4+d,buildtimeeven(va,s->vob->vobu[vi].sectpts[1]-firsttime));
+                    vi = findcellvobu(thissource->vob, l);
+                    firsttime = thissource->vob->vobu[vi].sectpts[0];
+                    write4(buf + 8 + d, thissource->vob->vobu[vi].sector);
+                      /* first VOBU start sector */
+                  /* first ILVU end sector not supported for now */
+                    vi = findcellvobu(thissource->vob, l + 1) - 1;
+                    if (l == thissource->cells[k].ecellid - 1)
+                      {
+                        if (thissource->cells[k].pauselen > 0)
+                          {
+                            buf[2 + d] = thissource->cells[k].pauselen; /* cell still time */
+                            notseamless = 1; // cells with stilltime are not seamless
+                          } /*if*/
+                        if (thissource->cells[k].commands)
+                          {
+                            buf[3 + d] = cellline++; /* cell command nr */
+                            notseamless = 1; // cells with commands are not seamless
+                          } /*if*/
+                      } /*if*/
+                    write4(buf + 4 + d, buildtimeeven(va, thissource->vob->vobu[vi]. sectpts[1] - firsttime));
                       /* cell playback time + frame rate */
-                    write4(buf+16+d,s->vob->vobu[vi].sector); /* last VOBU start sector */
-                    write4(buf+20+d,s->vob->vobu[vi].lastsector); /* last VOBU end sector */
-                    d+=24;
-                }
-        }
+                    write4(buf + 16 + d, thissource->vob->vobu[vi].sector);
+                      /* last VOBU start sector */
+                    write4(buf + 20 + d, thissource->vob->vobu[vi].lastsector);
+                      /* last VOBU end sector */
+                    d += 24;
+                  } /*for; for*/
+          } /*for*/
 
-        write2(buf+234,d); /* offset to cell position information table */
-        for( i=0; i<thispgc->numsources; i++ ) {
+        write2(buf + 234, d); /* offset to cell position information table */
+        for (i = 0; i < thispgc->numsources; i++)
+          { /* build the cell position information table */
             int j,k;
-            const struct source *s=thispgc->sources[i];
-
-            for( j=0; j<s->numcells; j++ )
-                for( k=s->cells[j].scellid; k<s->cells[j].ecellid; k++ ) {
-                    buf[1+d]=s->vob->vobid; /* VOB ID low byte */
-                    buf[3+d]=k; /* cell ID */
-                    d+=4;
-                }
-        }
-    }
+            const struct source * const thissource = thispgc->sources[i];
+            for (j = 0; j < thissource->numcells; j++)
+                for (k = thissource->cells[j].scellid; k < thissource->cells[j].ecellid; k++)
+                  {
+                    buf[1 + d] = thissource->vob->vobid; /* VOB ID low byte */
+                    buf[3 + d] = k; /* cell ID */
+                    d += 4;
+                  } /*for*/
+          } /*for*/
+      } /*if thispgc->numsources*/
 
     return d;
 }
 
-static int createpgcgroup(const struct workset *ws,int ismenu,const struct pgcgroup *va,unsigned char *buf /* where to put VMGM_LU entry */)
-{
+static int createpgcgroup(const struct workset *ws,vtypes ismenu,const struct pgcgroup *va,unsigned char *buf /* where to put generated table */)
+  /* generates a VMGM_LU or VTSM_LU table and all associated PGCs. Returns -1 if there wasn't enough space. */
+  {
     int len,i,pgcidx;
 
-    len=va->numpgcs+va->numentries;
-    for( i=0; i<va->numpgcs; i++ )
-        if( va->pgcs[i]->entries )
+    len = va->numpgcs + va->numentries;
+    for (i = 0; i < va->numpgcs; i++)
+        if (va->pgcs[i]->entries)
             len--;
-    write2(buf,len); /* nr program chains */
-    len=len*8+8;
-    pgcidx=8;
+    write2(buf, len); /* nr program chains */
+    len = len * 8 + 8; /* total length of VMGM_LU/VTSM_LU */
+    pgcidx = 8;
 
-    for( i=0; i<va->numpgcs; i++ ) {
-        int j=0;
-
-        if( buf+len+BUFFERPAD-bigwritebuf > bigwritebuflen )
+    for (i = 0; i < va->numpgcs; i++)
+      { /* generate the PGCs and put in their offsets */
+        int j = 0;
+        if (buf + len + BUFFERPAD - bigwritebuf > bigwritebuflen)
             return -1;
-        if( !ismenu )
-            buf[pgcidx]=0x81+i;
-        else {
-            buf[pgcidx]=0;
-            for( j=2; j<8; j++ )
-                if( va->pgcs[i]->entries&(1<<j) ) {
-                    buf[pgcidx]=0x80|j; /* menu type */
+        if (ismenu == VTYPE_VTS)
+            buf[pgcidx] = 0x81 + i; /* menu type for VTSM_LU */
+        else
+          {
+            buf[pgcidx] = 0;
+            for (j = 2; j < 8; j++)
+                if (va->pgcs[i]->entries & (1 << j))
+                  {
+                    buf[pgcidx] = 0x80 | j; /* menu type for VMGM_LU */
                     break;
-                }
-        }
-        write4(buf+pgcidx+4,len); /* offset to VMGM_PGC */
-        len+=genpgc(buf+len,ws,va,i,ismenu,j);
-        pgcidx+=8;
-    }
+                  } /*if; for*/
+          } /*if*/
+        write4(buf + pgcidx + 4, len); /* offset to VMGM_PGC/VTSM_PGC */
+        len += genpgc(buf + len, ws, va, i, ismenu, j); /* put it there */
+        pgcidx += 8;
+      } /*for*/
 
-    for( i=2; i<8; i++ ) {
-        if( va->allentries&(1<<i) ) {
+    for (i = 2; i < 8; i++)
+      {
+        if (va->allentries & (1 << i))
+          {
             int j;
-
-            if( buf+len+BUFFERPAD-bigwritebuf > bigwritebuflen )
+            if (buf + len + BUFFERPAD - bigwritebuf > bigwritebuflen)
                 return -1;
-
-            for( j=0; j<va->numpgcs; j++ )
-                if( va->pgcs[j]->entries&(1<<i) )
+            for (j = 0; j < va->numpgcs; j++)
+                if (va->pgcs[j]->entries & (1 << i))
                     break;
-            if( j<va->numpgcs ) { // this can be false if jumppad is set
+            if (j < va->numpgcs) // this can be false if jumppad is set
+              {
                 // is this the first entry for this pgc? if so, it was already
                 // triggered via the PGC itself, so skip writing the extra
                 // entry here
-                if( (va->pgcs[j]->entries & ((1<<i)-1)) == 0 )
+                if ((va->pgcs[j]->entries & ((1 << i) - 1)) == 0)
                     continue;
-            }
+              } /*if*/
             j++;
-            buf[pgcidx]=0x80|i; /* menu type */
-            write4(buf+pgcidx+4,len); /* offset to VMGM_PGC */
-            len+=jumppgc(buf+len,j,ismenu,i,ws,va);
-            pgcidx+=8;
-        }
-    }
+            buf[pgcidx] = 0x80 | i; /* menu type */
+            write4(buf + pgcidx + 4, len); /* offset to VMGM_PGC/VTSM_PGC */
+            len += jumppgc(buf + len, j, ismenu, i, ws, va);
+            pgcidx += 8;
+          } /*if*/
+      } /*for*/
 
-    write4(buf+4,len-1); // last byte rel to buf
+    write4(buf + 4, len - 1);
+      /* end address (last byte of last PGC in this LU) relative to VMGM_LU/VTSM_LU */
     return len;
-}
+  }
 
-int CreatePGC(FILE *h,const struct workset *ws,int ismenu)
-{
+int CreatePGC(FILE *h, const struct workset *ws, vtypes ismenu)
+  {
     unsigned char *buf;
     int len,ph,i,in_it;
 
-    in_it=!bigwritebuflen;
- retry:
-    if( in_it ) {
-        if( bigwritebuflen==0 )
-            bigwritebuflen=128*1024;
+    in_it = !bigwritebuflen; /* don't do first allocation if already got a buffer from last time */
+ retry: /* come back here if buffer wasn't big enough to generate a PGC group */
+    if (in_it)
+      {
+        if (bigwritebuflen == 0)
+            bigwritebuflen = 128 * 1024; /* first call */
         else
-            bigwritebuflen<<=1;
-        if( bigwritebuf )
+            bigwritebuflen <<= 1; /* previous write failed, try twice the size */
+        if (bigwritebuf)
             free(bigwritebuf);
-        bigwritebuf=malloc(bigwritebuflen);
-    }
-    in_it=1;
-    buf=bigwritebuf;
-    memset(buf,0,bigwritebuflen);
-    ph=0;
-    if( ismenu ) { /* create VMGM_PGCI_UT structure */
-        buf[1]=ws->menus->numgroups; // # of language units
-        ph=8+8*ws->menus->numgroups; /* VMGM_LU structures start here */
+        bigwritebuf = malloc(bigwritebuflen);
+      } /*if*/
+    in_it = 1;
+    buf = bigwritebuf;
+    memset(buf, 0, bigwritebuflen);
+    ph = 0;
+    if (ismenu != VTYPE_VTS) /* create VMGM_PGCI_UT/VTSM_PGCI_UT structure */
+      {
+        buf[1] = ws->menus->numgroups; // # of language units
+        ph = 8 + 8 * ws->menus->numgroups; /* VMGM_LU/VTSM_LU structures start here */
 
-        for( i=0; i<ws->menus->numgroups; i++ ) {
-            unsigned char *plu=buf+8+8*i;
-            const struct langgroup *lg=&ws->menus->groups[i];
-
-            memcpy(plu,lg->lang,2); /* ISO639 language code */
-            if( ismenu==1 )
-                plu[3]=lg->pg->allentries;
+        for (i = 0; i < ws->menus->numgroups; i++)
+          {
+            unsigned char * const plu = buf + 8 + 8 * i;
+            const struct langgroup * const lg = &ws->menus->groups[i];
+            memcpy(plu, lg->lang, 2); /* ISO639 language code */
+            if (ismenu == 1)
+                plu[3] = lg->pg->allentries;
             else
-                plu[3]=0x80; // menu system contains entry for title
-            write4(plu+4,ph);
-
-            len=createpgcgroup(ws,ismenu,lg->pg,buf+ph);
-            if( len<0 )
+                plu[3] = 0x80; // menu system contains entry for title
+            write4(plu + 4, ph);
+            len = createpgcgroup(ws, ismenu, lg->pg, buf + ph);
+            if (len < 0)
                 goto retry;
-            ph+=len;
-        }
-        write4(buf+4,ph-1);
-          /* end address (last byte of last PGC in last LU) relative to VMGM_PGCI_UT */
-    } else {
-        len=createpgcgroup(ws,0,ws->titles,buf);
-        if( len<0 )
+            ph += len;
+          } /*for*/
+        write4(buf + 4, ph - 1);
+          /* end address (last byte of last PGC in last LU) relative to VMGM_PGCI_UT/VTSM_PGCI_UT */
+      }
+    else
+      {
+      /* generate VTS_PGCI structure */
+        len = createpgcgroup(ws, 0, ws->titles, buf);
+        if (len < 0)
             goto retry;
-        ph=len;
-    }
+        ph = len;
+      } /*if*/
 
-    assert(ph<=bigwritebuflen);
-    ph=(ph+2047)&(-2048);
-    if( h )
-        fwrite(buf,1,ph,h);
-    return ph/2048;
-}
+    assert(ph <= bigwritebuflen);
+    ph = (ph + 2047) & (-2048);
+    if (h)
+        fwrite(buf, 1, ph, h);
+    return ph / 2048;
+  } /*CreatePGC*/

@@ -568,7 +568,7 @@ int main(int argc,char **argv)
     } else
         mg=0;
     if( !va[1] && !istoc )
-        va[1]=pgcgroup_new(0);
+        va[1]=pgcgroup_new(VTYPE_VTS);
 
     if( !fbase && writeoutput ) {
         fbase=readconfentry("WORKDIR");
@@ -622,8 +622,9 @@ static struct source *curvob=0;
 static const char
     *fbase=0, /* output directory name */
     *buttonname=0; /* name of button currently being defined */
+static vtypes
+    ismenuf = VTYPE_VTS;
 static int
-    ismenuf=0, /* 0 - vts, 1 - vtsm, 2 - vmgm */
     istoc=0, /* 1 for vmgm, 0 for titleset */
     setvideo=0, /* to keep count of <video> tags */
     setaudio=0, /* to keep count of <audio> tags */
@@ -648,7 +649,7 @@ static char menulang[3];
 
 static void set_video_attr(int attr,const char *s)
 {
-    if( ismenuf )
+    if( ismenuf != VTYPE_VTS )
         menugroup_set_video_attr(mg,attr,s);
     else
         pgcgroup_set_video_attr(titles,attr,s);
@@ -656,7 +657,7 @@ static void set_video_attr(int attr,const char *s)
 
 static void set_audio_attr(int attr,const char *s,int ch)
 {
-    if( ismenuf )
+    if( ismenuf != VTYPE_VTS )
         menugroup_set_audio_attr(mg,attr,s,ch);
     else
         pgcgroup_set_audio_attr(titles,attr,s,ch);
@@ -664,7 +665,7 @@ static void set_audio_attr(int attr,const char *s,int ch)
 
 static void set_subpic_attr(int attr,const char *s,int ch)
 {
-    if( ismenuf )
+    if( ismenuf != VTYPE_VTS )
         menugroup_set_subpic_attr(mg,attr,s,ch);
     else
         pgcgroup_set_subpic_attr(titles,attr,s,ch);
@@ -672,7 +673,7 @@ static void set_subpic_attr(int attr,const char *s,int ch)
 
 static void set_subpic_stream(int ch,const char *m,int id)
 {
-    if( ismenuf )
+    if( ismenuf != VTYPE_VTS )
         menugroup_set_subpic_stream(mg,ch,m,id);
     else
         pgcgroup_set_subpic_stream(titles,ch,m,id);
@@ -750,7 +751,7 @@ static void titleset_end()
     getfbase();
     if( !parser_err ) {
         if( !titles )
-            titles=pgcgroup_new(0);
+            titles=pgcgroup_new(VTYPE_VTS);
         dvdauthor_vts_gen(mg,titles,fbase);
         if( mg )
             menugroup_free(mg);
@@ -819,16 +820,16 @@ static void titles_start()
         fprintf(stderr,"ERR:  Cannot have titles in a VMGM\n");
         parser_err=1;
     } else {
-        titles=pgcgroup_new(0);
+        titles=pgcgroup_new(VTYPE_VTS);
         curgroup=titles;
-        ismenuf=0;
+        ismenuf = VTYPE_VTS;
         pgcgroup_start();
     }
 }
 
 static void menus_start()
 {
-    ismenuf=(istoc?2:1);
+    ismenuf = (istoc ? VTYPE_VMGM : VTYPE_VTSM);
     curgroup=pgcgroup_new(ismenuf);
     pgcgroup_start();
     strcpy(menulang,"en");

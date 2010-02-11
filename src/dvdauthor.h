@@ -27,6 +27,13 @@
 extern "C" {
 #endif
 
+typedef enum /* type of menu/title */
+  { /* note assigned values cannot be changed */
+    VTYPE_VTS = 0, /* title in titleset */
+    VTYPE_VTSM = 1, /* menu in titleset */
+    VTYPE_VMGM = 2, /* menu in VMG */
+  } vtypes;
+
 /* types fully defined in da-internal.h */
 struct menugroup;
 struct pgcgroup;
@@ -54,7 +61,7 @@ enum { VIDEO_ANY=0, VIDEO_MPEG, VIDEO_FORMAT, VIDEO_ASPECT, VIDEO_RESOLUTION, VI
 enum { AUDIO_ANY=0, AUDIO_FORMAT, AUDIO_QUANT, AUDIO_DOLBY, AUDIO_LANG, AUDIO_CHANNELS, AUDIO_SAMPLERATE };
 enum { SPU_ANY=0, SPU_LANG };
 
-struct pgcgroup *pgcgroup_new(int type);
+struct pgcgroup *pgcgroup_new(vtypes type);
 void pgcgroup_free(struct pgcgroup *pg);
 void pgcgroup_add_pgc(struct pgcgroup *ps,struct pgc *p);
 int pgcgroup_set_video_attr(struct pgcgroup *va,int attr,const char *s);

@@ -277,7 +277,7 @@ static unsigned char *compilebool(unsigned char *obuf,unsigned char *buf,struct 
 }
 
 // NOTE: curgroup is passed separately from curpgc, because in FPC, curpgc==NULL, but curgroup!=NULL
-static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,int ismenu)
+static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,vtypes ismenu)
 {
     int lastif=0;
 
@@ -454,7 +454,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
             int i1=cs->i1;
             int i2=cs->i2;
 
-            if( i1==1 && ismenu==2 ) {
+            if( i1==1 && ismenu==VTYPE_VMGM ) {
                 //  VMGM    VMGM    NOPGC   NOCH
                 //  VMGM    VMGM    NOPGC   CHXX
                 //  VMGM    VMGM    MPGC    NOCH
@@ -465,7 +465,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 //  VMGM    VMGM    TPGC    CHXX
                 i1=0;
             }
-            if( ((i2>0 && i2<128) || (i2==0 && i1==1)) && !ismenu ) {
+            if( ((i2>0 && i2<128) || (i2==0 && i1==1)) && ismenu==VTYPE_VTS ) {
                 //  VTS NONE    MPGC    NOCH
                 //  VTS VMGM    MPGC    NOCH
                 //  VTS TS  MPGC    NOCH
@@ -484,7 +484,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 fprintf(stderr,"ERR:  Cannot jump to a menu from a title, use 'call' instead\n");
                 return 0;
             }
-            if( i2>0 && i2<128 && cs->i3 && ismenu ) {
+            if( i2>0 && i2<128 && cs->i3 && ismenu != VTYPE_VTS ) {
                 //  VMGM    NONE    MPGC    CHXX
                 //  VMGM    TS  MPGC    CHXX
                 //  VMGM    NONE    MEPGC   CHXX
@@ -516,7 +516,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 fprintf(stderr,"ERR:  Nop jump statement\n");
                 return 0;
             }
-            if( i2==121 && (i1>=2 || (i1==0 && ismenu!=2)) ) {
+            if( i2==121 && (i1>=2 || (i1==0 && ismenu!=VTYPE_VMGM)) ) {
                 fprintf(stderr,"ERR:  VMGM must be specified with FPC\n");
                 return 0;
             }
@@ -532,7 +532,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 write8(buf,0x30,0x06,0x00,0x01,i1-1,0x80+(i2-120),0x00,0x00); buf+=8; // JumpSS VTSM vts 1 menu
             } else if( i1>=2 ||
                        ( i1==1 && i2>=128 ) ||
-                       ( ismenu==2 && i2>=128 && cs->i3 )) {
+                       ( ismenu==VTYPE_VMGM && i2>=128 && cs->i3 )) {
                 //  VMGM    TS  TPGC    CHXX
                 //  VTSM    TS  MPGC    NOCH
                 //  VMGM    TS  MPGC    NOCH
@@ -551,7 +551,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                         i1=1;
                     write8(buf,0x71,0x00,0x00,0x0F,i2,i1,0x00,0x00); buf+=8;
                     write8(buf,0x71,0x00,0x00,0x0E,0x00,cs->i3,0x00,0x00); buf+=8;
-                    write8(buf,0x30,ismenu?0x06:0x08,0x00,0x00,0x00,0x42,0x00,0x00); buf+=8;
+                    write8(buf,0x30,ismenu!=VTYPE_VTS?0x06:0x08,0x00,0x00,0x00,0x42,0x00,0x00); buf+=8;
                 } else {
                     fprintf(stderr,"ERR:  That form of jumping is not allowed\n");
                     return 0;
@@ -579,7 +579,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                     fprintf(stderr,"ERR:  Cannot jump to a chapter from a FPC\n");
                     return 0;
                 }
-                if( cs->i3<65536 && ismenu ) {
+                if( cs->i3<65536 && ismenu != VTYPE_VTS ) {
                     fprintf(stderr,"ERR:  Menus do not have chapters\n");
                     return 0;
                 }
@@ -621,7 +621,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                         return 0;
                     }
                 }
-                if( ismenu==2 ) {
+                if( ismenu==VTYPE_VMGM ) {
                     // In case we are jumping from a FP to VMGM, we need to use a JumpSS
                     // instruction
                     write8(buf,0x30,0x06,0x00,i2&127,0x00,0xc0,0x00,0x00); // JumpSS VMGM pgcn
@@ -634,7 +634,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 //  VTSM    NONE    TPGC    NOCH
                 //  VTS NONE    TPGC    CHXX
                 //  VTSM    NONE    TPGC    CHXX
-                if( ismenu<2 ) {
+                if( ismenu<VTYPE_VMGM ) {
                     if( i2-128>ws->titles->numpgcs ) {
                         fprintf(stderr,"ERR:  Cannot jump to title #%d, only %d exist\n",i2-128,ws->titles->numpgcs);
                         return 0;
@@ -644,7 +644,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                         return 0;
                     }
                 }
-                write8(buf,0x30,ismenu==2?0x02:(cs->i3?0x05:0x03),0x00,cs->i3,0x00,i2-128,0x00,0x00);
+                write8(buf,0x30,ismenu==VTYPE_VMGM?0x02:(cs->i3?0x05:0x03),0x00,cs->i3,0x00,i2-128,0x00,0x00);
                 buf+=8;
             }
             break;
@@ -658,7 +658,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
             // CALL's from <post> MUST have a resume cell
             if( !i4 )
                 i4=1;
-            if( ismenu ) {
+            if( ismenu!=VTYPE_VTS ) {
                 //  VTSM    NONE    NOPGC   NOCH
                 //  VMGM    NONE    NOPGC   NOCH
                 //  VTSM    VMGM    NOPGC   NOCH
@@ -737,7 +737,7 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 fprintf(stderr,"ERR:  Cannot 'call' a chapter within a menu\n");
                 return 0;
             }
-            if( i2==121 && (cs->i1>=2 || (cs->i1==0 && ismenu!=2)) ) {
+            if( i2==121 && (cs->i1>=2 || (cs->i1==0 && ismenu!=VTYPE_VMGM)) ) {
                 fprintf(stderr,"ERR:  VMGM must be specified with FPC\n");
                 return 0;
             }
@@ -1030,7 +1030,7 @@ void vm_optimize(unsigned char *obuf,unsigned char *buf,unsigned char **end)
     }
 }
 
-unsigned char *vm_compile(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,int ismenu)
+unsigned char *vm_compile(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,vtypes ismenu)
 {
     unsigned char *end;
     int i, j;

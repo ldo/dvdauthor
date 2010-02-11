@@ -504,7 +504,7 @@ int getsubpmask(const struct videodesc *vd)
 static void setattr
   (
     struct vobgroup * va,
-    int pstype /* 0 => titleset, 1 => VTS menu, 2 => VMG menu */
+    vtypes pstype
   )
   /* matches up video, audio and subpicture tracks that the user specified with
     those actually found. */
@@ -812,7 +812,7 @@ noinfer:
             va->numsubpicturetracks = i + 1;
       } /*for*/
 
-    if (va->numsubpicturetracks > 1 && pstype != 0)
+    if (va->numsubpicturetracks > 1 && pstype != VTYPE_VTS)
       {
         fprintf
           (
@@ -935,7 +935,7 @@ static char *makevtsdir(const char *s)
 
 // jumppad requires the existance of a menu to operate
 // if no languages exist, create an english one
-static void jp_force_menu(struct menugroup *mg, int type)
+static void jp_force_menu(struct menugroup *mg, vtypes type)
   {
     struct pgcgroup *pg;
 
@@ -1185,13 +1185,19 @@ static void validatesummary(struct pgcgroup *va)
 {
     int i,err=0,allowedentries;
 
-    switch(va->pstype) {
-    case 1: allowedentries=0xf8; break; /* VTSM -- all entry menu types allowed except title */
-    case 2: allowedentries=4; break; /* VMGM -- title entry menu type only */
-        // case 0:
-    default: /* VTS */
-        allowedentries=0; break; /* no entry menu types */
-    }
+    switch (va->pstype)
+      {
+    case VTYPE_VTSM:
+        allowedentries = 0xf8; /* all entry menu types allowed except title */
+    break;
+    case VTYPE_VMGM:
+        allowedentries = 4; /* title entry menu type only */
+    break;
+    case VTYPE_VTS:
+    default:
+        allowedentries = 0; /* no entry menu types */
+    break;
+      } /*switch*/
 
     for( i=0; i<va->numpgcs; i++ ) {
         struct pgc *p=va->pgcs[i];
@@ -1439,7 +1445,7 @@ int pgc_add_button(struct pgc *p,const char *name,const char *cmd)
     return 0;
 }
 
-struct pgcgroup *pgcgroup_new(int type)
+struct pgcgroup *pgcgroup_new(vtypes type)
 {
     struct pgcgroup *ps=malloc(sizeof(struct pgcgroup));
     memset(ps,0,sizeof(struct pgcgroup));

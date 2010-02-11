@@ -142,7 +142,7 @@ struct pgc {
 };
 
 struct pgcgroup {
-    int pstype; // 0 - vts, 1 - vtsm, 2 - vmgm
+    vtypes pstype; // 0 - vts, 1 - vtsm, 2 - vmgm
     struct pgc **pgcs; /* array[numpgcs] of pointers */
     int numpgcs,allentries,numentries;
     struct vobgroup *vg; // only valid for pstype==0
@@ -228,7 +228,7 @@ int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int a
 
 /* following implemented in dvdcompile.c */
 
-unsigned char *vm_compile(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,int ismenu);
+unsigned char *vm_compile(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,vtypes ismenu);
 void vm_optimize(unsigned char *obuf,unsigned char *buf,unsigned char **end);
 struct vm_statement *vm_parse(const char *b);
 
@@ -239,13 +239,13 @@ void TocGen(const struct workset *ws,const struct pgc *fpc,const char *fname);
 
 /* following implemented in dvdpgc.c */
 
-int CreatePGC(FILE *h,const struct workset *ws,int ismenu);
+int CreatePGC(FILE *h,const struct workset *ws,vtypes ismenu);
 
 /* following implemented in dvdvob.c */
 
-int FindVobus(const char *fbase,struct vobgroup *va,int ismenu);
+int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu);
 void MarkChapters(struct vobgroup *va);
-void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *ws,int ismenu);
+void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *ws,vtypes ismenu);
 int calcaudiogap(const struct vobgroup *va,int vcid0,int vcid1,int ach);
 
 #endif
