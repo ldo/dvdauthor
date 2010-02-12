@@ -422,7 +422,7 @@ static int Create_TT_SRPT
     for (i = 0; i < va->numaudiotracks; i++)
       { /* fill in menu/title audio attributes */
         buf[4 + i * 8] = (va->ad[i].aformat - 1) << 6; /* audio coding mode */
-        if (va->ad[i].alangp == AL_LANG) /* for title audio, not menu audio */
+        if (va->ad[i].alangpresent == AL_LANG) /* for title audio, not menu audio */
           {
             buf[4 + i * 8] |= 4; /* language type = as per language code */
             memcpy(buf + 6 + i * 8, va->ad[i].lang, 2); /* language code */
@@ -447,7 +447,7 @@ static int Create_TT_SRPT
     for (i = 0; i < va->numsubpicturetracks; i++)
       {
       /* coding mode always RLE */
-        if (va->sp[i].slangp == AL_LANG) /* for title subpicture, not menu subpicture */
+        if (va->sp[i].slangpresent == AL_LANG) /* for title subpicture, not menu subpicture */
           {
             buf[0x56 + i * 6] = 1; /* language type = as per language code */
             memcpy(buf + 0x58 + i * 6, va->sp[i].lang, 2); /* language code */

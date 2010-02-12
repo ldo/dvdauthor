@@ -41,42 +41,44 @@
 int jumppad=0;
 
 // with this enabled, all 16 general purpose registers can be used, but
-// prohibits certain convenience features
+// prohibits certain convenience features, like multiple commands on a button
 int allowallreg=0;
 
 /* video/audio/subpicture attribute keywords -- note they are all unique to allow
   xxx_ANY attribute setting to work */
-static char *vmpegdesc[4]={"","mpeg1","mpeg2",0};
-static char *vresdesc[6]={"","720xfull","704xfull","352xfull","352xhalf",0};
-static char *vformatdesc[4]={"","ntsc","pal",0};
-static char *vaspectdesc[4]={"","4:3","16:9",0};
-static char *vwidescreendesc[5]={"","noletterbox","nopanscan","crop",0};
+static const char * const vmpegdesc[4]={"","mpeg1","mpeg2",0};
+static const char * const vresdesc[6]={"","720xfull","704xfull","352xfull","352xhalf",0};
+static const char * const vformatdesc[4]={"","ntsc","pal",0};
+static const char * const vaspectdesc[4]={"","4:3","16:9",0};
+static const char * const vwidescreendesc[5]={"","noletterbox","nopanscan","crop",0};
 // taken from mjpegtools, also GPL
-static char *vratedesc[9]={"",
-                           "24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)",
-                           "24.0 (NATIVE FILM)",
-                           "25.0 (PAL/SECAM VIDEO / converted FILM)",
-                           "30000.0/1001.0 (NTSC VIDEO)",
-                           "30.0",
-                           "50.0 (PAL FIELD RATE)",
-                           "60000.0/1001.0 (NTSC FIELD RATE)",
-                           "60.0"
-};
-static char *aformatdesc[6]={"","ac3","mp2","pcm","dts",0};
+const static char * const vratedesc[9] = /* descriptions of frame-rate codes */
+  {
+    "",
+    "24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)",
+    "24.0 (NATIVE FILM)",
+    "25.0 (PAL/SECAM VIDEO / converted FILM)",
+    "30000.0/1001.0 (NTSC VIDEO)",
+    "30.0",
+    "50.0 (PAL FIELD RATE)",
+    "60000.0/1001.0 (NTSC FIELD RATE)",
+    "60.0"
+  };
+static const char * const aformatdesc[6]={"","ac3","mp2","pcm","dts",0};
   /* audio formats */
-static char *aquantdesc[6]={"","16bps","20bps","24bps","drc",0};
-static char *adolbydesc[3]={"","surround",0};
-static char *alangdesc[4]={"","nolang","lang",0};
-static char *achanneldesc[10]={"","1ch","2ch","3ch","4ch","5ch","6ch","7ch","8ch",0};
-static char *asampledesc[4]={"","48khz","96khz",0};
+static const char * const aquantdesc[6]={"","16bps","20bps","24bps","drc",0};
+static const char * const adolbydesc[3]={"","surround",0};
+static const char * const alangdesc[4]={"","nolang","lang",0};
+static const char * const achanneldesc[10]={"","1ch","2ch","3ch","4ch","5ch","6ch","7ch","8ch",0};
+static const char * const asampledesc[4]={"","48khz","96khz",0};
   /* audio sample rates */
 
-char *entries[9]={"","","title","root","subtitle","audio","angle","ptt",0};
+const char * const entries[9]={"","","title","root","subtitle","audio","angle","ptt",0};
   /* entry menu types */
 
-char *pstypes[3]={"VTS","VTSM","VMGM"};
+const char * const pstypes[3]={"VTS","VTSM","VMGM"};
 
-static char *smodedesc[6]={"","normal","widescreen","letterbox","panscan",0};
+static const  char * const smodedesc[6]={"","normal","widescreen","letterbox","panscan",0};
   /* subpicture usage modes */
 
 static const int default_colors[16]={ /* default contents for new colour tables */
@@ -101,10 +103,11 @@ static const int default_colors[16]={ /* default contents for new colour tables 
     0x1000000
 };
 
-static int ratedenom[9]={0,90090,90000,90000,90090,90000,90000,90090,90000};
-  /* corresponding to vratedesc */
-static int evenrate[9]={0,    24,   24,   25,   30,   30,   50,   60,   60};
-  /* corresponding to vratedesc */
+static const int ratedenom[9]={0,90090,90000,90000,90090,90000,90000,90090,90000};
+  /* corresponding to vratedesc, adjustment to clock units per second
+    to convert nominal to actual frame rate */
+static const int evenrate[9]={0,    24,   24,   25,   30,   30,   50,   60,   60};
+  /* corresponding to vratedesc, nominal frame rate */
 
 static int getratecode(const struct vobgroup *va)
   /* returns the frame rate code if specified, else the default. */
@@ -113,69 +116,88 @@ static int getratecode(const struct vobgroup *va)
         return va->vd.vframerate;
     else
         return VR_NTSC; /* fixme: should be a user-configurable setting */
-}
+} /*getratecode*/
 
 int getratedenom(const struct vobgroup *va)
-{
+  /* returns the frame rate divider for the frame rate if specified, else the default. */
+  {
     return ratedenom[getratecode(va)];
-}
+  } /*getratedenom*/
 
 pts_t getframepts(const struct vobgroup *va)
   /* returns the number of clock units per frame. */
-{
-    int rc=getratecode(va);
-
-    return ratedenom[rc]/evenrate[rc];
-}
+  {
+    const int rc = getratecode(va);
+    return ratedenom[rc] / evenrate[rc];
+  } /*getframepts*/
 
 static int tobcd(int v)
-  /* separates the two decimal digits of v into two hex nibbles. This is used
-    for encoding cell and PGC playback times. */
-{
-    return (v/10)*16+v%10;
-}
+  /* separates the two decimal digits of v (assumed in range [0 .. 99]) into two hex nibbles.
+    This is used for encoding cell and PGC playback times. */
+  {
+    return (v / 10) * 16 + v % 10;
+  } /*tobcd*/
 
-static unsigned int buildtimehelper(const struct vobgroup *va,int64_t num,int64_t denom)
+static unsigned int buildtimehelper(const struct vobgroup *va, int64_t num, int64_t denom)
   /* returns a BCD-encoded representation hhmmssff of num/denom seconds including
     the frame rate. */
-{
-    int hr,min,sec,fr,rc;
+  {
+    int hr, min, sec, fr, rc;
     int64_t frate;
 
-    if( denom==90090 ) {
-        frate=30;
-        rc=3;
-    } else {
-        frate=25;
-        rc=1;
-    }
-    num+=denom/(frate*2)+1; /* so duration will be rounded to nearest whole frame time */
-    sec=num/denom;
-    min=sec/60;
-    hr=tobcd(min/60);
-    min=tobcd(min%60);
-    sec=tobcd(sec%60);
-    num%=denom;
-    fr=tobcd(num*frate/denom);
-    return (hr<<24)|(min<<16)|(sec<<8)|fr|(rc<<6);
-}
+    if (denom == 90090)
+      {
+        frate = 30;
+        rc = 3;
+      }
+    else
+      {
+        frate = 25;
+        rc = 1;
+      } /*if*/
+    num += denom / (frate * 2) + 1; /* so duration will be rounded to nearest whole frame time */
+    sec = num / denom; /* seconds */
+    min = sec / 60;
+    hr = tobcd(min / 60); /* hours */
+    min = tobcd(min % 60); /* minutes */
+    sec = tobcd(sec % 60); /* seconds */
+    num %= denom;
+    fr = tobcd(num * frate / denom); /* frame number within second--note tens digit will be <= 3 */
+    return
+            hr << 24
+        |
+            min << 16
+        |
+            sec << 8
+        |
+            fr
+        |
+            rc << 6;
+  } /*buildtimehelper*/
 
-unsigned int buildtimeeven(const struct vobgroup *va,int64_t num)
+unsigned int buildtimeeven(const struct vobgroup *va, int64_t num)
   /* returns a BCD-encoded representation hhmmssff of num/denom seconds, where
     denom is computed according to va->vd.vframerate. This is used for encoding
-    cell and PGC playback times. */
-{
-    int rc=getratecode(va);
+    cell and PGC playback times. I think these BCD-encoded fields are designed
+    to be easy for the player to convert to a a form that can be displayed to
+    the user, they're not going to be used for any other computations in the
+    player. */
+  {
+    const int rc = getratecode(va);
+    return
+        buildtimehelper(va, num, ratedenom[rc]);
+  } /*buildtimeeven*/
 
-    return buildtimehelper(va,num,ratedenom[rc]);
-}
-
-int getaudch(const struct vobgroup *va,int a)
-{
-    if( !va->ad[a].aid )
-        return -1;
-    return va->ad[a].aid-1+(va->ad[a].aformat-1)*8;
-}
+int getaudch(const struct vobgroup *va, int a)
+  /* returns an index into a vob.audch array, with the audio format in the top two bits
+    and the channel id in the bottom three bits. */
+  {
+    if (!va->ad[a].aid)
+        return
+            -1;
+    return
+        va->ad[a].aid - 1 + (va->ad[a].aformat - 1) * 8;
+  } /*getaudch*/
 
 void write8(unsigned char *p,unsigned char d0,unsigned char d1,unsigned char d2,unsigned char d3,unsigned char d4,unsigned char d5,unsigned char d6,unsigned char d7)
 /* stores 8 bytes beginning at address p. */
@@ -221,60 +243,91 @@ unsigned int read2(const unsigned char *p)
 static int findsubpmode(const char *m)
   /* returns the code corresponding to the specified subpicture usage mode name, or
     -1 if unrecognized. */
-{
+  {
     int i;
+    for (i = 0; i < 4; i++)
+        if (!strcasecmp(smodedesc[i+1], m))
+            return
+                i;
+    return
+        -1;
+  } /*findsubpmode*/
 
-    for( i=0; i<4; i++ )
-        if( !strcasecmp(smodedesc[i+1],m) )
-            return i;
-    return -1;
-}
-
-static int warnupdate(int *oldval,int newval,int *warnval,const char *desc,char **lookup)
+static int warnupdate
+  (
+    int * oldval,
+    int newval,
+    int * warnval, /* value previously warned about, if any */
+    const char * desc, /* explanatory text for warning message */
+    const char * const * lookup /* for converting values to symbolic form for messages */
+  )
   /* updates *oldval to newval if not yet set (i.e. = 0), does nothing if it is already newval,
-    otherwise if it was set to something else, outputs a warning and sets *warnval to newval.
-    Returns 1 iff such a warning was output, else 0. */
-{
-    if( oldval[0]==0 ) {
-        oldval[0]=newval;
-        return 0;
-    } if (oldval[0]==newval )
-        return 0;
-    else if( warnval[0]!=newval ) {
-        fprintf(stderr,"WARN: attempt to update %s from %s to %s; skipping\n",desc,lookup[oldval[0]],lookup[newval]);
-        warnval[0]=newval;
-    }
-    return 1;
-}
+    otherwise if it was set to something else, outputs a warning (if *warnval is not already
+    newval) and sets *warnval to newval. Returns 1 iff such a mismatch was found, else 0. */
+  {
+    if (oldval[0] == 0)
+      {
+        oldval[0] = newval;
+        return
+            0;
+      }
+    else if (oldval[0] == newval)
+        return
+            0;
+    else if (warnval[0] != newval) /* not already warned about this value */
+      {
+        fprintf
+          (
+            stderr,
+            "WARN: attempt to update %s from %s to %s; skipping\n",
+            desc,
+            lookup[oldval[0]],
+            lookup[newval]
+          );
+        warnval[0] = newval; /* to reduce number of warnings */
+      } /*if*/
+    return
+        1;
+  } /*warnupdate*/
 
-static int scanandwarnupdate(int *oldval,const char *newval,int *warnval,const char *desc,char **lookup)
+static int scanandwarnupdate
+  (
+    int * oldval,
+    const char * newval, /* symbolic new value */
+    int * warnval,
+    const char * desc, /* explanatory text for warning message */
+    const char * const * lookup /* table from which to return index matching newval */
+  )
   /* updates *oldval to the index of the entry matching the name newval in the array lookup if
     found and *oldval was not yet set (i.e. = 0). Does nothing if it was already set to the value,
     otherwise if it was set to something else, outputs a warning and sets *warnval to the
     new value. Returns 0 if newval could not be recognized, 1 if *oldval was updated or was
     already the right value, and 2 if the warning was output. */
-{
+  {
     int i;
+    for (i = 1; lookup[i]; i++)
+        if (!strcasecmp(newval, lookup[i]))
+            return
+                warnupdate(oldval, i, warnval, desc, lookup) + 1;
+    return
+        0;
+  } /*scanandwarnupdate*/
 
-    for( i=1; lookup[i]; i++ )
-        if( !strcasecmp(newval,lookup[i]) )
-            return warnupdate(oldval,i,warnval,desc,lookup)+1;
-    return 0;
-}
-
-int vobgroup_set_video_framerate(struct vobgroup *va,int rate)
+int vobgroup_set_video_framerate(struct vobgroup *va, int rate)
   /* sets the video frame rate code (should be VR_PAL or VR_NTSC only). Returns 1 if
     the framerate was already set to something different, else 0. */
-{
+  {
     int w;
-
-    if( !va->vd.vframerate && rate!=VR_PAL && rate!=VR_NTSC )
-        fprintf(stderr,"WARN: not a valid DVD frame rate: %s\n",vratedesc[rate]);
-    w=scanandwarnupdate(&va->vd.vframerate,vratedesc[rate],&va->vdwarn.vframerate,"frame rate",vratedesc);
+    if (!va->vd.vframerate && rate != VR_PAL && rate != VR_NTSC)
+        fprintf(stderr, "WARN: not a valid DVD frame rate: %s\n", vratedesc[rate]);
+    w = scanandwarnupdate(&va->vd.vframerate, vratedesc[rate], &va->vdwarn.vframerate, "frame rate", vratedesc);
       /* did I just convert the code to a keyword string, only to look up that keyword in the same array again? */
-    if(w) return w-1;
-    return 0;
-}
+    if (w)
+        return
+            w - 1;
+    return
+        0;
+  } /*vobgroup_set_video_framerate*/
 
 #define ATTRMATCH(a) (attr==0 || attr==(a))
   /* does the attribute code match either the specified value or the xxx_ANY value */
@@ -283,7 +336,7 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s)
   /* sets the specified video attribute (might be VIDEO_ANY) to the specified keyword value.
     Returns 1 if the attribute was already set to a different value, else 0.
     Aborts the program on an unrecognizable value. */
-{
+  {
     int w;
 
     if( ATTRMATCH(VIDEO_MPEG) ) {
@@ -359,7 +412,7 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s)
 
     fprintf(stderr,"ERR:  Cannot parse video option '%s'\n",s);
     exit(1);
-}
+  } /*vobgroup_set_video_attr*/
 
 int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int attr,const char *s)
   /* sets the specified audio attribute (might be AUDIO_ANY) to the specified keyword value.
@@ -384,7 +437,7 @@ int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int a
     }
 
     if (ATTRMATCH(AUDIO_ANY)) {
-        w=scanandwarnupdate(&ad->alangp,s,&adwarn->alangp,"audio language",alangdesc);
+        w=scanandwarnupdate(&ad->alangpresent,s,&adwarn->alangpresent,"audio language",alangdesc);
         if(w) return w-1;
     }
 
@@ -399,10 +452,11 @@ int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int a
     }
 
     if (ATTRMATCH(AUDIO_LANG) && 2==strlen(s)) {
-        w=warnupdate(&ad->alangp,AL_LANG,&adwarn->alangp,"audio language",alangdesc);
+        w=warnupdate(&ad->alangpresent,AL_LANG,&adwarn->alangpresent,"audio language",alangdesc);
+          /* turn on lang */
         if(ad->lang[0] || ad->lang[1])
-            w=1;
-        ad->lang[0]=tolower(s[0]);
+            w=1; /* language code already set */
+        ad->lang[0]=tolower(s[0]); /* note I don't actually validate the language code */
         ad->lang[1]=tolower(s[1]);
         return w;
     }
@@ -411,12 +465,12 @@ int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int a
 }
 
 static int vobgroup_set_audio_attr(struct vobgroup *va,int attr,const char *s,int ch)
-{
-    if( ch>=va->numaudiotracks ) /* assert ch = va->numaudiotracks + 1 */
-        va->numaudiotracks=ch+1;
-
-    return audiodesc_set_audio_attr(&va->ad[ch],&va->adwarn[ch],attr,s);
-}
+  {
+    if (ch >= va->numaudiotracks) /* assert ch = va->numaudiotracks + 1 */
+        va->numaudiotracks = ch + 1; /* new audio track */
+    return
+        audiodesc_set_audio_attr(&va->ad[ch], &va->adwarn[ch], attr, s);
+  } /*vobgroup_set_audio_attr*/
 
 static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,const char *s,int ch)
   /* sets the specified subpicture attribute (might be SPU_ANY) to the specified keyword value.
@@ -425,18 +479,18 @@ static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,const char *s,i
 {
     int w;
 
-    if( ch>=va->numsubpicturetracks )
+    if( ch>=va->numsubpicturetracks ) /* assert ch = va->numsubpicturetracks + 1 */
         va->numsubpicturetracks=ch+1;
 
     if (ATTRMATCH(SPU_ANY)) {
-        w=scanandwarnupdate(&va->sp[ch].slangp,s,&va->spwarn[ch].slangp,"subpicture language",alangdesc);
+        w=scanandwarnupdate(&va->sp[ch].slangpresent,s,&va->spwarn[ch].slangpresent,"subpicture language",alangdesc);
           /* fixme: note this lang/nolang setting can only be specified on the command line,
             not the XML file */
         if(w) return w-1;
     }
 
     if(ATTRMATCH(SPU_LANG) && 2==strlen(s)) {
-        w=warnupdate(&va->sp[ch].slangp,AL_LANG,&va->spwarn[ch].slangp,"subpicture language",alangdesc);
+        w=warnupdate(&va->sp[ch].slangpresent,AL_LANG,&va->spwarn[ch].slangpresent,"subpicture language",alangdesc);
           /* turn on lang */
         if(va->sp[ch].lang[0] || va->sp[ch].lang[1])
             w=1; /* language code already set */
@@ -448,27 +502,26 @@ static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,const char *s,i
     exit(1);
 }
 
-static int vobgroup_set_subpic_stream(struct vobgroup *va,int ch,const char *m,int id)
-{
+static int vobgroup_set_subpic_stream(struct vobgroup *va, int ch, const char *m, int id)
+  {
     int mid;
-
-    if( ch>=va->numsubpicturetracks )
-        va->numsubpicturetracks=ch+1;
-
-    mid=findsubpmode(m);
-    if( mid<0 ) {
-        fprintf(stderr,"ERR:  Cannot parse subpicture stream mode '%s'\n",m);
+    if (ch >= va->numsubpicturetracks) /* assert ch = va->numsubpicturetracks + 1 */
+        va->numsubpicturetracks = ch + 1;
+    mid = findsubpmode(m);
+    if (mid < 0)
+      {
+        fprintf(stderr, "ERR:  Cannot parse subpicture stream mode '%s'\n", m);
         exit(1);
-    }
-
-    if( va->sp[ch].idmap[mid] && va->sp[ch].idmap[mid]!=128+id ) {
-        fprintf(stderr,"ERR:  Subpicture stream already defined for subpicture %d mode %s\n",ch,m);
+      } /*if*/
+    if (va->sp[ch].idmap[mid] && va->sp[ch].idmap[mid] != 128 + id)
+      {
+        fprintf(stderr, "ERR:  Subpicture stream already defined for subpicture %d mode %s\n", ch, m);
         exit(1);
-    }
-    va->sp[ch].idmap[mid]=128+id;
+      } /*if*/
+    va->sp[ch].idmap[mid] = 128 + id;
 
     return 0;
-}
+  } /*vobgroup_set_subpic_stream*/
 
 static void inferattr(int *a,int def)
   /* defaults *a to def if not already set. */
@@ -513,13 +566,13 @@ static void setattr
 
   /* warn user about defaulting settings not already determined */
     if (va->vd.vmpeg == VM_NONE)
-        fprintf(stderr,"WARN: video mpeg version was not autodetected\n");
+        fprintf(stderr, "WARN: video mpeg version was not autodetected\n");
     if (va->vd.vres == VS_NONE)
-        fprintf(stderr,"WARN: video resolution was not autodetected\n");
+        fprintf(stderr, "WARN: video resolution was not autodetected\n");
     if (va->vd.vformat == VF_NONE)
-        fprintf(stderr,"WARN: video format was not autodetected\n");
+        fprintf(stderr, "WARN: video format was not autodetected\n");
     if (va->vd.vaspect == VA_NONE)
-        fprintf(stderr,"WARN: aspect ratio was not autodetected\n");
+        fprintf(stderr, "WARN: aspect ratio was not autodetected\n");
   /* default the undetermined settings */
     inferattr(&va->vd.vmpeg, VM_MPEG2);
     inferattr(&va->vd.vres,  VS_720H);
@@ -552,7 +605,7 @@ static void setattr
           } /*if*/
       } /*if*/
 
-    for (i = 0; i < 32; i++)
+    for (i = 0; i < 32; i++) /* 8 audio streams * 4 formats */
       {
       /* collect all the appropriate audio tracks for this vobgroup, matching up
         the descriptions specified by the user with those actually found in the
@@ -845,7 +898,7 @@ noinfer:
           );
         if (va->ad[i].adolby == AD_SURROUND)
             fprintf(stderr, ", surround");
-        if (va->ad[i].alangp == AL_LANG)
+        if (va->ad[i].alangpresent == AL_LANG)
             fprintf(stderr, ", '%c%c'", va->ad[i].lang[0], va->ad[i].lang[1]);
         fprintf(stderr, "\n");
         if (!va->ad[i].aid)

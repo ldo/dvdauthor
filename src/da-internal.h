@@ -33,7 +33,7 @@ enum {VR_NONE=0,VR_NTSCFILM=1,VR_FILM=2,VR_PAL=3,VR_NTSC=4,VR_30=5,VR_PALFIELD=6
 enum {AF_NONE=0,AF_AC3=1,AF_MP2=2,AF_PCM=3,AF_DTS=4}; /* values for audiodesc.aformat */
 enum {AQ_NONE=0,AQ_16=1,AQ_20=2,AQ_24=3,AQ_DRC=4}; /* values for audiodesc.aquant */
 enum {AD_NONE=0,AD_SURROUND=1}; /* values for audiodesc.adolby */
-enum {AL_NONE=0,AL_NOLANG=1,AL_LANG=2}; /* values for audiodesc.alangp and subpicdesc.slangp */
+enum {AL_NONE=0,AL_NOLANG=1,AL_LANG=2}; /* values for audiodesc.alangpresent and subpicdesc.slangpresent */
 enum {AS_NONE=0,AS_48KHZ=1,AS_96KHZ=2}; /* values for audiodesc.asample */
 
 typedef int64_t pts_t; /* timestamp in units of 90kHz clock */
@@ -59,15 +59,22 @@ struct videodesc { /* describes a video stream */
 };
 
 struct audiodesc { /* describes an audio stream */
-    int aformat,aquant,adolby;
-    int achannels,alangp,aid,asample;
+    int aformat;
+    int aquant;
+    int adolby;
+    int achannels;
+    int alangpresent;
+    int asample;
+    int aid;
     char lang[2];
 };
 
 struct subpicdesc { /* describes a subpicture stream */
-    int slangp;
+    int slangpresent;
     char lang[2];
-    unsigned char idmap[4]; // (128 | id) if defined
+    unsigned char idmap[4];
+      /* stream ID for each of normal, widescreen, letterbox, and panscan respectively,
+        (128 | id) if defined, else 0 */
 };
 
 struct cell { /* describes one or more cells within a source video file */
@@ -129,7 +136,7 @@ struct button { /* describes a button including versions across different subpic
     int numstream; /* nr of stream entries actually used */
 };
 
-struct pgc {
+struct pgc { /* describes a program chain */
     int numsources; /* length of sources array */
     int numbuttons; /* length of buttons array */
     int numchapters,numprograms,numcells,entries,pauselen;
@@ -144,8 +151,10 @@ struct pgc {
 struct pgcgroup {
     vtypes pstype; // 0 - vts, 1 - vtsm, 2 - vmgm
     struct pgc **pgcs; /* array[numpgcs] of pointers */
-    int numpgcs,allentries,numentries;
-    struct vobgroup *vg; // only valid for pstype==0
+    int numpgcs;
+    int allentries; /* mask of entry types present */
+    int numentries; /* number of entry types present */
+    struct vobgroup *vg; // only valid for pstype==VTYPE_VTS
 };
 
 struct langgroup {
@@ -199,11 +208,11 @@ struct workset {
 
 /* following implemented in dvdauthor.c */
 
-extern char *entries[]; /* PGC menu entry types */
+extern const char * const entries[]; /* PGC menu entry types */
 extern int
     jumppad, /* reserve registers and set up code to allow convenient jumping between titlesets */
     allowallreg; /* don't reserve any registers for convenience purposes */
-extern char *pstypes[]; /* PGC types */
+extern const char * const pstypes[]; /* names of PGC types, indexed by vtypes values */
 
 void write8(unsigned char *p,unsigned char d0,unsigned char d1,
             unsigned char d2,unsigned char d3,

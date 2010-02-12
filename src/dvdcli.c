@@ -69,12 +69,18 @@ static char * str_extract_until
 
 static int readdvdauthorxml(const char *xmlfile,const char *fb);
 
+static enum
+  {
+    chapters_neither, /* neither of following seen yet */
+    chapters_cells, /* vob chapters specified via cells (and possibly also "chapters" attribute) */
+    chapters_chapters, /* only via "chapters" attribute */
+  }
+    hadchapter = chapters_neither;
 static int
-    hadchapter=0,
-      /* 1 if vob chapters specified via cells (and possibly also "chapters" attribute),
-        2 if only via "chapters" attribute, 0 if neither seen yet */
-    pauselen=0,writeoutput=1;
-static char *chapters=0;
+    pauselen=0,
+    writeoutput=1;
+static char
+    *chapters=0;
 
 static void parsevideoopts(struct pgcgroup *va,const char *o)
 {
@@ -232,7 +238,7 @@ static void readpalette(struct pgc *p,const char *fname)
         int pcolor;
         fscanf(h.h, "%x", &pcolor);
         if( rgbf ) {
-            int r=(pcolor>>16)&255,
+            const int r=(pcolor>>16)&255,
                 g=(pcolor>>8)&255,
                 b=(pcolor)&255;
             pcolor=RGB2YCrCb(r,g,b);
@@ -415,7 +421,7 @@ int main(int argc,char **argv)
         switch(c) {
         case 'h':
             usage();
-            break;
+        break;
 
         case 'x':
             if( usedtocflag ) {
@@ -426,15 +432,15 @@ int main(int argc,char **argv)
 
         case 'n':
             writeoutput=0;
-            break;
+        break;
 
         case 'j':
             dvdauthor_enable_jumppad();
-            break;
+        break;
 
         case 'g':
             dvdauthor_enable_allgprm();
-            break;
+        break;
 
         case 'T':
             if( usedtocflag ) {
@@ -443,18 +449,18 @@ int main(int argc,char **argv)
             }
             istoc=1;
             usedtocflag=1; // just for completeness (also see -x FOO)
-            break;
+        break;
 
         case 'o': 
             fbase=optarg;
-            break;
+        break;
 
         case 'm':
             FLUSHPGC;
             usedtocflag=1; // force -T to occur before -m
-            hadchapter=0; /* reset for new menu */
+            hadchapter=chapters_neither; /* reset for new menu */
             curva=0;
-            break;
+        break;
 
         case 't':
             if( istoc ) {
@@ -463,34 +469,34 @@ int main(int argc,char **argv)
             }
             FLUSHPGC;
             usedtocflag=1;
-            hadchapter=0; /* reset for new title */
+            hadchapter=chapters_neither; /* reset for new title */
             curva=1;
-            break;
+        break;
             
         case 'a':
             MAINDEF;
             parseaudioopts(vc,optarg);
-            break;
+        break;
         
         case 'v':
             MAINDEF;
             parsevideoopts(vc,optarg);
-            break;
+        break;
 
         case 's':
             MAINDEF;
             parsesubpictureopts(vc,optarg);
-            break;
+        break;
 
         case 'b':
             MAINDEFPGC;
             parsebutton(curpgc,optarg);
-            break;
+        break;
 
         case 'i':
             MAINDEFPGC;
             parseinstructions(curpgc,optarg);
-            break;
+        break;
 
         case 'F':
             if( !istoc ) {
@@ -504,7 +510,7 @@ int main(int argc,char **argv)
             }
             fpc=pgc_new();
             pgc_set_pre(fpc,optarg);
-            break;
+        break;
 
         case 'e':
             MAINDEFPGC;
@@ -513,29 +519,33 @@ int main(int argc,char **argv)
                 return 1;
             }
             parseentries(curpgc,optarg);
-            break;
+        break;
 
-        case 'P': optarg=0;
+        case 'P':
+            optarg=0;
+      /* fallthru */
         case 'p':
             MAINDEFPGC;
             readpalette(curpgc,optarg?optarg:"xste-palette.dat");
-            break;
+        break;
 
         case 1:
         case 'f':
             MAINDEFVOB;
             
             source_set_filename(curvob,optarg);
-            if( hadchapter==2 )
-                hadchapter=1; /* chapters already specified */
+            if( hadchapter==chapters_chapters )
+                hadchapter=chapters_cells; /* chapters already specified */
             else
-                source_add_cell(curvob,0,-1,!hadchapter,0,0);
+                source_add_cell(curvob,0,-1,hadchapter == chapters_neither,0,0);
                   /* default to single chapter for entire source file */
             pgc_add_source(curpgc,curvob);
             curvob=0;
-            break;
+        break;
 
-        case 'C': optarg=0;
+        case 'C':
+            optarg=0;
+      /* fallthru */
         case 'c':
             if( curvob ) {
                 fprintf(stderr,"ERR:  cannot list -c twice for one file.\n");
@@ -543,13 +553,13 @@ int main(int argc,char **argv)
             }
             MAINDEFVOB;
 
-            hadchapter=2;
+            hadchapter=chapters_chapters;
             if( optarg )
                 parsechapters(optarg,curvob,0);
             else
                 source_add_cell(curvob,0,-1,1,0,0);
                   /* default to single chapter for entire source file */
-            break;
+        break;
 
         default:
             fprintf(stderr,"ERR:  getopt returned bad code %d\n",c);
@@ -613,10 +623,12 @@ enum {
     DA_NOSUB
 };
 
-static struct pgcgroup *titles=0, *curgroup=0;
+static struct pgcgroup
+    *titles=0,
+    *curgroup=0;
 static struct menugroup
     *mg=0, /* current menu group (for titleset or vmgm) */
-    *vmgmmenus=0; /* vmgm menu group */
+    *vmgmmenus=0; /* vmgm menu group saved here on completion */
 static struct pgc *curpgc=0,*fpc=0;
 static struct source *curvob=0;
 static const char
@@ -638,26 +650,37 @@ static int
     hadtoc=0, /* set to 1 when vmgm seen */
     subpstreamid=-1; /* id attribute of current <stream> saved here */
 static char *subpstreammode=0; /* mode attribute of current <stream> saved here */
-static int
-    vobbasic,
-      /* 1 if vob has "chapters" or "pause" attribute,
-        2 if it has <cell> subtags, 0 if neither seen yet */
+static enum
+  {
+    vob_has_neither, /* neither of following seen yet */
+    vob_has_chapters_pause, /* vob has "chapters" or "pause" attribute */
+    vob_has_cells, /* vob has <cell> subtags */
+  }
+    vobbasic;
+static enum
+  {
+    cell_has_neither, /* neither of following seen yet */
+    cell_has_chapter, /* cell has chapter attribute */
+    cell_has_program, /* cell has program attribute */
+  }
     cell_chapter;
-      /* 1 if cell has chapter attribute, 2 if has program attribute, 0 if neither seen yet */
-static double cell_starttime,cell_endtime;
-static char menulang[3];
+static double
+    cell_starttime,
+    cell_endtime;
+static char
+    menulang[3];
 
 static void set_video_attr(int attr,const char *s)
 {
-    if( ismenuf != VTYPE_VTS )
-        menugroup_set_video_attr(mg,attr,s);
+    if (ismenuf != VTYPE_VTS)
+        menugroup_set_video_attr(mg, attr, s);
     else
-        pgcgroup_set_video_attr(titles,attr,s);
+        pgcgroup_set_video_attr(titles, attr, s);
 }
 
 static void set_audio_attr(int attr,const char *s,int ch)
 {
-    if( ismenuf != VTYPE_VTS )
+    if (ismenuf != VTYPE_VTS)
         menugroup_set_audio_attr(mg,attr,s,ch);
     else
         pgcgroup_set_audio_attr(titles,attr,s,ch);
@@ -665,7 +688,7 @@ static void set_audio_attr(int attr,const char *s,int ch)
 
 static void set_subpic_attr(int attr,const char *s,int ch)
 {
-    if( ismenuf != VTYPE_VTS )
+    if (ismenuf != VTYPE_VTS)
         menugroup_set_subpic_attr(mg,attr,s,ch);
     else
         pgcgroup_set_subpic_attr(titles,attr,s,ch);
@@ -673,7 +696,7 @@ static void set_subpic_attr(int attr,const char *s,int ch)
 
 static void set_subpic_stream(int ch,const char *m,int id)
 {
-    if( ismenuf != VTYPE_VTS )
+    if (ismenuf != VTYPE_VTS)
         menugroup_set_subpic_stream(mg,ch,m,id);
     else
         pgcgroup_set_subpic_stream(titles,ch,m,id);
@@ -681,10 +704,10 @@ static void set_subpic_stream(int ch,const char *m,int id)
 
 static int parse_pause(const char *f)
 {
-    if( !strcmp(f,"inf") )
+    if (!strcmp(f,"inf"))
         return 255;
     else
-        return strtounsigned(f, "pause time");
+        return strtounsigned(f, "pause time"); /* should check it's in [0 .. 254] */
 }
 
 static void dvdauthor_workdir(const char *s)
@@ -750,10 +773,10 @@ static void titleset_end()
 {
     getfbase();
     if( !parser_err ) {
-        if( !titles )
+        if (!titles)
             titles=pgcgroup_new(VTYPE_VTS);
         dvdauthor_vts_gen(mg,titles,fbase);
-        if( mg )
+        if (mg)
             menugroup_free(mg);
         pgcgroup_free(titles);
         mg=0;
@@ -763,7 +786,7 @@ static void titleset_end()
 
 static void vmgm_start()
 {
-    if( hadtoc ) {
+    if (hadtoc) {
         fprintf(stderr,"ERR:  Can only define one VMGM\n");
         parser_err=1;
         return;
@@ -998,7 +1021,7 @@ static void stream_end()
 static void pgc_start()
 {
     curpgc=pgc_new();
-    hadchapter=0;
+    hadchapter=chapters_neither;
     setsubpicture=-1;
     subpmode=DA_PGC;
 }
@@ -1051,7 +1074,7 @@ static void vob_start()
 {
     curvob=source_new();
     pauselen=0;
-    vobbasic=0;
+    vobbasic=vob_has_neither;
     cell_endtime=0;
 }
 
@@ -1063,25 +1086,25 @@ static void vob_file(const char *f)
 
 static void vob_chapters(const char *c)
 {
-    vobbasic=1;
-    hadchapter=2;
+    vobbasic=vob_has_chapters_pause;
+    hadchapter=chapters_chapters;
     chapters=strdup(c);
 }
 
 static void vob_pause(const char *c)
 {
-    vobbasic=1;
+    vobbasic=vob_has_chapters_pause;
     pauselen=parse_pause(c);
 }
 
 static void vob_end()
 {
-    if( vobbasic!=2 ) {
-        if( hadchapter==2 ) {
+    if( vobbasic!=vob_has_cells ) {
+        if( hadchapter==chapters_chapters ) {
             parsechapters(chapters,curvob,pauselen);
-            hadchapter=1;
+            hadchapter=chapters_cells;
         } else
-            source_add_cell(curvob,0,-1,!hadchapter,pauselen,0);
+            source_add_cell(curvob,0,-1,hadchapter == chapters_neither,pauselen,0);
               /* default to single chapter for entire source file */
     }
     pgc_add_source(curpgc,curvob);
@@ -1090,14 +1113,15 @@ static void vob_end()
 
 static void cell_start()
 {
-    parser_acceptbody=1;
-    assert(vobbasic!=1); /* no "chapters" or "pause" attribute on containing <vob> allowed */
-    vobbasic=2;
-    cell_starttime=cell_endtime; /* new cell starts where previous one ends */
-    cell_endtime=-1;
-    cell_chapter=0;
-    pauselen=0;
-    hadchapter=1;
+    parser_acceptbody = 1;
+    assert(vobbasic != vob_has_chapters_pause);
+      /* no "chapters" or "pause" attribute on containing <vob> allowed */
+    vobbasic = vob_has_cells;
+    cell_starttime = cell_endtime; /* new cell starts where previous one ends */
+    cell_endtime = -1;
+    cell_chapter = cell_has_neither;
+    pauselen = 0;
+    hadchapter = chapters_cells;
 }
 
 static void cell_parsestart(const char *f)
@@ -1117,7 +1141,7 @@ static void cell_parsechapter(const char *f)
         fprintf(stderr,"ERR:  Unknown chapter cmd '%s'\n",f);
         exit(1);
     } else if (i)
-        cell_chapter=1;
+        cell_chapter=cell_has_chapter;
           /* override "program" attribute if previously seen -- should really
             flag presence of both as error? */
 }
@@ -1128,8 +1152,8 @@ static void cell_parseprogram(const char *f)
     if(i==-1) {
         fprintf(stderr,"ERR:  Unknown program cmd '%s'\n",f);
         exit(1);
-    } else if (i && cell_chapter!=1 )
-        cell_chapter=2;
+    } else if (i && cell_chapter!=cell_has_chapter )
+        cell_chapter=cell_has_program;
           /* let "chapter" attribute take precedence if previously seen --
             should really flag presence of both as error? */
 }
