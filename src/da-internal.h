@@ -79,7 +79,7 @@ struct subpicdesc { /* describes a subpicture stream */
 
 struct cell { /* describes one or more cells within a source video file */
     pts_t startpts,endpts;
-    int ischapter; // 1 = chapter&program, 2 = program only, 0 = neither
+    cell_chapter_types ischapter; // 1 = chapter&program, 2 = program only, 0 = neither
     int pauselen;
     int scellid; /* start cell */
     int ecellid; /* end cell + 1 */

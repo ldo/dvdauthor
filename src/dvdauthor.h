@@ -34,6 +34,13 @@ typedef enum /* type of menu/title */
     VTYPE_VMGM = 2, /* menu in VMG */
   } vtypes;
 
+typedef enum /* attributes of cell */
+  {
+    CELL_NEITHER = 0, /* neither of following specified */
+    CELL_CHAPTER_PROGRAM = 1, /* cell has chapter or chapter+program attribute */
+    CELL_PROGRAM = 2, /* cell has program attribute only */
+  } cell_chapter_types;
+
 /* types fully defined in da-internal.h */
 struct menugroup;
 struct pgcgroup;
@@ -78,7 +85,7 @@ int menugroup_set_subpic_attr(struct menugroup *va,int attr,const char *s,int ch
 int menugroup_set_subpic_stream(struct menugroup *va,int ch,const char *m,int id);
 
 struct source *source_new();
-int source_add_cell(struct source *v,double starttime,double endtime,int chap,int pause,const char *cmd);
+int source_add_cell(struct source *v,double starttime,double endtime,cell_chapter_types chap,int pause,const char *cmd);
 void source_set_filename(struct source *v,const char *s);
 
 void dvdauthor_enable_jumppad();

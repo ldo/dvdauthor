@@ -1629,7 +1629,7 @@ void MarkChapters(struct vobgroup *va)
                 v=findnearestvobu(va,s->vob,s->cells[k].startpts);
                 if (v >= 0 && v < s->vob->numvobus)
                   {
-                    if (s->cells[k].ischapter) /* from Wolfgang Wershofen */
+                    if (s->cells[k].ischapter != CELL_NEITHER) /* from Wolfgang Wershofen */
                       {
                         fprintf(stderr, "CHAPTERS: VTS[%d/%d] ", i + 1, j + 1);
                         printpts(s->vob->vobu[v].sectpts[0] - s->vob->vobu[0].sectpts[0]);
@@ -1706,9 +1706,9 @@ void MarkChapters(struct vobgroup *va)
                     c->ecellid=s->vob->numcells+1;
 
                 va->allpgcs[i]->numcells+=c->ecellid-c->scellid;
-                if( c->scellid!=c->ecellid && c->ischapter ) {
+                if( c->scellid!=c->ecellid && c->ischapter != CELL_NEITHER ) {
                     va->allpgcs[i]->numprograms++;
-                    if( c->ischapter==1 ) /* chapter & program */
+                    if( c->ischapter==CELL_CHAPTER_PROGRAM )
                         va->allpgcs[i]->numchapters++;
                     if( va->allpgcs[i]->numprograms>=256 ) {
                         fprintf(stderr,"ERR:  PGC %d has too many programs (%d, 256 allowed)\n",i+1,va->allpgcs[i]->numprograms);

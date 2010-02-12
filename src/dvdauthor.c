@@ -1335,7 +1335,7 @@ static void source_free(struct source *s)
     free(s);
 }
 
-int source_add_cell(struct source *v,double starttime,double endtime,int chap,int pause,const char *cmd)
+int source_add_cell(struct source *v,double starttime,double endtime,cell_chapter_types chap,int pause,const char *cmd)
 {
     struct cell *c;
 

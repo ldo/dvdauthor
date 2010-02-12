@@ -329,12 +329,12 @@ static int Create_PTT_SRPT(FILE *h, const struct pgcgroup *t)
                 if (thiscell->scellid != thiscell->ecellid)
                     switch (thiscell->ischapter)
                       {
-                    case 1: /* chapter & program */
+                    case CELL_CHAPTER_PROGRAM:
                         buf[1 + p] = j + 1; /* PGCN low byte */
                         buf[3 + p] = pgm; /* PGN low byte */
                         p += 4;
                   /* fallthru */
-                    case 2: /* program only */
+                    case CELL_PROGRAM:
                         pgm++; /* keep right count for next chapter */
                       } /*switch*/
               } /*for; for*/

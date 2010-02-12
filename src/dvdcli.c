@@ -657,12 +657,7 @@ static enum
     vob_has_cells, /* vob has <cell> subtags */
   }
     vobbasic;
-static enum
-  {
-    cell_has_neither, /* neither of following seen yet */
-    cell_has_chapter, /* cell has chapter attribute */
-    cell_has_program, /* cell has program attribute */
-  }
+static cell_chapter_types
     cell_chapter;
 static double
     cell_starttime,
@@ -1119,7 +1114,7 @@ static void cell_start()
     vobbasic = vob_has_cells;
     cell_starttime = cell_endtime; /* new cell starts where previous one ends */
     cell_endtime = -1;
-    cell_chapter = cell_has_neither;
+    cell_chapter = CELL_NEITHER; /* to begin with */
     pauselen = 0;
     hadchapter = chapters_cells;
 }
@@ -1141,9 +1136,8 @@ static void cell_parsechapter(const char *f)
         fprintf(stderr,"ERR:  Unknown chapter cmd '%s'\n",f);
         exit(1);
     } else if (i)
-        cell_chapter=cell_has_chapter;
-          /* override "program" attribute if previously seen -- should really
-            flag presence of both as error? */
+        cell_chapter = CELL_CHAPTER_PROGRAM;
+          /* chapter or chapter-and-program */
 }
 
 static void cell_parseprogram(const char *f)
@@ -1152,10 +1146,9 @@ static void cell_parseprogram(const char *f)
     if(i==-1) {
         fprintf(stderr,"ERR:  Unknown program cmd '%s'\n",f);
         exit(1);
-    } else if (i && cell_chapter!=cell_has_chapter )
-        cell_chapter=cell_has_program;
-          /* let "chapter" attribute take precedence if previously seen --
-            should really flag presence of both as error? */
+    } else if (i && cell_chapter!=CELL_CHAPTER_PROGRAM )
+        cell_chapter=CELL_PROGRAM;
+          /* if no chapter, then program only, else leave as chapter+program */
 }
 
 static void cell_pauselen(const char *f)
