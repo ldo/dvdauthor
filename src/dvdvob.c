@@ -34,11 +34,12 @@
 
 
 
-struct colorremap {
-    int newcolors[16];
-    int state,curoffs,maxlen,nextoffs,skip,ln_ctli;
-    struct colorinfo *origmap;
-};
+struct colorremap /* for remapping colours to indexes into a common palette */
+  {
+    int newcolors[16]; /* bit 24 is set to indicate a colour needs remapping */
+    int state,curoffs,maxlen,nextoffs,skip,ln_ctli; /* state of SPU parser machine (procremap) */
+    struct colorinfo *origmap; /* colours merged into common indexes into this palette */
+  };
 
 struct vscani {
     int lastrefsect;
@@ -263,10 +264,10 @@ static int findbutton(const struct pgc *pg,char *dest,int dflt)
     return dflt;
 }
 
-static void transpose_ts(unsigned char *buf,pts_t tsoffs)
+static void transpose_ts(unsigned char *buf, pts_t tsoffs)
   /* adjusts the timestamps in the specified PACK header and its constituent packets
     by the specified amount. */
-{
+  {
     // pack scr
     if
       (
@@ -279,7 +280,7 @@ static void transpose_ts(unsigned char *buf,pts_t tsoffs)
             buf[3] == 0xba /* PACK header */
       )
     {
-        writescr(buf+4,readscr(buf+4)+tsoffs);
+        writescr(buf + 4, readscr(buf + 4) + tsoffs);
         // video/audio?
         // pts?
         if
@@ -298,15 +299,16 @@ static void transpose_ts(unsigned char *buf,pts_t tsoffs)
             &&
                 (buf[21] & 128) /* PTS present */
           )
-        {
-            writepts(buf+23,readpts(buf+23)+tsoffs);
+          {
+            writepts(buf + 23, readpts(buf + 23) + tsoffs);
             // dts?
-            if( buf[21] & 64 ) {
-                writepts(buf+28,readpts(buf+28)+tsoffs);
-            }
-        }
+            if (buf[21] & 64) /* decoder timestamp present */
+              {
+                writepts(buf + 28, readpts(buf + 28) + tsoffs);
+              } /*if*/
+          } /*if*/
     }
-}
+  } /*transpose_ts*/
 
 static int mpa_valid(const unsigned char *b)
 {
@@ -547,9 +549,9 @@ static void scanvideoptr(struct vobgroup *va,unsigned char *buf,struct vobuinfo 
                 if (buf[7] & 2) /* repeat first field */
                     padj++; // adj for repeat flag
                 
-                thisvi->numfields+=padj;
-                if(vsi->lastadjust && vsi->firstgop==2)
-                    thisvi->firstIfield+=padj;
+                thisvi->numfields += padj;
+                if (vsi->lastadjust && vsi->firstgop == 2)
+                    thisvi->firstIfield += padj;
                 // fprintf(stderr,"INFO: repeat flag=%d, cursect=%d\n",buf[7]&2,cursect);
             break;
               }
@@ -642,14 +644,14 @@ static void scanvideoframe(struct vobgroup *va,unsigned char *buf,struct vobuinf
 
 static void finishvideoscan(struct vobgroup *va,int vob,int prevsect,struct vscani *vsi)
 {
-    struct vobuinfo *lastvi=&va->vobs[vob]->vobu[va->vobs[vob]->numvobus-1];
+    struct vobuinfo * const lastvi = &va->vobs[vob]->vobu[va->vobs[vob]->numvobus - 1];
     int i;
 
-    memset(videoslidebuf+7,0,7);
-    for( i=0; i<7; i++ )
-        scanvideoptr(va,videoslidebuf+i,lastvi,prevsect,vsi);
-    memset(videoslidebuf,255,7);
-    closelastref(lastvi,vsi,prevsect);
+    memset(videoslidebuf + 7, 0, 7);
+    for (i = 0; i < 7; i++)
+        scanvideoptr(va, videoslidebuf + i, lastvi, prevsect, vsi);
+    memset(videoslidebuf, 255, 7);
+    closelastref(lastvi, vsi, prevsect);
 }
 
 static void printpts(pts_t pts)
@@ -673,146 +675,225 @@ a copy of the string. */
 }
 
 static void initremap(struct colorremap *cr)
-{
+  /* initializes the remap table to all identity mappings, and the state machine
+    ready to start a new SPU. */
+  {
     int i;
+    for (i = 0; i < 16; i++) /* initially don't remap any colours */
+        cr->newcolors[i] = i;
+    cr->state = CR_BEGIN0;
+    cr->origmap = 0;
+  } /*initremap*/
 
-    for( i=0; i<16; i++ )
-        cr->newcolors[i]=i;
-    cr->state=CR_BEGIN0;
-    cr->origmap=0;
-}
-
-static int remapcolor(struct colorremap *cr,int idx)
-{
-    int i,nc;
-    
-    if( cr->newcolors[idx] < 16 )
-        return cr->newcolors[idx];
-    
-    nc=cr->newcolors[idx]&0xffffff;
-    for( i=0; i<16; i++ )
-        if( cr->origmap->color[i]==nc ) {
-            cr->newcolors[idx]=i;
-            return i;
-        }
-    for( i=0; i<16; i++ )
-        if( cr->origmap->color[i]==0x1000000 ) {
-            cr->origmap->color[i]=nc;
-            cr->newcolors[idx]=i;
-            return i;
-        }
-    fprintf(stderr,"ERR: color map full, unable to allocate new colors.\n");
+static int remapcolor(struct colorremap *cr, int idx)
+  /* returns the appropriate remapping of the colour with the specified index
+    to the corresponding index in cr->origmap. */
+  {
+    int i, nc;
+    if (cr->newcolors[idx] < 16)
+        return
+            cr->newcolors[idx]; /* remapping already worked out */
+    nc = cr->newcolors[idx] & 0xffffff; /* get colour to be remapped */
+    for (i = 0; i < 16; i++) /* find existing entry, if any */
+        if (cr->origmap->color[i] == nc) /* got one */
+          {
+            cr->newcolors[idx] = i;
+            return
+                i;
+          } /*if; for*/
+    for (i = 0; i < 16; i++)
+      /* allocate a new entry in origmap for it, if there is room */
+        if (cr->origmap->color[i] == COLOR_UNUSED)
+          {
+            cr->origmap->color[i] = nc;
+            cr->newcolors[idx] = i;
+            return
+                i;
+          } /*if; for */
+    fprintf(stderr, "ERR: color map full, unable to allocate new colors.\n");
     exit(1);
-}
+  } /*remapcolor*/
 
-static void remapbyte(struct colorremap *cr,unsigned char *b)
-{
-    b[0]=remapcolor(cr,b[0]&15)|(remapcolor(cr,b[0]>>4)<<4);
-}
+static void remapbyte(struct colorremap *cr, unsigned char *b)
+  /* remaps the two colours in the two nibbles of *b. */
+  {
+    b[0] = remapcolor(cr, b[0] & 15) | (remapcolor(cr, b[0] >> 4) << 4);
+  } /*remapbyte*/
 
-static void procremap(struct colorremap *cr,unsigned char *b,int l,pts_t *timespan)
-{
-    while(l) {
+static void procremap
+  (
+    struct colorremap *cr,
+    unsigned char *b,
+    int blen,
+    pts_t *timespan /* has duration of SPU display added to it */
+  )
+  /* interprets the subpicture stream in order to pick up the colour information so it
+    can be remapped. */
+  {
+    while(blen)
+      {
         // fprintf(stderr,"INFO: state=%d, byte=%02x (%d)\n",cr->state,*b,*b);
-        switch(cr->state) {
-        case CR_BEGIN0: cr->curoffs=0; cr->skip=0; cr->maxlen=b[0]*256; cr->state=CR_BEGIN1; break;
-        case CR_BEGIN1: cr->maxlen+=b[0]; cr->state=CR_BEGIN2; break;
-        case CR_BEGIN2: cr->nextoffs=b[0]*256; cr->state=CR_BEGIN3; break;
-        case CR_BEGIN3: cr->nextoffs+=b[0]; cr->state=CR_WAIT; break;
-
-        case CR_WAIT:
-            if( cr->curoffs==cr->maxlen ) {
-                cr->state=CR_BEGIN0;
+        switch(cr->state)
+          {
+        case CR_BEGIN0: /* pick up high byte of Sub-Picture Unit length */
+            cr->curoffs = 0;
+            cr->skip = 0;
+            cr->maxlen = b[0] * 256;
+            cr->state = CR_BEGIN1;
+        break;
+        case CR_BEGIN1: /* pick up low byte of Sub-Picture Unit length */
+            cr->maxlen += b[0];
+            cr->state = CR_BEGIN2;
+        break;
+        case CR_BEGIN2: /* pick up high byte of offset to SP_DCSQT */
+            cr->nextoffs = b[0] * 256;
+            cr->state = CR_BEGIN3;
+        break;
+        case CR_BEGIN3: /* pick up low byte of offset to SP_DCSQT */
+            cr->nextoffs += b[0];
+            cr->state = CR_WAIT;
+        break;
+        case CR_WAIT: /* skipping bytes until start of SP_DCSQT */
+            if (cr->curoffs == cr->maxlen)
+              {
+                cr->state = CR_BEGIN0; /* finished this SPU */
                 continue; // execute BEGIN0 right away
-            }
-            if( cr->curoffs!=cr->nextoffs )
+              } /*if*/
+            if (cr->curoffs != cr->nextoffs)
                 break;
-            cr->state=CR_SKIP0;
-            // fall through to CR_SKIP0
-        case CR_SKIP0: *timespan+=1024*b[0]*256; cr->state=CR_SKIP1; break;
-        case CR_SKIP1: *timespan+=1024*b[0]; cr->state=CR_NEXTOFFS0; break;
-        case CR_NEXTOFFS0: cr->nextoffs=b[0]*256; cr->state=CR_NEXTOFFS1; break;
-        case CR_NEXTOFFS1: cr->nextoffs+=b[0]; cr->state=CR_CMD; break;
-        case CR_SKIPWAIT:
-            if( cr->skip ) {
+            cr->state = CR_SKIP0; /* found start of SP_DCSQT */
+        // fall through to CR_SKIP0
+        case CR_SKIP0: /* pick up high byte of SP_DCSQ_TM */
+            *timespan += 1024 * b[0] * 256;
+            cr->state = CR_SKIP1;
+        break;
+        case CR_SKIP1: /* pick up low byte of SP_DCSQ_TM */
+            *timespan += 1024 * b[0];
+            cr->state = CR_NEXTOFFS0;
+        break;
+        case CR_NEXTOFFS0: /* pick up high byte of offset to next SP_DCSQ */
+            cr->nextoffs = b[0] * 256;
+            cr->state = CR_NEXTOFFS1;
+        break;
+        case CR_NEXTOFFS1: /* pick up low byte of offset to next SP_DCSQ */
+            cr->nextoffs += b[0];
+            cr->state = CR_CMD; /* expecting first command */
+        break;
+        case CR_SKIPWAIT: /* skipping rest of current command */
+            if (cr->skip)
+              {
                 cr->skip--;
                 break;
-            }
-            cr->state=CR_CMD;
-            // fall through to CR_CMD
-        case CR_CMD:
-            switch(*b) {
-            case 0: break;
-            case 1: break;
-            case 2: break;
-            case 3: cr->state=CR_COL0; break;
-            case 4: cr->skip=2; cr->state=CR_SKIPWAIT; break;
-            case 5: cr->skip=6; cr->state=CR_SKIPWAIT; break;
-            case 6: cr->skip=4; cr->state=CR_SKIPWAIT; break;
-            case 7: cr->skip=2; cr->state=CR_CHGARG; break;
-            case 255: cr->state=CR_WAIT; break;
+              } /*if*/
+            cr->state = CR_CMD;
+        // fall through to CR_CMD
+        case CR_CMD: /* pick up start of next command */
+            switch (*b)
+              {
+            case 0: /* FSTA_DSP */
+            case 1: /* STA_DSP */
+            case 2: /* STP_DSP */
+              /* nothing to do */
+            break;
+            case 3: /* SET_COLOR */
+                cr->state = CR_COL0;
+            break;
+            case 4: /* SET_CONTR */
+                cr->skip = 2; /* no need to look at this */
+                cr->state = CR_SKIPWAIT;
+            break;
+            case 5: /* SET_DAREA */
+                cr->skip = 6; /* no need to look at this */
+                cr->state = CR_SKIPWAIT;
+            break;
+            case 6: /* SET_DSPXA */
+                cr->skip = 4; /* no need to look at this */
+                cr->state = CR_SKIPWAIT;
+            break;
+            case 7: /* CHG_COLCON */
+                cr->skip = 2; /* skip size of parameter area */
+                cr->state = CR_CHGARG;
+            break;
+            case 255: /* CMD_END */
+                cr->state = CR_WAIT; /* end of SP_DCSQ */
+            break;
             default:
-                fprintf(stderr,"ERR: procremap encountered unknown subtitle command: %d\n",*b);
+                fprintf(stderr, "ERR: procremap encountered unknown subtitle command: %d\n",*b);
                 exit(1);
-            }
-            break;
-
-        case CR_COL0:
-            remapbyte(cr,b);
-            cr->state=CR_COL1;
-            break;
-
-        case CR_COL1:
-            remapbyte(cr,b);
-            cr->state=CR_CMD;
-            break;
-           
-        case CR_CHGARG:
-        if (!--cr->skip)
-                cr->state=CR_CHGLN0;
+              } /*switch*/
         break;
-
-        case CR_CHGLN0: cr->ln_ctli =b[0]<<24; cr->state=CR_CHGLN1; break;
-        case CR_CHGLN1: cr->ln_ctli|=b[0]<<16; cr->state=CR_CHGLN2; break;
-        case CR_CHGLN2: cr->ln_ctli|=b[0]<< 8; cr->state=CR_CHGLN3; break;
-
+        case CR_COL0: /* first and second of four colours for SET_COLOR */
+            remapbyte(cr, b);
+            cr->state = CR_COL1;
+        break;
+        case CR_COL1: /* third and fourth of four colours for SET_COLOR */
+            remapbyte(cr, b);
+            cr->state = CR_CMD;
+        break;
+        case CR_CHGARG: /* skipping size word for CHG_COLCON */
+            if (!--cr->skip)
+                cr->state = CR_CHGLN0;
+        break;
+        case CR_CHGLN0: /* expecting first byte of LN_CTLI subcommand for CHG_COLCON */
+            cr->ln_ctli = b[0] << 24;
+            cr->state = CR_CHGLN1;
+        break;
+        case CR_CHGLN1:
+            cr->ln_ctli |= b[0] << 16;
+            cr->state = CR_CHGLN2;
+        break;
+        case CR_CHGLN2:
+            cr->ln_ctli |= b[0] << 8;
+            cr->state = CR_CHGLN3;
+        break;
         case CR_CHGLN3:
-        cr->ln_ctli|=b[0];
-            
-        if (cr->ln_ctli==0x0fffffff)
-                cr->state=CR_CMD;
-        else {
-                cr->ln_ctli>>=12;
-                cr->ln_ctli&=0xf;
-                cr->skip=2;
-                cr->state=CR_CHGPX0;
-        }
+            cr->ln_ctli |= b[0]; /* got complete four bytes at start of LN_CTLI */
+            if (cr->ln_ctli == 0x0fffffff) /* end of CHG_COLCON parameter area */
+                cr->state = CR_CMD;
+            else
+              {
+                cr->ln_ctli >>= 12;
+                cr->ln_ctli &= 0xf; /* number of PX_CTLI to follow */
+                cr->skip = 2;
+                cr->state = CR_CHGPX0;
+              } /*if*/
         break;
-
-        case CR_CHGPX0:
-        if (!--cr->skip) { cr->skip=2; cr->state=CR_CHGPX1; }
+        case CR_CHGPX0: /* expecting starting column nr for PX_CTLI subcommand for CHG_COLCON */
+            if (!--cr->skip)
+              {
+                cr->skip = 2;
+                cr->state = CR_CHGPX1;
+              } /*if*/
         break;
-
-    case CR_CHGPX1:
-            remapbyte(cr,b);
-        if (!--cr->skip) { cr->skip=2; cr->state=CR_CHGPX2; }
+        case CR_CHGPX1: /* expecting new colour values for PX_CTLI subcommand */
+            remapbyte(cr, b);
+            if (!--cr->skip)
+              {
+                cr->skip = 2;
+                cr->state = CR_CHGPX2;
+              } /*if*/
         break;
-
-        case CR_CHGPX2:
-        if (!--cr->skip) {
-                if (!--cr->ln_ctli) cr->state=CR_CHGLN0;
-                else { cr->skip=2; cr->state=CR_CHGPX0; }
-        }
+        case CR_CHGPX2: /* expecting new contrast values for PX_CTLI subcommand */
+            if (!--cr->skip)
+              {
+              /* done this PX_CTLI */
+                if (!--cr->ln_ctli)
+                    cr->state = CR_CHGLN0; /* done this LN_CTLI */
+                else
+                  {
+                    cr->skip = 2;
+                    cr->state = CR_CHGPX0; /* next PX_CTLI in this LN_CTLI */
+                  } /*if*/
+              } /*if*/
         break;
-
-        default:
+        default: /* shouldn't occur */
             assert(0);
-        }
+          } /*switch*/
         cr->curoffs++;
         b++;
-        l--;
-    }
-}
+        blen--;
+      } /*while*/
+  } /*procremap*/
 
 static void printvobustatus(struct vobgroup *va,int cursect)
 {
@@ -904,65 +985,71 @@ static void audio_scan_pcm(struct audchannel *ach,const unsigned char *buf,int l
     audiodesc_set_audio_attr(&ach->ad,&ach->adwarn,AUDIO_CHANNELS,attr);
 }
 
-int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
+int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
 /* generates output VOB files for a menu or titleset. */
-{
+  {
     unsigned char *buf;
-    int cursect=0; /* sector nr in input file */
-    int fsect=-1; /* sector nr in current output VOB file, -ve => not opened yet */
+    int cursect = 0; /* sector nr in input file */
+    int fsect = -1; /* sector nr in current output VOB file, -ve => not opened yet */
     int vnum;
     int outnum = -(int)ismenu + 1; /* +ve for a titleset, in which case used to generate output VOB file names */
-    int vobid=0;
-    struct mp2info {
+    int vobid =0;
+    struct mp2info
+      {
         int hdrptr;
         unsigned char buf[6];
-    } mp2hdr[8]; /* enough for the allowed 8 audio streams */
+      } mp2hdr[8]; /* enough for the allowed 8 audio streams */
     struct colorremap *crs;
     
-    crs=malloc(sizeof(struct colorremap)*32);
-    for( vnum=0; vnum<va->numvobs; vnum++ ) {
-        int i,j;
-        int hadfirstvobu=0;
-        pts_t backoffs=0, lastscr=0;
+    crs = malloc(sizeof(struct colorremap) * 32); /* enough for 32 subpicture streams */
+    for (vnum = 0; vnum < va->numvobs; vnum++)
+      {
+        int i, j;
+        int hadfirstvobu = 0;
+        pts_t backoffs = 0, lastscr = 0;
         struct vob * const thisvob = va->vobs[vnum];
-        int prevvidsect=-1;
+        int prevvidsect = -1;
         struct vscani vsi;
         struct vfile vf;
-
-        vsi.lastrefsect=0;
-        for( i=0; i<32; i++ )
-            initremap(crs+i);
+        vsi.lastrefsect = 0;
+        for (i = 0; i < 32; i++)
+            initremap(crs + i);
 
         vobid++;
-        thisvob->vobid=vobid;
-        vsi.firstgop=1;
+        thisvob->vobid = vobid;
+        vsi.firstgop = 1;
 
-        fprintf(stderr,"\nSTAT: Processing %s...\n",thisvob->fname);
-        vf=varied_open(thisvob->fname, O_RDONLY, "input video file");
+        fprintf(stderr, "\nSTAT: Processing %s...\n", thisvob->fname);
+        vf = varied_open(thisvob->fname, O_RDONLY, "input video file");
         memset(mp2hdr, 0, 8 * sizeof(struct mp2info));
-        while(1) {
-            if( fsect == 524272 ) {
+        while(1)
+          {
+            if (fsect == 524272)
+              {
               /* VOB file reached maximum allowed size */
                 writeclose();
-                if( outnum<=0 ) {
-                    fprintf(stderr,"\nERR:  Menu VOB reached 1gb\n");
+                if (outnum <= 0)
+                  { /* menu VOB cannot be split */
+                    fprintf(stderr, "\nERR:  Menu VOB reached 1gb\n");
                     exit(1);
-                }
+                  } /*if*/
                 outnum++; /* for naming next VOB file */
-                fsect=-1;
-            }
-            buf=writegrabbuf();
-
-            i=fread(buf,1,2048,vf.h);
-            if( i!=2048 ) {
-                if( i==-1 ) {
-                    fprintf(stderr,"\nERR:  Error while reading: %s\n",strerror(errno));
+                fsect = -1;
+              } /*if*/
+            buf = writegrabbuf();
+            i = fread(buf, 1, 2048, vf.h);
+            if (i != 2048)
+              {
+                if (i == -1)
+                  {
+                    fprintf(stderr, "\nERR:  Error %d while reading: %s\n", errno, strerror(errno));
                     exit(1);
-                } else if( i>0 )
-                    fprintf(stderr,"\nWARN: Partial sector read (%d bytes); discarding data.\n",i);
+                  }
+                else if (i > 0) /* shouldn't occur */
+                    fprintf(stderr ,"\nWARN: Partial sector read (%d bytes); discarding data.\n", i);
                 writeundo();
                 break;
-            }
+              } /*if*/
             if
               (
                     buf[14] == 0
@@ -977,104 +1064,131 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
               )
               {
                 // private dvdauthor data, interpret and remove from final stream
-                int i=35;
+                int i = 35;
                 if (buf[i] != 2)
                   {
-                    fprintf(stderr,"ERR: dvd info packet is version %d\n",buf[i]);
+                    fprintf(stderr, "ERR: dvd info packet is version %d\n", buf[i]);
                     exit(1);
                   } /*if*/
-                switch (buf[i+1]) { // packet type
-
+                switch (buf[i + 1]) // packet type
+                  {
                 case 1: // subtitle/menu color and button information
-                {
-                    int substreamid=buf[i+2]&31;
-                    i+=3;
-                    i+=8; // skip start pts and end pts
-                    while(buf[i]!=0xff) {
-                        switch(buf[i]) {
+                  {
+                    int substreamid = buf[i + 2] & 31;
+                    i += 3;
+                    i += 8; // skip start pts and end pts
+                    while (buf[i] != 0xff)
+                      {
+                        switch (buf[i])
+                          {
                         case 1: // new colormap
-                        {
+                          {
                             int j;
-                            crs[substreamid].origmap=thisvob->progchain->colors;
-                            for( j=0; j<buf[i+1]; j++ ) {
-                                crs[substreamid].newcolors[j]=0x1000000|
-                                    (buf[i+2+3*j]<<16)|
-                                    (buf[i+3+3*j]<<8)|
-                                    (buf[i+4+3*j]);
-                            }
-                            for( ; j<16; j++ )
-                                crs[substreamid].newcolors[j]=j;
-                            i+=2+3*buf[i+1];
-                            break;
-                        }
+                            crs[substreamid].origmap = thisvob->progchain->colors;
+                              /* where to merge colours into */
+                            for (j = 0; j < buf[i + 1]; j++)
+                              {
+                              /* collect colours needing remapping, which won't happen
+                                until they're actually referenced */
+                                crs[substreamid].newcolors[j] =
+                                        COLOR_UNUSED /* indicate colour needs remapping */
+                                    |
+                                        buf[i + 2 + 3 * j] << 16
+                                    |
+                                        buf[i + 3 + 3 * j] << 8
+                                    |
+                                        buf[i + 4 + 3 * j];
+                              } /*for*/
+                            for (; j < 16; j++) /* fill in unused entries with identity mapping */
+                                crs[substreamid].newcolors[j] = j;
+                            i += 2 + 3 * buf[i + 1];
+                          }
+                        break;
                         case 2: // new buttoncoli
-                        {
+                          {
                             int j;
-
-                            memcpy(thisvob->buttoncoli,buf+i+2,buf[i+1]*8);
-                            for( j=0; j<buf[i+1]; j++ ) {
-                                remapbyte(&crs[substreamid],thisvob->buttoncoli+j*8+0);
-                                remapbyte(&crs[substreamid],thisvob->buttoncoli+j*8+1);
-                                remapbyte(&crs[substreamid],thisvob->buttoncoli+j*8+4);
-                                remapbyte(&crs[substreamid],thisvob->buttoncoli+j*8+5);
-                            }
-                            i+=2+8*buf[i+1];
-                            break;
-                        }
+                            memcpy(thisvob->buttoncoli, buf + i + 2, buf[i + 1] * 8);
+                            for (j = 0; j < buf[i + 1]; j++)
+                              {
+                              /* remap the colours, not the contrast values */
+                                remapbyte(&crs[substreamid], thisvob->buttoncoli + j * 8 + 0);
+                                remapbyte(&crs[substreamid], thisvob->buttoncoli + j * 8 + 1);
+                                remapbyte(&crs[substreamid], thisvob->buttoncoli + j * 8 + 4);
+                                remapbyte(&crs[substreamid], thisvob->buttoncoli + j * 8 + 5);
+                              } /*for*/
+                            i += 2 + 8 * buf[i + 1];
+                          }
+                        break;
                         case 3: // button position information
-                        {
-                            int j,k;
-
-                            k=buf[i+1];
-                            i+=2;
-                            for( j=0; j<k; j++ ) {
-                                struct button *b;
-                                struct buttoninfo *bi,bitmp;
-                                char *bn=readpstr(buf,&i);
-                                    
-                                if( !findbutton(thisvob->progchain,bn,0) ) {
-                                    fprintf(stderr,"ERR:  Cannot find button '%s' as referenced by the subtitle\n",bn);
+                          {
+                            int j;
+                            const int nrbuttons = buf[i + 1];
+                            i += 2;
+                            for (j = 0; j < nrbuttons; j++)
+                              {
+                                struct button * b;
+                                struct buttoninfo * bi, bitmp;
+                                char * const bn = readpstr(buf, &i);
+                                if (!findbutton(thisvob->progchain, bn, 0))
+                                  {
+                                    fprintf
+                                      (
+                                        stderr,
+                                        "ERR:  Cannot find button '%s' as referenced by"
+                                            " the subtitle\n",
+                                        bn
+                                      );
                                     exit(1);
-                                }
-                                b=&thisvob->progchain->buttons[findbutton(thisvob->progchain,bn,0)-1];
+                                  } /*if*/
+                                b = &thisvob->progchain->buttons[findbutton(thisvob->progchain, bn, 0) - 1];
                                 free(bn);
 
-                                if( b->numstream>=MAXBUTTONSTREAM ) {
-                                    fprintf(stderr,"WARN: Too many button streams; ignoring buttons\n");
-                                    bi=&bitmp;
-                                } else {
-                                    bi=&b->stream[b->numstream++];
-                                }
-
-                                bi->substreamid=substreamid;
-
-                                i+=2; // skip modifier
-                                bi->autoaction=buf[i++];
-                               bi->grp=buf[i];
-                               bi->x1=read2(buf+i+1);
-                               bi->y1=read2(buf+i+3);
-                               bi->x2=read2(buf+i+5);
-                               bi->y2=read2(buf+i+7);
-                               i+=9;
-                               // up down left right
-                               bi->up=readpstr(buf,&i);
-                               bi->down=readpstr(buf,&i);
-                               bi->left=readpstr(buf,&i);
-                               bi->right=readpstr(buf,&i);
-                            }
-                            break;
-                        } /*case 3*/
+                                if (b->numstream >= MAXBUTTONSTREAM)
+                                  {
+                                    fprintf
+                                      (
+                                        stderr,
+                                        "WARN: Too many button streams; ignoring buttons\n"
+                                      );
+                                    bi = &bitmp; /* place to put discarded data */
+                                  }
+                                else
+                                  {
+                                    bi = &b->stream[b->numstream++];
+                                  } /*if*/
+                                bi->substreamid = substreamid;
+                                i += 2; // skip modifier
+                                bi->autoaction = buf[i++];
+                                bi->grp = buf[i];
+                                bi->x1 = read2(buf + i + 1);
+                                bi->y1 = read2(buf + i + 3);
+                                bi->x2 = read2(buf + i + 5);
+                                bi->y2 = read2(buf + i + 7);
+                                i += 9;
+                              /* neighbouring button names */
+                                bi->up = readpstr(buf, &i);
+                                bi->down = readpstr(buf, &i);
+                                bi->left = readpstr(buf, &i);
+                                bi->right = readpstr(buf, &i);
+                              } /*for*/
+                          } /*case 3*/
+                        break;
                         default:
-                            fprintf(stderr,"ERR: dvd info packet command within subtitle: %d\n",buf[i]);
+                            fprintf
+                              (
+                                stderr,
+                                "ERR: dvd info packet command within subtitle: %d\n",
+                                buf[i]
+                              );
                             exit(1);
-                        } /*switch*/
-                    } /*while*/
+                          } /*switch*/
+                      } /*while*/
 
-                    break;
-                } /*case 1*/
+                  } /*case 1*/
+                break;
                         
                 default:
-                    fprintf(stderr,"ERR: unknown dvd info packet type: %d\n",buf[i+1]);
+                    fprintf(stderr, "ERR: unknown dvdauthor-data packet type: %d\n", buf[i + 1]);
                     exit(1);
                 } /*switch*/
 
@@ -1093,27 +1207,34 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
                   }
                 else if (newscr < lastscr)
                   {
-                    fprintf(stderr, "ERR: SCR moves backwards, remultiplex input: %" PRId64" < %" PRId64"\n",
-                        newscr, lastscr);
+                    fprintf
+                      (
+                        stderr,
+                        "ERR: SCR moves backwards, remultiplex input: %" PRId64" < %" PRId64"\n",
+                        newscr,
+                        lastscr
+                      );
                     exit(1);
                   } /*if*/
                 lastscr = newscr;
                 if (!hadfirstvobu)
                     backoffs = newscr;
               } /*if*/
-            transpose_ts(buf,-backoffs);
-            if( fsect == -1 ) {
+            transpose_ts(buf, -backoffs);
+            if (fsect == -1)
+              {
               /* start a new VOB file */
                 char newname[200];
-                fsect=0;
-                if( fbase ) {
-                    if( outnum>=0 )
-                        sprintf(newname,"%s_%d.VOB",fbase,outnum);
+                fsect = 0;
+                if (fbase)
+                  {
+                    if (outnum >= 0)
+                        sprintf(newname, "%s_%d.VOB", fbase, outnum);
                     else
-                        strcpy(newname,fbase);
+                        strcpy(newname, fbase);
                     writeopen(newname);
-                }
-            }
+                  } /*if*/
+              } /*if*/
             if
               (
                     buf[14] == 0
@@ -1146,7 +1267,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
                   {
                     struct vobuinfo *vi;
                     if (thisvob->numvobus)
-                        finishvideoscan(va,vnum,prevvidsect,&vsi);
+                        finishvideoscan(va, vnum, prevvidsect, &vsi);
                     // fprintf(stderr,"INFO: vobu\n");
                     hadfirstvobu = 1; /* NAV PACK starts a VOBU */
                     thisvob->numvobus++;
@@ -1176,18 +1297,23 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
                     vi->hasvideo = 0;
                     memcpy(thisvob->vobu[thisvob->numvobus-1].sectdata, buf, 0x26); // save pack and system header; the rest will be reconstructed later
                     if (!(thisvob->numvobus & 15)) /* time to let user know progress */
-                        printvobustatus(va,cursect);
+                        printvobustatus(va, cursect);
                     vsi.lastrefsect = 0;
                     vsi.firstgop = 1;
                   }
                 else
                   {
-                    fprintf(stderr,"WARN: System header found, but PCI/DSI information is not where expected\n\t(make sure your system header is 18 bytes!)\n");
+                    fprintf
+                      (
+                        stderr,
+                        "WARN: System header found, but PCI/DSI information is not where"
+                            " expected\n\t(make sure your system header is 18 bytes!)\n"
+                      );
                   } /*if*/
               } /*if*/
             if (!hadfirstvobu)
               {
-                fprintf(stderr,"WARN: Skipping sector, waiting for first VOBU...\n");
+                fprintf(stderr, "WARN: Skipping sector, waiting for first VOBU...\n");
                 writeundo(); /* ignore it */
                 continue;
               } /*if*/
@@ -1199,7 +1325,8 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
               {
                 if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1)
                   {
-                    if (buf[i + 3] >= 0xBD && buf[i + 3] <= 0xEF) /* private, padding, audio or video stream */
+                    if (buf[i + 3] >= 0xBD && buf[i + 3] <= 0xEF)
+                      /* private, padding, audio or video stream */
                       {
                         j = i;
                         i += 6 + read2(buf + i + 4); /* start of next packet */
@@ -1354,7 +1481,12 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
                   }
                 else if (pts1 > 0)
                   {
-                    fprintf(stderr,"WARN: Audio channel %d contains sync headers but has no PTS.\n",audch);
+                    fprintf
+                      (
+                        stderr,
+                        "WARN: Audio channel %d contains sync headers but has no PTS.\n",
+                        audch
+                      );
                   } /*if*/
                 // fprintf(stderr,"aud ch=%d pts %d - %d (%d)\n",audch,pts0,pts1,pts1-pts0);
                 // fprintf(stderr,"pts[%d] %d (%02x %02x %02x %02x %02x)\n",va->numaudpts,pts,buf[23],buf[24],buf[25],buf[26],buf[27]);
@@ -1366,7 +1498,6 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
                 else if (haspts)
                   {
                     struct audchannel * const ach = &thisvob->audch[audch];
-
                     if (ach->numaudpts >= ach->maxaudpts) { /* need more space */
                         if (ach->maxaudpts)
                             ach->maxaudpts <<= 1;
@@ -1379,7 +1510,8 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
                             /*size =*/ ach->maxaudpts * sizeof(struct audpts)
                           );
                     } /*if*/
-                    if (ach->numaudpts) {
+                    if (ach->numaudpts)
+                      {
                         // we cannot compute the length of a DTS audio packet
                         // so just backfill if it is one
                         // otherwise, for mp2 add any pts to the previous
@@ -1389,13 +1521,22 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
                         else
                             ach->audpts[ach->numaudpts - 1].pts[1] += backpts1;
 
-                        if (ach->audpts[ach->numaudpts - 1].pts[1] < pts0) {
+                        if (ach->audpts[ach->numaudpts - 1].pts[1] < pts0)
+                          {
                             if (audch >= 32)
                                 goto noshow; /* not audio */
                             fprintf(stderr, "WARN: Discontinuity of %" PRId64" in audio channel %d; please remultiplex input.\n", pts0 - ach->audpts[ach->numaudpts - 1].pts[1], audch);
                             // fprintf(stderr,"last=%d, this=%d\n",ach->audpts[ach->numaudpts-1].pts[1],pts0);
-                        } else if (ach->audpts[ach->numaudpts - 1].pts[1] > pts0)
-                            fprintf(stderr, "WARN: Audio pts for channel %d moves backwards by %" PRId64 "; please remultiplex input.\n", audch, ach->audpts[ach->numaudpts - 1].pts[1] - pts0);
+                          }
+                        else if (ach->audpts[ach->numaudpts - 1].pts[1] > pts0)
+                            fprintf
+                              (
+                                stderr,
+                                "WARN: Audio pts for channel %d moves backwards by %"
+                                    PRId64 "; please remultiplex input.\n",
+                                audch,
+                                ach->audpts[ach->numaudpts - 1].pts[1] - pts0
+                              );
                         else
                             goto noshow;
                         fprintf(stderr, "WARN: Previous sector: ");
@@ -1408,7 +1549,7 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
                         printpts(pts1);
                         fprintf(stderr, "\n");
                         ach->audpts[ach->numaudpts - 1].pts[1] = pts0;
-                    } /*if*/
+                      } /*if*/
                 noshow:
                   /* fill in new entry */
                     ach->audpts[ach->numaudpts].pts[0] = pts0;
@@ -1444,153 +1585,189 @@ int FindVobus(const char *fbase,struct vobgroup *va,vtypes ismenu)
                 dptr++; /* skip sub-stream ID */
                 if ((st & 0xe0) == 0x20)
                   { /* subpicture stream */
-                    procremap(&crs[st & 31], buf + dptr, ml - dptr, &thisvob->audch[st].audpts[thisvob->audch[st].numaudpts - 1].pts[1]);
+                    procremap
+                      (
+                        /*cr =*/ &crs[st & 31],
+                        /*b =*/ buf + dptr,
+                        /*blen =*/ ml - dptr,
+                        /*timespan =*/
+                            &thisvob->audch[st].audpts[thisvob->audch[st].numaudpts - 1].pts[1]
+                      );
                   } /*if*/
               } /*if*/
             cursect++;
             fsect++;
           } /*while*/
         varied_close(vf);
-        if( thisvob->numvobus ) {
+        if (thisvob->numvobus)
+          {
             int i;
             pts_t finalaudiopts;
-                
-            finishvideoscan(va,vnum,prevvidsect,&vsi);
+            finishvideoscan(va, vnum, prevvidsect, &vsi);
             // find end of audio
-            finalaudiopts=-1;
-            for( i=0; i<32; i++ ) {
-                struct audchannel *ach=thisvob->audch+i;
-                if( ach->numaudpts &&
-                    ach->audpts[ach->numaudpts-1].pts[1] > finalaudiopts )
-                    finalaudiopts=ach->audpts[ach->numaudpts-1].pts[1];
-            }
-                    
+            finalaudiopts = -1;
+            for (i = 0; i < 32; i++)
+              {
+                struct audchannel * const ach = thisvob->audch + i;
+                if
+                  (
+                        ach->numaudpts
+                    &&
+                        ach->audpts[ach->numaudpts - 1].pts[1] > finalaudiopts
+                  )
+                    finalaudiopts = ach->audpts[ach->numaudpts - 1].pts[1];
+              } /*for*/
             // pin down all video vobus
             // note: we make two passes; one assumes that the PTS for the
             // first frame is exact; the other assumes that the PTS for
             // the first frame is off by 1/2.  If both fail, then the third pass
             // assumes things are exact and throws a warning
-            for( i=0; i<3; i++ ) {
-                pts_t pts_align=-1;
-                int complain=0, j;
-
-                for( j=0; j<thisvob->numvobus; j++ ) {
-                    struct vobuinfo *vi=thisvob->vobu+j;
-                    
-                    if( vi->hasvideo ) {
-                        if( pts_align==-1 ) {
-                            pts_align=vi->firstvideopts*2;
-                            if( i==1 ) {
+            for (i = 0; i < 3; i++)
+              {
+                pts_t pts_align = -1;
+                int complain = 0, j;
+                for (j = 0; j < thisvob->numvobus; j++)
+                  {
+                    struct vobuinfo * const vi = thisvob->vobu + j;
+                    if (vi->hasvideo)
+                      {
+                        if (pts_align == -1)
+                          {
+                            pts_align = vi->firstvideopts * 2;
+                            if (i == 1)
+                              {
                                 // I assume pts should round down?  That seems to be how mplex deals with it
                                 // also see earlier comment
 
                                 // since pts round down, then the alternative base we should try is
                                 // firstvideopts+0.5, thus increment
                                 pts_align++;
-                            }
+                              } /*if*/
                             // MarkChapters will complain if firstIfield!=0
-                        }
+                          } /*if*/
 
-                        vi->videopts[0]=calcpts(va,i==2,&complain,&pts_align,vi->firstvideopts,-vi->firstIfield);
-                        vi->videopts[1]=calcpts(va,i==2,&complain,&pts_align,vi->firstvideopts,-vi->firstIfield+vi->numfields);
+                        vi->videopts[0] = calcpts(va, i == 2, &complain, &pts_align, vi->firstvideopts, -vi->firstIfield);
+                        vi->videopts[1] = calcpts(va, i == 2, &complain, &pts_align, vi->firstvideopts, -vi->firstIfield + vi->numfields);
                         // if this looks like a dud, abort and try the next pass
-                        if( complain && i<2 )
+                        if (complain && i < 2)
                             break;
-
-                        vi->sectpts[0]=vi->videopts[0];
-                        if( j+1 == thisvob->numvobus && finalaudiopts > vi->videopts[1] )
-                            vi->sectpts[1]=finalaudiopts;
+                        vi->sectpts[0] = vi->videopts[0];
+                        if (j + 1 == thisvob->numvobus && finalaudiopts > vi->videopts[1])
+                            vi->sectpts[1] = finalaudiopts;
                         else
-                            vi->sectpts[1]=vi->videopts[1];
-                    }
-                }
-                if( !complain )
+                            vi->sectpts[1] = vi->videopts[1];
+                      } /*if*/
+                  } /*for*/
+                if (!complain)
                     break;
-            }
-            
+              } /*for*/
             // guess at non-video vobus
-            for( i=0; i<thisvob->numvobus; i++ ) {
-                struct vobuinfo *vi=thisvob->vobu+i;
-                if( !vi->hasvideo ) {
-                    int j,k;
-                    pts_t firstaudiopts=-1,p;
+            for (i = 0; i < thisvob->numvobus; i++)
+              {
+                struct vobuinfo * const vi = thisvob->vobu + i;
+                if (!vi->hasvideo)
+                  {
+                    int j, k;
+                    pts_t firstaudiopts = -1, p;
 
-                    for( j=0; j<32; j++ ) {
-                        struct audchannel *ach=thisvob->audch+j;
-                        for( k=0; k<ach->numaudpts; k++ )
-                            if( ach->audpts[k].asect>=vi->sector ) {
-                                if( firstaudiopts==-1 || ach->audpts[k].pts[0]<firstaudiopts )
-                                    firstaudiopts=ach->audpts[k].pts[0];
+                    for (j = 0; j < 32; j++)
+                      {
+                        struct audchannel * const ach = thisvob->audch + j;
+                        for (k = 0; k < ach->numaudpts; k++)
+                            if (ach->audpts[k].asect >= vi->sector)
+                              {
+                                if (firstaudiopts == -1 || ach->audpts[k].pts[0] < firstaudiopts)
+                                    firstaudiopts = ach->audpts[k].pts[0];
                                 break;
-                            }
-                    }
-                    if( firstaudiopts==-1 ) {
-                        fprintf(stderr,"WARN: Cannot detect pts for VOBU if there is no audio or video\nWARN: Using SCR instead.\n");
-                        firstaudiopts=readscr(vi->sectdata+4)+4*147; // 147 is roughly the minumum pts that must transpire between packets; we give a couple packets of buffer to allow the dvd player to process the data
-                    }
-                    if( i ) {
-                        pts_t frpts=getframepts(va);
-                        p=firstaudiopts-thisvob->vobu[i-1].sectpts[0];
+                              } /*if; for*/
+                      } /*for*/
+                    if (firstaudiopts == -1)
+                      {
+                        fprintf
+                          (
+                            stderr,
+                            "WARN: Cannot detect pts for VOBU if there is no audio or video\n"
+                                "WARN: Using SCR instead.\n"
+                          );
+                        firstaudiopts = readscr(vi->sectdata + 4) + 4 * 147;
+                          // 147 is roughly the minumum pts that must transpire between packets;
+                          // we give a couple packets of buffer to allow the dvd player to
+                          // process the data
+                      } /*if*/
+                    if (i)
+                      {
+                        pts_t frpts = getframepts(va);
+                        p = firstaudiopts - thisvob->vobu[i - 1].sectpts[0];
                         // ensure this is a multiple of a framerate, just to be nice
-                        p+=frpts-1;
-                        p-=p%frpts;
-                        p+=thisvob->vobu[i-1].sectpts[0];
-                        assert(p>=thisvob->vobu[i-1].sectpts[1]);
-                        thisvob->vobu[i-1].sectpts[1]=p;
-                    } else {
+                        p += frpts - 1;
+                        p -= p % frpts;
+                        p += thisvob->vobu[i - 1].sectpts[0];
+                        assert(p >= thisvob->vobu[i - 1].sectpts[1]);
+                        thisvob->vobu[i - 1].sectpts[1] = p;
+                      }
+                    else
+                      {
                         fprintf(stderr,"ERR:  Cannot infer pts for VOBU if there is no audio or video and it is the\nERR:  first VOBU.\n");
                         exit(1);
-                    }
-                    vi->sectpts[0]=p;
-
+                      } /*if*/
+                    vi->sectpts[0] = p;
                     // if we can easily predict the end pts of this sector,
                     // then fill it in.  otherwise, let the next iteration do it
-                    if( i+1==thisvob->numvobus ) { // if this is the end of the vob, use the final audio pts as the last pts
+                    if (i + 1 == thisvob->numvobus)
+                      { // if this is the end of the vob, use the final audio pts as the last pts
                         if( finalaudiopts>vi->sectpts[0] )
                             p=finalaudiopts;
                         else
                             p=vi->sectpts[0]+getframepts(va); // add one frame of a buffer, so we don't have a zero (or less) length vobu
-                    } else if( thisvob->vobu[i+1].hasvideo ) // if the next vobu has video, use the start of the video as the end of this vobu
-                        p=thisvob->vobu[i+1].sectpts[0];
+                      }
+                    else if (thisvob->vobu[i+1].hasvideo) // if the next vobu has video, use the start of the video as the end of this vobu
+                        p = thisvob->vobu[i + 1].sectpts[0];
                     else // the next vobu is an audio only vobu, and will backfill the pts as necessary
                         continue;
-                    if( p<=vi->sectpts[0] ) {
-                        fprintf(stderr, "ERR:  Audio and video are too poorly synchronised; you must remultiplex.\n");
+                    if (p <= vi->sectpts[0])
+                      {
+                        fprintf
+                          (
+                            stderr,
+                            "ERR:  Audio and video are too poorly synchronised; you must remultiplex.\n"
+                          );
                         exit(1);
-                    }
-                    vi->sectpts[1]=p;
-                }
-            }
+                      } /*if*/
+                    vi->sectpts[1] = p;
+                  } /*if*/
+              } /*for*/
 
-            fprintf(stderr,"\nINFO: Video pts = ");
+            fprintf(stderr, "\nINFO: Video pts = ");
             printpts(thisvob->vobu[0].videopts[0]);
-            fprintf(stderr," .. ");
-            for( i=thisvob->numvobus-1; i>=0; i-- )
-                if( thisvob->vobu[i].hasvideo ) {
+            fprintf(stderr, " .. ");
+            for (i = thisvob->numvobus - 1; i >= 0; i--)
+                if (thisvob->vobu[i].hasvideo)
+                  {
                     printpts(thisvob->vobu[i].videopts[1]);
                     break;
-                }
-            if( i<0 )
-                fprintf(stderr,"??");
-            for( i=0; i<64; i++ ) {
-                struct audchannel *ach=&thisvob->audch[i];
-
-                if( ach->numaudpts ) {
-                    fprintf(stderr,"\nINFO: Audio[%d] pts = ",i);
+                  } /*if; for*/
+            if (i < 0)
+                fprintf(stderr, "??");
+            for (i = 0; i < 64; i++)
+              {
+                struct audchannel * const ach = &thisvob->audch[i];
+                if (ach->numaudpts)
+                  {
+                    fprintf(stderr, "\nINFO: Audio[%d] pts = ", i);
                     printpts(ach->audpts[0].pts[0]);
-                    fprintf(stderr," .. ");
-                    printpts(ach->audpts[ach->numaudpts-1].pts[1]);
-                }
-            }
-            fprintf(stderr,"\n");
-        } /*if*/
-    } /*for*/
+                    fprintf(stderr, " .. ");
+                    printpts(ach->audpts[ach->numaudpts - 1].pts[1]);
+                  } /*if*/
+              } /*for*/
+            fprintf(stderr, "\n");
+          } /*if*/
+      } /*for*/
     writeclose();
-    printvobustatus(va,cursect);
-    fprintf(stderr,"\n");
+    printvobustatus(va, cursect);
+    fprintf(stderr, "\n");
     free(crs);
     return 1;
-}
+  } /*FindVobus*/
 
 static pts_t pabs(pts_t pts)
 {
@@ -1614,112 +1791,147 @@ static int findnearestvobu(struct vobgroup *pg,struct vob *va,pts_t pts)
 }
 
 void MarkChapters(struct vobgroup *va)
-{
-    int i,j,k,lastcellid;
-
+  /* fills in scellid, ecellid, vobcellid, firstvobuincell, lastvobuincell, numcells fields
+    to mark all the cells and programs. */
+  {
+    int i, j, k, lastcellid;
     // mark start and stop points
-    lastcellid=-1;
-    for( i=0; i<va->numallpgcs; i++ )
-        for( j=0; j<va->allpgcs[i]->numsources; j++ ) {
-            struct source *s=va->allpgcs[i]->sources[j];
-
-            for( k=0; k<s->numcells; k++ ) {
+    lastcellid = -1;
+    for (i = 0; i < va->numallpgcs; i++)
+        for (j = 0; j < va->allpgcs[i]->numsources; j++)
+          {
+          /* use vobcellid fields to mark start of cells, and scellid and ecellid fields
+            to hold vobu indexes, all to be replaced later with right values */
+            struct source * const thissource = va->allpgcs[i]->sources[j];
+            for (k = 0; k < thissource->numcells; k++)
+              {
                 int v;
-                
-                v=findnearestvobu(va,s->vob,s->cells[k].startpts);
-                if (v >= 0 && v < s->vob->numvobus)
+                v = findnearestvobu(va, thissource->vob, thissource->cells[k].startpts);
+                if (v >= 0 && v < thissource->vob->numvobus)
                   {
-                    if (s->cells[k].ischapter != CELL_NEITHER) /* from Wolfgang Wershofen */
-                      {
+                    if (thissource->cells[k].ischapter != CELL_NEITHER) /* from Wolfgang Wershofen */
+                      { /* info for user */
                         fprintf(stderr, "CHAPTERS: VTS[%d/%d] ", i + 1, j + 1);
-                        printpts(s->vob->vobu[v].sectpts[0] - s->vob->vobu[0].sectpts[0]);
+                        printpts(thissource->vob->vobu[v].sectpts[0] - thissource->vob->vobu[0].sectpts[0]);
                         fprintf(stderr, "\n");
                       } /*if*/
-                    s->vob->vobu[v].vobcellid = 1;
+                    thissource->vob->vobu[v].vobcellid = 1; /* cell starts here */
                   } /*if*/
-                s->cells[k].scellid=v;
-
-                if( lastcellid!=v &&
-                    s->vob->vobu[v].firstIfield!=0) {
-                    fprintf(stderr,"WARN: GOP may not be closed on cell %d of source %s of pgc %d\n",k+1,s->fname,i+1);
-                }
-
-                if( s->cells[k].endpts>=0 ) {
-                    v=findnearestvobu(va,s->vob,s->cells[k].endpts);
-                    if( v>=0 && v<s->vob->numvobus )
-                        s->vob->vobu[v].vobcellid=1;
-                } else
-                    v=s->vob->numvobus;
-                s->cells[k].ecellid=v;
-
-                lastcellid=v;
-            }
-        }
-    // tally up actual cells
-    for( i=0; i<va->numvobs; i++ ) {
-        int cellvobu=0;
-        int cellid=0;
-        va->vobs[i]->vobu[0].vobcellid=1;
-        for( j=0; j<va->vobs[i]->numvobus; j++ ) {
-            struct vobuinfo *v=&va->vobs[i]->vobu[j];
-            if( v->vobcellid ) {
-                cellid++;
-                cellvobu=j;
-            }
-            v->vobcellid=cellid+va->vobs[i]->vobid*256;
-            v->firstvobuincell=cellvobu;
-        }
-        cellvobu=va->vobs[i]->numvobus-1;
-        for( j=cellvobu; j>=0; j-- ) {
-            struct vobuinfo *v=&va->vobs[i]->vobu[j];
-            v->lastvobuincell=cellvobu;
-            if(v->firstvobuincell==j )
-                cellvobu=j-1;
-        }
-        va->vobs[i]->numcells=cellid;
-        if( cellid>=256 ) {
-            fprintf(stderr,"ERR:  VOB %s has too many cells (%d, 256 allowed)\n",va->vobs[i]->fname,cellid);
+                thissource->cells[k].scellid = v; /* cell starts here */
+                if
+                  (
+                        lastcellid != v
+                    &&
+                        thissource->vob->vobu[v].firstIfield != 0
+                  )
+                  {
+                    fprintf
+                      (
+                        stderr,
+                        "WARN: GOP may not be closed on cell %d of source %s of pgc %d\n",
+                        k + 1,
+                        thissource->fname,
+                        i + 1
+                      );
+                  } /*if*/
+                if (thissource->cells[k].endpts >= 0)
+                  {
+                    v = findnearestvobu(va, thissource->vob, thissource->cells[k].endpts);
+                    if (v >= 0 && v < thissource->vob->numvobus)
+                        thissource->vob->vobu[v].vobcellid = 1; /* next cell starts here */
+                  }
+                else
+                    v = thissource->vob->numvobus;
+                thissource->cells[k].ecellid = v; /* next cell starts here */
+                lastcellid = v;
+              } /*for*/
+          } /*for; for*/
+   /* At this point, the vobcellid fields have been set to 1 for all VOBUs which
+    are supposed to start new cells. */
+    for (i = 0; i < va->numvobs; i++)
+      {
+      /* fill in the vobcellid fields with the right values, and also
+        firstvobuincell and lastvobuincell */
+        int cellvobu = 0;
+        int cellid = 0;
+        va->vobs[i]->vobu[0].vobcellid = 1;
+        for (j = 0; j < va->vobs[i]->numvobus; j++)
+          {
+            struct vobuinfo * const thisvobu = &va->vobs[i]->vobu[j];
+            if (thisvobu->vobcellid)
+              {
+                cellid++; /* start new cell */
+                cellvobu = j; /* this VOBU is first in cell */
+              } /*if*/
+            thisvobu->vobcellid = cellid + va->vobs[i]->vobid * 256;
+            thisvobu->firstvobuincell = cellvobu;
+          } /*for*/
+        cellvobu = va->vobs[i]->numvobus - 1;
+        for (j = cellvobu; j >= 0; j--)
+          { /* fill in the lastvobuincell fields */
+            struct vobuinfo * const thisvobu = &va->vobs[i]->vobu[j];
+            thisvobu->lastvobuincell = cellvobu;
+            if (thisvobu->firstvobuincell == j) /* reached start of this cell */
+                cellvobu = j - 1;
+          } /*for*/
+        va->vobs[i]->numcells = cellid;
+        if (cellid >= 256)
+          {
+            fprintf
+              (
+                stderr,
+                "ERR:  VOB %s has too many cells (%d, 256 allowed)\n",
+                va->vobs[i]->fname,
+                cellid
+              );
             exit(1);
-        }
-    }
-
-    // now compute scellid and ecellid
-    for( i=0; i<va->numallpgcs; i++ )
-        for( j=0; j<va->allpgcs[i]->numsources; j++ ) {
-            struct source *s=va->allpgcs[i]->sources[j];
-
-            for( k=0; k<s->numcells; k++ ) {
-                struct cell *c=&s->cells[k];
-
-                if( c->scellid<0 )
-                    c->scellid=1;
-                else if( c->scellid<s->vob->numvobus )
-                    c->scellid=s->vob->vobu[c->scellid].vobcellid&255;
+          } /*if*/
+      } /*for*/
+  /* Now fill in right values for scellid and ecellid fields, replacing the
+    vobu indexes I previously put in with the corresponding vobcellid values I
+    have just computed. */
+    for (i = 0; i < va->numallpgcs; i++)
+        for (j = 0; j < va->allpgcs[i]->numsources; j++)
+          {
+            struct source * const thissource = va->allpgcs[i]->sources[j];
+            for (k = 0; k < thissource->numcells; k++)
+              {
+                struct cell * const thiscell = &thissource->cells[k];
+                if (thiscell->scellid < 0)
+                    thiscell->scellid = 1;
+                else if (thiscell->scellid < thissource->vob->numvobus)
+                    thiscell->scellid = thissource->vob->vobu[thiscell->scellid].vobcellid & 255;
                 else
-                    c->scellid=s->vob->numcells+1;
-
-                if( c->ecellid<0 )
-                    c->ecellid=1;
-                else if( c->ecellid<s->vob->numvobus )
-                    c->ecellid=s->vob->vobu[c->ecellid].vobcellid&255;
+                    thiscell->scellid = thissource->vob->numcells + 1;
+                if (thiscell->ecellid < 0)
+                    thiscell->ecellid = 1;
+                else if (thiscell->ecellid < thissource->vob->numvobus)
+                    thiscell->ecellid = thissource->vob->vobu[thiscell->ecellid].vobcellid & 255;
                 else
-                    c->ecellid=s->vob->numcells+1;
-
-                va->allpgcs[i]->numcells+=c->ecellid-c->scellid;
-                if( c->scellid!=c->ecellid && c->ischapter != CELL_NEITHER ) {
+                    thiscell->ecellid = thissource->vob->numcells + 1;
+                va->allpgcs[i]->numcells += thiscell->ecellid - thiscell->scellid;
+                if (thiscell->scellid != thiscell->ecellid && thiscell->ischapter != CELL_NEITHER)
+                  {
                     va->allpgcs[i]->numprograms++;
-                    if( c->ischapter==CELL_CHAPTER_PROGRAM )
+                    if (thiscell->ischapter == CELL_CHAPTER_PROGRAM)
                         va->allpgcs[i]->numchapters++;
-                    if( va->allpgcs[i]->numprograms>=256 ) {
-                        fprintf(stderr,"ERR:  PGC %d has too many programs (%d, 256 allowed)\n",i+1,va->allpgcs[i]->numprograms);
+                    if (va->allpgcs[i]->numprograms >= 256)
+                      {
+                        fprintf
+                          (
+                            stderr,
+                            "ERR:  PGC %d has too many programs (%d, 256 allowed)\n",
+                            i + 1,
+                            va->allpgcs[i]->numprograms
+                          );
                         exit(1);
-                    }
+                      } /*if*/
                     // if numprograms<256, then numchapters<256, so
                     // no need to doublecheck
-                }
-            }
-        }
-}
+                  } /*if*/
+              } /*for*/
+          } /*for; for*/
+  } /*MarkChapters*/
 
 static pts_t getcellaudiopts(const struct vobgroup *va,int vcid,int ach,int w)
 {

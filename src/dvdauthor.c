@@ -82,25 +82,25 @@ static const  char * const smodedesc[6]={"","normal","widescreen","letterbox","p
   /* subpicture usage modes */
 
 static const int default_colors[16]={ /* default contents for new colour tables */
-    0x1000000,
-    0x1000000,
-    0x1000000,
-    0x1000000,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
 
-    0x1000000,
-    0x1000000,
-    0x1000000,
-    0x1000000,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
 
-    0x1000000,
-    0x1000000,
-    0x1000000,
-    0x1000000,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
 
-    0x1000000,
-    0x1000000,
-    0x1000000,
-    0x1000000
+    COLOR_UNUSED,
+    COLOR_UNUSED,
+    COLOR_UNUSED,
+    COLOR_UNUSED
 };
 
 static const int ratedenom[9]={0,90090,90000,90000,90090,90000,90000,90090,90000};

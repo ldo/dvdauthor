@@ -60,8 +60,9 @@ for VTSM root menu:
 
 */
 
-static int genjumppad(unsigned char *buf,vtypes ismenu,int entry,const struct workset *ws,const struct pgcgroup *curgroup)
-/* generates the jumppad if the user wants it. */
+static int genjumppad(unsigned char *buf, vtypes ismenu, int entry, const struct workset *ws, const struct pgcgroup *curgroup)
+  /* generates the jumppad if the user wants it. The code is put into buf, and the function
+    result is the number of bytes generated. */
   {
     unsigned char *cbuf = buf;
     int i, j, k;
@@ -128,8 +129,10 @@ static int genjumppad(unsigned char *buf,vtypes ismenu,int entry,const struct wo
   } /*genjumppad*/
 
 static int jumppgc(unsigned char *buf,int pgc,vtypes ismenu,int entry,const struct workset *ws,const struct pgcgroup *curgroup)
+  /* generates a command table for a PGC containing a jumppad. Returns the number of bytes output. */
   {
-    int base = 0xEC, ncmd, offs;
+    int base = 0xEC; /* put command table immediately after PGC header */
+    int ncmd, offs;
     offs = base + 8; /* room for command table header */
     offs += genjumppad(buf + offs, ismenu, entry, ws, curgroup);
     if (pgc > 0)
@@ -150,13 +153,13 @@ static int jumppgc(unsigned char *buf,int pgc,vtypes ismenu,int entry,const stru
       } /*if*/
     buf[0xE5] = base; /* offset within PGC to command table, low byte */
     buf[base + 1] = ncmd; /* number of pre commands, low byte */
-    write2(buf + base + 6, 7 + 8 * ncmd);
+    write2(buf + base + 6, 7 + 8 * ncmd); /* end address relative to command table */
     return offs;
   } /*jumppgc*/
 
 static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgroup *group,int pgc,vtypes ismenu,int entry)
 /* generates a PGC entry for an IFO file in buf. */
-{
+  {
     const struct vobgroup *va = (ismenu != VTYPE_VTS ? ws->menus->vg : ws->titles->vg);
     const struct pgc * const thispgc = group->pgcs[pgc];
     int i, j, d;
@@ -192,15 +195,13 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
         write4
           (
             buf + 164 + i * 4,
-            thispgc->colors->color[i] < 0x1000000 ? thispgc->colors->color[i] : 0x108080
+            thispgc->colors->color[i] < COLOR_UNUSED ? thispgc->colors->color[i] : 0x108080
           );
 
     d = 0xEC; /* start assembling commands here */
-
     // command table
       {
-        unsigned char *cd=buf+d+8,*preptr,*postptr,*cellptr;
-
+        unsigned char *cd = buf + d + 8, *preptr, *postptr, *cellptr;
         preptr = cd; /* start of pre commands */
         cd += genjumppad(cd, ismenu, entry, ws, group);
         if (thispgc->prei)
@@ -214,7 +215,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
           }
         else if (thispgc->numbuttons)
           {
-            write8(cd, 0x56, 0x00, 0x00, 0x00, 4 * 1, 0x00, 0x00, 0x00); cd+=8;
+            write8(cd, 0x56, 0x00, 0x00, 0x00, 4 * 1, 0x00, 0x00, 0x00); cd += 8;
               // set active button to be #1
           } /*if*/
 
@@ -412,7 +413,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
       } /*if thispgc->numsources*/
 
     return d;
-}
+  } /*genpgc*/
 
 static int createpgcgroup(const struct workset *ws,vtypes ismenu,const struct pgcgroup *va,unsigned char *buf /* where to put generated table */)
   /* generates a VMGM_LU or VTSM_LU table and all associated PGCs. Returns -1 if there wasn't enough space. */
@@ -431,7 +432,7 @@ static int createpgcgroup(const struct workset *ws,vtypes ismenu,const struct pg
       { /* generate the PGCs and put in their offsets */
         int j = 0;
         if (buf + len + BUFFERPAD - bigwritebuf > bigwritebuflen)
-            return -1;
+            return -1; /* caller needs to give me more space */
         if (ismenu == VTYPE_VTS)
             buf[pgcidx] = 0x81 + i; /* menu type for VTSM_LU */
         else
@@ -455,7 +456,7 @@ static int createpgcgroup(const struct workset *ws,vtypes ismenu,const struct pg
           {
             int j;
             if (buf + len + BUFFERPAD - bigwritebuf > bigwritebuflen)
-                return -1;
+                return -1; /* caller needs to give me more space */
             for (j = 0; j < va->numpgcs; j++)
                 if (va->pgcs[j]->entries & (1 << i))
                     break;
@@ -478,7 +479,7 @@ static int createpgcgroup(const struct workset *ws,vtypes ismenu,const struct pg
     write4(buf + 4, len - 1);
       /* end address (last byte of last PGC in this LU) relative to VMGM_LU/VTSM_LU */
     return len;
-  }
+  } /*createpgcgroup*/
 
 int CreatePGC(FILE *h, const struct workset *ws, vtypes ismenu)
   {

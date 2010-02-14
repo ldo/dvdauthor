@@ -41,6 +41,10 @@ typedef enum /* attributes of cell */
     CELL_PROGRAM = 2, /* cell has program attribute only */
   } cell_chapter_types;
 
+#define COLOR_UNUSED 0x1000000
+  /* special value indicating unused colour-table entry, different from all
+    possible 24-bit colour values */
+
 /* types fully defined in da-internal.h */
 struct menugroup;
 struct pgcgroup;
