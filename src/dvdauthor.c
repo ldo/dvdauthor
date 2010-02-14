@@ -125,7 +125,7 @@ int getratedenom(const struct vobgroup *va)
   } /*getratedenom*/
 
 pts_t getframepts(const struct vobgroup *va)
-  /* returns the number of clock units per frame. */
+  /* returns the number of exact clock units per frame. */
   {
     const int rc = getratecode(va);
     return ratedenom[rc] / evenrate[rc];
