@@ -81,16 +81,18 @@ struct subpicdesc { /* describes a subpicture stream */
         (128 | id) if defined, else 0 */
 };
 
-struct cell { /* describes one or more cells within a source video file */
+struct cell {
+  /* describes a user-defined chapter point within a source video file--
+    generated from <cell> tags & "chapters" attributes, or by default if none of these */
     pts_t startpts,endpts;
     cell_chapter_types ischapter; // 1 = chapter&program, 2 = program only, 0 = neither
     int pauselen;
-    int scellid; /* start cell */
-    int ecellid; /* end cell + 1 */
+    int scellid; /* ID assigned to cell */
+    int ecellid; /* ID assigned to next cell */
     struct vm_statement *commands;
 };
 
-struct source { /* describes an input video file */
+struct source { /* describes an input video file, corresponding to a single <vob> directive */
     char *fname; /* name of file */
     int numcells; /* nr elements in cells */
     struct cell *cells; /* array */
@@ -109,8 +111,8 @@ struct audchannel { /* describes information collected from an audio stream */
     struct audiodesc ad,adwarn; // use for quant and channels
 };
 
-struct vob {
-    char *fname; /* name of file */
+struct vob { /* one entry created for each source in each pgc */
+    char *fname; /* name of input file */
     int numvobus; /* used portion of vobu array */
     int maxvobus; /* allocated size of vobu array */
     int vobid,numcells;
@@ -140,7 +142,7 @@ struct button { /* describes a button including versions across different subpic
     int numstream; /* nr of stream entries actually used */
 };
 
-struct pgc { /* describes a program chain */
+struct pgc { /* describes a program chain corresponding to a <pgc> directive */
     int numsources; /* length of sources array */
     int numbuttons; /* length of buttons array */
     int numchapters,numprograms,numcells,entries,pauselen;
@@ -152,7 +154,7 @@ struct pgc { /* describes a program chain */
     unsigned char subpmap[32][4]; // (128|id) if known; 127 if not present
 };
 
-struct pgcgroup {
+struct pgcgroup { /* describes a set of menus or a set of titles (<menus> and <titles> directives) */
     vtypes pstype; // 0 - vts, 1 - vtsm, 2 - vmgm
     struct pgc **pgcs; /* array[numpgcs] of pointers */
     int numpgcs;
@@ -166,7 +168,7 @@ struct langgroup {
     struct pgcgroup *pg;
 };
 
-struct menugroup {
+struct menugroup { /* contents of a <menus> directive, either VTSM or VMGM */
     int numgroups;
     struct langgroup *groups;
     struct vobgroup *vg;

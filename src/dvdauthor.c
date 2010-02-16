@@ -1499,14 +1499,14 @@ int pgc_add_button(struct pgc *p,const char *name,const char *cmd)
 }
 
 struct pgcgroup *pgcgroup_new(vtypes type)
-{
+  {
     struct pgcgroup *ps=malloc(sizeof(struct pgcgroup));
     memset(ps,0,sizeof(struct pgcgroup));
     ps->pstype=type;
-    if( !type )
+    if (type == VTYPE_VTS)
         ps->vg=vobgroup_new();
     return ps;
-}
+  }
 
 void pgcgroup_free(struct pgcgroup *pg)
 {

@@ -211,7 +211,12 @@ Here is the basic structure of the control file:
               [pause="<replaceable>seconds</replaceable>|inf"]&gt;
             &lt;pre&gt; <replaceable>commands;</replaceable> &lt;/pre&gt;
             &lt;vob file="<replaceable>file.mpg</replaceable>" [chapters="<replaceable>chapter-list</replaceable>"]
-                 [pause="<replaceable>seconds</replaceable>|inf"] /&gt;
+                 [pause="<replaceable>seconds</replaceable>|inf"] &gt;
+                 &lt;cell [start="<replaceable>timestamp</replaceable>"] [end="<replaceable>timestamp</replaceable>"]
+                    [chapter="1|on|yes" | program="1|on|yes"] [pause="<replaceable>seconds</replaceable>|inf"]&gt;
+                    <replaceable>commands;</replaceable>
+                 &lt;/cell&gt;
+            &lt;/vob&gt;
             [&lt;vob ... /&gt;]
             &lt;button [name="<replaceable>buttonname</replaceable>"]&gt; <replaceable>commands;</replaceable> &lt;/button&gt;
             [&lt;button ... /&gt;]
@@ -369,7 +374,7 @@ menu found, or if there is no menu it will jump to the first title..
 Specifies an input video file for a menu or title, with optional chapter points and pause at the end.
 </para></listitem></varlistentry>
 
-<varlistentry><term><literal>&lt;cell [start="<replaceable>timestamp</replaceable>"] [end="<replaceable>timestamp</replaceable>"] [chapter="1|on|yes" | program="1|on|yes"] [pause="<replaceable>seconds</replaceable>|inf"] /&gt;</literal></term>
+<varlistentry><term><literal>&lt;cell [start="<replaceable>timestamp</replaceable>"] [end="<replaceable>timestamp</replaceable>"] [chapter="1|on|yes" | program="1|on|yes"] [pause="<replaceable>seconds</replaceable>|inf"] &gt; <replaceable>commands;</replaceable> &lt;/cell&gt;</literal></term>
 <listitem><para>
 An alternative way of specifying chapters in a title.
 </para></listitem></varlistentry>

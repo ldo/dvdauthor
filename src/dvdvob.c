@@ -1037,7 +1037,8 @@ static void audio_scan_pcm(struct audchannel *ach,const unsigned char *buf,int l
 }
 
 int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
-/* generates output VOB files for a menu or titleset. */
+  /* collects audio/video/subpicture information, remaps subpicture colours and generates
+    output VOB files for a menu or titleset, complete except for the NAV packs. */
   {
     unsigned char *buf;
     int cursect = 0; /* sector nr in input file */
@@ -1878,7 +1879,7 @@ void MarkChapters(struct vobgroup *va)
                 if (v >= 0 && v < thissource->vob->numvobus)
                   {
                     if (thissource->cells[k].ischapter != CELL_NEITHER) /* from Wolfgang Wershofen */
-                      { /* info for user */
+                      { /* info for user corresponding to the points they marked */
                         fprintf(stderr, "CHAPTERS: VTS[%d/%d] ", i + 1, j + 1);
                         printpts(thissource->vob->vobu[v].sectpts[0] - thissource->vob->vobu[0].sectpts[0]);
                         fprintf(stderr, "\n");
@@ -2070,7 +2071,8 @@ int calcaudiogap(const struct vobgroup *va,int vcid0,int vcid1,int ach)
 }
 
 void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *ws,vtypes ismenu)
-/* fills in the NAV packs (i.e. PCI and DSI packets) for each VOBU in the already-written output VOB files. */
+  /* fills in the NAV packs (i.e. PCI and DSI packets) for each VOBU in the
+    already-written output VOB files. */
   {
     int outvob = -1;
     int vobuindex, j, pn, fnum = -2;

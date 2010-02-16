@@ -75,7 +75,7 @@ static enum
     chapters_cells, /* vob chapters specified via cells (and possibly also "chapters" attribute) */
     chapters_chapters, /* only via "chapters" attribute */
   }
-    hadchapter = chapters_neither;
+    hadchapter = chapters_neither; /* info about last VOB in current PGC */
 static int
     pauselen=0,
     writeoutput=1;
@@ -205,24 +205,28 @@ static double parsechapter(const char *s)
     return total*60+field;
 }
 
-static void parsechapters(const char *o,struct source *src,int pauselen)
-{
+static void parsechapters(const char *o, struct source *src, int pauselen)
+  /* parses a chapter spec and adds corresponding cell definitions. */
+  {
     char *s;
-    double last=0;
-    int lastchap=0;
-
-    while(NULL!=(s=str_extract_until(&o,", "))) {
-        double total=parsechapter(s);
-        if( total>last ) {
-            source_add_cell(src,last,total,lastchap,0,0);
-            last=total;
-            lastchap=1;
-        } else if( total==last )
-            lastchap=1;
+    double last = 0;
+    cell_chapter_types lastchap = CELL_NEITHER;
+    while (NULL != (s = str_extract_until(&o, ", ")))
+      {
+        const double total = parsechapter(s);
+        if (total > last)
+          {
+            source_add_cell(src, last, total, lastchap, 0, 0);
+            last = total;
+            lastchap = CELL_CHAPTER_PROGRAM;
+          }
+        else if (total == last)
+            lastchap = CELL_CHAPTER_PROGRAM;
+      /* else report error? user specified chapter times in wrong order? */
         free(s);
-    }
-    source_add_cell(src,last,-1,lastchap,pauselen,0);
-}
+      } /*while*/
+    source_add_cell(src, last, -1, lastchap, pauselen, 0);
+  } /*parsechapters*/
 
 static void readpalette(struct pgc *p,const char *fname)
 {
@@ -537,7 +541,15 @@ int main(int argc,char **argv)
             if( hadchapter==chapters_chapters )
                 hadchapter=chapters_cells; /* chapters already specified */
             else
-                source_add_cell(curvob,0,-1,hadchapter == chapters_neither,0,0);
+                source_add_cell
+                  (
+                    /*source =*/ curvob,
+                    /*starttime =*/ 0,
+                    /*endtime =*/ -1,
+                    /*chap =*/ hadchapter == chapters_neither ? CELL_CHAPTER_PROGRAM : CELL_NEITHER,
+                    /*pause =*/ 0,
+                    /*cmd =*/ 0
+                  );
                   /* default to single chapter for entire source file */
             pgc_add_source(curpgc,curvob);
             curvob=0;
@@ -557,7 +569,7 @@ int main(int argc,char **argv)
             if( optarg )
                 parsechapters(optarg,curvob,0);
             else
-                source_add_cell(curvob,0,-1,1,0,0);
+                source_add_cell(curvob, 0, -1, CELL_CHAPTER_PROGRAM, 0, 0);
                   /* default to single chapter for entire source file */
         break;
 
@@ -624,8 +636,8 @@ enum {
 };
 
 static struct pgcgroup
-    *titles=0,
-    *curgroup=0;
+    *titles=0, /* titles saved here (only one set allowed) */
+    *curgroup=0; /* current menus or titles */
 static struct menugroup
     *mg=0, /* current menu group (for titleset or vmgm) */
     *vmgmmenus=0; /* vmgm menu group saved here on completion */
@@ -656,7 +668,7 @@ static enum
     vob_has_chapters_pause, /* vob has "chapters" or "pause" attribute */
     vob_has_cells, /* vob has <cell> subtags */
   }
-    vobbasic;
+    vobbasic; /* info about each VOB */
 static cell_chapter_types
     cell_chapter;
 static double
@@ -746,6 +758,9 @@ static void getfbase()
 }
 
 static void dvdauthor_end()
+/* called on </dvdauthor> end tag, generates the VMGM if specified.
+  This needs to be done after all the titles, so it can include
+  information about them. */
 {
     if( hadtoc ) {
         dvdauthor_vmgm_gen(fpc,vmgmmenus,fbase);
@@ -765,7 +780,7 @@ static void titleset_start()
 }
 
 static void titleset_end()
-{
+{ /* called on </titles> end tag, generates the output titleset. */
     getfbase();
     if( !parser_err ) {
         if (!titles)
@@ -1015,17 +1030,17 @@ static void stream_end()
 
 static void pgc_start()
 {
-    curpgc=pgc_new();
-    hadchapter=chapters_neither;
-    setsubpicture=-1;
-    subpmode=DA_PGC;
+    curpgc = pgc_new();
+    hadchapter = chapters_neither; /* reset for new menu/title */
+    setsubpicture = -1;
+    subpmode = DA_PGC;
 }
 
 static void pgc_entry(const char *e)
 {
     // xml attributes can only be defined once, so entry="foo" entry="bar" won't work
     // instead, use parseentries...
-    parseentries(curpgc,e);
+    parseentries(curpgc, e);
 }
 
 static void pgc_palette(const char *p)
@@ -1067,101 +1082,119 @@ static void post_end()
 
 static void vob_start()
 {
-    curvob=source_new();
-    pauselen=0;
-    vobbasic=vob_has_neither;
-    cell_endtime=0;
+    curvob = source_new();
+    pauselen = 0;
+    vobbasic = vob_has_neither; /* to begin with */
+  /* but note hadchapter keeps its value from previous VOB in this PGC
+    if no chapters attribute or cells are seen */
+    cell_endtime = 0;
 }
 
 static void vob_file(const char *f)
 {
-    f=utf8tolocal(f);
-    source_set_filename(curvob,f);
+    f = utf8tolocal(f);
+    source_set_filename(curvob, f);
 }
 
 static void vob_chapters(const char *c)
-{
-    vobbasic=vob_has_chapters_pause;
-    hadchapter=chapters_chapters;
-    chapters=strdup(c);
-}
+  {
+    vobbasic = vob_has_chapters_pause;
+    hadchapter = chapters_chapters;
+    chapters = strdup(c); /* fixme: leaks! */
+  }
 
 static void vob_pause(const char *c)
-{
-    vobbasic=vob_has_chapters_pause;
-    pauselen=parse_pause(c);
-}
+  {
+    vobbasic = vob_has_chapters_pause;
+    pauselen = parse_pause(c);
+  }
 
 static void vob_end()
-{
-    if( vobbasic!=vob_has_cells ) {
-        if( hadchapter==chapters_chapters ) {
-            parsechapters(chapters,curvob,pauselen);
-            hadchapter=chapters_cells;
-        } else
-            source_add_cell(curvob,0,-1,hadchapter == chapters_neither,pauselen,0);
+  {
+    if (vobbasic != vob_has_cells) /* = vob_has_chapters_pause or vob_has_neither */
+      {
+        if (hadchapter == chapters_chapters) /* vob has chapters attribute */
+          {
+          /* fixme: hadchapter could still be set to this value from previous vob,
+            in which case I wrongly apply same chapter definitions to this vob! */
+            parsechapters(chapters, curvob, pauselen);
+            hadchapter = chapters_cells;
+          }
+        else /* hadchapter = chapters_neither or chapters_cells */
+          /* I think this should only ever be chapters_neither */
+            source_add_cell
+              (
+                /*source =*/ curvob,
+                /*starttime =*/ 0,
+                /*endtime =*/ -1,
+                /*chap =*/ hadchapter == chapters_neither ? CELL_CHAPTER_PROGRAM : CELL_NEITHER,
+                /*pause =*/ pauselen,
+                /*cmd =*/ 0
+              );
               /* default to single chapter for entire source file */
-    }
-    pgc_add_source(curpgc,curvob);
-    curvob=0;
-}
+      } /*if*/
+    pgc_add_source(curpgc, curvob);
+    curvob = 0;
+  } /*vob_end*/
 
 static void cell_start()
-{
-    parser_acceptbody = 1;
+  {
+    parser_acceptbody = 1; /* collect cell commands */
     assert(vobbasic != vob_has_chapters_pause);
       /* no "chapters" or "pause" attribute on containing <vob> allowed */
     vobbasic = vob_has_cells;
-    cell_starttime = cell_endtime; /* new cell starts where previous one ends */
+    cell_starttime = cell_endtime; /* new cell starts by default where previous one ends */
     cell_endtime = -1;
     cell_chapter = CELL_NEITHER; /* to begin with */
     pauselen = 0;
     hadchapter = chapters_cells;
-}
+  }
 
 static void cell_parsestart(const char *f)
-{
-    cell_starttime=parsechapter(f);
-}
+  {
+    cell_starttime = parsechapter(f);
+  }
 
 static void cell_parseend(const char *f)
-{
-    cell_endtime=parsechapter(f);
-}
+  {
+    cell_endtime = parsechapter(f);
+  }
 
 static void cell_parsechapter(const char *f)
-{
-    int i=xml_ison(f);
-    if(i==-1) {
-        fprintf(stderr,"ERR:  Unknown chapter cmd '%s'\n",f);
+  {
+    const int i = xml_ison(f);
+    if (i == -1)
+      {
+        fprintf(stderr, "ERR:  Unknown chapter cmd '%s'\n", f);
         exit(1);
-    } else if (i)
+      }
+    else if (i)
         cell_chapter = CELL_CHAPTER_PROGRAM;
-          /* chapter or chapter-and-program */
-}
+  }
 
 static void cell_parseprogram(const char *f)
-{
-    int i=xml_ison(f);
-    if(i==-1) {
-        fprintf(stderr,"ERR:  Unknown program cmd '%s'\n",f);
+  {
+    const int i = xml_ison(f);
+    if (i == -1)
+      {
+        fprintf(stderr, "ERR:  Unknown program cmd '%s'\n", f);
         exit(1);
-    } else if (i && cell_chapter!=CELL_CHAPTER_PROGRAM )
-        cell_chapter=CELL_PROGRAM;
-          /* if no chapter, then program only, else leave as chapter+program */
-}
+      }
+    else if (i && cell_chapter != CELL_CHAPTER_PROGRAM)
+        cell_chapter = CELL_PROGRAM;
+  }
 
 static void cell_pauselen(const char *f)
-{
+  {
     pauselen=parse_pause(f);
-}
+  }
 
 static void cell_end()
-{
-    assert( cell_starttime>=0 );
-    source_add_cell(curvob,cell_starttime,cell_endtime,cell_chapter,pauselen,parser_body);
-    pauselen=0;
-}
+  {
+    assert (cell_starttime >= 0);
+    source_add_cell(curvob, cell_starttime, cell_endtime, cell_chapter, pauselen, parser_body);
+    pauselen = 0;
+  }
 
 static void button_start()
 {
