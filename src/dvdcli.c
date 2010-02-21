@@ -836,197 +836,223 @@ static void fpc_end()
 }
 
 static void pgcgroup_start()
-  /* common part of both <menus> and <titles> start */
-{
-    setvideo=0;
-    setaudio=-1;
-    setsubpicture=-1;
-    subpmode=DA_PGCGROUP;
-}
+  /* common part of both <menus> and <titles> start. */
+  {
+    setvideo = 0;
+    setaudio = -1;
+    setsubpicture = -1;
+    subpmode = DA_PGCGROUP;
+  } /*pgcgroup_start*/
 
 static void titles_start()
-{
-    if( titles ) {
-        fprintf(stderr,"ERR:  Titles already defined\n");
-        parser_err=1;
-    } else if( istoc ) {
-        fprintf(stderr,"ERR:  Cannot have titles in a VMGM\n");
-        parser_err=1;
-    } else {
-        titles=pgcgroup_new(VTYPE_VTS);
-        curgroup=titles;
+  /* called on a <titles> tag. */
+  {
+    if (titles)
+      {
+        fprintf(stderr, "ERR:  Titles already defined\n");
+        parser_err = 1;
+      }
+    else if (istoc)
+      {
+        fprintf(stderr, "ERR:  Cannot have titles in a VMGM\n");
+        parser_err = 1;
+      }
+    else
+      {
+        titles = pgcgroup_new(VTYPE_VTS);
+        curgroup = titles;
         ismenuf = VTYPE_VTS;
         pgcgroup_start();
-    }
-}
+      } /*if*/
+  }
 
 static void menus_start()
-{
+  /* called on a <menus> tag. */
+  {
     ismenuf = (istoc ? VTYPE_VMGM : VTYPE_VTSM);
-    curgroup=pgcgroup_new(ismenuf);
+    curgroup = pgcgroup_new(ismenuf);
     pgcgroup_start();
-    strcpy(menulang,"en");
-}
+    strcpy(menulang, "en"); /* default. */
+      /* fixme: would be nice to make this a preference setting, perhaps default to locale? */
+      /* fixme: no check for buffer overflow! */
+  }
 
 static void menus_lang(const char *lang)
-{
-    strcpy(menulang,lang);
-}
+  {
+    strcpy(menulang, lang);
+      /* fixme: no check for buffer overflow! */
+  } /*menus_lang*/
 
 static void menus_end()
-{
-    menugroup_add_pgcgroup(mg,menulang,curgroup);
-    curgroup=0;
-}
+  {
+    menugroup_add_pgcgroup(mg, menulang, curgroup);
+    curgroup = 0;
+  } /*menus_end*/
 
 static void video_start()
-{
-    if( setvideo ) {
-        fprintf(stderr,"ERR:  Already defined video characteristics for this PGC group\n");
+  /* called on a <video> tag. */
+  {
+    if (setvideo)
+      {
+        fprintf(stderr, "ERR:  Already defined video characteristics for this PGC group\n");
           /* only one video stream allowed */
-        parser_err=1;
-    } else
-        setvideo=1;
-}
+        parser_err = 1;
+      }
+    else
+        setvideo = 1;
+  }
 
 static void video_format(const char *c)
-{
-    set_video_attr(VIDEO_FORMAT,c);
-}
+  {
+    set_video_attr(VIDEO_FORMAT, c);
+  }
 
 static void video_aspect(const char *c)
-{
-    set_video_attr(VIDEO_ASPECT,c);
-}
+  {
+    set_video_attr(VIDEO_ASPECT, c);
+  }
 
 static void video_resolution(const char *c)
-{
-    set_video_attr(VIDEO_RESOLUTION,c);
-}
+  {
+    set_video_attr(VIDEO_RESOLUTION, c);
+  }
 
 static void video_widescreen(const char *c)
-{
-    set_video_attr(VIDEO_WIDESCREEN,c);
-}
+  {
+    set_video_attr(VIDEO_WIDESCREEN, c);
+  }
 
 static void video_caption(const char *c)
-{
-    set_video_attr(VIDEO_CAPTION,c);
-}
+  {
+    set_video_attr(VIDEO_CAPTION, c);
+  }
 
 static void audio_start()
-{
+  /* called on an <audio> tag. */
+  {
     setaudio++;
-    if( setaudio>=8 ) {
-        fprintf(stderr,"ERR:  Attempting to define too many audio streams for this PGC group\n");
-        parser_err=1;
-    }
-}
+    if (setaudio >= 8)
+      {
+        fprintf(stderr, "ERR:  Attempting to define too many audio streams for this PGC group\n");
+        parser_err = 1;
+      } /*if*/
+  }
 
 static void audio_format(const char *c)
-{
-    set_audio_attr(AUDIO_FORMAT,c,setaudio);
-}
+  {
+    set_audio_attr(AUDIO_FORMAT, c, setaudio);
+  }
 
 static void audio_quant(const char *c)
-{
-    set_audio_attr(AUDIO_QUANT,c,setaudio);
-}
+  {
+    set_audio_attr(AUDIO_QUANT, c, setaudio);
+  }
 
 static void audio_dolby(const char *c)
-{
-    set_audio_attr(AUDIO_DOLBY,c,setaudio);
-}
+  {
+    set_audio_attr(AUDIO_DOLBY, c, setaudio);
+  }
 
 static void audio_lang(const char *c)
-{
-    set_audio_attr(AUDIO_LANG,c,setaudio);
-}
+  {
+    set_audio_attr(AUDIO_LANG, c, setaudio);
+  }
 
 static void audio_samplerate(const char *c)
-{
-    set_audio_attr(AUDIO_SAMPLERATE,c,setaudio);
-}
+  {
+    set_audio_attr(AUDIO_SAMPLERATE, c, setaudio);
+  }
 
 static void audio_channels(const char *c)
-{
+  {
     char ch[4];
-
-    if( strlen(c) == 1 ) {
-        ch[0]=c[0];
-        ch[1]='c';
-        ch[2]='h';
-        ch[3]=0;
-        c=ch;
-    }
-    set_audio_attr(AUDIO_CHANNELS,ch,setaudio);
-}
+    if (strlen(c) == 1)
+      {
+        ch[0] = c[0];
+        ch[1] = 'c';
+        ch[2] = 'h';
+        ch[3] = 0;
+        c = ch;
+      } /*if*/
+    set_audio_attr(AUDIO_CHANNELS, ch, setaudio);
+  }
 
 static void subattr_group_start()
-{
-    if( subpmode!=DA_PGCGROUP ) {
-        fprintf(stderr,"ERR:  Define all the subpictures before defining PGCs\n");
-        parser_err=1;
+  /* called for a <subpicture> tag immediately within a pgcgroup (<menus> or <titles>). */
+ {
+    if (subpmode != DA_PGCGROUP)
+      {
+        fprintf(stderr, "ERR:  Define all the subpictures before defining PGCs\n");
+        parser_err = 1;
         return;
-    }
+      } /*if*/
     setsubpicture++;
-    if( setsubpicture>=32 ) {
-        fprintf(stderr,"ERR:  Attempting to define too many subpicture streams for this PGC group\n");
-        parser_err=1;
-    }
-}
+    if (setsubpicture >= 32)
+      {
+        fprintf(stderr, "ERR:  Attempting to define too many subpicture streams for this PGC group\n");
+        parser_err = 1;
+      } /*if*/
+  } /*subattr_group_start*/
 
 static void subattr_pgc_start()
-{
+  /* called for a <subpicture> tag immediately within a <pgc>. */
+  {
     setsubpicture++;
-    if( setsubpicture>=32 ) {
-        fprintf(stderr,"ERR:  Attempting to define too many subpicture streams for this PGC group\n");
-        parser_err=1;
-    }
-}
+    if (setsubpicture >= 32)
+      {
+        fprintf(stderr, "ERR:  Attempting to define too many subpicture streams for this PGC group\n");
+        parser_err = 1;
+      } /*if*/
+  } /*subattr_pgc_start*/
 
 static void subattr_lang(const char *c)
-{
-    if( subpmode==DA_PGCGROUP )
-        set_subpic_attr(SPU_LANG,c,setsubpicture);
-    else {
-        fprintf(stderr,"ERR:  Cannot set subpicture language within a pgc; do it within titles or menus\n");
-        parser_err=1;
-    }
-}
+  {
+    if (subpmode == DA_PGCGROUP)
+        set_subpic_attr(SPU_LANG, c, setsubpicture);
+    else
+      {
+        fprintf(stderr, "ERR:  Cannot set subpicture language within a pgc; do it within titles or menus\n");
+        parser_err = 1;
+      } /*if*/
+  } /*subattr_lang*/
 
 static void stream_start()
-{
-    subpstreamid=-1;
-    subpstreammode=0;
-}
+  /* called on a <stream> tag. */
+  {
+    subpstreamid = -1;
+    subpstreammode = 0;
+  } /*stream_start*/
 
 static void substream_id(const char *c)
-{
-    subpstreamid=strtounsigned(c, "subpicture stream id");
-    if( subpstreamid<0 || subpstreamid>=32 ) {
-        fprintf(stderr,"ERR:  Subpicture stream id must be 0-31: '%s'.\n",c);
-        parser_err=1;
-    }
-}
+  {
+    subpstreamid = strtounsigned(c, "subpicture stream id");
+    if (subpstreamid < 0 || subpstreamid >= 32)
+      {
+        fprintf(stderr, "ERR:  Subpicture stream id must be 0-31: '%s'.\n", c);
+        parser_err = 1;
+      } /*if*/
+  } /*substream_id*/
 
 static void substream_mode(const char *c)
-{
-    subpstreammode=strdup(c);
-}
+  {
+    subpstreammode = strdup(c);
+  }
 
 static void stream_end()
-{
-    if( subpstreamid==-1 || !subpstreammode ) {
-        fprintf(stderr,"ERR:  Must define the mode and id for the stream.\n");
-        parser_err=1;
-    } else if( subpmode==DA_PGCGROUP ) {
-        set_subpic_stream(setsubpicture,subpstreammode,subpstreamid);
-    } else
-        pgc_set_subpic_stream(curpgc,setsubpicture,subpstreammode,subpstreamid);
+  {
+    if (subpstreamid == -1 || !subpstreammode)
+      {
+        fprintf(stderr, "ERR:  Must define the mode and id for the stream.\n");
+        parser_err = 1;
+      }
+    else if (subpmode == DA_PGCGROUP)
+      {
+        set_subpic_stream(setsubpicture, subpstreammode, subpstreamid);
+      }
+    else
+        pgc_set_subpic_stream(curpgc, setsubpicture, subpstreammode, subpstreamid);
     free(subpstreammode);
-}
-
+  } /*stream_end*/
 
 static void pgc_start()
 {

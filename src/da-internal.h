@@ -73,7 +73,9 @@ struct audiodesc { /* describes an audio stream */
     char lang[2];
 };
 
-struct subpicdesc { /* describes a subpicture stream */
+struct subpicdesc {
+  /* describes a <subpicture> track. This groups one or more streams, being
+    alternative representations of the subpicture for different modes. */
     int slangpresent;
     char lang[2];
     unsigned char idmap[4];
@@ -151,7 +153,9 @@ struct pgc { /* describes a program chain corresponding to a <pgc> directive */
     struct vm_statement *prei,*posti;
     struct colorinfo *colors;
     struct pgcgroup *pgcgroup;
-    unsigned char subpmap[32][4]; // (128|id) if known; 127 if not present
+    unsigned char subpmap[32][4];
+      /* grouping of subpicture streams into alternative display modes for same
+        <subpicture> track. Each entry is (128 | id) if present; 127 if not present. */
 };
 
 struct pgcgroup { /* describes a set of menus or a set of titles (<menus> and <titles> directives) */
@@ -176,7 +180,7 @@ struct menugroup { /* contents of a <menus> directive, either VTSM or VMGM */
 
 struct vobgroup {
     int numaudiotracks; /* size of used part of ad/adwarn arrays */
-    int numsubpicturetracks; /* size of used part of sp/spwarn arrays */
+    int numsubpicturetracks; /* nr <subpicture> tags seen = size of used part of sp/spwarn arrays */
     int numvobs; /* size of vobs array */
     int numallpgcs; /* size of allpgcs array */
     struct pgc **allpgcs; /* array of pointers to PGCs */
@@ -185,7 +189,7 @@ struct vobgroup {
     struct videodesc vdwarn; /* for saving attribute value mismatches */
     struct audiodesc ad[8]; /* describes the audio streams */
     struct audiodesc adwarn[8]; /* for saving attribute value mismatches */
-    struct subpicdesc sp[32]; /* describes the subpicture streams */
+    struct subpicdesc sp[32]; /* describes the subpicture streams, one per <subpicture> tag */
     struct subpicdesc spwarn[32]; /* for saving attribute value mismatches */
 };
 

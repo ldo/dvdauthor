@@ -503,6 +503,8 @@ static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,const char *s,i
 }
 
 static int vobgroup_set_subpic_stream(struct vobgroup *va, int ch, const char *m, int id)
+  /* adds a mapping for the subpicture stream numbered ch (in order of appearance) with
+    mode name m to the substream with ID id. */
   {
     int mid;
     if (ch >= va->numsubpicturetracks) /* assert ch = va->numsubpicturetracks + 1 */
@@ -871,8 +873,8 @@ noinfer:
           (
             stderr,
             "WARN: Too many subpicture tracks for a menu; 1 is allowed, %d are present."
-                "  Perhaps you want different streams for normal/widescreen/letterbox/panscan"
-                " instead of actually having multiple streams?\n",
+                "  Perhaps you want different <stream> tags for normal/widescreen/letterbox/panscan"
+                " within one <subpicture> tag instead of multiple <subpicture> tags?\n",
             va->numsubpicturetracks
           );
       } /*if*/
