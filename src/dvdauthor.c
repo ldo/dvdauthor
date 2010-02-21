@@ -1525,12 +1525,13 @@ void pgcgroup_free(struct pgcgroup *pg)
 }
 
 void pgcgroup_add_pgc(struct pgcgroup *ps,struct pgc *p)
-{
-    ps->pgcs=(struct pgc **)realloc(ps->pgcs,(ps->numpgcs+1)*sizeof(struct pgc *));
-    ps->pgcs[ps->numpgcs++]=p;
-    assert(p->pgcgroup==0);
-    p->pgcgroup=ps;
-}
+  /* adds a new PGC to the specified pgcgroup. */
+  {
+    ps->pgcs = (struct pgc **)realloc(ps->pgcs, (ps->numpgcs + 1) * sizeof(struct pgc *));
+    ps->pgcs[ps->numpgcs++] = p;
+    assert(p->pgcgroup == 0); /* should not already be in any group! */
+    p->pgcgroup = ps;
+  } /*pgcgroup_add_pgc*/
 
 int pgcgroup_set_video_attr(struct pgcgroup *va,int attr,const char *s)
 {
@@ -1573,19 +1574,21 @@ void menugroup_free(struct menugroup *mg)
     free(mg);
 }
 
-void menugroup_add_pgcgroup(struct menugroup *mg,const char *lang,struct pgcgroup *pg)
-{
-    mg->groups=(struct langgroup *)realloc(mg->groups,(mg->numgroups+1)*sizeof(struct langgroup));
-    if( strlen(lang)!=2 ) {
-        fprintf(stderr,"ERR:  Menu language '%s' is not two letters.\n",lang);
+void menugroup_add_pgcgroup(struct menugroup *mg, const char *lang, struct pgcgroup *pg)
+  {
+    mg->groups = (struct langgroup *)realloc(mg->groups, (mg->numgroups + 1) * sizeof(struct langgroup));
+    if (strlen(lang) != 2)
+      {
+        fprintf(stderr, "ERR:  Menu language '%s' is not two letters.\n", lang);
         exit(1);
-    }
-    mg->groups[mg->numgroups].lang[0]=tolower(lang[0]);
-    mg->groups[mg->numgroups].lang[1]=tolower(lang[1]);
-    mg->groups[mg->numgroups].lang[2]=0;
-    mg->groups[mg->numgroups].pg=pg;
+      } /*if*/
+  /* fixme: I don't check if there's already a langgroup with this language code? */
+    mg->groups[mg->numgroups].lang[0] = tolower(lang[0]);
+    mg->groups[mg->numgroups].lang[1] = tolower(lang[1]);
+    mg->groups[mg->numgroups].lang[2] = 0;
+    mg->groups[mg->numgroups].pg = pg;
     mg->numgroups++;
-}
+  } /*menugroup_add_pgcgroup*/
 
 int menugroup_set_video_attr(struct menugroup *va,int attr,const char *s)
 {

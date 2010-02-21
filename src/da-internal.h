@@ -58,11 +58,11 @@ struct colorinfo { /* a colour table for subpictures */
     int color[16];
 };
 
-struct videodesc { /* describes a video stream */
+struct videodesc { /* describes a video stream, info from a <video> tag */
     int vmpeg,vres,vformat,vaspect,vwidescreen,vframerate,vcaption;
 };
 
-struct audiodesc { /* describes an audio stream */
+struct audiodesc { /* describes an audio stream, info from an <audio> tag */
     int aformat;
     int aquant;
     int adolby;
@@ -74,8 +74,8 @@ struct audiodesc { /* describes an audio stream */
 };
 
 struct subpicdesc {
-  /* describes a <subpicture> track. This groups one or more streams, being
-    alternative representations of the subpicture for different modes. */
+  /* describes a <subpicture> track at the pgcgroup level. This groups one or more
+    streams, being alternative representations of the subpicture for different modes. */
     int slangpresent;
     char lang[2];
     unsigned char idmap[4];
@@ -148,17 +148,17 @@ struct pgc { /* describes a program chain corresponding to a <pgc> directive */
     int numsources; /* length of sources array */
     int numbuttons; /* length of buttons array */
     int numchapters,numprograms,numcells,entries,pauselen;
-    struct source **sources; /* array */
+    struct source **sources; /* array of <vob> directives seen */
     struct button *buttons; /* array */
     struct vm_statement *prei,*posti;
     struct colorinfo *colors;
-    struct pgcgroup *pgcgroup;
+    struct pgcgroup *pgcgroup; /* back-pointer to containing pgcgroup */
     unsigned char subpmap[32][4];
       /* grouping of subpicture streams into alternative display modes for same
         <subpicture> track. Each entry is (128 | id) if present; 127 if not present. */
 };
 
-struct pgcgroup { /* describes a set of menus or a set of titles (<menus> and <titles> directives) */
+struct pgcgroup { /* common info across a set of menus or a set of titles (<menus> and <titles> directives) */
     vtypes pstype; // 0 - vts, 1 - vtsm, 2 - vmgm
     struct pgc **pgcs; /* array[numpgcs] of pointers */
     int numpgcs;
@@ -167,27 +167,27 @@ struct pgcgroup { /* describes a set of menus or a set of titles (<menus> and <t
     struct vobgroup *vg; // only valid for pstype==VTYPE_VTS
 };
 
-struct langgroup {
-    char lang[3];
+struct langgroup { /* contents of a <menus> directive */
+    char lang[3]; /* value of the "lang" attribute */
     struct pgcgroup *pg;
 };
 
-struct menugroup { /* contents of a <menus> directive, either VTSM or VMGM */
-    int numgroups;
-    struct langgroup *groups;
+struct menugroup { /* contents specific to all collections of <menus> directives, either VTSM or VMGM */
+    int numgroups; /* length of groups array */
+    struct langgroup *groups; /* array, one entry per <menus> directive */
     struct vobgroup *vg;
 };
 
-struct vobgroup {
-    int numaudiotracks; /* size of used part of ad/adwarn arrays */
+struct vobgroup { /* contents of a menuset or titleset (<menus> or <titles>) */
+    int numaudiotracks; /* nr <audio> tags seen = size of used part of ad/adwarn arrays */
     int numsubpicturetracks; /* nr <subpicture> tags seen = size of used part of sp/spwarn arrays */
     int numvobs; /* size of vobs array */
     int numallpgcs; /* size of allpgcs array */
     struct pgc **allpgcs; /* array of pointers to PGCs */
     struct vob **vobs; /* array of pointers to VOBs */
-    struct videodesc vd; /* describes the video stream */
+    struct videodesc vd; /* describes the video stream, one <video> tag only */
     struct videodesc vdwarn; /* for saving attribute value mismatches */
-    struct audiodesc ad[8]; /* describes the audio streams */
+    struct audiodesc ad[8]; /* describes the audio streams, one per <audio> tag */
     struct audiodesc adwarn[8]; /* for saving attribute value mismatches */
     struct subpicdesc sp[32]; /* describes the subpicture streams, one per <subpicture> tag */
     struct subpicdesc spwarn[32]; /* for saving attribute value mismatches */

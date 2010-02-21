@@ -194,7 +194,7 @@ Here is the basic structure of the control file:
 &lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"]&gt;
    &lt;vmgm&gt;
       [&lt;fpc&gt;<replaceable>commands;</replaceable>&lt;/fpc&gt;]
-      &lt;menus [lang="<replaceable>language-code</replaceable>"] &gt;
+      &lt;menus [lang="<replaceable>language-code</replaceable>"]&gt;
          &lt;video [format="ntsc|pal"] [aspect="4:3|16:9"]
                 [resolution="<replaceable>XxY</replaceable>"] [caption="field1|field2"]
                 [widescreen="nopanscan|noletterbox|crop"] /&gt;
@@ -211,7 +211,7 @@ Here is the basic structure of the control file:
               [pause="<replaceable>seconds</replaceable>|inf"]&gt;
             &lt;pre&gt; <replaceable>commands;</replaceable> &lt;/pre&gt;
             &lt;vob file="<replaceable>file.mpg</replaceable>" [chapters="<replaceable>chapter-list</replaceable>"]
-                 [pause="<replaceable>seconds</replaceable>|inf"] &gt;
+                 [pause="<replaceable>seconds</replaceable>|inf"]&gt;
                  &lt;cell [start="<replaceable>timestamp</replaceable>"] [end="<replaceable>timestamp</replaceable>"]
                     [chapter="1|on|yes" | program="1|on|yes"] [pause="<replaceable>seconds</replaceable>|inf"]&gt;
                     <replaceable>commands;</replaceable>
@@ -224,9 +224,10 @@ Here is the basic structure of the control file:
          &lt;/pgc&gt;
          [&lt;pgc ... /&gt;]
       &lt;/menus&gt;
+      [&lt;menus ... /&gt;]
    &lt;/vmgm&gt;
    &lt;titleset&gt;
-      &lt;menus&gt;
+      &lt;menus [lang="<replaceable>language-code</replaceable>"]&gt;
          [&lt;video ... /&gt;]
          [&lt;audio ... /&gt;]
          &lt;pgc [entry="<replaceable>entries</replaceable>"]
@@ -235,6 +236,7 @@ Here is the basic structure of the control file:
          &lt;/pgc&gt;
          [&lt;pgc ... /&gt;]
       &lt;/menus&gt;
+      [&lt;menus ... /&gt;]
       &lt;titles&gt;
          [&lt;video ... /&gt;]
          [&lt;audio ... /&gt;]
@@ -261,17 +263,25 @@ Initiates dvdauthor.  <literal>dest</literal> denotes the directory where <comma
 
 <varlistentry><term><literal>&lt;vmgm&gt;</literal></term><term><literal>&lt;titleset&gt;</literal></term>
 <listitem><para>Constructs of a VMGM level menu set or a title set.
-Contains up to one <literal>&lt;menus&gt;</literal> tag and if a
+Contains zero or more <literal>&lt;menus&gt;</literal> tags and if a
 titleset, up to one <literal>&lt;titles&gt;</literal> tag.
 </para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;menus
-[lang="<replaceable>language-code</replaceable>"]
-&gt;</literal></term><term><literal>&lt;titles&gt;</literal></term>
-<listitem><para>Marks the list of menus or titles for this VMGM menu
+[lang="<replaceable>language-code</replaceable>"]&gt;</literal></term>
+<listitem><para>Marks a list of menus with a common language for this VMGM menu
 set or titleset, called in <command>dvdauthor</command> terminology a
 "pgcgroup."  Contains up to one <literal>&lt;video&gt;</literal> tag,
-up to eight <literal>&lt;audio&gt;</literal> tags, up to 32
+up to one <literal>&lt;audio&gt;</literal> tag, up to one
+<literal>&lt;subpicture&gt;</literal> tag, and any number of
+<literal>&lt;pgc&gt;</literal> tags.
+</para></listitem></varlistentry>
+
+<varlistentry><term><literal>&lt;titles&gt;</literal></term>
+<listitem><para>Marks the list of titles for this  titleset, called in
+<command>dvdauthor</command> terminology a "pgcgroup."  Contains up to
+one <literal>&lt;video&gt;</literal> tag, up to eight
+<literal>&lt;audio&gt;</literal> tags, up to 32
 <literal>&lt;subpicture&gt;</literal> tags, and any number of
 <literal>&lt;pgc&gt;</literal> tags.
 </para></listitem></varlistentry>
@@ -373,7 +383,7 @@ menu found, or if there is no menu it will jump to the first title..
 Specifies an input video file for a menu or title, with optional chapter points and pause at the end.
 </para></listitem></varlistentry>
 
-<varlistentry><term><literal>&lt;cell [start="<replaceable>timestamp</replaceable>"] [end="<replaceable>timestamp</replaceable>"] [chapter="1|on|yes" | program="1|on|yes"] [pause="<replaceable>seconds</replaceable>|inf"] &gt; <replaceable>commands;</replaceable> &lt;/cell&gt;</literal></term>
+<varlistentry><term><literal>&lt;cell [start="<replaceable>timestamp</replaceable>"] [end="<replaceable>timestamp</replaceable>"] [chapter="1|on|yes" | program="1|on|yes"] [pause="<replaceable>seconds</replaceable>|inf"]&gt; <replaceable>commands;</replaceable> &lt;/cell&gt;</literal></term>
 <listitem><para>
 An alternative way of specifying chapters in a title.
 </para></listitem></varlistentry>
