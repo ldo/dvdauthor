@@ -638,7 +638,7 @@ static void print_command(cmd_t *cmd)
     }
 }
 
-static void vm_add_mnemonic(vm_cmd_t *command)
+static void vm_add_mnemonic(const vm_cmd_t *command)
   /* disassembles a single command. */
 {
     int i, extra_bits;
@@ -671,7 +671,7 @@ void vm_add_mnemonics
     xmlNodePtr node, /* the node to append the disassembly to */
     const char *base, /* prepended to every output line for indentation purposes */
     int ncmd, /* nr of commands */
-    vm_cmd_t *commands /* array */
+    const vm_cmd_t *commands /* array */
   )
   /* disassembles the specified command sequence as content for the specified XML tag. */
   {

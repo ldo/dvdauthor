@@ -104,7 +104,7 @@ static void addbutton(int v,int c,hli_t *h)
     numvb++;
 }
 
-static int vobexists(cell_adr_t *cells,int numcells,int vobid)
+static int vobexists(const cell_adr_t *cells, int numcells, int vobid)
   /* do I already know about a vob with this id. */
 {
     int i;
@@ -173,7 +173,7 @@ static void addLangAttr(xmlNodePtr node, uint16_t lang_code)
       } /*if*/
   } /*addLangAttr*/
 
-static int getprogramtype(vts_ptt_srpt_t *tt, pgc_t *p, int pn, int c)
+static int getprogramtype(const vts_ptt_srpt_t *tt, const pgc_t *p, int pn, int c)
   {
     int ptype = CELL_NEITHER, i, j, pg = 0;
     for (i = 0; i < p->nr_of_programs; i++)
@@ -733,11 +733,11 @@ static void findpalette(int vob, const pgcit_t *pgcs, const uint32_t **palette, 
             ptime =
                     p->playback_time.hour << 24
                 |
-                    p->playback_time.hour << 16
+                    p->playback_time.minute << 16
                 |
-                    p->playback_time.hour << 8
+                    p->playback_time.second << 8
                 |
-                    p->playback_time.hour;
+                    p->playback_time.frame_u & 0x3f;
             if (!(*palette) || ptime > *length)
               {
                 if (*palette && memcmp(*palette,p->palette,16*sizeof(uint32_t)))
@@ -905,9 +905,9 @@ static void writebutton(int h, const unsigned char *packhdr, const hli_t *hli)
   } /*writebutton*/
 
 
-static void getVobs(const dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, int titlef)
+static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, int titlef)
   {
-    const dvd_file_t *vobs;
+    dvd_file_t *vobs;
     const c_adt_t *cptr;
     const cell_adr_t *cells;
     int numcells,i,j,totalsect,numsect;
