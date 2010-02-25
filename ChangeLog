@@ -1,3 +1,16 @@
+0.6.14+: ??
+    consistently check for errors on all file opens and when creating output directories
+    fix remapping of colours for more than 8 subpicture streams
+    recover from SCR moving backwards as per suggestion from Philippe Sarazin
+    add patch from Wolfgang Wershofen to print out chapter timecodes
+    validate all XML integer arguments and attribute values
+    fix spurious error parsing video caption option
+    incorporate Fedora patch from Ville Skyttä to allow building with GraphicsMagick
+        instead of ImageMagick
+    incorporate FriBidi patches from Ville Skyttä
+    auto-action buttons have spatial extents too
+    fill in more details in man pages
+
 0.6.14: February 24, 2007
 	popen mode must be 'r' or 'w', not 'rb' or 'wb'
 	make spuunmux escape filenames in xml file
