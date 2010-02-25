@@ -55,7 +55,7 @@ static const char *set_op_table[] = {
     NULL, "=", "swap", "+", "-", "*", "/", "%", "random", "and", "or", "xor"
 };
 
-static const char *link_table[] = {
+static const char * const link_table[] = {
     "NOP",         "jump cell top",    "jump next cell",    "jump prev cell",
     NULL,          "jump program top", "jump next program", "jump prev program",
     NULL,          "jump pgc top",     "jump next pgc",     "jump prev pgc",
@@ -63,7 +63,7 @@ static const char *link_table[] = {
     "resume"
 };
 
-static const char *system_reg_table[] = {
+static const char * const system_reg_table[] = {
     "s0",  // "Menu Description Language Code",
     "audio",
     "subtitle",
@@ -91,7 +91,7 @@ static const char *system_reg_table[] = {
 };
 
 #if 0
-static const char *system_reg_abbr_table[] = {
+static const char * const system_reg_abbr_table[] = {
     NULL,
     "ASTN",
     "SPSTN",
@@ -119,7 +119,7 @@ static const char *system_reg_abbr_table[] = {
 };
 #endif
 
-static const char *entries[16]= /* menu entry types */
+static const char * const entries[16]= /* menu entry types */
 {
     "UNKNOWN0",  "UNKNOWN1",  "title",     "root", // XXX: is 1 == fpc?
     "subtitle",  "audio",     "angle",     "ptt",
@@ -128,6 +128,7 @@ static const char *entries[16]= /* menu entry types */
 };
 
 static void node_printf(const char *format,...)
+  /* appends formatted content to output. */
 {
     static char bigbuf[1024];
     va_list ap;
@@ -144,12 +145,12 @@ static void node_printf(const char *format,...)
     va_start(ap,format);
     vsnprintf(bigbuf,sizeof(bigbuf),format,ap);
     va_end(ap);
-    bigbuf[sizeof(bigbuf)-1]=0;
+    bigbuf[sizeof(bigbuf)-1]=0; /* just in case */
     xmlAddChildList(output,xmlNewText((const xmlChar *)bigbuf));
 }
 
 static void node_commentf(const char *format,...)
-/* attaches an XML comment to the output */
+/* attaches an XML comment to the output. */
 {
     static char bigbuf[1024];
     va_list ap;
@@ -164,13 +165,13 @@ static void node_commentf(const char *format,...)
 }
 
 static void node_newline(void)
-/* starts a new line in the output */
+/* starts a new line in the output. */
 {
     isnewline=1;
 }
 
 static void node_indent(void)
-/* increases the indentation level */
+/* increases the indentation level. */
 {
     indent++;
 }
@@ -185,117 +186,137 @@ static void node_closebrace(void)
 }
 
 static uint32_t bits(cmd_t *cmd, int byte, int bit, int count)
-/* extracts count bits from cmd->bits at offset given by byte and bit */
-{
+/* extracts count bits from cmd->bits at offset given by byte and bit. */
+  {
     uint32_t val = 0;
     int bit_mask;
-  
-    while(count--) {
-        if(bit > 7) {
+    while (count--)
+      {
+        if (bit > 7) /* finished a byte */
+          {
             bit = 0;
             byte++;
-        }
-        bit_mask = 0x01 << (7-bit); /* bits are numbered from most significant end of byte */
+          } /*if*/
+        bit_mask = 0x01 << (7 - bit); /* bits are numbered from most significant end of byte */
         val <<= 1;
-        if((cmd->bits[byte]) & bit_mask) /* extract next bit */
+        if ((cmd->bits[byte]) & bit_mask) /* extract next bit */
             val |= 1;
         cmd->examined[byte] |= bit_mask; /* mark bit as used */
         bit++;
-    }
+      } /*while*/
     return val;
-}
+  } /*bits*/
 
-
-static void print_system_reg(uint16_t reg) {
-    if(reg < sizeof(system_reg_table) / sizeof(char *))
+static void print_system_reg(uint16_t reg)
+  /* prints the name of an SPRM to output. */
+  {
+    if (reg < sizeof(system_reg_table) / sizeof(char *))
         node_printf(system_reg_table[reg]);
-    else {
+    else
+      {
         node_printf("sXXX");
-        fprintf(stderr, "WARN: Unknown system register %d\n",reg);
-    }
-}
+        fprintf(stderr, "WARN: Unknown system register %d\n", reg);
+      } /*if*/
+  } /*print_system_reg*/
 
-static void print_reg(uint8_t reg) {
-    if(reg & 0x80)
+static void print_reg(uint8_t reg)
+  /* prints the name of a GPRM or SPRM to output. */
+  {
+    if (reg & 0x80)
         print_system_reg(reg & 0x7f);
-    else if(reg < 16)
+    else if (reg < 16)
         node_printf("g%" PRIu8 "", reg);
-    else {
+    else
+      {
         node_printf("gXXX");
-        fprintf(stderr,"WARN: Unknown general register %d\n",reg);
-    }
-}
+        fprintf(stderr, "WARN: Unknown general register %d\n", reg);
+      }
+  } /*print_reg*/
 
-static void print_cmp_op(uint8_t op) {
-    if(op < sizeof(cmp_op_table) / sizeof(char *) && cmp_op_table[op] != NULL)
+static void print_cmp_op(uint8_t op)
+  /* prints a comparison operator to output. */
+  {
+    if (op < sizeof(cmp_op_table) / sizeof(char *) && cmp_op_table[op] != NULL)
         node_printf(" %s ", cmp_op_table[op]);
     else
         fprintf(stderr, "WARN: Unknown compare op %d\n",op);
-}
+  } /*print_cmp_op*/
 
-static void print_set_op(uint8_t op) {
-    if(op < sizeof(set_op_table) / sizeof(char *) && set_op_table[op] != NULL)
+static void print_set_op(uint8_t op)
+  /* prints a set-operator to output. */
+  {
+    if (op < sizeof(set_op_table) / sizeof(char *) && set_op_table[op] != NULL)
         node_printf(" %s ", set_op_table[op]);
     else
-        fprintf(stderr, "WARN: Unknown set op %d\n",op);
-}
+        fprintf(stderr, "WARN: Unknown set op %d\n", op);
+  } /*print_set_op*/
 
-static void print_reg_or_data(cmd_t *cmd, int immediate, int bytei, int byter, int scln) {
-    if(immediate) {
-        int i = bits(cmd,bytei,0,16); /* immediate value */
-    
+static void print_reg_or_data(cmd_t *cmd, int immediate, int bytei, int byter, int scln)
+  {
+    if (immediate)
+      {
+        const int i = bits(cmd, bytei, 0, 16); /* immediate value */
         node_printf("%d", i);
-        if( scln )
+        if (scln)
             node_printf(";");
-        if(isprint(i & 0xff) && isprint((i>>8) & 0xff))
-            node_commentf(" \"%c%c\" ", (char)((i>>8) & 0xff), (char)(i & 0xff));
-    } else {
-        print_reg(bits(cmd,byter,0,8));
-        if( scln )
-            node_printf(";");
-    }
-}
-
-static void print_reg_or_data_2(cmd_t *cmd, int immediate, int byte) {
-    if(immediate)
-        node_printf("0x%x;", bits(cmd,byte,1,7));
+        if (isprint(i & 0xff) && isprint((i >> 8) & 0xff)) /* looks printable */
+            node_commentf(" \"%c%c\" ", (char)((i >> 8) & 0xff), (char)(i & 0xff));
+              /* include a comment showing ASCII value */
+      }
     else
-        node_printf("g%" PRIu8 ";", bits(cmd,byte,4,4));
-}
+      {
+        print_reg(bits(cmd, byter, 0, 8));
+        if (scln)
+            node_printf(";");
+      } /*if*/
+  } /*print_reg_or_data*/
+
+static void print_reg_or_data_2(cmd_t *cmd, int immediate, int byte)
+  {
+    if (immediate)
+        node_printf("0x%x;", bits(cmd, byte, 1, 7));
+    else
+        node_printf("g%" PRIu8 ";", bits(cmd, byte, 4, 4));
+  } /*print_reg_or_data_2*/
 
 static void print_if(cmd_t *cmd,int p11,int p12,int p21,int p22,int p23)
-{
-    uint8_t op = bits(cmd,1,1,3);
-  
-    if(op) {
+  /* prints the start of an if-statement. */
+  {
+    const uint8_t op = bits(cmd, 1, 1, 3);
+    if (op)
+      {
         node_printf("if (");
-
-        if( op==1 )  // and gets special treatment
+        if (op == 1)  // and gets special treatment
             node_printf("(");
-        
-        print_reg(bits(cmd,p11,p12,8-p12));
+        print_reg(bits(cmd, p11, p12, 8 - p12));
         print_cmp_op(op);
-        print_reg_or_data(cmd,p21,p22,p23,0);
-        
-        if( op==1 )  // and gets special treatment
+        print_reg_or_data(cmd, p21, p22, p23, 0);
+        if (op == 1)  // and gets special treatment
             node_printf(") != 0");
-
         node_printf(") {");
         node_indent();
-    }
-}
+      } /*if*/
+  } /*print_if*/
 
-static void print_if_version_1(cmd_t *cmd) {
-    print_if(cmd,
-             3,0,
-             bits(cmd,1,0,1),4,5);
-}
+static void print_if_version_1(cmd_t *cmd)
+  {
+    print_if
+      (
+        /*cmd =*/ cmd,
+        /*p11 =*/ 3,
+        /*p12 =*/ 0,
+        /*p21 =*/ bits(cmd, 1, 0, 1),
+        /*p22 =*/ 4,
+        /*p23 =*/ 5
+      );
+  } /*print_if_version_1*/
 
-static void print_if_version_2(cmd_t *cmd) {
+static void print_if_version_2(cmd_t *cmd)
+  {
     print_if(cmd,
              6,0,
              0,6,7);
-}
+  } /*print_if_version_2*/
 
 static void print_if_version_3(cmd_t *cmd) {
     print_if(cmd,
@@ -315,251 +336,288 @@ static void print_if_version_5(cmd_t *cmd) {
              0,4,5);
 }
 
-static void print_if_close_v12345(cmd_t *cmd) {
-    uint8_t op = bits(cmd,1,1,3);
-    if( op )
+static void print_if_close_v12345(cmd_t *cmd)
+  {
+    const uint8_t op = bits(cmd, 1, 1, 3);
+    if (op)
         node_closebrace();
-}
+  } /*print_if_close_v12345*/
 
-static void print_special_instruction(cmd_t *cmd) {
-    uint8_t op = bits(cmd,1,4,4);
-  
+static void print_special_instruction(cmd_t *cmd)
+  {
+    const uint8_t op = bits(cmd, 1, 4, 4);
     node_newline();
-
-    switch(op) {
+    switch(op)
+      {
     case 0: // NOP
         // fprintf(stderr, "Nop");
-        break;
+    break;
     case 1: // Goto line
-        node_printf("goto l%" PRIu8 ";", bits(cmd,7,0,8));
-        break;
+        node_printf("goto l%" PRIu8 ";", bits(cmd, 7, 0, 8));
+    break;
     case 2: // Break
         node_printf("break;");
-        break;
+    break;
     case 3: // Parental level
-        if( bits(cmd,7,0,8) == curline+1 ) { /* branch to following instr => no branch */
-            node_printf("SetTmpPML(%" PRIu8 ");", bits(cmd,6,4,4));
-        } else {
-            node_printf("if( SetTmpPML(%" PRIu8 ") ) {", bits(cmd,6,4,4));
+        if (bits(cmd, 7, 0, 8) == curline + 1)
+          { /* branch to following instr => no branch */
+            node_printf("SetTmpPML(%" PRIu8 ");", bits(cmd, 6, 4, 4));
+          }
+        else
+          {
+            node_printf("if( SetTmpPML(%" PRIu8 ") ) {", bits(cmd, 6, 4, 4));
             node_indent();
             node_newline();
-            node_printf("goto l%" PRIu8 ";", bits(cmd,7,0,8));
+            node_printf("goto l%" PRIu8 ";", bits(cmd, 7, 0, 8));
             node_closebrace();
-        }
-        break;
-
+          } /*if*/
+    break;
     default:
-        fprintf(stderr, "WARN: Unknown special instruction (%i)", 
-                bits(cmd,1,4,4));
-    }
-}
+        fprintf(stderr, "WARN: Unknown special instruction (%i)", bits(cmd, 1, 4, 4));
+    break;
+      } /*switch*/
+  } /*print_special_instruction*/
 
 static void button_set(int button)
-{
+  /* prints an instruction to set the currently-highlighted button. */
+  {
     print_system_reg(8);
-    if( !(button&1023 ))
-        node_printf(" = %dk;",button>>10);
+    if (!(button & 1023))
+        node_printf(" = %dk;", button >> 10);
     else
-        node_printf(" = %d;",button);
-    node_commentf(" button no %d ",button>>10);
-}
+        node_printf(" = %d;", button);
+    node_commentf(" button no %d ", button >> 10);
+  } /*button_set*/
 
 static void button_maybe_set(int button)
-{
-    if( button ) {
-        button_set(button*1024);
+  /* prints an instruction to set the currently-highlighted button, if nonzero. */
+  {
+    if (button)
+      {
+        button_set(button * 1024);
         node_newline();
-    }
-}
+      } /*if*/
+  } /*button_maybe_set*/
 
-static void print_linksub_instruction(cmd_t *cmd) {
-    int linkop = bits(cmd,7,3,5);
-    int button = bits(cmd,6,0,6);
-  
-
-    if(linkop < sizeof(link_table)/sizeof(char *) && link_table[linkop] != NULL) {
+static void print_linksub_instruction(cmd_t *cmd)
+  {
+    const int linkop = bits(cmd,7,3,5);
+    const int button = bits(cmd,6,0,6);
+    if (linkop < sizeof(link_table)/sizeof(char *) && link_table[linkop] != NULL)
+      {
         node_newline();
         button_maybe_set(button);
-        if( linkop!=0 )
+        if (linkop != 0)
             node_printf("%s;", link_table[linkop]);
-    } else
+      }
+    else
         fprintf(stderr, "WARN: Unknown linksub instruction (%i)", linkop);
-}
+  } /*print_linksub_instruction*/
 
-static void print_link_instruction(cmd_t *cmd, int optional) {
-    uint8_t op = bits(cmd,1,4,4);
-  
+static void print_link_instruction(cmd_t *cmd, int optional)
+  {
+    const uint8_t op = bits(cmd, 1, 4, 4);
     node_newline();
-  
-    switch(op) {
+    switch (op)
+      {
     case 0:
-        if(!optional)
+        if (!optional)
             fprintf(stderr, "WARN: NOP (link)!");
-        break;
+    break;
     case 1:
         print_linksub_instruction(cmd);
-        break;
+    break;
     case 4:
-        node_printf("jump pgc %" PRIu16 ";", bits(cmd,6,1,15));
-        break;
+        node_printf("jump pgc %" PRIu16 ";", bits(cmd, 6, 1, 15));
+    break;
     case 5:
-        button_maybe_set(bits(cmd,6,0,6));
-        node_printf("jump chapter %" PRIu16 ";", bits(cmd,6,6,10));
-        break;
+        button_maybe_set(bits(cmd, 6, 0, 6));
+        node_printf("jump chapter %" PRIu16 ";", bits(cmd, 6, 6, 10));
+    break;
     case 6:
-        button_maybe_set(bits(cmd,6,0,6));
-        node_printf("jump program %" PRIu8 ";", bits(cmd,7,1,7));
-        break;
+        button_maybe_set(bits(cmd, 6, 0, 6));
+        node_printf("jump program %" PRIu8 ";", bits(cmd, 7, 1, 7));
+    break;
     case 7:
-        button_maybe_set(bits(cmd,6,0,6));
-        node_printf("jump cell %" PRIu8 ";", bits(cmd,7,0,8));
-        break;
+        button_maybe_set(bits(cmd, 6, 0, 6));
+        node_printf("jump cell %" PRIu8 ";", bits(cmd, 7, 0, 8));
+    break;
     default:
         fprintf(stderr, "WARN: Unknown link instruction");
-    }
-}
+    break;
+      } /*switch*/
+  } /*print_link_instruction*/
 
-static void print_jump_instruction(cmd_t *cmd) {
+static void print_jump_instruction(cmd_t *cmd)
+  {
     node_newline();
-
-    switch(bits(cmd,1,4,4)) {
+    switch (bits(cmd, 1, 4, 4))
+      {
     case 1:
         node_printf("exit;");
-        break;
+    break;
     case 2: // JumpTT  -- perhaps jump vmgm title?
-        node_printf("jump title %" PRIu8 ";", bits(cmd,5,1,7));
-        break;
+        node_printf("jump title %" PRIu8 ";", bits(cmd, 5, 1, 7));
+    break;
     case 3: // JumpVTS_TT
-        node_printf("jump title %" PRIu8 ";", bits(cmd,5,1,7));
-        break;
+        node_printf("jump title %" PRIu8 ";", bits(cmd, 5, 1, 7));
+    break;
     case 5:
         node_printf("jump title %" PRIu8 " chapter %" PRIu16 ";",
-                bits(cmd,5,1,7), bits(cmd,2,6,10));
-        break;
+                bits(cmd, 5, 1, 7), bits(cmd, 2, 6, 10));
+    break;
     case 6:
-        switch(bits(cmd,5,0,2)) {
+        switch (bits(cmd, 5, 0, 2))
+          {
         case 0:
             node_printf("jump fpc;");
-            break;
-        case 1:
-            node_printf("jump vmgm menu entry %s;",entries[bits(cmd,5,4,4)]);
-            break;
-        case 2:
-            if( bits(cmd,3,0,8) != 1 ) {
-                fprintf(stderr,"WARN: Title not 1 as expected:  jump titleset %" PRIu8 " menu entry %s; /* title=%" PRIu8 " */", 
-                        bits(cmd,4,0,8), entries[bits(cmd,5,4,4)], bits(cmd,3,0,8));
-            }
-            node_printf("jump titleset %" PRIu8 " menu entry %s;", 
-                        bits(cmd,4,0,8), entries[bits(cmd,5,4,4)]);
-            node_commentf(" title=%" PRIu8 " ", 
-                          bits(cmd,3,0,8));
-            break;
-        case 3:
-            node_printf("jump vmgm menu %" PRIu8 ";", bits(cmd,2,1,15));
-            break;
-        }
         break;
+        case 1:
+            node_printf("jump vmgm menu entry %s;", entries[bits(cmd, 5, 4, 4)]);
+        break;
+        case 2:
+            if (bits(cmd, 3, 0, 8) != 1)
+              {
+                fprintf
+                  (
+                    stderr,
+                    "WARN: Title not 1 as expected:  jump titleset %" PRIu8
+                        " menu entry %s; /* title=%" PRIu8 " */", 
+                    bits(cmd, 4, 0, 8),
+                    entries[bits(cmd, 5, 4, 4)],
+                    bits(cmd, 3, 0, 8)
+                  );
+              } /*if*/
+            node_printf
+              (
+                "jump titleset %" PRIu8 " menu entry %s;", 
+                bits(cmd, 4, 0, 8),
+                entries[bits(cmd, 5, 4, 4)]
+              );
+            node_commentf(" title=%" PRIu8 " ", bits(cmd, 3, 0, 8));
+        break;
+        case 3:
+            node_printf("jump vmgm menu %" PRIu8 ";", bits(cmd, 2, 1, 15));
+        break;
+          } /*switch*/
+    break;
     case 8:
-        switch(bits(cmd,5,0,2)) {
+        switch (bits(cmd, 5, 0, 2))
+          {
         case 0:
             node_printf("call fpc");
-            break;
-        case 1:
-            node_printf("call vmgm menu entry %s",entries[bits(cmd,5,4,4)]);
-            break;
-        case 2: // VTSM menu
-            node_printf("call menu entry %s",entries[bits(cmd,5,4,4)]);
-            break;
-        case 3:
-            node_printf("call vmgm menu %" PRIu8,bits(cmd,2,1,15));
-            break;
-        }
-        if( bits(cmd,4,0,8) )
-            node_printf(" resume %" PRIu8,bits(cmd,4,0,8));
-        node_printf(";");
         break;
+        case 1:
+            node_printf("call vmgm menu entry %s", entries[bits(cmd, 5, 4, 4)]);
+        break;
+        case 2: // VTSM menu
+            node_printf("call menu entry %s",entries[bits(cmd, 5, 4, 4)]);
+        break;
+        case 3:
+            node_printf("call vmgm menu %" PRIu8,bits(cmd, 2, 1, 15));
+        break;
+          } /*switch*/
+        if (bits(cmd, 4, 0, 8))
+            node_printf(" resume %" PRIu8, bits(cmd, 4, 0, 8));
+        node_printf(";");
+    break;
     default:
         fprintf(stderr, "WARNING: Unknown Jump/Call instruction");
-    }
-}
+    break;
+      } /*switch*/
+  } /*print_jump_instruction*/
 
-static void print_system_set(cmd_t *cmd) {
+static void print_system_set(cmd_t *cmd)
+  {
     int i;
-
     node_newline();
-  
-    switch(bits(cmd,0,4,4)) {
+    switch (bits(cmd, 0, 4, 4))
+      {
     case 1: // Set system reg 1 &| 2 &| 3 (Audio, Subp. Angle)
-        for(i = 1; i <= 3; i++) {
-            if(bits(cmd,2+i,0,1)) {
+        for (i = 1; i <= 3; i++)
+          {
+            if (bits(cmd, 2 + i, 0, 1))
+              {
                 print_system_reg(i);
                 node_printf(" = ");
-                print_reg_or_data_2(cmd,bits(cmd,0,3,1), 2 + i);
+                print_reg_or_data_2(cmd, bits(cmd, 0, 3, 1), 2 + i);
                 node_newline();
-            }
-        }
-        break;
+              } /*if*/
+          } /*for*/
+    break;
     case 2: // Set system reg 9 & 10 (Navigation timer, Title PGC number)
         print_system_reg(9);
         node_printf(" = ");
-        print_reg_or_data(cmd,bits(cmd,0,3,1), 2, 3, 1);
+        print_reg_or_data(cmd, bits(cmd, 0, 3, 1), 2, 3, 1);
         node_printf(" ");
         print_system_reg(10);
-        node_printf(" = %" PRIu8 ";", bits(cmd,5,0,8)); // ??
-        break;
+        node_printf(" = %" PRIu8 ";", bits(cmd, 5, 0, 8)); // ??
+    break;
     case 3: // Mode: Counter / Register + Set
-        if(bits(cmd,5,0,1))
+        if (bits(cmd, 5, 0, 1))
             node_printf("counter ");
         else
             node_printf("register ");
-        print_reg(bits(cmd,5,4,4));
+        print_reg(bits(cmd, 5, 4, 4));
         node_printf(" = ");
-        print_reg_or_data(cmd,bits(cmd,0,3,1), 2, 3, 1);
-        break;
+        print_reg_or_data(cmd, bits(cmd, 0, 3, 1), 2, 3, 1);
+    break;
     case 6: // Set system reg 8 (Highlighted button)
-        if(bits(cmd,0,3,1)) {
-            button_set(bits(cmd,4,0,16));
-        } else {
+        if (bits(cmd, 0, 3, 1))
+          {
+          /* literal value */
+            button_set(bits(cmd, 4, 0, 16));
+          }
+        else
+          {
+          /* set from a GPRM */
             print_system_reg(8);
-            node_printf(" = g%" PRIu8 ";", bits(cmd,5,4,4));
-        }
-        break;
+            node_printf(" = g%" PRIu8 ";", bits(cmd, 5, 4, 4));
+          } /*if*/
+    break;
     default:
-        fprintf(stderr, "WARN: Unknown system set instruction (%i)", 
-                bits(cmd,0,4,4));
-    }
-}
+        fprintf(stderr, "WARN: Unknown system set instruction (%i)", bits(cmd, 0, 4, 4));
+    break;
+      } /*switch*/
+  } /*print_system_set*/
 
-static void print_set(cmd_t *cmd,int p11,int p12,int p13,int p21,int p22)
-{
-    uint8_t set_op = bits(cmd,0,4,4);
-
+static void print_set(cmd_t *cmd, int p11, int p12, int p13, int p21, int p22)
+  {
+    const uint8_t set_op = bits(cmd, 0, 4, 4);
     node_newline();
-  
-    if( set_op==2 ) { // swap
+    if (set_op == 2) // swap
+      {
         node_printf("swap(");
-        print_reg(bits(cmd,p11,p12,p13));
+        print_reg(bits(cmd, p11, p12, p13));
         node_printf(", ");
-        print_reg_or_data(cmd,bits(cmd,0,3,1), p21, p22, 0);
+        print_reg_or_data(cmd,bits(cmd, 0, 3, 1), p21, p22, 0);
         node_printf(");");
-    } else if(set_op) {
-        print_reg(bits(cmd,p11,p12,p13));
+      }
+    else if (set_op)
+      {
+        print_reg(bits(cmd, p11, p12, p13));
         node_printf(" = ");
-        if( set_op==8 ) { // random
+        if (set_op == 8)
+          { // random
             node_printf("random(");
-            print_reg_or_data(cmd,bits(cmd,0,3,1), p21, p22, 0);
+            print_reg_or_data(cmd, bits(cmd, 0, 3, 1), p21, p22, 0);
             node_printf(");");
-        } else {
-            if( set_op!=1 ) {
-                print_reg(bits(cmd,p11,p12,p13));
+          }
+        else
+          {
+            if (set_op != 1) /* not mov */
+              {
+                print_reg(bits(cmd, p11, p12, p13));
                 print_set_op(set_op);
-            }
-            print_reg_or_data(cmd,bits(cmd,0,3,1), p21, p22, 1);
-        }
-    } else {
+              } /*if*/
+            print_reg_or_data(cmd, bits(cmd, 0, 3, 1), p21, p22, 1);
+          } /*if*/
+      }
+    else
+      {
         // fprintf(stderr, "NOP");
-    }
-}
+      } /*if*/
+  } /*print_set*/
 
 static void print_set_version_1(cmd_t *cmd) {
     print_set(cmd,3,0,8,4,5);
@@ -575,96 +633,99 @@ static void print_set_version_3(cmd_t *cmd) {
 
 static void print_command(cmd_t *cmd)
   /* does the actual disassembly of a single command instruction. */
-{
+  {
     node_newline();
-
-    switch(bits(cmd,0,0,3)) { /* instruction class */
+    switch (bits(cmd, 0, 0, 3)) /* instruction class */
+      {
     case 0: // Special instructions
         print_if_version_1(cmd);
         print_special_instruction(cmd);
         print_if_close_v12345(cmd);
-        break;
+    break;
     case 1: // Jump/Call or Link instructions
-        if(bits(cmd,0,3,1)) {
+        if (bits(cmd, 0, 3, 1))
+          {
             print_if_version_2(cmd);
             print_jump_instruction(cmd);
             print_if_close_v12345(cmd);
-        } else {
+          }
+        else
+          {
             print_if_version_1(cmd);
-            print_link_instruction(cmd,0); // must be pressent
+            print_link_instruction(cmd, 0); // must be present
             print_if_close_v12345(cmd);
-        }
-        break;
+          } /*if*/
+    break;
     case 2: // Set System Parameters instructions
         print_if_version_2(cmd);
         print_system_set(cmd);
         print_if_close_v12345(cmd);
-        print_link_instruction(cmd,1); // either 'if' or 'link'
-        break;
+        print_link_instruction(cmd, 1); // either 'if' or 'link'
+    break;
     case 3: // Set General Parameters instructions
         print_if_version_3(cmd);
         print_set_version_1(cmd);
         print_if_close_v12345(cmd);
-        print_link_instruction(cmd,1); // either 'if' or 'link'
-        break;
+        print_link_instruction(cmd, 1); // either 'if' or 'link'
+    break;
     case 4: // Set, Compare -> LinkSub instructions
         print_set_version_2(cmd);
         node_newline();
         print_if_version_4(cmd);
         print_linksub_instruction(cmd);
         print_if_close_v12345(cmd);
-        break;
+    break;
     case 5: // Compare -> (Set and LinkSub) instructions
-        if(bits(cmd,0,3,1))
+        if (bits(cmd, 0, 3, 1))
             print_if_version_5(cmd);
         else
             print_if_version_1(cmd);
         print_set_version_3(cmd);
         print_linksub_instruction(cmd);
         print_if_close_v12345(cmd);
-        break;
+    break;
     case 6: // Compare -> Set, always LinkSub instructions
-        if(bits(cmd,0,3,1))
+        if (bits(cmd, 0, 3, 1))
             print_if_version_5(cmd);
         else
             print_if_version_1(cmd);
         print_set_version_3(cmd);
         print_if_close_v12345(cmd);
         print_linksub_instruction(cmd);
-        break;
+    break;
     default:
-        fprintf(stderr, "WARN: Unknown instruction type (%i)", 
-                bits(cmd,0,0,3));
+        fprintf(stderr, "WARN: Unknown instruction type (%i)",  bits(cmd, 0, 0, 3));
+    break;
     }
-}
+  } /*print_command*/
 
 static void vm_add_mnemonic(const vm_cmd_t *command)
   /* disassembles a single command. */
-{
+ {
     int i, extra_bits;
     cmd_t cmd;
-  
-    for(i = 0; i < 8; i++) {
+    for (i = 0; i < 8; i++)
+      {
         cmd.bits[i] = command->bytes[i];
         cmd.examined[i] = 0;
-    }
-
+      } /*for*/
     print_command(&cmd);
-  
     // Check if there still are bits set that were not examined
     extra_bits = 0;
-    for(i = 0; i < 8; i++)
-        if(cmd.bits[i] & ~ cmd.examined[i]) {
+    for (i = 0; i < 8; i++)
+        if (cmd.bits[i] & ~ cmd.examined[i])
+          {
             extra_bits = 1;
             break;
-        }
-    if(extra_bits) {
+          } /*if; for*/
+    if (extra_bits)
+      {
         fprintf(stderr, "WARN: unknown cmd bits:");
-        for(i = 0; i < 8; i++)
+        for (i = 0; i < 8; i++)
             fprintf(stderr, " %02x", cmd.bits[i] & ~ cmd.examined[i]);
         fprintf(stderr, "\n");
-    }
-}
+      } /*if*/
+  } /*vm_add_mnemonic*/
 
 void vm_add_mnemonics
   (
@@ -675,15 +736,14 @@ void vm_add_mnemonics
   )
   /* disassembles the specified command sequence as content for the specified XML tag. */
   {
-    int i,j;
-
-    output=node;
-    outputbase=base;
-    indent=1;
-    isnewline=1;
-
-    for( i=0; i<ncmd; i++ ) {
-        curline=i+1;
+    int i, j;
+    output = node; /* for easy reference by other routines */
+    outputbase = base;
+    indent = 1;
+    isnewline = 1;
+    for (i = 0; i < ncmd; i++)
+      {
+        curline = i + 1;
         for (j = 0; j < ncmd; j++)
             if /* some instruction has a branch target here */
               (
@@ -705,10 +765,9 @@ void vm_add_mnemonics
                 indent++;
                 break;
               } /* if; for */
-        vm_add_mnemonic(commands+i);
-    }
-
+        vm_add_mnemonic(commands + i);
+      } /*for*/
     node_newline();
-    indent=0;
+    indent = 0;
     node_printf("");
-  }
+  } /*vm_add_mnemonics*/
