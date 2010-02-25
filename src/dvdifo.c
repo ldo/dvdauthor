@@ -386,7 +386,9 @@ static int Create_TT_SRPT
   } /*Create_TT_SRPT*/
 
   static void BuildAVInfo(unsigned char *buf, const struct vobgroup *va)
-  /* builds the part of the IFO structure from offset 0x100 (VMGM, VTSM) and 0x200 (VTS) onwards. */
+  /* builds the part of the IFO structure from offset 0x100 (VMGM, VTSM) and 0x200 (VTS) onwards,
+    containing the video, audio and subpicture stream attributes. Note these attributes
+    don't include any stream IDs; those are specified per-PGC. */
   {
     int i;
     static const int widescreen_bits[4] =

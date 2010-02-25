@@ -10,25 +10,25 @@ nodist_bin_SCRIPTS = dvddirdel
 AM_CPPFLAGS   = -DSYSCONFDIR="\"$(sysconfdir)\"" @XML_CPPFLAGS@ @MAGICK_CPPFLAGS@ @FREETYPE_CPPFLAGS@ @FRIBIDI_CFLAGS@
 AM_CFLAGS = -Wall
 
-dvdauthor_SOURCES = dvdauthor.c dvdauthor.h da-internal.h \
+dvdauthor_SOURCES = dvdauthor.c common.h dvdauthor.h da-internal.h \
     dvdcompile.c dvdvm.h dvdvml.c dvdvmy.c dvdvmy.h \
     dvdifo.c dvdvob.c dvdpgc.c \
     dvdcli.c readxml.c readxml.h \
     conffile.c conffile.h compat.c compat.h rgb.h
 dvdauthor_LDADD = $(LIBICONV) $(XML_LIBS)
 
-dvdunauthor_SOURCES = dvdunauthor.c dvduncompile.c dvduncompile.h compat.c compat.h
+dvdunauthor_SOURCES = dvdunauthor.c dvduncompile.c common.h dvduncompile.h compat.c compat.h
 dvdunauthor_LDADD = $(XML_LIBS) -ldvdread
 
 spumux_SOURCES = subgen.c subgen.h rgb.h \
     subgen-parse-xml.c readxml.c readxml.h \
     subgen-encode.c subgen-image.c \
     subconfig.h subglobals.h \
-    compat.c compat.h \
+    compat.c compat.h common.h \
     textsub.c textsub.h subrender.c subrender.h subreader.c subreader.h subfont.c subfont.h
 spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) $(FRIBIDI_LIBS) $(LIBICONV)
 
-spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h
+spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h common.h
 spuunmux_LDADD = -lpng -lz -lm
 
 mpeg2desc_SOURCES = mpeg2desc.c compat.c

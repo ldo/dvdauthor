@@ -39,6 +39,7 @@
 
 #include <libxml/tree.h>
 
+#include "common.h"
 #include "dvduncompile.h"
 
 
@@ -71,13 +72,6 @@ static int
 
 static hli_t curhli;
 static pci_t hli_pci;
-
-typedef enum /* attributes of cell */
-  {
-    CELL_NEITHER = 0, /* neither of following specified */
-    CELL_CHAPTER_PROGRAM = 1, /* cell has chapter or chapter+program attribute */
-    CELL_PROGRAM = 2, /* cell has program attribute only */
-  } cell_chapter_types;
 
 static void setfilename(int vob)
   /* sets filenamebase to be a suitable name for a numbered video file. */
@@ -927,7 +921,7 @@ static void writepalette(int h, const uint32_t *palette)
         sector[0] = 0;
         sector[1] = 0;
         sector[2] = 1;
-        sector[3] = 0xba; /* PACK header */
+        sector[3] = MPID_PACK; /* PACK header */
         sector[4] = 0x44; /* SCR = 0 */
         sector[5] = 0;
         sector[6] = 4;
@@ -942,7 +936,7 @@ static void writepalette(int h, const uint32_t *palette)
         sector[14] = 0; // padding stream header
         sector[15] = 0;
         sector[16] = 1;
-        sector[17] = 0xbe;
+        sector[17] = MPID_PAD;
         sector[18] = (2048 - 20) >> 8; /* packet length, high byte */
         sector[19] = (2048 - 20) & 255; /* packet length, low byte */
         memset(sector + 20, 0xff, 2048 - 20); /* initialize with pad bytes */
@@ -982,7 +976,7 @@ static void writebutton(int h, const unsigned char *packhdr, const hli_t *hli)
     sector[14] = 0; // padding stream header
     sector[15] = 0;
     sector[16] = 1;
-    sector[17] = 0xbe;
+    sector[17] = MPID_PAD;
     sector[18] = (2048 - 20) >> 8; /* packet length, high byte */
     sector[19] = (2048 - 20) & 255; /* packet length, low byte */
     memset(sector + 20, 0xff, 2048 - 20); /* initialize with pad bytes */
@@ -1154,7 +1148,7 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
                     &&
                         bigblock[j * DVD_VIDEO_LB_LEN + 16] == 1
                     &&
-                        bigblock[j * DVD_VIDEO_LB_LEN + 17] == 0xbb // system header
+                        bigblock[j * DVD_VIDEO_LB_LEN + 17] == MPID_SYSTEM // system header
                     &&
                         bigblock[j * DVD_VIDEO_LB_LEN + 38] == 0
                     &&
@@ -1162,7 +1156,7 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
                     &&
                         bigblock[j * DVD_VIDEO_LB_LEN + 40] == 1
                     &&
-                        bigblock[j * DVD_VIDEO_LB_LEN + 41] == 0xbf // 1st private2
+                        bigblock[j * DVD_VIDEO_LB_LEN + 41] == MPID_PRIVATE2 // 1st private2
                     &&
                         bigblock[j * DVD_VIDEO_LB_LEN + 1024] == 0
                     &&
@@ -1170,7 +1164,7 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
                     &&
                         bigblock[j * DVD_VIDEO_LB_LEN + 1026] == 1
                     &&
-                        bigblock[j * DVD_VIDEO_LB_LEN + 1027] == 0xbf // 2nd private2
+                        bigblock[j * DVD_VIDEO_LB_LEN + 1027] == MPID_PRIVATE2 // 2nd private2
                   )
                   {
                 /* looks like a NAV pack */

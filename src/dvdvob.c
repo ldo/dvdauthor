@@ -316,7 +316,7 @@ static void transpose_ts(unsigned char *buf, pts_t tsoffs)
         &&
             buf[2] == 1
         &&
-            buf[3] == 0xba /* PACK header */
+            buf[3] == MPID_PACK /* PACK header */
       )
     {
         writescr(buf + 4, readscr(buf + 4) + tsoffs);
@@ -331,9 +331,9 @@ static void transpose_ts(unsigned char *buf, pts_t tsoffs)
                 buf[16] == 1
             &&
                 (
-                    buf[17] == 0xbd /* private stream 1 */
+                    buf[17] == MPID_PRIVATE1
                 ||
-                    buf[17] >= 0xc0 && buf[17] <= 0xef /* audio or video stream */
+                    buf[17] >= MPID_AUDIO_FIRST && buf[17] <= MPID_VIDEO_LAST /* audio or video stream */
                 )
             &&
                 (buf[21] & 128) /* PTS present */
@@ -458,12 +458,12 @@ static void scanvideoptr
         &&
             buf[1] == 0
         &&
-            buf[2] == 1
+            buf[2] == 1 /* looks like a packet header */
       )
       {
         switch(buf[3])
           {
-        case 0: /* picture header */
+        case MPID_PICTURE: /* picture header */
           {
             const int ptype = (buf[5] >> 3) & 7; /* frame type, 1 => I, 2 => P, 3 => B, 4 => D */
             const int temporal = (buf[4] << 2) | (buf[5] >> 6); /* temporal sequence number */
@@ -484,7 +484,7 @@ static void scanvideoptr
         break;
           } /*case 0*/
 
-        case 0xb3: /* sequence header */
+        case MPID_SEQUENCE: /* sequence header */
           {
           /* collect information about video attributes */
             int hsize, vsize, aspect, framerate, newaspect;
@@ -567,9 +567,9 @@ static void scanvideoptr
                   // reset the aspect ratio
               } /*if*/
             break;
-          } /* case 0xb3 */
+          } /* case MPID_SEQUENCE */
 
-        case 0xb5: /* extension header */
+        case MPID_EXTENSION: /* extension header */
           {
             vobgroup_set_video_attr(va, VIDEO_MPEG, "mpeg2");
             switch (buf[4] & 0xF0)
@@ -608,15 +608,15 @@ static void scanvideoptr
             break;
               } /*switch*/
         break;
-          } /* case 0xb5 */
+          } /* case MPID_EXTENSION */
             
-        case 0xb7: /* sequence end */
+        case MPID_SEQUENCE_END:
           {
             thisvi->hasseqend = 1;
         break;
-          } /* case 0xb7 */
+          } /* case MPID_SEQUENCE_END */
 
-        case 0xb8: // gop header
+        case MPID_GOP: // gop header
             closelastref(thisvi, vsi, prevbytesect);
             if (vsi->firstgop == 1)
               {
@@ -643,7 +643,7 @@ static void scanvideoptr
                     hr, mi, se, fr, buf[4] >> 7
                   );
               } /*if*/
-        break;
+        break; /* case MPID_GOP */
           } /*switch*/
     } /*if*/
   } /*scanvideoptr*/
@@ -1110,7 +1110,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[16] == 1
                 &&
-                    buf[17] == 0xbe /* padding stream */
+                    buf[17] == MPID_PAD
                 &&
                     !strcmp((const char *)buf + 20, "dvdauthor-data") /* message from spumux */
               )
@@ -1247,7 +1247,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 writeundo(); /* drop private data from output */
                 continue;
               } /*if*/
-            if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == 0xba) /* PACK header */
+            if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == MPID_PACK)
               {
                 const pts_t newscr = readscr(buf + 4);
                 if (newscr == 0 && lastscr > 0)
@@ -1295,7 +1295,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[16] == 1
                 &&
-                    buf[17] == 0xbb /* system header */
+                    buf[17] == MPID_SYSTEM
               )
               {
                 if
@@ -1306,7 +1306,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     &&
                         buf[40] == 1
                     &&
-                        buf[41] == 0xbf // 1st private2
+                        buf[41] == MPID_PRIVATE2 // 1st private2
                     &&
                         buf[1024] == 0
                     &&
@@ -1314,7 +1314,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     &&
                         buf[1026] == 1
                     &&
-                        buf[1027] == 0xbf // 2nd private2
+                        buf[1027] == MPID_PRIVATE2 // 2nd private2
                   ) /* looks like a NAV PACK, which means the start of a new VOBU */
                   {
                     struct vobuinfo *vi;
@@ -1377,7 +1377,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
               {
                 if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1)
                   {
-                    if (buf[i + 3] >= 0xBD && buf[i + 3] <= 0xEF)
+                    if (buf[i + 3] >= MPID_PRIVATE1 && buf[i + 3] <= MPID_VIDEO_LAST)
                       /* private, padding, audio or video stream */
                       {
                         j = i;
@@ -1386,14 +1386,15 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                       }
                     else if
                       (
-                            buf[i + 3] == 0xB9 /* program end */
+                            buf[i + 3] == MPID_PROGRAM_END
                         &&
                             j >= 14
                         &&
-                            buf[j + 3] == 0xBE /* previous was padding stream */
+                            buf[j + 3] == MPID_PAD /* previous was padding stream */
                       )
                       {
                         write2(buf + j + 4, read2(buf + j + 4) + 4);
+                          /* merge program-end packet into prior pad packet */
                         memset(buf + i, 0, 4); // mplex uses 0 for padding, so will I
                       } /*if*/
                   } /*if*/
@@ -1408,7 +1409,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[2] == 1
                 &&
-                    buf[3] == 0xba /* PACK header */
+                    buf[3] == MPID_PACK
                 &&
                     buf[14] == 0
                 &&
@@ -1416,7 +1417,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[16] == 1
                 &&
-                    buf[17] == 0xe0 /* video stream */
+                    buf[17] == MPID_VIDEO_FIRST /* only video stream */
               )
               {
                 struct vobuinfo * const vi = &thisvob->vobu[thisvob->numvobus - 1];
@@ -1441,7 +1442,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[2] == 1
                 &&
-                    buf[3] == 0xba /* PACK header */
+                    buf[3] == MPID_PACK
                 &&
                     buf[14] == 0
                 &&
@@ -1452,7 +1453,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     (
                         (buf[17] & 0xf8) == 0xc0 /* MPEG audio stream */
                     ||
-                        buf[17] == 0xbd /* private stream 1 -- DVD audio or subpicture */
+                        buf[17] == MPID_PRIVATE1 /* DVD audio or subpicture */
                     )
               )
               {
@@ -1461,7 +1462,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 const int endop = read2(buf + 18) /* PES packet length */ + 20 /* fixed PES header length */; /* end of packet */
                 int audch;
                 const int haspts = (buf[21] & 128) != 0;
-                if (buf[17] == 0xbd) /* private stream 1 -- DVD audio or subpicture */
+                if (buf[17] == MPID_PRIVATE1) /* DVD audio or subpicture */
                   {
                     const int sid = buf[dptr]; /* sub-stream ID */
                     const int offs = read2(buf + dptr + 2);
@@ -1620,7 +1621,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[2] == 1
                 &&
-                    buf[3] == 0xba /* PACK header */
+                    buf[3] == MPID_PACK
                 &&
                     buf[14] == 0
                 &&
@@ -1628,7 +1629,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[16] == 1
                 &&
-                    buf[17] == 0xbd /* private stream 1 */
+                    buf[17] == MPID_PRIVATE1
               )
               {
                 int dptr = buf[22] /* PES header data length */ + 23; /* offset to packet data */
@@ -1863,9 +1864,9 @@ void MarkChapters(struct vobgroup *va)
   /* fills in scellid, ecellid, vobcellid, firstvobuincell, lastvobuincell, numcells fields
     to mark all the cells and programs. */
   {
-    int i, j, k, lastcellid;
+    int i, j, k, lastvobuid;
     // mark start and stop points
-    lastcellid = -1;
+    lastvobuid = -1;
     for (i = 0; i < va->numallpgcs; i++)
         for (j = 0; j < va->allpgcs[i]->numsources; j++)
           {
@@ -1889,7 +1890,7 @@ void MarkChapters(struct vobgroup *va)
                 thissource->cells[k].scellid = v; /* cell starts here */
                 if
                   (
-                        lastcellid != v
+                        lastvobuid != v
                     &&
                         thissource->vob->vobu[v].firstIfield != 0
                   )
@@ -1907,12 +1908,12 @@ void MarkChapters(struct vobgroup *va)
                   {
                     v = findnearestvobu(va, thissource->vob, thissource->cells[k].endpts);
                     if (v >= 0 && v < thissource->vob->numvobus)
-                        thissource->vob->vobu[v].vobcellid = 1; /* next cell starts here */
+                        thissource->vob->vobu[v].vobcellid = 1; /* another cell should start here */
                   }
-                else
+                else /* -ve end time => cell goes to end of vob */
                     v = thissource->vob->numvobus;
                 thissource->cells[k].ecellid = v; /* next cell starts here */
-                lastcellid = v;
+                lastvobuid = v;
               } /*for*/
           } /*for; for*/
    /* At this point, the vobcellid fields have been set to 1 for all VOBUs which
@@ -1923,7 +1924,7 @@ void MarkChapters(struct vobgroup *va)
         firstvobuincell and lastvobuincell */
         int cellvobu = 0;
         int cellid = 0;
-        va->vobs[i]->vobu[0].vobcellid = 1;
+        va->vobs[i]->vobu[0].vobcellid = 1; /* ensure first vobu starts a cell */
         for (j = 0; j < va->vobs[i]->numvobus; j++)
           {
             struct vobuinfo * const thisvobu = &va->vobs[i]->vobu[j];
@@ -1978,10 +1979,11 @@ void MarkChapters(struct vobgroup *va)
                     thiscell->ecellid = thissource->vob->vobu[thiscell->ecellid].vobcellid & 255;
                 else
                     thiscell->ecellid = thissource->vob->numcells + 1;
+              /* near as I can tell, ecellid will either be equal to scellid or 1 greater */
                 va->allpgcs[i]->numcells += thiscell->ecellid - thiscell->scellid;
                 if (thiscell->scellid != thiscell->ecellid && thiscell->ischapter != CELL_NEITHER)
                   {
-                    va->allpgcs[i]->numprograms++;
+                    va->allpgcs[i]->numprograms++; /* ischapter is CELL_PROGRAM or CELL_CHAPTER_PROGRAM */
                     if (thiscell->ischapter == CELL_CHAPTER_PROGRAM)
                         va->allpgcs[i]->numchapters++;
                     if (va->allpgcs[i]->numprograms >= 256)

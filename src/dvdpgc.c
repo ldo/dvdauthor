@@ -174,7 +174,9 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
     for (i = 0; i < va->numaudiotracks; i++)
       {
         if (va->ad[i].aid)
-            buf[12 + i * 2] = 0x80 | (va->ad[i].aid - 1); /* PGC_AST_CTL, audio stream control */
+            buf[12 + i * 2] = 0x80 | (va->ad[i].aid - 1);
+          /* PGC_AST_CTL, audio stream control: actual stream IDs corresponding to
+            each stream described in IFO */
       } /*for*/
     for (i = 0; i < va->numsubpicturetracks; i++)
       {
@@ -184,7 +186,8 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
             if (thispgc->subpmap[i][m] & 128)
               {
                 buf[28 + i * 4 + m] = thispgc->subpmap[i][m] & 127;
-                  /* PGC_SPST_CTL, subpicture stream control */
+                  /* PGC_SPST_CTL, subpicture stream control: actual stream IDs corresponding
+                    to each stream described in IFO */
                 e = 1;
               } /*if; for*/
         if (e)

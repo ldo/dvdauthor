@@ -23,6 +23,8 @@
 #ifndef __DA_INTERNAL_H_
 #define __DA_INTERNAL_H_
 
+#include "common.h"
+
 enum {VM_NONE=0,VM_MPEG1=1,VM_MPEG2=2}; /* values for videodesc.vmpeg */
 enum {VS_NONE=0,VS_720H=1,VS_704H=2,VS_352H=3,VS_352L=4}; /* values for videodesc.vres */
 enum {VF_NONE=0,VF_NTSC=1,VF_PAL=2}; /* values for videodesc.vformat */
@@ -84,8 +86,8 @@ struct subpicdesc {
 };
 
 struct cell {
-  /* describes a user-defined chapter point within a source video file--
-    generated from <cell> tags & "chapters" attributes, or by default if none of these */
+  /* describes a cell within a source video file--generated from <cell> tags & "chapters"
+    attributes, or by default if none of these */
     pts_t startpts,endpts;
     cell_chapter_types ischapter; // 1 = chapter&program, 2 = program only, 0 = neither
     int pauselen;
@@ -114,11 +116,11 @@ struct audchannel { /* describes information collected from an audio stream */
 };
 
 struct vob { /* one entry created for each source in each pgc */
-    char *fname; /* name of input file */
+    char *fname; /* name of input file, copied from source */
     int numvobus; /* used portion of vobu array */
     int maxvobus; /* allocated size of vobu array */
     int vobid,numcells;
-    struct pgc *progchain; // used for colorinfo and buttons
+    struct pgc *progchain; /* backpointer to PGC, used for colorinfo and buttons */
     struct vobuinfo *vobu; /* array of VOBUs in the VOB */
     struct audchannel audch[64]; /* audio and subpicture info */
       /* index meaning:

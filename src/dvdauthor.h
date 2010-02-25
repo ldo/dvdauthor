@@ -27,19 +27,14 @@
 extern "C" {
 #endif
 
+#include "common.h"
+
 typedef enum /* type of menu/title */
   { /* note assigned values cannot be changed */
     VTYPE_VTS = 0, /* title in titleset */
     VTYPE_VTSM = 1, /* menu in titleset */
     VTYPE_VMGM = 2, /* menu in VMG */
   } vtypes;
-
-typedef enum /* attributes of cell */
-  {
-    CELL_NEITHER = 0, /* neither of following specified */
-    CELL_CHAPTER_PROGRAM = 1, /* cell has chapter or chapter+program attribute */
-    CELL_PROGRAM = 2, /* cell has program attribute only */
-  } cell_chapter_types;
 
 #define COLOR_UNUSED 0x1000000
   /* special value indicating unused colour-table entry, different from all
