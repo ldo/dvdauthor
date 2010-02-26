@@ -319,31 +319,38 @@ static void transpose_ts(unsigned char *buf, pts_t tsoffs)
             buf[3] == MPID_PACK /* PACK header */
       )
     {
+        const int sysoffs =
+            buf[14] == 0 && buf[15] == 0 && buf[16] == 1 && buf[17] == MPID_SYSTEM ?
+              /* skip system header if present */
+                (buf[18] << 8 | buf[19]) + 6
+            :
+                0;
         writescr(buf + 4, readscr(buf + 4) + tsoffs);
         // video/audio?
         // pts?
         if
           (
-                buf[14] == 0
+                buf[14 + sysoffs] == 0
             &&
-                buf[15] == 0
+                buf[15 + sysoffs] == 0
             &&
-                buf[16] == 1
+                buf[16 + sysoffs] == 1
             &&
                 (
-                    buf[17] == MPID_PRIVATE1
+                    buf[17 + sysoffs] == MPID_PRIVATE1
                 ||
-                    buf[17] >= MPID_AUDIO_FIRST && buf[17] <= MPID_VIDEO_LAST /* audio or video stream */
+                    buf[17 + sysoffs] >= MPID_AUDIO_FIRST && buf[17 + sysoffs] <= MPID_VIDEO_LAST
+                  /* audio or video stream */
                 )
             &&
-                (buf[21] & 128) /* PTS present */
+                (buf[21 + sysoffs] & 128) /* PTS present */
           )
           {
-            writepts(buf + 23, readpts(buf + 23) + tsoffs);
+            writepts(buf + 23 + sysoffs, readpts(buf + 23 + sysoffs) + tsoffs);
             // dts?
-            if (buf[21] & 64) /* decoder timestamp present */
+            if (buf[21 + sysoffs] & 64) /* decoder timestamp present */
               {
-                writepts(buf + 28, readpts(buf + 28) + tsoffs);
+                writepts(buf + 28 + sysoffs, readpts(buf + 28 + sysoffs) + tsoffs);
               } /*if*/
           } /*if*/
     }
@@ -1057,6 +1064,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
     for (vnum = 0; vnum < va->numvobs; vnum++)
       {
         int i, j;
+        int sysoffs;
         int hadfirstvobu = 0;
         pts_t backoffs = 0, lastscr = 0;
         struct vob * const thisvob = va->vobs[vnum];
@@ -1401,6 +1409,12 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 break;
               } /*while*/
 
+            sysoffs =
+                buf[14] == 0 && buf[15] == 0 && buf[16] == 1 && buf[17] == MPID_SYSTEM ?
+                  /* skip system header if present */
+                    (buf[18] << 8 | buf[19]) + 6
+                :
+                    0;
             if
               (
                     buf[0] == 0
@@ -1411,26 +1425,26 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[3] == MPID_PACK
                 &&
-                    buf[14] == 0
+                    buf[14 + sysoffs] == 0
                 &&
-                    buf[15] == 0
+                    buf[15 + sysoffs] == 0
                 &&
-                    buf[16] == 1
+                    buf[16 + sysoffs] == 1
                 &&
-                    buf[17] == MPID_VIDEO_FIRST /* only video stream */
+                    buf[17 + sysoffs] == MPID_VIDEO_FIRST /* only video stream */
               )
               {
                 struct vobuinfo * const vi = &thisvob->vobu[thisvob->numvobus - 1];
                 vi->hasvideo = 1;
-                scanvideoframe(va, buf, vi, cursect, prevvidsect, &vsi);
+                scanvideoframe(va, buf + sysoffs, vi, cursect, prevvidsect, &vsi);
                 if
                   (
-                        (buf[21] & 128) /* PTS present */
+                        (buf[21 + sysoffs] & 128) /* PTS present */
                     &&
                         vi->firstvideopts == -1 /* not seen one yet */
                   )
                   {
-                    vi->firstvideopts = readpts(buf + 23);
+                    vi->firstvideopts = readpts(buf + 23 + sysoffs);
                   } /*if*/
                 prevvidsect = cursect;
               } /*if*/
@@ -1444,25 +1458,25 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[3] == MPID_PACK
                 &&
-                    buf[14] == 0
+                    buf[14 + sysoffs] == 0
                 &&
-                    buf[15] == 0
+                    buf[15 + sysoffs] == 0
                 &&
-                    buf[16] == 1
+                    buf[16 + sysoffs] == 1
                 &&
                     (
-                        (buf[17] & 0xf8) == 0xc0 /* MPEG audio stream */
+                        (buf[17 + sysoffs] & 0xf8) == 0xc0 /* MPEG audio stream */
                     ||
-                        buf[17] == MPID_PRIVATE1 /* DVD audio or subpicture */
+                        buf[17 + sysoffs] == MPID_PRIVATE1 /* DVD audio or subpicture */
                     )
               )
               {
                 pts_t pts0 = 0, pts1 = 0, backpts1 = 0;
-                const int dptr = buf[22] /* PES header data length */ + 23; /* offset to packet data */
-                const int endop = read2(buf + 18) /* PES packet length */ + 20 /* fixed PES header length */; /* end of packet */
+                const int dptr = buf[22 + sysoffs] /* PES header data length */ + 23 + sysoffs; /* offset to packet data */
+                const int endop = read2(buf + 18 + sysoffs) /* PES packet length */ + 20 /* fixed PES header length */ + sysoffs; /* end of packet */
                 int audch;
-                const int haspts = (buf[21] & 128) != 0;
-                if (buf[17] == MPID_PRIVATE1) /* DVD audio or subpicture */
+                const int haspts = (buf[21 + sysoffs] & 128) != 0;
+                if (buf[17 + sysoffs] == MPID_PRIVATE1) /* DVD audio or subpicture */
                   {
                     const int sid = buf[dptr]; /* sub-stream ID */
                     const int offs = read2(buf + dptr + 2);
@@ -1500,7 +1514,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 else /* regular MPEG audio */
                   {
                     const int len = endop - dptr; /* length of packet data */
-                    const int index = buf[17] & 7; /* audio stream ID */
+                    const int index = buf[17 + sysoffs] & 7; /* audio stream ID */
                     audch = 8 | index;                      // mp2
                     memcpy(mp2hdr[index].buf + 3, buf + dptr, 3);
                     while (mp2hdr[index].hdrptr + 4 <= len)
@@ -1529,7 +1543,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
               /* at this point, pts1 is the duration of the audio in the packet */
                 if (haspts)
                   {
-                    pts0 = readpts(buf + 23);
+                    pts0 = readpts(buf + 23 + sysoffs);
                     pts1 += pts0;
                   }
                 else if (pts1 > 0)
@@ -1603,7 +1617,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                         fprintf(stderr, "\n");
                         ach->audpts[ach->numaudpts - 1].pts[1] = pts0;
                       } /*if*/
-                noshow:
+noshow:
                   /* fill in new entry */
                     ach->audpts[ach->numaudpts].pts[0] = pts0;
                     ach->audpts[ach->numaudpts].pts[1] = pts1;
@@ -1623,17 +1637,17 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[3] == MPID_PACK
                 &&
-                    buf[14] == 0
+                    buf[14 + sysoffs] == 0
                 &&
-                    buf[15] == 0
+                    buf[15 + sysoffs] == 0
                 &&
-                    buf[16] == 1
+                    buf[16 + sysoffs] == 1
                 &&
-                    buf[17] == MPID_PRIVATE1
+                    buf[17 + sysoffs] == MPID_PRIVATE1
               )
               {
-                int dptr = buf[22] /* PES header data length */ + 23; /* offset to packet data */
-                const int ml = read2(buf + 18) /* PES packet length */ + 20 /* fixed PES header length */; /* total length of packet */
+                int dptr = buf[22 + sysoffs] /* PES header data length */ + 23 + sysoffs; /* offset to packet data */
+                const int ml = read2(buf + 18) /* PES packet length */ + 20 /* fixed PES header length */ + sysoffs; /* end of packet */
                 const int st = buf[dptr]; /* sub-stream ID */
                 dptr++; /* skip sub-stream ID */
                 if ((st & 0xe0) == 0x20)
