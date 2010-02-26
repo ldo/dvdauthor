@@ -356,6 +356,48 @@ static void transpose_ts(unsigned char *buf, pts_t tsoffs)
     }
   } /*transpose_ts*/
 
+static int has_gop(const unsigned char *buf)
+  /* returns true iff there is a video GOP present in the sector in buf. */
+  {
+    if
+      (
+            buf[14] == 0
+        &&
+            buf[15] == 0
+        &&
+            buf[16] == 1
+        &&
+            buf[17] == MPID_SYSTEM
+        &&
+            buf[38] == 0
+        &&
+            buf[39] == 0
+        &&
+            buf[40] == 1
+        &&
+            buf[41] == MPID_VIDEO_FIRST
+      )
+      {
+        int i = 42;
+        while (i < 1024)
+          {
+            if
+              (
+                    buf[i] == 0
+                &&
+                    buf[i + 1] == 0
+                &&
+                    buf[i + 2] == 1
+                &&
+                    buf[i + 3] == MPID_GOP
+              )
+                return 1;
+            i += 4;
+          } /*while*/
+      } /*if*/
+    return 0;
+  } /*has_gop*/
+
 static int mpa_valid(const unsigned char *b)
 {
     const unsigned int v = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
@@ -1048,6 +1090,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
     output VOB files for a menu or titleset, complete except for the NAV packs. */
   {
     unsigned char *buf;
+    static unsigned char deferred_buf[2048];
     int cursect = 0; /* sector nr in input file */
     int fsect = -1; /* sector nr in current output VOB file, -ve => not opened yet */
     int vnum;
@@ -1067,6 +1110,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
         int sysoffs;
         int hadfirstvobu = 0;
         pts_t backoffs = 0, lastscr = 0;
+        int fill_in_vobus = 0, got_deferred_buf = 0;
         struct vob * const thisvob = va->vobs[vnum];
         int prevvidsect = -1;
         struct vscani vsi;
@@ -1097,18 +1141,23 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 fsect = -1;
               } /*if*/
             buf = writegrabbuf();
-            i = fread(buf, 1, 2048, vf.h);
-            if (i != 2048)
+            if (got_deferred_buf)
+                memcpy(buf, deferred_buf, 2048);
+            else
               {
-                if (i == -1)
+                i = fread(buf, 1, 2048, vf.h);
+                if (i != 2048)
                   {
-                    fprintf(stderr, "\nERR:  Error %d while reading: %s\n", errno, strerror(errno));
-                    exit(1);
-                  }
-                else if (i > 0) /* shouldn't occur */
-                    fprintf(stderr ,"\nWARN: Partial sector read (%d bytes); discarding data.\n", i);
-                writeundo();
-                break;
+                    if (i == -1)
+                      {
+                        fprintf(stderr, "\nERR:  Error %d while reading: %s\n", errno, strerror(errno));
+                        exit(1);
+                      }
+                    else if (i > 0) /* shouldn't occur */
+                        fprintf(stderr ,"\nWARN: Partial sector read (%d bytes); discarding data.\n", i);
+                    writeundo();
+                    break;
+                  } /*if*/
               } /*if*/
             if
               (
@@ -1255,6 +1304,41 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 writeundo(); /* drop private data from output */
                 continue;
               } /*if*/
+            // we should get a VOBU before a video with GOP
+            if
+              (
+                    (fill_in_vobus || !hadfirstvobu)
+                &&
+                    !got_deferred_buf
+                &&
+                    has_gop(buf)
+              )
+              {
+                // create VOBU
+                if (!hadfirstvobu)
+                  { /* let user know the first time this happens */
+                    fprintf
+                      (
+                        stderr, "INFO: found video GOP without a preceding VOBU - creating VOBU\n"
+                      );
+                  } /*if*/
+                fill_in_vobus = 1; /* keep doing it from now on */
+                memcpy(deferred_buf, buf, 2048); /* save just-read sector for processing on next iteration */
+                got_deferred_buf = 1; /* remember I've saved it */
+              /* buf already has a system header */
+                buf[41] = MPID_PRIVATE2;
+                buf[42] = 0x03;
+                buf[43] = 0xd4;
+                buf[44] = 0x81;
+                memset(buf + 45, 0, 2048 - 45);
+                buf[1026] = 1;
+                buf[1027] = MPID_PRIVATE2;
+                buf[1028] = 0x03;
+                buf[1029] = 0xfa;
+                buf[1030] = 0x81;
+              }
+            else if (got_deferred_buf)
+                got_deferred_buf = 0; /* already picked it up */
             if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == MPID_PACK)
               {
                 const pts_t newscr = readscr(buf + 4);
@@ -1361,7 +1445,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     vsi.lastrefsect = 0;
                     vsi.firstgop = 1; /* restart scan for first GOP */
                   }
-                else
+                else if (!fill_in_vobus || got_deferred_buf)
                   {
                     fprintf
                       (
