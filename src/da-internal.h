@@ -122,7 +122,7 @@ struct vob { /* one entry created for each source in each pgc */
     int vobid,numcells;
     struct pgc *progchain; /* backpointer to PGC, used for colorinfo and buttons */
     struct vobuinfo *vobu; /* array of VOBUs in the VOB */
-    struct audchannel audch[64]; /* audio and subpicture info */
+    struct audchannel audch[64]; /* vob-wide audio and subpicture mapping */
       /* index meaning:
         0-31: top two bits are the audio type (0 => AC3, 1 => MPEG, 2 => PCM, 3 => DTS),
             bottom 3 bits are the channel id
@@ -156,7 +156,7 @@ struct pgc { /* describes a program chain corresponding to a <pgc> directive */
     struct colorinfo *colors;
     struct pgcgroup *pgcgroup; /* back-pointer to containing pgcgroup */
     unsigned char subpmap[32][4];
-      /* grouping of subpicture streams into alternative display modes for same
+      /* per-PGC explicit mapping of subpicture streams to alternative display modes for same
         <subpicture> track. Each entry is (128 | id) if present; 127 if not present. */
 };
 

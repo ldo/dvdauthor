@@ -540,21 +540,27 @@ int getsubpmask(const struct videodesc *vd)
     |  \widescreen footage, letterbox on narrowscreen display
     \widescreen footage, pan&scan on narrowscreen display
 */
-{
-    int mask=0;
-
-    if( vd->vaspect==VA_16x9 )
-        mask|=14;
+  {
+    int mask = 0;
+    if (vd->vaspect == VA_16x9)
+        mask |= 14; /* widescreen => allow pan&scan, letterbox and crop */
     else
-        mask|=1;
-
-    switch( vd->vwidescreen ) {
-    case VW_NOLETTERBOX: mask&=-1-4; break;
-    case VW_NOPANSCAN:   mask&=-1-8; break;
-    case VW_CROP:        mask|=2;    break; /* redundant? crop bit already set */
-    }
-    return mask;
-}
+        mask |= 1;
+    switch (vd->vwidescreen)
+      {
+    case VW_NOLETTERBOX:
+        mask &= -1-4; /* clear letterbox bit */
+    break;
+    case VW_NOPANSCAN:
+        mask &= -1-8; /* clear pan&scan bit */
+    break;
+    case VW_CROP:
+        mask |= 2; /* redundant? crop bit already set for widescreen */
+    break;
+      } /*switch*/
+    return
+        mask;
+  } /*getsubpmask*/
 
 static void setattr
   (
@@ -1003,7 +1009,7 @@ static void jp_force_menu(struct menugroup *mg, vtypes type)
     menugroup_add_pgcgroup(mg, "en", pg);
   } /*jp_force_menu*/
 
-static void ScanIfo(struct toc_summary *ts,char *ifo)
+static void ScanIfo(struct toc_summary *ts, const char *ifo)
   /* scans another existing VTS IFO file and puts info about it
     into *ts for inclusion in the VMG. */
   {
@@ -1287,9 +1293,9 @@ static void validatesummary(struct pgcgroup *va)
                 if( !p->sources[j]->numcells )
                     fprintf(stderr,"WARN: Source has no cells (%s) in PGC %d\n",p->sources[j]->fname,i);
                 else if( first ) {
-                    if( p->sources[j]->cells[0].ischapter!=1 ) {
+                    if( p->sources[j]->cells[0].ischapter!=CELL_CHAPTER_PROGRAM ) {
                         fprintf(stderr,"WARN: First cell is not marked as a chapter in PGC %d, setting chapter flag\n",i);
-                        p->sources[j]->cells[0].ischapter=1;
+                        p->sources[j]->cells[0].ischapter=CELL_CHAPTER_PROGRAM;
                     }
                     first=0;
                 }
@@ -1432,6 +1438,8 @@ void pgc_set_stilltime(struct pgc *p,int still)
 }
 
 int pgc_set_subpic_stream(struct pgc *p,int ch,const char *m,int id)
+  /* adds a mapping for the subpicture stream numbered ch (in order of appearance) with
+    mode name m to the substream with ID id. */
 {
     int mid;
 

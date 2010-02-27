@@ -49,14 +49,14 @@ struct vscani {
     int adjustfields; /* fixme: not used for anything? */
 };
 
-static pts_t timeline[19]={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
+static pts_t const timeline[19]={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
                            20,60,120,240};
   /* various time steps for VOBU offsets needed in DSI packet, in units of half a second */
 
 #define BIGWRITEBUFLEN (16*2048)
 static unsigned char bigwritebuf[BIGWRITEBUFLEN];
 static int writebufpos=0;
-static int writefile=-1;
+static int writefile=-1; /* fd of output file */
 
 static unsigned char videoslidebuf[15]={255,255,255,255, 255,255,255, 0,0,0,0, 0,0,0,0};
 
@@ -316,7 +316,7 @@ static void transpose_ts(unsigned char *buf, pts_t tsoffs)
         &&
             buf[2] == 1
         &&
-            buf[3] == MPID_PACK /* PACK header */
+            buf[3] == MPID_PACK
       )
     {
         const int sysoffs =
@@ -338,9 +338,10 @@ static void transpose_ts(unsigned char *buf, pts_t tsoffs)
             &&
                 (
                     buf[17 + sysoffs] == MPID_PRIVATE1
+                      /* audio or subpicture stream */
                 ||
                     buf[17 + sysoffs] >= MPID_AUDIO_FIRST && buf[17 + sysoffs] <= MPID_VIDEO_LAST
-                  /* audio or video stream */
+                      /* audio or video stream */
                 )
             &&
                 (buf[21 + sysoffs] & 128) /* PTS present */
@@ -399,10 +400,10 @@ static int has_gop(const unsigned char *buf)
   } /*has_gop*/
 
 static int mpa_valid(const unsigned char *b)
-{
+  /* does b look like it points at a valid MPEG audio packet header. */
+  {
     const unsigned int v = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
     int t;
-
     // sync, mpeg1, layer2, 48khz
     if ((v & 0xFFFE0C00) != 0xFFFC0400)
         return 0;
@@ -414,21 +415,21 @@ static int mpa_valid(const unsigned char *b)
     if ((v & 3) == 2)
         return 0;
     return 1;
-}
+  } /*mpa_valid*/
 
 static int mpa_len(const unsigned char *b)
-{
-    static int bitratetable[16]={0,32,48,56,64,80,96,112,128,160,192,224,256,320,384,0};
-    int padding=(b[2]>>1)&1;
-    int bitrate=bitratetable[(b[2]>>4)&15];
-    
-    return 3*bitrate+padding; // 144*bitrate/sampling; 144/48=3
-}
+  /* returns the length of an MPEG audio packet. */
+  {
+    static int const bitratetable[16]={0,32,48,56,64,80,96,112,128,160,192,224,256,320,384,0};
+    const int padding =(b[2] >> 1) & 1;
+    const int bitrate = bitratetable[(b[2] >> 4) & 15];
+    return 3 * bitrate + padding; // 144 * bitrate / sampling; 144 / 48 = 3
+  } /*mpa_len*/
 
 static void writeflush()
   /* writes out the data buffered so far. */
   {
-    if (!writebufpos)
+    if (!writebufpos) /* nothing in buffer */
         return;
     if (writefile != -1)
       {
@@ -442,14 +443,16 @@ static void writeflush()
   } /*writeflush*/
 
 static unsigned char *writegrabbuf()
-{
+  /* returns the start address at which to write the next sector,
+    automatically flushing previously-written sectors as necessary. */
+  {
     unsigned char *buf;
-    if( writebufpos == BIGWRITEBUFLEN )
+    if (writebufpos == BIGWRITEBUFLEN)
         writeflush();
     buf=bigwritebuf+writebufpos;
-    writebufpos+=2048;
+    writebufpos += 2048; /* sector will be written to output file */
     return buf;
-}
+  } /*writegrabbuf*/
 
 static void writeundo()
   /* drops the last sector from the output buffer. */
@@ -660,10 +663,8 @@ static void scanvideoptr
           } /* case MPID_EXTENSION */
             
         case MPID_SEQUENCE_END:
-          {
             thisvi->hasseqend = 1;
         break;
-          } /* case MPID_SEQUENCE_END */
 
         case MPID_GOP: // gop header
             closelastref(thisvi, vsi, prevbytesect);
@@ -1098,8 +1099,8 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
     int vobid =0;
     struct mp2info
       {
-        int hdrptr;
-        unsigned char buf[6];
+        int hdrptr; /* index at which packet header starts */
+        unsigned char buf[6]; /* save partial packet in case it crosses sector boundaries */
       } mp2hdr[8]; /* enough for the allowed 8 audio streams */
     struct colorremap *crs;
     
@@ -1620,7 +1621,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                             pts1 += 2160;
                         mp2hdr[index].hdrptr += mpa_len(h); /* to next header */
                       } /*while*/
-                    mp2hdr[index].hdrptr -= len;
+                    mp2hdr[index].hdrptr -= len; /* will be -ve if extends into next sector */
                     memcpy(mp2hdr[index].buf, buf + dptr + len - 3, 3);
                     audiodesc_set_audio_attr(&thisvob->audch[audch].ad, &thisvob->audch[audch]. adwarn, AUDIO_SAMPLERATE, "48khz");
                   } /*if*/

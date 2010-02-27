@@ -332,9 +332,9 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
             for (k = 0; k < thissource->numcells; k++)
               {
                 if (thissource->cells[k].scellid == thissource->cells[k].ecellid)
-                    continue; /* no cells */
-                if (thissource->cells[k].ischapter)
-                    buf[d++] = j; /* entry cell nr */
+                    continue; /* empty cell */
+                if (thissource->cells[k].ischapter != CELL_NEITHER)
+                    buf[d++] = j; /* this cell starts a program (possibly a chapter as well) */
                 j += thissource->cells[k].ecellid - thissource->cells[k].scellid;
               } /*for*/
           } /*for*/
@@ -343,7 +343,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
         write2(buf + 232, d); /* offset to cell playback information table */
         j = -1;
         cellline = 1;
-        notseamless = 1;
+        notseamless = 1; /* first cell never seamless, otherwise a/v sync problems will occur */
         for (i = 0; i < thispgc->numsources; i++)
           { /* generate the cell playback information table */
             int k, l, m, firsttime;
@@ -351,7 +351,8 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
             for (k = 0; k < thissource->numcells; k++)
                 for (l = thissource->cells[k].scellid; l < thissource->cells[k].ecellid; l++)
                   {
-                    int id = thissource->vob->vobid * 256 + l, vi;
+                    const int id = thissource->vob->vobid * 256 + l;
+                    int vi;
                     for (m = 0; m < va->numaudiotracks; m++)
                         if
                           (
@@ -367,8 +368,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                         |
                             (j + 1 != id ? 2 /* SCR discontinuity */ : 0);
                               // if this is the first cell of the source, then set 'STC_discontinuity', otherwise set 'seamless presentation'
-                    notseamless = 0;
-                    // you can't set the seamless presentation on the first cell or else a/v sync problems will occur
+                    notseamless = 0; /* initial assumption for next cell */
                     j = id;
 
                     vi = findcellvobu(thissource->vob, l);
@@ -407,7 +407,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
             const struct source * const thissource = thispgc->sources[i];
             for (j = 0; j < thissource->numcells; j++)
                 for (k = thissource->cells[j].scellid; k < thissource->cells[j].ecellid; k++)
-                  {
+                  { /* put in IDs of all nonempty cells */
                     buf[1 + d] = thissource->vob->vobid; /* VOB ID low byte */
                     buf[3 + d] = k; /* cell ID */
                     d += 4;

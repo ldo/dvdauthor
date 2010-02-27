@@ -1024,6 +1024,7 @@ static void stream_start()
   } /*stream_start*/
 
 static void substream_id(const char *c)
+  /* saves the id attribute for the current <stream> tag. */
   {
     subpstreamid = strtounsigned(c, "subpicture stream id");
     if (subpstreamid < 0 || subpstreamid >= 32)
@@ -1034,8 +1035,9 @@ static void substream_id(const char *c)
   } /*substream_id*/
 
 static void substream_mode(const char *c)
+  /* saves the mode attribute for the current <stream> tag. */
   {
-    subpstreammode = strdup(c);
+    subpstreammode = strdup(c); /* won't leak, because I won't be called more than once */
   }
 
 static void stream_end()

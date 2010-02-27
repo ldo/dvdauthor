@@ -209,6 +209,9 @@ Here is the basic structure of the control file:
          [&lt;subpicture ... /&gt;]
          &lt;pgc [entry="title"] [palette="<replaceable>yuvfile|rgbfile</replaceable>"]
               [pause="<replaceable>seconds</replaceable>|inf"]&gt;
+            &lt;subpicture&gt;
+               [&lt;stream ... /&gt;]
+            &lt;/subpicture&gt;
             &lt;pre&gt; <replaceable>commands;</replaceable> &lt;/pre&gt;
             &lt;vob file="<replaceable>file.mpg</replaceable>" [chapters="<replaceable>chapter-list</replaceable>"]
                  [pause="<replaceable>seconds</replaceable>|inf"]&gt;
@@ -302,8 +305,8 @@ inputs and round up to the nearest size.
 [channels="<replaceable>numchannels</replaceable>"]
 [dolby="surround"] [quant="16bps|20bps|24bps|drc"] [samplerate="48khz|96khz"]
 [lang="<replaceable>language</replaceable>"] /&gt;</literal></term>
-<listitem><para>Manually configures an audio channel for this
-pgcgroup.  List once for each channel.  Most parameters are inferred
+<listitem><para>Manually configures an audio stream for this
+pgcgroup.  List once for each stream.  Most parameters are inferred
 automatically from the source VOBs except for PCM parameters.
 However, language must be manually specified.  Note that it is
 possible to just list the language attribute and let
@@ -311,14 +314,17 @@ possible to just list the language attribute and let
 </para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;subpicture
-lang="<replaceable>language</replaceable>" /&gt;</literal></term>
-<listitem><para>Manually configures a subpicture/subtitle for this pgcgroup.
-List once for each language.</para></listitem></varlistentry>
+[lang="<replaceable>language</replaceable>"] /&gt;</literal></term>
+<listitem><para>Manually configures a subpicture/subtitle for this pgcgroup or PGC.
+At the pgcgroup level, list once for each language. Occurrences at the PGC level
+don't have a <literal>lang</literal> attribute; they inherit that from the corresponding
+<literal>&lt;subpicture&gt;</literal> tag at the pgcgroup level.</para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;stream mode="normal|widescreen|letterbox|panscan"
 id="<replaceable>streamid</replaceable>" /&gt;</literal></term>
 <listitem><para>Specifies the ID of a stream that is the representation of this
-subpicture in a particular display mode.</para></listitem></varlistentry>
+subpicture in a particular display mode. This can be specified per-PGC, or
+pgcgroup-wide.</para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;pgc
 [entry="<replaceable>entries</replaceable>"]
@@ -327,8 +333,8 @@ subpicture in a particular display mode.</para></listitem></varlistentry>
 <listitem><para>A PGC is just a fancy term for either a menu or a
 title.  It has a special meaning in the DVD spec so I have retained
 its use here.  PGC's can have commands that get executed before they
-start playing or after they finish; see <literal>pre</literal> and
-<literal>post</literal> tags below.</para>
+start playing or after they finish; see <literal>&lt;pre&gt;</literal> and
+<literal>&lt;post&gt;</literal> tags below.</para>
 
 <para>If the PGC is a menu, you can specify one or more entries for
 it.  This means that if you press the corresponding button on your DVD
@@ -385,7 +391,13 @@ Specifies an input video file for a menu or title, with optional chapter points 
 
 <varlistentry><term><literal>&lt;cell [start="<replaceable>timestamp</replaceable>"] [end="<replaceable>timestamp</replaceable>"] [chapter="1|on|yes" | program="1|on|yes"] [pause="<replaceable>seconds</replaceable>|inf"]&gt; <replaceable>commands;</replaceable> &lt;/cell&gt;</literal></term>
 <listitem><para>
-An alternative way of specifying chapters in a title.
+A more detailed way of specifying marker points in a title. If present, then the containing
+<literal>&lt;vob&gt;</literal> must not have a <literal>chapters</literal> attribute.
+A cell can have a VM command attached to it, to be executed when it plays. If the
+<literal>program</literal> attribute is set, then this cell will be a point that
+the user can skip to using the prev/next buttons on their DVD player remote. If the
+<literal>chapter</literal> attribute is set (implies <literal>program</literal> is set
+as well), then this cell is also a chapter point.
 </para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;button [name="<replaceable>buttonname</replaceable>"]&gt; <replaceable>commands;</replaceable> &lt;/button&gt;</literal></term>
@@ -420,13 +432,13 @@ use and are referred to as <literal>g0</literal> through
 
 <para>There are also 24 system registers, which can be referred to as
 <literal>s0</literal> through <literal>s23</literal>.  Not all of
-these can be set.  Many of these have pseodonyms.</para>
+these can be set.  Many of these have mnemonic synonyms.</para>
 
 <glosslist>
 
 <glossentry><glossterm><literal>audio</literal>
 (<literal>s1</literal>, rw)</glossterm><glossdef><para>Denotes the
-audio channel, ranging from 0-7.</para></glossdef></glossentry>
+audio stream, ranging from 0-7.</para></glossdef></glossentry>
 
 <glossentry><glossterm><literal>subtitle</literal>
 (<literal>s2</literal>, rw)</glossterm><glossdef><para>The subtitle
@@ -495,7 +507,7 @@ are:</para>
 </para>
 
 <para>Since the code is encapsulated in XML, the parser will catch any
-unescaped &lt; characters, thus alphabetic mnemonics have been
+unescaped &lt; characters (i.e. not written as "&amp;lt;"), thus alphabetic mnemonics have been
 provided for all comparison operators for consistency.</para>
 
 <para>There is also a numerical function:</para>
