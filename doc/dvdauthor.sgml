@@ -574,7 +574,8 @@ by using the <literal>resume</literal> keyword, however if you do not
 specify one and you use the command in a post instruction block, then
 it will presume cell 1.</para>
 
-<para>The following are possible targets:</para>
+<para>The following are possible targets (note that menus do not have
+chapters):</para>
 <variablelist>
 
 <varlistentry>
@@ -584,7 +585,7 @@ it will presume cell 1.</para>
 <listitem><para>Targets either the default menu, a menu number Y, or the menu denoted as the entry for Z.  The menu is in either the VMGM or titleset domain.  If you wish to target a menu in the current domain then you can omit the domain moniker.</para></listitem></varlistentry>
 
 <varlistentry>
-<term><literal>[vmgm | titleset <replaceable>X</replaceable>] title <replaceable>Y</replaceable> [chapter <replaceable>Z</replaceable>]</literal></term>
+<term><literal>[titleset <replaceable>X</replaceable>] title <replaceable>Y</replaceable> [chapter <replaceable>Z</replaceable>]</literal></term>
 <listitem><para>Targets a title, or a chapter in a title.  Numbering
 starts at 1.  All of the titles on the disc are accessible in the VMGM
 domain, or you can access them by titleset
@@ -592,11 +593,14 @@ instead.</para></listitem></varlistentry>
 
 <varlistentry>
 <term><literal>chapter <replaceable>Z</replaceable></literal></term>
+
+<listitem><para>Targets a chapter in the current title.</para></listitem></varlistentry>
+
+<varlistentry>
 <term><literal>program <replaceable>Z</replaceable></literal></term>
 <term><literal>cell <replaceable>Z</replaceable></literal></term>
 
-<listitem><para>Targets a chapter, program, or cell in the current
-title or menu (note that menus do not have chapters).  You can use
+<listitem><para>Targets a program or cell in the current PGC.  You can use
 this to create looping menus: <literal>jump cell
 1;</literal></para></listitem></varlistentry>
 

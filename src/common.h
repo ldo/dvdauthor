@@ -78,7 +78,8 @@ typedef enum /* attributes of cell */
     multiple interleaved angles, each angle goes in its own cell(s), but they must be within
     the same program.
     A program can also be marked as a "chapter" (aka "Part Of Title", "PTT"), which means it
-    can be directly referenced via an entry in the VTS_PTT_SRPT table.
+    can be directly referenced via an entry in the VTS_PTT_SRPT table, which allows it
+    to be linked from outside the current PGC.
     And finally, one or more programs are grouped into a "program chain" (PGC). This can
     have a VM command sequence to be executed at the start of the PGC, and another sequence
     to be executed at the end. It also specifies the actual audio and subpicture stream IDs
