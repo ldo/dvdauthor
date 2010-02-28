@@ -318,7 +318,7 @@ static void transpose_ts(unsigned char *buf, pts_t tsoffs)
         &&
             buf[3] == MPID_PACK
       )
-    {
+      {
         const int sysoffs =
             buf[14] == 0 && buf[15] == 0 && buf[16] == 1 && buf[17] == MPID_SYSTEM ?
               /* skip system header if present */
@@ -1343,11 +1343,11 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
             if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == MPID_PACK)
               {
                 const pts_t newscr = readscr(buf + 4);
-                if (newscr == 0 && lastscr > 0)
+                if (hadfirstvobu && newscr == 0 && lastscr > 0)
                   /* suggestion from Philippe Sarazin -- alternatively, Shaun Jackman suggests
                     simply treating newscr < lastscr as a warning and continuing */
                   {
-                    backoffs -= lastscr;
+                    backoffs -= lastscr; /* adjust to remove SCR discontinuity */
                     fprintf(stderr, "\nWARN: SCR reset. New back offset = %" PRId64"\n", backoffs);
                   }
                 else if (newscr < lastscr)
@@ -1363,7 +1363,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                   } /*if*/
                 lastscr = newscr;
                 if (!hadfirstvobu)
-                    backoffs = newscr;
+                    backoffs = newscr; /* start SCR from 0 */
               } /*if*/
             transpose_ts(buf, -backoffs);
             if (fsect == -1)
