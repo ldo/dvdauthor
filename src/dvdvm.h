@@ -11,7 +11,7 @@ typedef void *dvdvm_buffer_state;
 
 extern int allowallreg;
 
-extern void dvdvmerror(char *s);
+extern void dvdvmerror(const char *s);
 extern int dvdvmlex(void);
 extern dvdvm_buffer_state dvdvm_scan_string(const char *s);
 extern void dvdvm_delete_buffer(dvdvm_buffer_state b);

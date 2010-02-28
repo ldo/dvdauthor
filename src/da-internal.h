@@ -249,8 +249,19 @@ int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int a
 
 /* following implemented in dvdcompile.c */
 
-unsigned char *vm_compile(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,vtypes ismenu);
-void vm_optimize(unsigned char *obuf,unsigned char *buf,unsigned char **end);
+unsigned char *vm_compile
+  (
+    const unsigned char *obuf, /* start of buffer for computing instruction numbers for branches */
+    unsigned char *buf, /* where to insert new compiled code */
+    const struct workset *ws,
+    const struct pgcgroup *curgroup,
+    const struct pgc *curpgc,
+    const struct vm_statement *cs,
+    vtypes ismenu
+  );
+  /* compiles the parse tree cs into actual VM instructions. */
+void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **end);
+  /* does various peephole optimizations on the part of obuf from buf to *end. */
 struct vm_statement *vm_parse(const char *b);
 
 /* following implemented in dvdifo.c */

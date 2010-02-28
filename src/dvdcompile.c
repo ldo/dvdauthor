@@ -46,246 +46,346 @@ static struct dvdlabel gotos[MAXGOTOS];
 static int numlabels=0, numgotos=0;
 
 static int negatecompare(int compareop)
-{
-    return compareop^1^((compareop&4)>>1);
-}
+  /* returns the comparison with the opposite result. Assumes the op isn't BC ("&"). */
+  {
+    return compareop ^ 1 ^ ((compareop & 4) >> 1);
+  } /*negatecompare*/
 
 static int swapcompare(int compareop)
-{
-    if( compareop < 4 )
+  /* returns the equivalent comparison with the operands swapped. */
+  {
+    if (compareop < 4) /* BC, EQ, NE unchanged */
         return compareop;
     else
-        return compareop^3;
-}
+        return compareop ^ 3; /* GE <=> LT, GT <=> LE */
+  } /*swapcompare*/
 
-static int compile_usesreg(struct vm_statement *cs,int target)
-{
-    while(cs) {
-        if( cs->op==VM_VAL )
-            return cs->i1==target-256;
-        if( compile_usesreg(cs->param,target ))
+static int compile_usesreg(const struct vm_statement *cs, int target)
+  /* does cs reference the specified register. */
+  {
+    while (cs)
+      {
+        if (cs->op == VM_VAL)
+            return cs->i1 == target - 256;
+        if (compile_usesreg(cs->param, target))
             return 1;
-        cs=cs->next;
-    }
+        cs = cs->next;
+      } /*while*/
     return 0;
-}
+  } /*compile_usesreg*/
 
 static int nexttarget(int t)
-{
-    if( !allowallreg ) {
-        if( t<13 )
+  /* returns the next register in the range I have reserved. Will fail
+    if it's all used, or if I haven't got a reserved range. */
+  {
+    if (!allowallreg)
+      {
+        if (t < 13)
             return 13;
         t++;
-        if( t<16 )
+        if (t < 16)
             return t;
-    }
+      } /*if*/
     fprintf(stderr,"ERR:  Expression is too complicated, ran out of registers\n");
     exit(1);
-}
+  } /*nexttarget*/
 
 // like nexttarget, but takes a VM_VAL argument
 static int nextval(int t)
-{
-    if( t<-128 )
-        return nexttarget(t+256)-256;
+  {
+    if (t < -128)
+        return nexttarget(t + 256) - 256;
     else
-        return nexttarget(-1)-256;
-}
+        return nexttarget(-1) - 256;
+  } /*nextval*/
 
-static unsigned char *compileop(unsigned char *buf,int target,int op,int val)
-{
-    if( op==VM_VAL && target==val+256 ) return buf;
-    write8(buf,val>=0?0x70:0x60,0x00,0x00,target, val>=0?(val>>8):0x00,val,0x00,0x00);
-    switch(op) {
-    case VM_VAL: buf[0]|=1; break;
-    case VM_ADD: buf[0]|=3; break;
-    case VM_SUB: buf[0]|=4; break;
-    case VM_MUL: buf[0]|=5; break;
-    case VM_DIV: buf[0]|=6; break;
-    case VM_MOD: buf[0]|=7; break;
-    case VM_RND: buf[0]|=8; break;
-    case VM_AND: buf[0]|=9; break;
-    case VM_OR:  buf[0]|=10; break;
-    case VM_XOR: buf[0]|=11; break;
-    default: fprintf(stderr,"ERR:  Unknown op in compileop: %d\n",op); exit(1);
-    }
-    return buf+8;
-}
+static unsigned char *compileop(unsigned char *buf, int target, int op, int val)
+  /* compiles a command to set the target to the specified value. */
+  {
+    if (op == VM_VAL && target == val + 256)
+        return buf; /* setting register to its same value => noop */
+    write8(buf, val >= 0 ? 0x70 : 0x60, 0x00, 0x00, target, val >= 0 ? (val >> 8) : 0x00, val, 0x00, 0x00);
+    switch(op)
+      {
+    case VM_VAL:
+        buf[0] |= 1;
+    break;
+    case VM_ADD:
+        buf[0] |= 3;
+    break;
+    case VM_SUB:
+        buf[0] |= 4;
+    break;
+    case VM_MUL:
+        buf[0] |= 5;
+    break;
+    case VM_DIV:
+        buf[0] |= 6;
+    break;
+    case VM_MOD:
+        buf[0] |= 7;
+    break;
+    case VM_RND:
+        buf[0] |= 8;
+    break;
+    case VM_AND:
+        buf[0] |= 9;
+    break;
+    case VM_OR:
+        buf[0] |= 10;
+    break;
+    case VM_XOR:
+        buf[0] |= 11;
+    break;
+    default:
+        fprintf(stderr, "ERR:  Unknown op in compileop: %d\n", op);
+        exit(1);
+      } /*switch*/
+    return buf + 8;
+  } /*compileop*/
 
-static int issprmval(struct vm_statement *v)
-{
-    return v->op==VM_VAL && v->i1>=-128 && v->i1<0;
-}
+static int issprmval(const struct vm_statement *v)
+  /* is v a reference to an SPRM value. */
+  {
+    return v->op == VM_VAL && v->i1 >= -128 && v->i1 < 0;
+  } /*issprmval*/
 
-static unsigned char *compileexpr(unsigned char *buf,int target,struct vm_statement *cs)
-{
-    struct vm_statement *v,**vp;
-    int isassoc,canusesprm;
-    
-    if( cs->op==VM_VAL )
-        return compileop(buf,target,VM_VAL,cs->i1);
+static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_statement *cs)
+  {
+    struct vm_statement *v, **vp;
+    int isassoc, canusesprm;
+    if (cs->op == VM_VAL) /* simple value reference */
+        return compileop(buf, target, VM_VAL, cs->i1);
 
-    isassoc=( cs->op==VM_ADD || cs->op==VM_MUL || cs->op==VM_AND || cs->op==VM_OR || cs->op==VM_XOR );
-    canusesprm=( cs->op==VM_AND || cs->op==VM_OR || cs->op==VM_XOR );
+    isassoc =
+            cs->op == VM_ADD
+        ||
+            cs->op == VM_MUL
+        ||
+            cs->op == VM_AND
+        ||
+            cs->op == VM_OR
+        ||
+            cs->op == VM_XOR;
+    canusesprm = cs->op == VM_AND || cs->op == VM_OR || cs->op == VM_XOR;
 
     // if the target is an operator, move it to the front
-    if( isassoc ) {
-        for( vp=&cs->param->next; *vp; vp=&(vp[0]->next) )
-            if( vp[0]->op==VM_VAL && vp[0]->i1==target-256 ) {
-                v=*vp;
-                *vp=v->next;
-                v->next=cs->param;
-                cs->param=v;
+    if (isassoc)
+      {
+        for (vp = &cs->param->next; *vp; vp = &(vp[0]->next))
+            if (vp[0]->op == VM_VAL && vp[0]->i1 == target - 256)
+              {
+                v = *vp;
+                *vp = v->next;
+                v->next = cs->param;
+                cs->param = v;
                 break;
-            }
-    }
+              } /*if*/
+      } /*if*/
 
-    if( compile_usesreg(cs->param->next,target) ) {
-        int t2=nexttarget(target);
-        buf=compileexpr(buf,t2,cs);
-        write8(buf,0x61,0x00,0x00,target,0x00,t2,0x00,0x00);
-        buf+=8;
-        if( t2==15 ) {
-            write8(buf,0x71,0x00,0x00,0x0f,0x00,0x00,0x00,0x00);
-            buf+=8;
-        }
+    if (compile_usesreg(cs->param->next, target))
+      {
+      /* cannot evaluate cs->param directly into target, because target is used
+        in evaluation */
+        const int t2 = nexttarget(target); /* need another register */
+        buf = compileexpr(buf, t2, cs); /* evaluate expr into t2 */
+        write8(buf, 0x61, 0x00, 0x00, target, 0x00, t2, 0x00, 0x00);
+          /* and then move value of t2 to target */
+        buf += 8;
+        if (t2 == 15)
+          /* just zapped a reserved register whose value might be misinterpreted elsewhere */
+          {
+            write8(buf, 0x71, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x00, 0x00);
+              /* g15 = 0 */
+            buf += 8;
+          } /*if*/
         return buf;
-    }
+      } /*if*/
         
-    if( isassoc && cs->param->op==VM_VAL && cs->param->i1!=target-256 ) {
+    if (isassoc && cs->param->op == VM_VAL && cs->param->i1 != target - 256)
+      {
         // if the first param is a value, then try to move a complex operation farther up or an SPRM access (if SPRM ops are not allowed)
-        for( vp=&cs->param->next; *vp; vp=&(vp[0]->next) )
-            if( vp[0]->op!=VM_VAL || issprmval(vp[0]) ) {
-                v=*vp;
-                *vp=v->next;
-                v->next=cs->param;
-                cs->param=v;
+        for (vp = &cs->param->next; *vp; vp = &(vp[0]->next))
+            if (vp[0]->op != VM_VAL || issprmval(vp[0]))
+              {
+                v = *vp;
+                *vp = v->next;
+                v->next = cs->param;
+                cs->param = v;
                 break;
-            }
-    }
+              } /*if*/
+      } /*if*/
 
     // special case -- rnd where the parameter is a reg or value
-    if( cs->op == VM_RND && cs->param->op == VM_VAL ) {
-        assert(cs->param->next==0);
-        return compileop(buf,target,cs->op,cs->param->i1);
-    }
+    if (cs->op == VM_RND && cs->param->op == VM_VAL)
+      {
+        assert(cs->param->next == 0);
+        return compileop(buf, target, cs->op, cs->param->i1);
+      } /*if*/
 
-    buf=compileexpr(buf,target,cs->param);
-    if( cs->op == VM_RND ) {
-        assert(cs->param->next==0);
-        return compileop(buf,target,cs->op,target-256);
-    } else {
-        for( v=cs->param->next; v; v=v->next ) {
-            if( v->op==VM_VAL && !issprmval(v))
-                buf=compileop(buf,target,cs->op,v->i1);
-            else {
-                int t2=nexttarget(target);
-                buf=compileexpr(buf,t2,v);
-                buf=compileop(buf,target,cs->op,t2-256);
-                if( t2==15 ) {
-                    write8(buf,0x71,0x00,0x00,0x0f,0x00,0x00,0x00,0x00);
-                    buf+=8;
-                }
-            }
-        }
-    }
+    buf = compileexpr(buf, target, cs->param);
+    if (cs->op == VM_RND)
+      {
+        assert(cs->param->next == 0);
+        return compileop(buf, target, cs->op, target - 256);
+      }
+    else
+      {
+        for (v = cs->param->next; v; v = v->next)
+          {
+            if (v->op == VM_VAL && !issprmval(v))
+                buf = compileop(buf, target, cs->op, v->i1);
+            else
+              {
+                const int t2 = nexttarget(target);
+                buf = compileexpr(buf, t2, v);
+                buf = compileop(buf, target, cs->op, t2 - 256);
+                if (t2 == 15)
+                  {
+                  /* just zapped a reserved register whose value might be misinterpreted elsewhere */
+                    write8(buf, 0x71, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x00, 0x00);
+                      /* g15 = 0 */
+                    buf += 8;
+                  } /*if*/
+              } /*if*/
+          } /*for*/
+      } /*if*/
     return buf;
-}
+  } /*compileexpr*/
 
-static unsigned char *compilebool(unsigned char *obuf,unsigned char *buf,struct vm_statement *cs,unsigned char *iftrue,unsigned char *iffalse)
-{
-    switch( cs->op ) {
+static unsigned char *compilebool
+  (
+    const unsigned char *obuf, /* start of buffer, for calculating instruction numbers */
+    unsigned char *buf, /* where to insert compiled instructions */
+    struct vm_statement *cs, /* expression to compile */
+    const unsigned char *iftrue, /* branch target for true */
+    const unsigned char *iffalse /* branch target for false */
+ )
+  /* compiles an expression that returns a true/false result. */
+  {
+    switch (cs->op)
+      {
     case VM_EQ:
     case VM_NE:
     case VM_GTE:
     case VM_GT:
     case VM_LTE:
     case VM_LT:
-    {
-        int r1,r2,op;
-
-        op=cs->op-VM_EQ+2;
-        if( cs->param->op==VM_VAL )
-            r1=cs->param->i1;
-        else {
-            r1=nextval(0);
-            buf=compileexpr(buf,r1&15,cs->param);
-        }
-        if( cs->param->next->op==VM_VAL && (r1<0 || cs->param->next->i1<0) )
-            r2=cs->param->next->i1;
-        else {
-            r2=nextval(r1);
-            buf=compileexpr(buf,r2&15,cs->param->next);
-        }
-        if( r1>=0 ) {
-            int t;
-            t=r1;
-            r1=r2;
-            r2=t;
-            op=swapcompare(op);
-        }
-        if( iffalse > iftrue ) {
-            unsigned char *t;
-            t=iftrue;
-            iftrue=iffalse;
-            iffalse=t;
-            op=negatecompare(op);
-        }
-        if( r2>=0 )
-            write8(buf,0x00,0x81|(op<<4),0x00,r1,r2>>8,r2,0x00,0x00);
+      {
+        int r1, r2, op;
+        op = cs->op - VM_EQ + 2;
+        if (cs->param->op == VM_VAL)
+            r1 = cs->param->i1;
         else
-            write8(buf,0x00,0x01|(op<<4),0x00,r1,0x00,r2,0x00,0x00);
-        buf[7]=(iftrue-obuf)/8+1;
-        buf+=8;
-        if( iffalse>buf ) {
-            write8(buf,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00);
-            buf[7]=(iffalse-obuf)/8+1;
-            buf+=8;
-        }
-        break;
-    }
+          {
+            r1 = nextval(0);
+            buf = compileexpr(buf, r1 & 15, cs->param);
+          } /*if*/
+      /* at this point, r1 is literal/register containing first operand */
+        if (cs->param->next->op == VM_VAL && (r1 < 0 || cs->param->next->i1 < 0))
+            r2 = cs->param->next->i1;
+        else
+          {
+            r2 = nextval(r1);
+            buf = compileexpr(buf, r2 & 15, cs->param->next);
+          } /*if*/
+      /* at this point, r2 is literal/register containing second operand */
+        if (r1 >= 0)
+          {
+          /* literal value--move to r2 */
+            const int t = r1;
+            r1 = r2;
+            r2 = t;
+            op = swapcompare(op);
+          } /*if*/
+        if (iffalse > iftrue)
+          {
+          /* make false branch the one earlier in buffer, in the hope I can fall through to it */
+          /* really only worth doing this if iffalse - buf == 8 */
+            const unsigned char * const t = iftrue;
+            iftrue = iffalse;
+            iffalse = t;
+            op = negatecompare(op);
+          } /*if*/
+        if (r2 >= 0)
+            write8(buf, 0x00, 0x81 | (op << 4), 0x00, r1, r2 >> 8, r2,0x00, 0x00);
+        else /* r1 and r2 both registers */
+            write8(buf, 0x00, 0x01 | (op << 4), 0x00, r1, 0x00, r2, 0x00, 0x00);
+        buf[7] = (iftrue - obuf) / 8 + 1; /* branch target instr nr */
+        buf += 8;
+        if (iffalse > buf)
+          {
+          /* can't fallthrough for false branch */
+            write8(buf, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+              /* unconditional goto */
+            buf[7] = (iffalse - obuf) / 8 + 1; /* branch target */
+            buf += 8;
+          } /*if*/
+      } /*case*/
+    break;
 
     case VM_LOR:
     case VM_LAND:
-    {
-        int op=cs->op;
-
-        cs=cs->param;
-        while(cs->next) {
-            unsigned char *n=buf+8;
-            while(1) {
-                unsigned char *nn=compilebool(obuf,buf,cs,op==VM_LAND?n:iftrue,op==VM_LOR?n:iffalse);
-                if( nn==n )
+      {
+        const int op = cs->op;
+        cs = cs->param;
+        while (cs->next)
+          {
+            unsigned char * n = buf + 8;
+            while (1)
+              {
+                unsigned char * const nn = compilebool
+                  (
+                    /*obuf =*/ obuf,
+                    /*buf =*/ buf,
+                    /*cs =*/ cs,
+                    /*iftrue =*/ op == VM_LAND ? n : iftrue,
+                    /*iffalse =*/ op == VM_LOR ? n : iffalse
+                  );
+                if (nn == n)
                     break;
-                n=nn;
-            }
-            buf=n;
-            cs=cs->next;
-        }
-        buf=compilebool(obuf,buf,cs,iftrue,iffalse);
-        break;
-    }
+                n = nn;
+              } /*while*/
+            buf = n;
+            cs = cs->next;
+          } /*while*/
+        buf = compilebool(obuf, buf, cs, iftrue, iffalse);
+      }
+    break;
 
     case VM_NOT:
-        return compilebool(obuf,buf,cs->param,iffalse,iftrue);
+        return compilebool(obuf, buf, cs->param, iffalse, iftrue);
+          /* re-enter myself with the operands swapped */
 
     default:
-        fprintf(stderr,"ERR:  Unknown bool op: %d\n",cs->op);
+        fprintf(stderr, "ERR:  Unknown bool op: %d\n", cs->op);
         exit(1);
-    }
+      } /*switch*/
     return buf;
-}
+  } /*compilebool*/
 
 // NOTE: curgroup is passed separately from curpgc, because in FPC, curpgc==NULL, but curgroup!=NULL
-static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,vtypes ismenu)
-{
-    int lastif=0;
-
-    while(cs) {
-        lastif=0;
-        switch(cs->op) {
+static unsigned char *compilecs
+  (
+    const unsigned char *obuf,
+    unsigned char *buf,
+    const struct workset *ws,
+    const struct pgcgroup *curgroup,
+    const struct pgc *curpgc,
+    const struct vm_statement *cs,
+    vtypes ismenu /* needed to decide what kinds of jumps/calls are allowed */
+  )
+  {
+    int lastif = 0;
+    while (cs)
+      {
+        if (cs->op != VM_NOP)
+            lastif = 0; /* no need for dummy target for last branch, I'll be providing a real one */
+        switch (cs->op)
+          {
         case VM_SET:
-            switch( cs->i1 ) {
+            switch (cs->i1)
+              {
             case 0:
             case 1:
             case 2:
@@ -302,155 +402,178 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
             case 13:
             case 14:
             case 15: // set GPRM
-                buf=compileexpr(buf,cs->i1,cs->param);
-                break;
+                buf = compileexpr(buf, cs->i1, cs->param);
+            break;
 
-            case 32+0:
-            case 32+1:
-            case 32+2:
-            case 32+3:
-            case 32+4:
-            case 32+5:
-            case 32+6:
-            case 32+7:
-            case 32+8:
-            case 32+9:
-            case 32+10:
-            case 32+11:
-            case 32+12:
-            case 32+13:
-            case 32+14:
-            case 32+15: // set GPRM
-                if( cs->param->op==VM_VAL ) { // we can set counters to system registers
-                    int v=cs->param->i1;
-                    if( v<0 )
-                        write8(buf,0x43,0x00,0x00,v,0x00,0x80|(cs->i1-32),0x00,0x00);
+            case 32 + 0:
+            case 32 + 1:
+            case 32 + 2:
+            case 32 + 3:
+            case 32 + 4:
+            case 32 + 5:
+            case 32 + 6:
+            case 32 + 7:
+            case 32 + 8:
+            case 32 + 9:
+            case 32 + 10:
+            case 32 + 11:
+            case 32 + 12:
+            case 32 + 13:
+            case 32 + 14:
+            case 32 + 15: // set GPRM
+                if (cs->param->op == VM_VAL)
+                  { // we can set counters to system registers
+                    const int v = cs->param->i1;
+                    if (v < 0)
+                        write8(buf, 0x43, 0x00, 0x00, v,0x00, 0x80 | (cs->i1 - 32), 0x00, 0x00);
                     else
-                        write8(buf,0x53,0x00,v/256,v,0x00,0x80|(cs->i1-32),0x00,0x00);
-                    buf+=8;
-                } else {
-                    int r=nexttarget(0);
-                    buf=compileexpr(buf,r,cs->param);
-                    write8(buf,0x43,0x00,0x00,r,0x00,0x80|(cs->i1-32),0x00,0x00);
-                    buf+=8;
-                }
-                break;
+                        write8(buf, 0x53, 0x00, v / 256, v, 0x00, 0x80 | (cs->i1 - 32), 0x00, 0x00);
+                    buf += 8;
+                  }
+                else
+                  {
+                    const int r = nexttarget(0);
+                    buf = compileexpr(buf, r, cs->param);
+                    write8(buf, 0x43, 0x00, 0x00, r, 0x00, 0x80 | (cs->i1 - 32), 0x00, 0x00);
+                    buf += 8;
+                  } /*if*/
+            break;
 
-            case 128+1: // audio
-            case 128+2: // subtitle
-            case 128+3: // angle
-                if( cs->param->op==VM_VAL && !( cs->param->i1>=-128 && cs->param->i1<0 )) {
-                    int v=cs->param->i1;
-                    write8(buf,v<0?0x41:0x51,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
-                    buf[(cs->i1-128)+2]=128|v; // doesn't matter whether this is a register or a value
-                    buf+=8;
-                } else {
-                    int r=nexttarget(0);
-                    buf=compileexpr(buf,r,cs->param);
-                    write8(buf,0x41,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
-                    buf[(cs->i1-128)+2]=128|r;
-                    buf+=8;
-                }
-                break;
+            case 128 + 1: // audio
+            case 128 + 2: // subtitle
+            case 128 + 3: // angle
+                if (cs->param->op == VM_VAL && !(cs->param->i1 >= -128 && cs->param->i1 < 0))
+                  {
+                    const int v = cs->param->i1;
+                    write8(buf, v < 0 ? 0x41 : 0x51, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+                    buf[(cs->i1 - 128) + 2] = 128 | v; // doesn't matter whether this is a register or a value
+                    buf += 8;
+                  }
+                else
+                  {
+                    const int r = nexttarget(0);
+                    buf = compileexpr(buf, r, cs->param);
+                    write8(buf, 0x41, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+                    buf[(cs->i1 - 128) + 2] = 128 | r;
+                    buf += 8;
+                  } /*if*/
+            break;
                 
-            case 128+8: // button
-                if( cs->param->op==VM_VAL && !( cs->param->i1>=-128 && cs->param->i1<0 )) {
-                    int v=cs->param->i1;
-                    if( v>0 && (v&1023)!=0 )
-                        fprintf(stderr,"WARN: Button value is %d, but it should be a multiple of 1024\nWARN: (button #1=1024, #2=2048, etc)\n",v);
-                    if( v<0 )
-                        write8(buf,0x46,0x00,0x00,0x00,0x00,v,0x00,0x00);
+            case 128 + 8: // button
+                if (cs->param->op == VM_VAL && !(cs->param->i1 >= -128 && cs->param->i1 < 0))
+                  {
+                    const int v = cs->param->i1;
+                    if (v > 0 && (v & 1023) != 0)
+                        fprintf
+                          (
+                            stderr,
+                            "WARN: Button value is %d, but it should be a multiple of 1024\n"
+                              "WARN: (button #1=1024, #2=2048, etc)\n",
+                            v
+                          );
+                    if (v < 0)
+                        write8(buf, 0x46, 0x00, 0x00, 0x00, 0x00, v, 0x00, 0x00);
                     else
-                        write8(buf,0x56,0x00,0x00,0x00,v/256,v,0x00,0x00);
-                    buf+=8;
-                } else {
-                    int r=nexttarget(0);
-                    buf=compileexpr(buf,r,cs->param);
-                    write8(buf,0x46,0x00,0x00,0x00,0x00,r,0x00,0x00);
-                    buf+=8;
-                }
+                        write8(buf, 0x56, 0x00, 0x00, 0x00, v / 256, v, 0x00, 0x00);
+                    buf += 8;
+                  }
+                else
+                  {
+                    const int r = nexttarget(0);
+                    buf = compileexpr(buf, r, cs->param);
+                    write8(buf, 0x46, 0x00, 0x00, 0x00, 0x00, r, 0x00, 0x00);
+                    buf += 8;
+                  } /*if*/
                 break;
                 
             default:
-                fprintf(stderr,"ERR:  Cannot set SPRM %d\n",cs->i1-128);
+                fprintf(stderr, "ERR:  Cannot set SPRM %d\n",cs->i1 - 128);
                 return 0;
-            }
+              } /*switch*/
             break;
 
-        case VM_IF: {
-            unsigned char *iftrue=buf+8,*iffalse=buf+16,*end=buf+16;
-            while(1) {
+        case VM_IF:
+          {
+            unsigned char * iftrue = buf + 8;
+            const unsigned char * iffalse = buf + 16;
+            unsigned char * end = buf + 16;
+            while(1)
+              {
                 unsigned char *lp,*ib,*e;
-
-                lp=compilecs(obuf,iftrue,ws,curgroup,curpgc,cs->param->next->param,ismenu);
-                if( cs->param->next->next ) {
-                    e=compilecs(obuf,lp+8,ws,curgroup,curpgc,cs->param->next->next,ismenu);
-                    write8(lp,0x00,0x01,0x00,0x00,0x00,0x00,0x00,(e-obuf)/8+1);
-                    lp+=8;
-                } else
-                    e=lp;
-                ib=compilebool(obuf,buf,cs->param,iftrue,iffalse);
-                if( !lp ) return 0;
-                if( ib==iftrue && lp==iffalse )
+                lp = compilecs(obuf, iftrue, ws, curgroup, curpgc, cs->param->next->param, ismenu);
+                if (cs->param->next->next)
+                  {
+                    e = compilecs(obuf, lp + 8, ws, curgroup, curpgc, cs->param->next->next, ismenu);
+                    write8(lp, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, (e - obuf ) / 8 + 1);
+                    lp += 8;
+                  }
+                else
+                    e = lp;
+                ib = compilebool(obuf, buf, cs->param, iftrue, iffalse);
+                if (!lp)
+                    return 0;
+                if (ib == iftrue && lp == iffalse)
                     break;
-                iftrue=ib;
-                iffalse=lp;
-                end=e;
-            }
-            buf=end;
-            lastif=1; // make sure reference statement is generated
-            break;
-        }
+                iftrue = ib;
+                iffalse = lp;
+                end = e;
+              } /*while*/
+            buf = end;
+            lastif = 1; // make sure reference statement is generated
+          }
+        break;
 
         case VM_LABEL:
-        {
+          {
             int i;
-
-            for( i=0; i<numlabels; i++ )
-                if( !strcasecmp(labels[i].lname,cs->s1) ) {
-                    fprintf(stderr,"ERR:  Duplicate label '%s'\n",cs->s1);
+            for (i = 0; i < numlabels; i++)
+                if (!strcasecmp(labels[i].lname, cs->s1))
+                  {
+                    fprintf(stderr, "ERR:  Duplicate label '%s'\n", cs->s1);
                     return 0;
-                }
-            if( numlabels == MAXLABELS ) {
-                fprintf(stderr,"ERR:  Too many labels\n");
+                  } /*if; for*/
+            if (numlabels == MAXLABELS)
+              {
+                fprintf(stderr, "ERR:  Too many labels\n");
                 return 0;
-            }
-            labels[numlabels].lname=cs->s1;
-            labels[numlabels].code=buf;
+              } /*if*/
+            labels[numlabels].lname = cs->s1;
+            labels[numlabels].code = buf; /* where label points to */
             numlabels++;
-            lastif=1; // make sure reference statement is generated
-            break;
-        }
+            lastif = 1; // make sure reference statement is generated
+          }
+        break;
             
         case VM_GOTO:
-            if( numgotos == MAXGOTOS ) {
-                fprintf(stderr,"ERR:  Too many gotos\n");
+            if (numgotos == MAXGOTOS)
+              {
+                fprintf(stderr, "ERR:  Too many gotos\n");
                 return 0;
-            }
-            gotos[numgotos].lname=cs->s1;
-            gotos[numgotos].code=buf;
+              } /*if*/
+            gotos[numgotos].lname = cs->s1;
+            gotos[numgotos].code = buf; /* point to instruction so it can be fixed up later */
             numgotos++;
-            write8(buf,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00);
-            buf+=8;
-            break;
+            write8(buf, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+            buf += 8;
+        break;
             
         case VM_BREAK:
-            write8(buf,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00);
-            buf+=8;
-            break;
+            write8(buf, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+            buf += 8;
+        break;
 
         case VM_EXIT:
-            write8(buf,0x30,0x01,0x00,0x00,0x00,0x00,0x00,0x00);
-            buf+=8;
-            break;
+            write8(buf, 0x30, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+            buf += 8;
+        break;
 
         case VM_RESUME:
-            write8(buf,0x20,0x01,0x00,0x00,0x00,0x00,0x00,0x10);
-            buf+=8;
-            break;
+            write8(buf, 0x20, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10);
+            buf += 8;
+        break;
 
         case VM_JUMP:
-        {
+          {
             int i1=cs->i1;
             int i2=cs->i2;
 
@@ -520,8 +643,6 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 fprintf(stderr,"ERR:  VMGM must be specified with FPC\n");
                 return 0;
             }
-
-
 
             // *** ACTUAL COMPILING
             if( i1>=2 && i2>=120 && i2<128 ) {
@@ -647,8 +768,8 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 write8(buf,0x30,ismenu==VTYPE_VMGM?0x02:(cs->i3?0x05:0x03),0x00,cs->i3,0x00,i2-128,0x00,0x00);
                 buf+=8;
             }
-            break;
-        }
+          }
+        break;
 
         case VM_CALL:
         {
@@ -742,8 +863,6 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
                 return 0;
             }
 
-
-
             if( cs->i1>=2 ) {
                 //  VTS TS  MPGC    NOCH
                 //  VTS TS  MEPGC   NOCH
@@ -798,96 +917,111 @@ static unsigned char *compilecs(unsigned char *obuf,unsigned char *buf,const str
         }
 
         case VM_NOP:
-            break;
+          /* nothing to do */
+        break;
 
         default:
             fprintf(stderr,"ERR:  Unsupported VM opcode %d\n",cs->op);
             return 0;
-        }
-        cs=cs->next;
-    }
-    if( lastif ) {
-        write8(buf,0,0,0,0,0,0,0,0);
-        buf+=8;
-    }
+          } /*switch*/
+        cs = cs->next;
+      } /*while*/
+    if (lastif)
+      {
+      /* need target for last branch */
+        write8(buf, 0, 0, 0, 0, 0, 0, 0, 0); /* NOP */
+        buf += 8;
+      } /*if*/
     return buf;
-}
+  } /*compilecs*/
 
-static unsigned int extractif(unsigned char *b)
-{
-    switch(b[0]>>4) {
+static unsigned int extractif(const unsigned char *b)
+  {
+    switch (b[0] >> 4)
+      {
     case 0:
     case 1:
     case 2:
-        return ((b[1]>>4)<<24)|
-            (b[3]<<16)|
-            (b[4]<<8)|
-            b[5];
+        return
+                (b[1] >> 4) << 24
+            |
+                b[3] << 16
+            |
+                b[4] << 8
+            |
+                b[5];
 
     default:
-        fprintf(stderr,"ERR:  Unhandled extractif scenario (%x), file bug\n",b[0]);
+        fprintf(stderr, "ERR:  Unhandled extractif scenario (%x), file bug\n", b[0]);
         exit(1);
-    }
-}
+      } /*switch*/
+  } /*extractif*/
 
 static unsigned int negateif(unsigned int ifs)
-{
-    return (ifs&0x8ffffff)|(negatecompare((ifs>>24)&7)<<24);
-}
+  {
+    return
+            ifs & 0x8ffffff
+        |
+            negatecompare((ifs >> 24) & 7) << 24;
+  } /*negateif*/
 
 static void applyif(unsigned char *b,unsigned int ifs)
-{
-    switch(b[0]>>4) {
+  {
+    switch (b[0] >> 4)
+      {
     case 0:
     case 1:
     case 2:
-        b[5]=ifs;
-        b[4]=ifs>>8;
-        b[3]=ifs>>16;
-        b[1]|=(ifs>>24)<<4;
-        break;
+        b[5] = ifs;
+        b[4] = ifs >> 8;
+        b[3] = ifs >> 16;
+        b[1] |= (ifs >> 24) << 4;
+    break;
 
     case 3:
     case 4:
     case 5:
-        b[7]=ifs;
-        b[6]=ifs>>16;
-        b[1]|=(ifs>>24)<<4;
-        break;        
+        b[7] = ifs;
+        b[6] = ifs >> 16;
+        b[1] |= (ifs >> 24) << 4;
+    break;        
 
     case 6:
     case 7:
-        b[7]=ifs;
-        b[6]=ifs>>8;
-        b[2]=ifs>>16;
-        b[1]=(ifs>>24)<<4;
-        break;
+        b[7] = ifs;
+        b[6] = ifs >> 8;
+        b[2] = ifs >> 16;
+        b[1] = (ifs >> 24) << 4;
+    break;
 
     default:
-        fprintf(stderr,"ERR:  Unhandled applyif scenario (%x), file bug\n",b[0]);
+        fprintf(stderr,"ERR:  Unhandled applyif scenario (%x), file bug\n", b[0]);
         exit(1);
-    }
-}
+      } /*switch*/
+  } /*applyif*/
 
-static int ifcombinable(unsigned char b0,unsigned char b1,unsigned char b8)
-{
+static int ifcombinable(unsigned char b0, unsigned char b1, unsigned char b8)
+  {
     int iftype=-1;
-
-    switch(b0>>4) {
+    switch (b0 >> 4)
+      {
     case 0:
     case 1:
     case 2:
     case 6:
     case 7:
-        iftype=b1>>7; break;
+        iftype = b1 >> 7;
+    break;
     case 3:
     case 4:
     case 5:
-        iftype=0; break;
+        iftype = 0;
+    break;
     default:
         return 0;
-    }
-    switch(b8>>4) {
+      } /*switch*/
+    switch (b8 >> 4)
+      {
     case 0:
     case 1:
     case 2:
@@ -897,81 +1031,129 @@ static int ifcombinable(unsigned char b0,unsigned char b1,unsigned char b8)
     case 3:
     case 4:
     case 5:
-        return iftype==0;
+        return iftype == 0;
     default:
         return 0;
-    }
-}
+      } /*switch*/
+  } /*ifcombinable*/
 
-static int countreferences(unsigned char *obuf,unsigned char *buf,unsigned char *end,int linenum)
-{
-    unsigned char *b;
-    int numref=0;
-
-    for( b=buf; b<end; b+=8 )
-        if( b[0]==0 && (b[1]&15)==1 && b[7]==linenum )
+static int countreferences(const unsigned char *buf, const unsigned char *end, int linenum)
+  {
+    const unsigned char *b;
+    int numref = 0;
+    for (b = buf; b < end; b += 8)
+        if (b[0] == 0 && (b[1] & 15) == 1 && b[7] == linenum)
             numref++;
     return numref;
-}
+  } /*countreferences*/
 
-static void deleteinstruction(unsigned char *obuf,unsigned char *buf,unsigned char **end,unsigned char *b)
-{
+static void deleteinstruction
+  (
+    const unsigned char *obuf, /* start of instruction buffer */
+    unsigned char *buf, /* start of area where branch targets need adjusting */
+    unsigned char **end, /* pointer to next free part of buffer, to be updated */
+    unsigned char *b /* instruction to be deleted from buffer */
+  )
+  {
     unsigned char *b2;
-    int linenum=(b-obuf)/8+1;
-
-    for( b2=buf; b2<*end; b2+=8 )
-        if( b2[0]==0 && (b2[1]&15)==1 && b2[7]>linenum )
+    const int linenum = (b - obuf) / 8 + 1;
+    for (b2 = buf; b2 < *end; b2 += 8) /* adjust branches to following instructions */
+        if (b2[0] == 0 && (b2[1] & 15) == 1 && b2[7] > linenum)
             b2[7]--;
-    memmove(b,b+8,*end-(b+8));
-    *end-=8;
-    memset(*end,0,8); // clean up tracks (so pgc structure is not polluted)
-}
+    memmove(b, b + 8, *end - (b + 8));
+    *end -= 8;
+    memset(*end, 0, 8); // clean up tracks (so pgc structure is not polluted)
+  } /*deleteinstruction*/
 
-void vm_optimize(unsigned char *obuf,unsigned char *buf,unsigned char **end)
-{
+void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **end)
+  /* does various peephole optimizations on the part of obuf from buf to *end. */
+  {
     unsigned char *b;
-
  again:
-    for( b=buf; b<*end; b+=8 ) {
-        int curline=(b-obuf)/8+1;
+    for (b = buf; b < *end; b += 8)
+      {
+        const int curline = (b - obuf) / 8 + 1;
         // if
         // 1. this is a jump over one statement
         // 2. we can combine the statement with the if
         // 3. there are no references to the statement
         // then
         // combine statement with if, negate if, and replace statement with nop
-        if( b[0]==0 && (b[1]&0x70)!=0 && (b[1]&15)==1 && b[7]==curline+2 && // step 1
-            ifcombinable(b[0],b[1],b[8]) && // step 2
-            countreferences(obuf,buf,*end,curline+1)==0 ) // step 3
-        {
-            unsigned int ifs=negateif(extractif(b));
-            memcpy(b,b+8,8); // move statement
-            memset(b+8,0,8); // replace with nop
-            applyif(b,ifs);
+        if
+          (
+                b[0] == 0
+            &&
+                (b[1] & 0x70) != 0
+            &&
+                (b[1] & 15) == 1
+            &&
+                b[7] == curline + 2 // step 1
+            &&
+                ifcombinable(b[0], b[1], b[8]) // step 2
+            &&
+                countreferences(buf, *end, curline + 1) == 0 // step 3
+          )
+          {
+            const unsigned int ifs = negateif(extractif(b));
+            memcpy(b, b + 8, 8); // move statement
+            memset(b + 8, 0, 8); // replace with nop
+            applyif(b, ifs);
             goto again;
-        }
-        // if
+          } /*if*/
         // 1. this is a NOP instruction
         // 2. there are more instructions after this OR there are no references here
         // then
         // delete instruction, fix goto labels
-        if( b[0]==0 && b[1]==0 && b[2]==0 && b[3]==0 && 
-            b[4]==0 && b[5]==0 && b[6]==0 && b[7]==0 &&
-            (b+8!=*end || countreferences(obuf,buf,*end,curline)==0) ) {
-            deleteinstruction(obuf,buf,end,b);
+        if
+          (
+                b[0] == 0
+            &&
+                b[1] == 0
+            &&
+                b[2] == 0
+            &&
+                b[3] == 0
+            && 
+                b[4] == 0
+            &&
+                b[5] == 0
+            &&
+                b[6] == 0
+            &&
+                b[7] == 0 /* it's a NOP */
+            &&
+                (
+                    b + 8 != *end /* more instructions after this */
+                ||
+                    countreferences(buf, *end, curline) == 0 /* no references here */
+                )
+          )
+          {
+            deleteinstruction(obuf, buf, end, b);
             goto again;
-        }
+          } /*if*/
         // if
         // 1. the prev instruction is an UNCONDITIONAL jump/goto
         // 2. there are no references to the statement
         // then
         // delete instruction, fix goto labels
-        if( b>buf &&
-            (b[-8]>>4)<=3 && (b[-7]&0x70)==0 && (b[-7]&15)!=0 &&
-            countreferences(obuf,buf,*end,curline)==0 ) {
-            deleteinstruction(obuf,buf,end,b);
+        if
+          (
+                b > buf
+            &&
+                (b[-8] >> 4) <= 3
+            &&
+                (b[-7] & 0x70) == 0
+            &&
+                (b[-7] & 15) != 0 /* previous was unconditional transfer */
+            &&
+                countreferences(buf, *end, curline) == 0 /* no references here */
+          )
+          {
+          /* remove dead code */
+            deleteinstruction(obuf, buf, end, b);
             goto again;
-        }
+          } /*if*/
         // if
         // 1. this instruction sets subtitle/angle/audio
         // 2. the next instruction sets subtitle/angle/audio
@@ -979,116 +1161,180 @@ void vm_optimize(unsigned char *obuf,unsigned char *buf,unsigned char **end)
         // 4. there are no references to the second instruction
         // then
         // combine
-        if( b+8!=*end &&
-            (b[0]&0xEF)==0x41 && b[1]==0 && // step 1
-            b[0]==b[8] && b[1]==b[9] && // step 2 & 3
-            countreferences(obuf,buf,*end,curline+1)==0 ) {
-            if( b[8+3] ) b[3]=b[8+3];
-            if( b[8+4] ) b[4]=b[8+4];
-            if( b[8+5] ) b[5]=b[8+5];
-            deleteinstruction(obuf,buf,end,b+8);
+        if
+          (
+                b + 8 != *end
+            &&
+                (b[0] & 0xEF) == 0x41
+            &&
+                b[1] == 0 // step 1
+            &&
+                b[0] == b[8]
+            &&
+                b[1] == b[9] // step 2 & 3
+            &&
+                countreferences(buf, *end, curline + 1) == 0
+          )
+          {
+            if (b[8 + 3])
+                b[3] = b[8 + 3];
+            if (b[8 + 4])
+                b[4] = b[8 + 4];
+            if (b[8 + 5])
+                b[5] = b[8 + 5];
+            deleteinstruction(obuf, buf, end, b + 8);
             goto again;
-        }
+          } /*if*/
         // if
         // 1. this instruction sets the button directly
         // 2. the next instruction is a link command (not NOP, not PGCN)
         // 3. there are no references to the second instruction
         // then
         // combine
-        if( b+8!=*end &&
-            b[0]==0x56 && b[1]==0x00 &&
-            b[8]==0x20 && ((b[8+1]&0xf)==5 || 
-                           (b[8+1]&0xf)==6 ||
-                           (b[8+1]&0xf)==7 ||
-                           ((b[8+1]&0xf)==1 && (b[8+7]&0x1f)!=0)) &&
-            countreferences(obuf,buf,*end,curline+1)==0 ) {
-            if( b[8+6]==0 )
-                b[8+6]=b[4];
-            deleteinstruction(obuf,buf,end,b);
+        if
+          (
+                b + 8 != *end
+            &&
+                b[0] == 0x56
+            &&
+                b[1] == 0x00
+            &&
+                b[8] == 0x20
+            &&
+                (
+                    (b[8 + 1] & 0xf) == 5
+                || 
+                    (b[8 + 1] & 0xf) == 6
+                ||
+                    (b[8 + 1] & 0xf) == 7
+                ||
+                        (b[8 + 1] & 0xf) == 1
+                    &&
+                        (b[8 + 7] & 0x1f) != 0
+                )
+            &&
+                countreferences(buf, *end, curline + 1) == 0
+          )
+          {
+            if (b[8 + 6] == 0)
+                b[8 + 6] = b[4];
+            deleteinstruction(obuf, buf, end, b);
             goto again;
-        }
+          } /*if*/
         // if
         // 1. this instruction sets a GPRM/SPRM register
         // 2. the next instruction is a link command (not NOP)
         // 3. there are no references to the second instruction
         // then
         // combine
-        if( b+8!=*end &&
-            ((b[0]&0xE0)==0x40 || (b[0]&0xE0)==0x60) && (b[1]&0x7f)==0x00 &&
-            b[8]==0x20 && ((b[8+1]&0x7f)==4 || 
-                           (b[8+1]&0x7f)==5 ||
-                           (b[8+1]&0x7f)==6 ||
-                           (b[8+1]&0x7f)==7 ||
-                           ((b[8+1]&0x7f)==1 && (b[8+7]&0x1f)!=0)) &&
-            countreferences(obuf,buf,*end,curline+1)==0 ) {
-            b[1]=b[8+1];
-            b[6]=b[8+6];
-            b[7]=b[8+7];
-            deleteinstruction(obuf,buf,end,b+8);
+        if
+          (
+                b + 8 != *end
+            &&
+                ((b[0] & 0xE0) == 0x40 || (b[0] & 0xE0) == 0x60)
+            &&
+                (b[1] & 0x7f) == 0x00
+            &&
+                b[8] == 0x20
+            &&
+                (
+                    (b[8 + 1] & 0x7f) == 4
+                || 
+                    (b[8 + 1] & 0x7f) == 5
+                ||
+                    (b[8 + 1] & 0x7f) == 6
+                ||
+                    (b[8 + 1] & 0x7f) == 7
+                ||
+                        (b[8 + 1] & 0x7f) == 1
+                    &&
+                        (b[8 + 7] & 0x1f) != 0
+                )
+            &&
+                countreferences(buf, *end, curline + 1) == 0
+          )
+          {
+            b[1] = b[8 + 1];
+            b[6] = b[8 + 6];
+            b[7] = b[8 + 7];
+            deleteinstruction(obuf, buf, end, b + 8);
             goto again;
-        }
-    }
-}
+          } /*if*/
+      } /*for*/
+  } /*vm_optimize*/
 
-unsigned char *vm_compile(unsigned char *obuf,unsigned char *buf,const struct workset *ws,const struct pgcgroup *curgroup,const struct pgc *curpgc,const struct vm_statement *cs,vtypes ismenu)
-{
+unsigned char *vm_compile
+  (
+    const unsigned char *obuf, /* start of buffer for computing instruction numbers for branches */
+    unsigned char *buf, /* where to insert new compiled code */
+    const struct workset *ws,
+    const struct pgcgroup *curgroup,
+    const struct pgc *curpgc,
+    const struct vm_statement *cs,
+    vtypes ismenu
+  )
+  /* compiles the parse tree cs into actual VM instructions. */
+  {
     unsigned char *end;
     int i, j;
-
-    numlabels=0;
-    numgotos=0;
-
-    end=compilecs(obuf,buf,ws,curgroup,curpgc,cs,ismenu);
-    if( !end ) return end;
-
+    numlabels = 0;
+    numgotos = 0;
+    end = compilecs(obuf, buf, ws, curgroup, curpgc, cs, ismenu);
+    if (!end) /* error */
+        return end;
     // fix goto references
-    for( i=0; i<numgotos; i++ ) {
-        for( j=0; j<numlabels; j++ )
-            if( !strcasecmp(gotos[i].lname,labels[j].lname) )
+    for (i = 0; i < numgotos; i++)
+      {
+        for (j = 0; j < numlabels; j++)
+            if (!strcasecmp(gotos[i].lname,labels[j].lname))
                 break;
-        if( j==numlabels ) {
-            fprintf(stderr,"ERR:  Cannot find label %s\n",gotos[i].lname);
+        if (j == numlabels)
+          {
+            fprintf(stderr, "ERR:  Cannot find label %s\n", gotos[i].lname);
             return 0;
-        }
-        gotos[i].code[7]=(labels[j].code-obuf)/8+1;
-    }
-
-    vm_optimize(obuf,buf,&end);
-
+          } /*if*/
+        gotos[i].code[7] = (labels[j].code - obuf) / 8 + 1;
+      } /*for*/
+    vm_optimize(obuf, buf, &end);
     return end;
-}
+  } /*vm_compile*/
 
-void dvdvmerror(char *s)
-{
+void dvdvmerror(const char *s)
+  {
     extern char *dvdvmtext;
-    fprintf(stderr,"ERR:  Parse error '%s' on token '%s'\n",s,dvdvmtext);
-}
+    fprintf(stderr, "ERR:  Parse error '%s' on token '%s'\n", s, dvdvmtext);
+  } /*dvdvmerror*/
 
 struct vm_statement *vm_parse(const char *b)
-{
-    if( b ) {
-        char *cmd=strdup(b);
-        dvdvm_buffer_state buf=dvdvm_scan_string(cmd);
-        dvd_vm_parsed_cmd=0;
-        if( dvdvmparse() ) {
-            fprintf(stderr,"ERR:  Parser failed on code '%s'.\n",b);
+  {
+    if (b)
+      {
+        const char * const cmd = strdup(b);
+        dvdvm_buffer_state buf = dvdvm_scan_string(cmd);
+        dvd_vm_parsed_cmd = 0;
+        if (dvdvmparse())
+          {
+            fprintf(stderr, "ERR:  Parser failed on code '%s'.\n", b);
             exit(1);
-        }
-        if( !dvd_vm_parsed_cmd ) {
-            fprintf(stderr,"ERR:  Nothing parsed from '%s'\n",b);
+          } /*if*/
+        if (!dvd_vm_parsed_cmd)
+          {
+            fprintf(stderr, "ERR:  Nothing parsed from '%s'\n", b);
             exit(1);
-        }
+          } /*if*/
         dvdvm_delete_buffer(buf);
-        free(cmd);
+        free((void *)cmd);
         return dvd_vm_parsed_cmd;
-    } else {
+      }
+    else
+      {
         // pieces of code in dvdauthor rely on a non-null vm_statement
         // meaning something significant.  so if we parse an empty string,
         // we should return SOMETHING not null.
         // also, since the xml parser strips whitespace, we treat a
         // NULL string as an empty string
-        struct vm_statement *v=statement_new();
-        v->op=VM_NOP;
+        struct vm_statement * const v = statement_new();
+        v->op = VM_NOP;
         return v;
-    }
-}
+      } /*if*/
+  } /*vm_parse*/
