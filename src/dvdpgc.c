@@ -282,6 +282,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
           } /*if*/
 
         vm_optimize(postptr, postptr, &cd);
+          /* tidy up all the code I just output */
 
         cellptr = cd;
         for (i = 0; i < thispgc->numsources; i++)
