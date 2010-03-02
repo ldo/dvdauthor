@@ -1445,15 +1445,6 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                         printvobustatus(va, cursect);
                     vsi.lastrefsect = 0;
                     vsi.firstgop = 1; /* restart scan for first GOP */
-                  }
-                else if (!fill_in_vobus || got_deferred_buf)
-                  {
-                    fprintf
-                      (
-                        stderr,
-                        "WARN: System header found, but PCI/DSI information is not where"
-                            " expected\n\t(make sure your system header is 18 bytes!)\n"
-                      );
                   } /*if*/
               } /*if*/
             if (!hadfirstvobu)
