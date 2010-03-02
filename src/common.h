@@ -40,7 +40,7 @@ enum
     MPID_GOP = 0xb8, /* Group Of Pictures */
     MPID_PROGRAM_END = 0xb9, /* program end (terminates a program stream) */
 
-  /* stream ID codes: the two bytes after the first four are the length of the remaining data */
+  /* special headers */
     MPID_PACK = 0xba,
       /* PACK header, contains a more precise clock reference, and indication of overall
         bandwidth requirements. DVD-Video requires each PACK to be 2048 bytes in size. */
@@ -48,6 +48,7 @@ enum
       /* system header, specifies how many audio and video streams there are, the
         bandwidth they need, and whether they are synchronized to the system clock. */
 
+  /* stream ID codes: the two bytes after the first four are the length of the remaining data */
     MPID_PRIVATE1 = 0xbd,
       /* private stream 1, used in DVD-Video for subpictures and additional non-MPEG audio
         formats. The first byte after the packet header+extensions is the substream ID,

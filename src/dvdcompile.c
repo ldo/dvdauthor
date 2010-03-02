@@ -38,8 +38,9 @@ struct vm_statement *dvd_vm_parsed_cmd;
 #define MAXGOTOS 200
 
 struct dvdlabel {
-    char *lname;
+    char *lname; /* label name */
     unsigned char *code;
+      /* pointer into buf where label is defined or where goto instruction needs fixup */
 };
 
 static struct dvdlabel labels[MAXLABELS];
@@ -95,20 +96,22 @@ static int nexttarget(int t)
 static int nextval(int t)
   {
     if (t < -128)
-        return nexttarget(t + 256) - 256;
+        return nexttarget(t + 256) - 256; /* it's a register, return next available register */
     else
-        return nexttarget(-1) - 256;
+        return nexttarget(-1) - 256; /* not a register, return first available register */
   } /*nextval*/
 
 static unsigned char *compileop(unsigned char *buf, int target, int op, int val)
-  /* compiles a command to set the target to the specified value. */
+  /* compiles a command to set the target GPRM to the result of the specified operation
+    on it and the specified value. */
   {
     if (op == VM_VAL && target == val + 256)
         return buf; /* setting register to its same value => noop */
     write8(buf, val >= 0 ? 0x70 : 0x60, 0x00, 0x00, target, val >= 0 ? (val >> 8) : 0x00, val, 0x00, 0x00);
+      /* target op= val (op to be filled in below) */
     switch(op)
       {
-    case VM_VAL:
+    case VM_VAL: /* simple assignment */
         buf[0] |= 1;
     break;
     case VM_ADD:
@@ -146,19 +149,21 @@ static unsigned char *compileop(unsigned char *buf, int target, int op, int val)
   } /*compileop*/
 
 static int issprmval(const struct vm_statement *v)
-  /* is v a reference to an SPRM value. */
+  /* is operand v a reference to an SPRM value. */
   {
     return v->op == VM_VAL && v->i1 >= -128 && v->i1 < 0;
   } /*issprmval*/
 
 static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_statement *cs)
+  /* generates code to put the the value of an expression cs into GPRM target.
+    Returns pointer to after generated code. */
   {
     struct vm_statement *v, **vp;
     int isassoc, canusesprm;
     if (cs->op == VM_VAL) /* simple value reference */
-        return compileop(buf, target, VM_VAL, cs->i1);
+        return compileop(buf, target, VM_VAL, cs->i1); /* assign value to target */
 
-    isassoc =
+    isassoc = /* associative operator--just so happens these are also commutative */
             cs->op == VM_ADD
         ||
             cs->op == VM_MUL
@@ -169,6 +174,7 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
         ||
             cs->op == VM_XOR;
     canusesprm = cs->op == VM_AND || cs->op == VM_OR || cs->op == VM_XOR;
+      /* operations where the source may be an SPRM (also VM_VAL, but that was already dealt with) */
 
     // if the target is an operator, move it to the front
     if (isassoc)
@@ -177,9 +183,9 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
             if (vp[0]->op == VM_VAL && vp[0]->i1 == target - 256)
               {
                 v = *vp;
-                *vp = v->next;
+                *vp = v->next; /* take out from its place in chain */
                 v->next = cs->param;
-                cs->param = v;
+                cs->param = v; /* and put the VM_VAL op on front of chain */
                 break;
               } /*if*/
       } /*if*/
@@ -204,15 +210,16 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
       } /*if*/
         
     if (isassoc && cs->param->op == VM_VAL && cs->param->i1 != target - 256)
+      /* fixme: should "isassoc" be "canusesprm" instead? */
       {
         // if the first param is a value, then try to move a complex operation farther up or an SPRM access (if SPRM ops are not allowed)
         for (vp = &cs->param->next; *vp; vp = &(vp[0]->next))
             if (vp[0]->op != VM_VAL || issprmval(vp[0]))
               {
                 v = *vp;
-                *vp = v->next;
+                *vp = v->next; /* take out from its place in chain */
                 v->next = cs->param;
-                cs->param = v;
+                cs->param = v; /* and put the SPRM/non-VM_VAL op on front of chain */
                 break;
               } /*if*/
       } /*if*/
@@ -220,27 +227,30 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
     // special case -- rnd where the parameter is a reg or value
     if (cs->op == VM_RND && cs->param->op == VM_VAL)
       {
-        assert(cs->param->next == 0);
+        assert(cs->param->next == 0); /* only one operand */
         return compileop(buf, target, cs->op, cs->param->i1);
       } /*if*/
 
-    buf = compileexpr(buf, target, cs->param);
+    buf = compileexpr(buf, target, cs->param); /* use target for first/only operand */
     if (cs->op == VM_RND)
       {
-        assert(cs->param->next == 0);
+        assert(cs->param->next == 0); /* only one operand */
         return compileop(buf, target, cs->op, target - 256);
+          /* operand from target, result into target */
       }
-    else
+    else /* all other operators take two operands */
       {
-        for (v = cs->param->next; v; v = v->next)
+        for (v = cs->param->next; v; v = v->next) /* process chain of operations */
           {
             if (v->op == VM_VAL && !issprmval(v))
                 buf = compileop(buf, target, cs->op, v->i1);
+                  /* can simply put value straight into target */
             else
               {
                 const int t2 = nexttarget(target);
-                buf = compileexpr(buf, t2, v);
+                buf = compileexpr(buf, t2, v); /* put value of v into t2 */
                 buf = compileop(buf, target, cs->op, t2 - 256);
+                  /* then value of that and target operated on by op into target */
                 if (t2 == 15)
                   {
                   /* just zapped a reserved register whose value might be misinterpreted elsewhere */
@@ -262,7 +272,8 @@ static unsigned char *compilebool
     const unsigned char *iftrue, /* branch target for true */
     const unsigned char *iffalse /* branch target for false */
  )
-  /* compiles an expression that returns a true/false result. */
+  /* compiles an expression that returns a true/false result, branching to iftrue or
+    iffalse depending. Returns pointer to after generated code. */
   {
     switch (cs->op)
       {
@@ -272,20 +283,23 @@ static unsigned char *compilebool
     case VM_GT:
     case VM_LTE:
     case VM_LT:
-      {
+      { /* the two operands are cs->param and cs->param->next */
         int r1, r2, op;
         op = cs->op - VM_EQ + 2;
+          /* convert to comparison encoding that can be inserted directly into instruction */
         if (cs->param->op == VM_VAL)
-            r1 = cs->param->i1;
-        else
+            r1 = cs->param->i1; /* value already here */
+        else /* cs->param is something more complex */
           {
-            r1 = nextval(0);
-            buf = compileexpr(buf, r1 & 15, cs->param);
+            r1 = nextval(0); /* temporary place to put it */
+            buf = compileexpr(buf, r1 & 15, cs->param); /* put it there */
           } /*if*/
       /* at this point, r1 is literal/register containing first operand */
         if (cs->param->next->op == VM_VAL && (r1 < 0 || cs->param->next->i1 < 0))
+          /* if one operand is a register and the other is a simple literal or register,
+            I can combine them directly */
             r2 = cs->param->next->i1;
-        else
+        else /* not so simple */
           {
             r2 = nextval(r1);
             buf = compileexpr(buf, r2 & 15, cs->param->next);
@@ -293,7 +307,7 @@ static unsigned char *compilebool
       /* at this point, r2 is literal/register containing second operand */
         if (r1 >= 0)
           {
-          /* literal value--move to r2 */
+          /* literal value--swap with r2 */
             const int t = r1;
             r1 = r2;
             r2 = t;
@@ -310,15 +324,17 @@ static unsigned char *compilebool
           } /*if*/
         if (r2 >= 0)
             write8(buf, 0x00, 0x81 | (op << 4), 0x00, r1, r2 >> 8, r2,0x00, 0x00);
+              /* if r1 op r2 then goto true branch */
         else /* r1 and r2 both registers */
             write8(buf, 0x00, 0x01 | (op << 4), 0x00, r1, 0x00, r2, 0x00, 0x00);
+              /* if r1 op r2 then goto true branch */
         buf[7] = (iftrue - obuf) / 8 + 1; /* branch target instr nr */
         buf += 8;
         if (iffalse > buf)
           {
           /* can't fallthrough for false branch */
             write8(buf, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-              /* unconditional goto */
+              /* goto false branch */
             buf[7] = (iffalse - obuf) / 8 + 1; /* branch target */
             buf += 8;
           } /*if*/
@@ -330,22 +346,34 @@ static unsigned char *compilebool
       {
         const int op = cs->op;
         cs = cs->param;
-        while (cs->next)
+        while (cs->next) /* process chain of operands, doing short-cut evaluation */
           {
+          /* compile this operand, branching to next or to final true/false destination
+            as appropriate */
             unsigned char * n = buf + 8;
-            while (1)
+              /* where to continue chain--assume it'll compile to one instruction to begin with */
+            while (1) /* should loop no more than twice */
               {
                 unsigned char * const nn = compilebool
                   (
                     /*obuf =*/ obuf,
                     /*buf =*/ buf,
                     /*cs =*/ cs,
-                    /*iftrue =*/ op == VM_LAND ? n : iftrue,
-                    /*iffalse =*/ op == VM_LOR ? n : iffalse
+                    /*iftrue =*/
+                        op == VM_LAND ?
+                            n /* continue AND-chain as long as conditions are true */
+                        :
+                            iftrue, /* no need to continue OR-chain on true */
+                    /*iffalse =*/
+                        op == VM_LOR ?
+                            n /* continue OR-chain as long as conditions are false */
+                        :
+                            iffalse /* no need to continue AND-chain on false */
                   );
                 if (nn == n)
                     break;
-                n = nn;
+              /* too many instructions generated to fit */
+                n = nn; /* try again leaving this much room */
               } /*while*/
             buf = n;
             cs = cs->next;
@@ -388,7 +416,7 @@ static unsigned char *compilecs
             generate one */
         switch (cs->op)
           {
-        case VM_SET:
+        case VM_SET: /* cs->i1 is destination, cs->param is source */
             switch (cs->i1)
               {
             case 0:
@@ -425,10 +453,10 @@ static unsigned char *compilecs
             case 32 + 12:
             case 32 + 13:
             case 32 + 14:
-            case 32 + 15: // set GPRM
+            case 32 + 15: // set GPRM, counter mode
                 if (cs->param->op == VM_VAL)
                   { // we can set counters to system registers
-                    const int v = cs->param->i1; /* value to set */
+                    const int v = cs->param->i1; /* reg/literal value to set */
                     if (v < 0)
                         write8(buf, 0x43, 0x00, 0x00, v,0x00, 0x80 | (cs->i1 - 32), 0x00, 0x00);
                           /* SetGPRMMD indirect */
@@ -437,12 +465,12 @@ static unsigned char *compilecs
                           /* SetGPRMMD direct */
                     buf += 8;
                   }
-                else
+                else /* not so simple */
                   {
-                    const int r = nexttarget(0);
-                    buf = compileexpr(buf, r, cs->param);
+                    const int r = nexttarget(0); /* temporary place to put value */
+                    buf = compileexpr(buf, r, cs->param); /* put it there */
                     write8(buf, 0x43, 0x00, 0x00, r, 0x00, 0x80 | (cs->i1 - 32), 0x00, 0x00);
-                      /* SetGPRMMD indirect */
+                      /* SetGPRMMD indirect to r */
                     buf += 8;
                   } /*if*/
             break;
@@ -507,12 +535,12 @@ static unsigned char *compilecs
               } /*switch*/
             break;
 
-        case VM_IF:
+        case VM_IF: /* if-statement */
           {
-            unsigned char * iftrue = buf + 8;
-            const unsigned char * iffalse = buf + 16;
-            unsigned char * end = buf + 16;
-            while(1)
+            unsigned char * iftrue = buf + 8; /* initially try putting true branch here */
+            const unsigned char * iffalse = buf + 16; /* initially try putting false branch here */
+            unsigned char * end = buf + 16; /* initially assuming code will end here */
+            while(1) /* should loop no more than twice */
               {
                 unsigned char *lp, *ib, *e;
                 lp = compilecs(obuf, iftrue, ws, curgroup, curpgc, cs->param->next->param, ismenu);
@@ -521,20 +549,24 @@ static unsigned char *compilecs
                   {
                   /* there's an else-part */
                     e = compilecs(obuf, lp + 8, ws, curgroup, curpgc, cs->param->next->next, ismenu);
-                      /* compile the else-part */
+                      /* compile the else-part, leaving room for following instr */
                     write8(lp, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, (e - obuf ) / 8 + 1);
                       /* insert a goto at the end of the if-true part to branch over the else-part */
-                    lp += 8;
+                    lp += 8; /* include in true branch */
                   }
                 else
-                    e = lp;
+                    e = lp; /* code ends with true branch */
                 ib = compilebool(obuf, buf, cs->param, iftrue, iffalse);
+                  /* put condition test at start */
                 if (!lp)
                     return 0;
+              /* at this point, ib is just after the condition test, lp is just after
+                the true branch, and e is just after the end of all the code */
                 if (ib == iftrue && lp == iffalse)
-                    break;
-                iftrue = ib;
-                iffalse = lp;
+                    break; /* all fitted nicely */
+              /* didn't leave enough room for pieces next to each other, try again */
+                iftrue = ib; /* enough room for condition code */
+                iffalse = lp; /* enough room for true branch */
                 end = e;
               } /*while*/
             buf = end;
@@ -593,8 +625,10 @@ static unsigned char *compilecs
 
         case VM_JUMP:
           {
-            int i1 = cs->i1;
-            int i2 = cs->i2; /* menu entry ID + 120 */
+            int i1 = cs->i1; /* if nonzero, 1 for VMGM, or titleset nr + 1 */
+            int i2 = cs->i2; /* menu number or menu entry ID + 120 or title number + 128 */
+          /* cs->i3 is chapter number if nonzero and less than 65536;
+            or program number + 65536; or cell number + 131072 */
 
           /* check for various disallowed combinations */
             if (i1 == 1 && ismenu == VTYPE_VMGM)
@@ -607,9 +641,18 @@ static unsigned char *compilecs
                 //  VMGM    VMGM    MEPGC   CHXX
                 //  VMGM    VMGM    TPGC    NOCH
                 //  VMGM    VMGM    TPGC    CHXX
-                i1 = 0;
+                i1 = 0; /* no need to explicitly specify VMGM */
               } /*if*/
-            if (((i2 > 0 && i2 < 128) || (i2 == 0 && i1 == 1)) && ismenu == VTYPE_VTS)
+            if
+              (
+                    (
+                        i2 > 0 && i2 < 128 /* jump to non-entry menu */
+                    ||
+                        i2 == 0 && i1 == 1 /* jump to VMGM */
+                    )
+                &&
+                    ismenu == VTYPE_VTS
+              )
               {
                 //  VTS NONE    MPGC    NOCH
                 //  VTS VMGM    MPGC    NOCH
@@ -629,7 +672,16 @@ static unsigned char *compilecs
                 fprintf(stderr, "ERR:  Cannot jump to a menu from a title, use 'call' instead\n");
                 return 0;
               } /*if*/
-            if (i2 > 0 && i2 < 128 && cs->i3 && ismenu != VTYPE_VTS)
+            if
+              (
+                    i2 > 0
+                &&
+                    i2 < 128 /* jump to non-entry menu */
+                &&
+                    cs->i3 /* chapter/cell/program specified */
+                &&
+                    ismenu != VTYPE_VTS
+              )
               {
                 //  VMGM    NONE    MPGC    CHXX
                 //  VMGM    TS  MPGC    CHXX
@@ -644,7 +696,7 @@ static unsigned char *compilecs
                 fprintf(stderr, "ERR:  Cannot specify chapter when jumping to another menu\n");
                 return 0;
               } /*if*/
-            if (i1 && !i2)
+            if (i1 /*VMGM/titleset*/ && !i2 /*no PGC*/)
               {
                 //  VTSM    VMGM    NOPGC   CHXX
                 //  VTS TS  NOPGC   CHXX
@@ -656,7 +708,14 @@ static unsigned char *compilecs
                 fprintf(stderr, "ERR:  Cannot omit menu/title if specifying vmgm/titleset\n");
                 return 0;
               } /*if*/
-            if (!i1 && !i2 && !cs->i3)
+            if
+              (
+                    !i1 /*same VMGM/titleset*/
+                &&
+                    !i2 /*same PGC*/
+                &&
+                    !cs->i3 /*no chapter/cell/program*/
+              )
               {
                 //  VTS NONE    NOPGC   NOCH
                 //  VTSM    NONE    NOPGC   NOCH
@@ -664,28 +723,44 @@ static unsigned char *compilecs
                 fprintf(stderr, "ERR:  Nop jump statement\n");
                 return 0;
               } /*if*/
-            if (i2 == 121 && (i1 >= 2 || (i1 == 0 && ismenu != VTYPE_VMGM)))
+            if
+              (
+                    i2 == 121 /*jump to FPC*/
+                &&
+                    (
+                        i1 >= 2 /*titleset*/
+                    ||
+                        (i1 == 0 /*current VMGM/titleset*/ && ismenu != VTYPE_VMGM)
+                    )
+              )
               {
                 fprintf(stderr, "ERR:  VMGM must be specified with FPC\n");
                 return 0;
               } /*if*/
 
             // *** ACTUAL COMPILING
-            if (i1 >= 2 && i2 >= 120 && i2 < 128)
+            if
+              (
+                    i1 >= 2 /*titleset*/
+                &&
+                    i2 >= 120
+                &&
+                    i2 < 128 /*entry PGC*/
+              )
               {
                 //  VTSM    TS  MEPGC   NOCH
                 //  VMGM    TS  MEPGC   NOCH
-                if( i2==120 )
-                    i2=123;
-                write8(buf,0x30,0x06,0x00,0x01,i1-1,0x80+(i2-120),0x00,0x00); buf+=8; // JumpSS VTSM vts 1 menu
+                if (i2 == 120) /* "default" entry means "root" */
+                    i2 = 123;
+                write8(buf, 0x30, 0x06, 0x00, 0x01, i1 - 1, 0x80 + (i2 - 120), 0x00, 0x00); buf += 8; // JumpSS VTSM vts 1 menu
               }
             else if
               (
-                  i1 >= 2
+                  i1 >= 2 /*jump to titleset*/
               ||
-                  i1 == 1 && i2 >= 128
+                  i1 == 1 /*jump to VMGM*/ && i2 >= 128 /*title*/
               ||
-                  ismenu == VTYPE_VMGM && i2 >= 128 && cs->i3
+                  ismenu == VTYPE_VMGM && i2 >= 128 && cs->i3 /*chapter/program/cell*/
               )
               {
                 //  VMGM    TS  TPGC    CHXX
@@ -704,7 +779,7 @@ static unsigned char *compilecs
                 if (jumppad)
                   {
                     if (!i1)
-                        i1 = 1;
+                        i1 = 1; /* make VMGM explicit */
                     write8(buf, 0x71, 0x00, 0x00, 0x0F, i2, i1, 0x00, 0x00); buf += 8;
                     write8(buf, 0x71, 0x00, 0x00, 0x0E, 0x00, cs->i3, 0x00, 0x00); buf += 8;
                     write8(buf, 0x30, ismenu != VTYPE_VTS ? 0x06 : 0x08, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00); buf += 8;
@@ -715,7 +790,7 @@ static unsigned char *compilecs
                     return 0;
                   } /*if*/
               }
-            else  if (i1 == 1 || i2 == 121)
+            else  if (i1 == 1 /*jump to VMGM*/ || i2 == 121 /*jump to FPC*/)
               {
                 //  VTSM    VMGM    NOPGC   NOCH
                 //  VTSM    VMGM    MPGC    NOCH
@@ -774,7 +849,7 @@ static unsigned char *compilecs
                 write8(buf, 0x20, 0x05 + (cs->i3 >> 16), 0x00, 0x00, 0x00, 0x00, 0x00, cs->i3); // LinkPTTN pttn, LinkPGCN pgn, or LinkCN cn
                 buf += 8;
               }
-            else if (i2 < 128)
+            else if (i2 < 128) /* menu */
               {
                 //  VTSM    NONE    MPGC    NOCH
                 //  VMGM    NONE    MPGC    NOCH
@@ -785,7 +860,7 @@ static unsigned char *compilecs
                     fprintf(stderr,"ERR:  Cannot jump to menu; none exist\n");
                     return 0;
                   }
-                else if (i2 >= 120 && i2 < 128)
+                else if (i2 >= 120 && i2 < 128) /* menu entry */
                   {
                     int i;
                     for (i = 0; i < curgroup->numpgcs; i++)
@@ -800,7 +875,7 @@ static unsigned char *compilecs
                         return 0;
                       } /*if*/
                   }
-                else
+                else /* non-entry menu */
                   {
                     if (i2 > curgroup->numpgcs)
                       {
@@ -825,9 +900,9 @@ static unsigned char *compilecs
                 //  VTSM    NONE    TPGC    NOCH
                 //  VTS NONE    TPGC    CHXX
                 //  VTSM    NONE    TPGC    CHXX
-                if (ismenu < VTYPE_VMGM)
+                if (ismenu < VTYPE_VMGM) /* VTS or VTSM */
                   {
-                    if (i2 - 128 > ws->titles->numpgcs)
+                    if (i2 - 128 > ws->titles->numpgcs) /* title nr */
                       {
                         fprintf
                           (
@@ -859,8 +934,11 @@ static unsigned char *compilecs
 
         case VM_CALL:
           {
-            int i2 = cs->i2; /* entry menu ID + 120 */
-            int i4 = cs->i4; /* resume cell */
+          /* cs->i1 if nonzero is 1 for VMGM, or titleset nr + 1 */
+            int i2 = cs->i2; /* menu number or menu entry ID + 120 or title number + 128 */
+          /* cs->i3 is chapter number if nonzero and less than 65536;
+            or program number + 65536; or cell number + 131072 */
+            int i4 = cs->i4; /* resume cell if specified, else zero */
 
             // CALL's from <post> MUST have a resume cell
             if (!i4)
@@ -918,7 +996,7 @@ static unsigned char *compilecs
                 fprintf(stderr, "ERR:  Cannot 'call' a menu from another menu, use 'jump' instead\n");
                 return 0;
               } /*if*/
-            if (i2 == 0 || i2 >= 128)
+            if (i2 == 0 || i2 >= 128) /* title nr or no menu/title */
               {
                 //  VTS NONE    NOPGC   NOCH
                 //  VTS VMGM    NOPGC   NOCH
@@ -936,7 +1014,7 @@ static unsigned char *compilecs
                 fprintf(stderr, "ERR:  Cannot 'call' another title, use 'jump' instead\n");
                 return 0;
               } /*if*/
-            if (cs->i3 != 0)
+            if (cs->i3 != 0) /* chapter/cell/program */
               {
                 //  VTS NONE    MPGC    CHXX
                 //  VTS VMGM    MPGC    CHXX
@@ -947,13 +1025,22 @@ static unsigned char *compilecs
                 fprintf(stderr, "ERR:  Cannot 'call' a chapter within a menu\n");
                 return 0;
               } /*if*/
-            if (i2 == 121 && (cs->i1 >= 2 || (cs->i1 == 0 && ismenu != VTYPE_VMGM)))
+            if
+              (
+                    i2 == 121 /*FPC*/
+                &&
+                    (
+                        cs->i1 >= 2 /*titleset*/
+                    ||
+                        cs->i1 == 0 /*no VMGM/titleset*/ && ismenu != VTYPE_VMGM
+                    )
+              )
               {
                 fprintf(stderr, "ERR:  VMGM must be specified with FPC\n");
                 return 0;
               } /*if*/
 
-            if (cs->i1 >= 2)
+            if (cs->i1 >= 2) /*titleset*/
               {
                 //  VTS TS  MPGC    NOCH
                 //  VTS TS  MEPGC   NOCH
@@ -969,7 +1056,7 @@ static unsigned char *compilecs
                     return 0;
                   } /*if*/
               }
-            else if (cs->i1 == 0 && i2 < 120)
+            else if (cs->i1 == 0 && i2 < 120) /* non-entry menu in current VMGM/titleset */
               {
                 //  VTS NONE    MPGC    NOCH
                 if (jumppad)
@@ -983,12 +1070,12 @@ static unsigned char *compilecs
                     return 0;
                   } /*if*/
               }
-            else if (cs->i1 == 1)
+            else if (cs->i1 == 1) /* jump to VMGM */
               {
                 //  VTS VMGM    MPGC    NOCH
                 //  VTS VMGM    MEPGC   NOCH
                 // we cannot provide error checking when jumping to a VMGM
-                if (i2 == 120)
+                if (i2 == 120) /* "default" entry means "title" */
                     i2 = 122;
                 if (i2 < 120)
                     write8(buf, 0x30, 0x08, 0x00, i2, i4, 0xC0, 0x00, 0x00);
@@ -998,12 +1085,10 @@ static unsigned char *compilecs
               }
             else
               {
-                int i,j;
-
+                int i, j;
                 //  VTS NONE    MEPGC   NOCH
                 if (i2 == 120)
-                    i2 = 127; /* default to chapter menu? */
-                    
+                    i2 = 127; /* "default" means chapter menu? */
                 for (j = 0; j < ws->menus->numgroups; j++)
                   {
                     const struct pgcgroup * const pg = ws->menus->groups[j].pg;
@@ -1415,12 +1500,14 @@ unsigned char *vm_compile
   } /*vm_compile*/
 
 void dvdvmerror(const char *s)
+  /* reports a parse error. */
   {
     extern char *dvdvmtext;
     fprintf(stderr, "ERR:  Parse error '%s' on token '%s'\n", s, dvdvmtext);
   } /*dvdvmerror*/
 
 struct vm_statement *vm_parse(const char *b)
+  /* parses a VM source string and returns the constructed parse tree. */
   {
     if (b)
       {
