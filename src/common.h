@@ -72,6 +72,30 @@ enum
     MPID_VIDEO_LAST = 0xef,
   };
 
+enum
+  { /* subpicture operation codes */
+    SPU_FSTA_DSP = 0, /* forced start display, no arguments */
+    SPU_STA_DSP = 1, /* start display, no arguments */
+    SPU_STP_DSP = 2, /* stop display, no arguments */
+    SPU_SET_COLOR = 3, /* four nibble indexes into CLUT for current PGC = 2 bytes of args */
+    SPU_SET_CONTR = 4, /* four nibble contrast/alpha values = 2 bytes of args */
+    SPU_SET_DAREA = 5, /* set display area, start X/Y, end X/Y = 6 bytes of args */
+    SPU_SET_DSPXA = 6,
+      /* define pixel data addresses, 2-byte offset to top field data, 2-byte offset to
+        bottom field data = 4 bytes of args */
+    SPU_CHG_COLCON = 7,
+      /* change colour/contrast, 2 bytes param area size (incl itself) + variable nr
+        bytes params: one or more LN_CTLI, each immediately followed by 1 to 8 PX_CTLI.
+        Each LN_CTLI is 4 bytes, consisting of 4 bits of zero, 12 bits of starting line
+        number (must be greater than ending line of previous LN_CTLI, if any), 4 bits
+        of number of following PX_CTLI (must be in [1 .. 8]), and 12 bits of ending line
+        number (must not be less than starting line number).
+        Each PX_CTLI is 6 bytes, consisting of 2 bytes starting col number (must be
+        at least 8 greater than previous PX_CTLI, if any), 2 bytes of colour values
+        as per SET_COLOR, and 2 bytes of new contrast values as per SET_CONTR. */
+    SPU_CMD_END = 255 /* ends one SP_DCSQ */
+  };
+
 typedef enum /* attributes of cell */
 /* A "cell" is a  grouping of one or more VOBUs, which might have a single VM command attached.
     A "program" is a grouping of one or more cells; the significance is that skipping using

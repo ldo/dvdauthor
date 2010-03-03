@@ -891,31 +891,31 @@ static void procremap
         case CR_CMD: /* pick up start of next command */
             switch (*b)
               {
-            case 0: /* FSTA_DSP */
-            case 1: /* STA_DSP */
-            case 2: /* STP_DSP */
+            case SPU_FSTA_DSP:
+            case SPU_STA_DSP:
+            case SPU_STP_DSP:
               /* nothing to do */
             break;
-            case 3: /* SET_COLOR */
+            case SPU_SET_COLOR:
                 cr->state = CR_COL0;
             break;
-            case 4: /* SET_CONTR */
+            case SPU_SET_CONTR:
                 cr->skip = 2; /* no need to look at this */
                 cr->state = CR_SKIPWAIT;
             break;
-            case 5: /* SET_DAREA */
+            case SPU_SET_DAREA:
                 cr->skip = 6; /* no need to look at this */
                 cr->state = CR_SKIPWAIT;
             break;
-            case 6: /* SET_DSPXA */
+            case SPU_SET_DSPXA:
                 cr->skip = 4; /* no need to look at this */
                 cr->state = CR_SKIPWAIT;
             break;
-            case 7: /* CHG_COLCON */
+            case SPU_CHG_COLCON:
                 cr->skip = 2; /* skip size of parameter area */
                 cr->state = CR_CHGARG;
             break;
-            case 255: /* CMD_END */
+            case SPU_CMD_END:
                 cr->state = CR_WAIT; /* end of SP_DCSQ */
             break;
             default:

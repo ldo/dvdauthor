@@ -28,7 +28,7 @@
 #include <assert.h>
 
 #include "subgen.h"
-
+#include "common.h"
 
 static int remainbit,subo;
 
@@ -547,30 +547,6 @@ int dvd_encode(stinfo *s)
    Rounding up will cause the display to occur one frame late.
 */
 
-    enum /* command opcodes */
-      {
-        FSTA_DSP = 0, /* forced start display, no arguments */
-        STA_DSP = 1, /* start display, no arguments */
-        STP_DSP = 2, /* stop display, no arguments */
-        SET_COLOR = 3, /* four nibble indexes into CLUT for current PGC = 2 bytes of args */
-        SET_CONTR = 4, /* four nibble contrast/alpha values = 2 bytes of args */
-        SET_DAREA = 5, /* set display area, start X/Y, end X/Y = 6 bytes of args */
-        SET_DSPXA = 6,
-          /* define pixel data addresses, 2-byte offset to top field data, 2-byte offset to
-            bottom field data = 4 bytes of args */
-        CHG_COLCON = 7,
-          /* change colour/contrast, 2 bytes param area size (incl itself) + variable nr
-            bytes params: one or more LN_CTLI, each immediately followed by 1 to 8 PX_CTLI.
-            Each LN_CTLI is 4 bytes, consisting of 4 bits of zero, 12 bits of starting line
-            number (must be greater than ending line of previous LN_CTLI, if any), 4 bits
-            of number of following PX_CTLI (must be in [1 .. 8]), and 12 bits of ending line
-            number (must not be less than starting line number).
-            Each PX_CTLI is 6 bytes, consisting of 2 bytes starting col number (must be
-            at least 8 greater than previous PX_CTLI, if any), 2 bytes of colour values
-            as per SET_COLOR, and 2 bytes of new contrast values as per SET_CONTR. */
-        CMD_END = 0xFF /* ends one SP_DCSQ */
-      };
-
     /* set pointer to this command block */
     a = subo;
     sub[2] = a >> 8;
@@ -584,40 +560,40 @@ int dvd_encode(stinfo *s)
 
     
     if( s->forced )
-        store_1(FSTA_DSP); /* command 0, forced start display, 1 byte. */
+        store_1(SPU_FSTA_DSP); /* command 0, forced start display, 1 byte. */
     else
-        store_1(STA_DSP); /* command 1, start display, 1 byte */
+        store_1(SPU_STA_DSP); /* command 1, start display, 1 byte */
 
     /* selected palettes for pixel value */
 
     /* command 3, palette, 3 bytes */
-    store_1(SET_COLOR);
+    store_1(SPU_SET_COLOR);
     store_nibble(findmasterpal(s,&s->pal[3]));
     store_nibble(findmasterpal(s,&s->pal[2]));
     store_nibble(findmasterpal(s,&s->pal[1]));
     store_nibble(findmasterpal(s,&s->pal[0]));
 
     /* command 4, alpha blend, contrast / transparency t_palette, 3 bytes  0, 15, 15, 15 */
-    store_1(SET_CONTR);
+    store_1(SPU_SET_CONTR);
     store_nibble(s->pal[3].t>>4);
     store_nibble(s->pal[2].t>>4);
     store_nibble(s->pal[1].t>>4);
     store_nibble(s->pal[0].t>>4);
 
     /* command 5, display area, 7 bytes from: startx, xsize, starty, ysize */
-    store_1(SET_DAREA);
+    store_1(SPU_SET_DAREA);
     store_trinibble(xstart);
     store_trinibble(xstart+xsize-1);
     store_trinibble(ystart);
     store_trinibble(ystart+ysize-1);
 
     /* command 6, image offsets, 5 bytes */
-    store_1(SET_DSPXA);
+    store_1(SPU_SET_DSPXA);
     store_2(offset0);
     store_2(offset1);
 
     /* command 0xff, end command block, 1 byte, */
-    store_1(CMD_END);
+    store_1(SPU_CMD_END);
 
     /* end first command block */
 
@@ -643,7 +619,7 @@ int dvd_encode(stinfo *s)
             store_2(65535);
             duration-=65535;
             store_2(next_command_ptr+5);
-            store_1(CMD_END);
+            store_1(SPU_CMD_END);
             next_command_ptr = subo;
         }
             
@@ -653,10 +629,10 @@ int dvd_encode(stinfo *s)
         store_2(next_command_ptr);
 
         /* stop command (executed after above delay) */
-        store_1(STP_DSP);
+        store_1(SPU_STP_DSP);
 
         /* end command block command */
-        store_1(CMD_END);
+        store_1(SPU_CMD_END);
     } else {
         a=next_command_ptr-2;
         sub[next_command_ptr+0] = a >> 8;
@@ -670,7 +646,7 @@ int dvd_encode(stinfo *s)
     if(subo & 1)
     {
     /* only if odd length, to make it even */
-    store_1(CMD_END);
+    store_1(SPU_CMD_END);
     }
 
     /* set subtitle packet size */

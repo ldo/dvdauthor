@@ -40,6 +40,7 @@
 #include <png.h>
 
 #include "rgb.h"
+#include "common.h"
 
 #define FALSE 0
 #define TRUE (!FALSE)
@@ -200,26 +201,26 @@ static int dvddecode()
     c = sub[i];
 
     switch (c) {
-    case 0x0:       //force start display
+    case SPU_FSTA_DSP:       //force start display
         if (debug > 4)
         fprintf(stderr, "\tcmd(%5d): force start display\n",i);
         s->force_display = TRUE;
             // fall through
-    case 0x01:
+    case SPU_STA_DSP:
         if (debug > 4 && c==0x01)
         fprintf(stderr, "\tcmd(%5d): start display\n",i);
         i++;
         s->pts[0] = t * 1024 + spts;
         break;
 
-    case 0x02:
+    case SPU_STP_DSP:
         if (debug > 4)
         fprintf(stderr, "\tcmd(%5d): end display\n",i);
         s->pts[1] = t * 1024 + spts;
         i++;
         break;
 
-    case 0x03:
+    case SPU_SET_COLOR:
         if (debug > 4)
         fprintf(stderr, "\tcmd(%5d): palette=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
 
@@ -227,7 +228,7 @@ static int dvddecode()
         i += 3;
         break;
 
-    case 0x04:
+    case SPU_SET_CONTR:
         if (debug > 4)
         fprintf(stderr, "\tcmd(%5d): transparency=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
 
@@ -235,7 +236,7 @@ static int dvddecode()
         i += 3;
         break;
 
-    case 0x05:
+    case SPU_SET_DAREA:
         s->x0 = ((((unsigned int) sub[i + 1]) << 4) + (sub[i + 2] >> 4));
         s->xd = (((sub[i + 2] & 0x0f) << 8) + sub[i + 3]) - s->x0 + 1;
 
@@ -248,7 +249,7 @@ static int dvddecode()
         i += 7;
         break;
 
-    case 0x06:
+    case SPU_SET_DSPXA:
             if( ofs>=0 )
                 fprintf(stderr,"WARN: image pointer already supplied for this subpicture\n");
         ofs = read2(sub+i+1);
@@ -259,7 +260,7 @@ static int dvddecode()
         i += 5;
         break;
 
-    case 0xff:
+    case SPU_CMD_END:
         if (i + 5 > size) {
         if (debug > 4)
             fprintf(stderr,"\tcmd(%5d): end cmd\n",i);
@@ -290,6 +291,7 @@ static int dvddecode()
         i += 5;
         break;
 
+  /* case SPU_CHG_COLCON: */ /* fixme: not handled */
     default:
             if (debug > 4)
                 fprintf(stderr, "\tcmd(%5d): 0x%x\n", i, c);
