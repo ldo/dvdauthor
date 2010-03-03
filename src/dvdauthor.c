@@ -52,9 +52,9 @@ static const char * const vformatdesc[4]={"","ntsc","pal",0};
 static const char * const vaspectdesc[4]={"","4:3","16:9",0};
 static const char * const vwidescreendesc[5]={"","noletterbox","nopanscan","crop",0};
 // taken from mjpegtools, also GPL
-const static char * const vratedesc[9] = /* descriptions of frame-rate codes */
+const static char * const vratedesc[16] = /* descriptions of frame-rate codes */
   {
-    "",
+    "0x0",
     "24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)",
     "24.0 (NATIVE FILM)",
     "25.0 (PAL/SECAM VIDEO / converted FILM)",
@@ -62,7 +62,15 @@ const static char * const vratedesc[9] = /* descriptions of frame-rate codes */
     "30.0",
     "50.0 (PAL FIELD RATE)",
     "60000.0/1001.0 (NTSC FIELD RATE)",
-    "60.0"
+    "60.0",
+  /* additional rates copied from FFmpeg, really just to fill out array */
+    "15.0",
+    "5.0",
+    "10.0",
+    "12.0",
+    "15.0",
+    "0xe",
+    "0xf"
   };
 static const char * const aformatdesc[6]={"","ac3","mp2","pcm","dts",0};
   /* audio formats */
@@ -313,20 +321,17 @@ static int scanandwarnupdate
         0;
   } /*scanandwarnupdate*/
 
-int vobgroup_set_video_framerate(struct vobgroup *va, int rate)
+int vobgroup_set_video_framerate(struct vobgroup *va, int rate /* [0 .. 15] */)
   /* sets the video frame rate code (should be VR_PAL or VR_NTSC only). Returns 1 if
     the framerate was already set to something different, else 0. */
   {
     int w;
     if (!va->vd.vframerate && rate != VR_PAL && rate != VR_NTSC)
-        fprintf(stderr, "WARN: not a valid DVD frame rate: %s\n", vratedesc[rate]);
-    w = scanandwarnupdate(&va->vd.vframerate, vratedesc[rate], &va->vdwarn.vframerate, "frame rate", vratedesc);
-      /* did I just convert the code to a keyword string, only to look up that keyword in the same array again? */
-    if (w)
-        return
-            w - 1;
-    return
-        0;
+      {
+        fprintf(stderr, "WARN: not a valid DVD frame rate: 0x%02x\n", rate);
+        rate = VR_NTSC; /* or something */
+      } /*if*/
+    return warnupdate(&va->vd.vframerate, rate, &va->vdwarn.vframerate, "frame rate", vratedesc);
   } /*vobgroup_set_video_framerate*/
 
 #define ATTRMATCH(a) (attr==0 || attr==(a))
