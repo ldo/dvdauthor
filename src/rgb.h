@@ -1,3 +1,7 @@
+/*
+    Colour conversions between RGB and YCrCb space
+*/
+
 static inline int RGB2Y(int r,int g,int b)
 {
     return ( 257*r+504*g+ 98*b+ 16500)/1000;

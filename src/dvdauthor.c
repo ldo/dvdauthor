@@ -325,7 +325,6 @@ int vobgroup_set_video_framerate(struct vobgroup *va, int rate /* [0 .. 15] */)
   /* sets the video frame rate code (should be VR_PAL or VR_NTSC only). Returns 1 if
     the framerate was already set to something different, else 0. */
   {
-    int w;
     if (!va->vd.vframerate && rate != VR_PAL && rate != VR_NTSC)
       {
         fprintf(stderr, "WARN: not a valid DVD frame rate: 0x%02x\n", rate);

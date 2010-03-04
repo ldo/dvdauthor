@@ -61,7 +61,7 @@ static void constructblankpic(pict *p,int w,int h)
 
 typedef struct { /* a set of colours in a subpicture or button */
     int numpal; /* nr entries used in pal */
-    int pal[4]; /* that's all the DVD spec allows */
+    int pal[4]; /* that's all the DVD-video spec allows */
 } palgroup;
 
 // ****************************************************
@@ -156,7 +156,7 @@ static void createimage(pict *s,int w,int h)
 
 #if defined(HAVE_MAGICK) || defined(HAVE_GMAGICK)
 static int read_magick(pict *s)
-/* uses ImageMagick to read image s from s->fname. */
+/* uses ImageMagick/GraphicsMagick to read image s from s->fname. */
 {
     Image *im;
     ImageInfo *ii;
@@ -372,11 +372,14 @@ static int checkcolor(palgroup *p,int c)
 static int gettricolor(stinfo *s,int p,int useimg)
   /* returns an index used to represent the particular combination of colours used
     in s->img, s->hlt and s->sel at offset p. */
-{
-    return (useimg?s->img.img[p]<<16:0)|
-        (s->hlt.img[p]<<8)|
-        (s->sel.img[p]);
-}
+  {
+    return
+            (useimg ? s->img.img[p] << 16 : 0)
+        |
+            s->hlt.img[p] << 8
+        |
+            s->sel.img[p];
+  } /*gettricolor*/
 
 static int pickbuttongroups(stinfo *s, int ng, int useimg)
   /* tries to assign the buttons in s to ng unique groups. useimg indicates
@@ -474,7 +477,6 @@ static int pickbuttongroups(stinfo *s, int ng, int useimg)
           {
           /* save the final button group palettes, ensuring the colours used in s->img
             for all the buttons fit in a single palette */
-          /* Whatever this code is trying to do, it doesn't work */
             palgroup p;
 
             p.numpal = s->img.numpal;
@@ -597,121 +599,134 @@ impossible:
 
 static void fixnames(stinfo *s)
   /* assigns default names to buttons that don't already have them. */
-{
+  {
     int i;
-
-    for( i=0; i<s->numbuttons; i++ )
-        if( !s->buttons[i].name ) {
-            char n[10];
-            sprintf(n,"%d",i+1);
-            s->buttons[i].name=strdup(n);
-        }
-}
+    for (i = 0; i < s->numbuttons; i++)
+        if (!s->buttons[i].name)
+          {
+            char n[10]; /* should be enough! */
+            sprintf(n, "%d", i + 1);
+            s->buttons[i].name = strdup(n);
+          } /*if; for*/
+  } /*fixnames*/
 
 // a0 .. a1, b0 .. b1 are analogous to y coordinates, positive -> high, negative->low
 // d is the distance from a to b (assuming b is to the right of a, i.e. positive x)
 // returns angle (0 = straight right, 90 = straight up, -90 = straight down) from a to b
-static void brphelp(int a0,int a1,int b0,int b1,int d,int *angle,int *dist)
-{
-    int d1,d2,m;
-
-    if( a1>b0 && a0<b1 ) {
-        *angle=0;
-        *dist=d;
+static void brphelp(int a0, int a1, int b0, int b1, int d, int *angle, int *dist)
+  {
+    int d1, d2, m;
+    if (a1 > b0 && a0 < b1)
+      {
+        *angle = 0;
+        *dist = d;
         return;
-    }
-    d1=-(b0-a1+1);
-    d2= (a0-b1+1);
+      } /*if*/
+    d1 = -(b0 - a1 + 1);
+    d2 = (a0 - b1 + 1);
     d++;
-    if( abs(d2)<abs(d1) ) {
-        d1=d2;
-    }
-    m=1;
-    if( d1<0 ) {
-        d1=-d1;
-        m=-1;
-    }
-    *angle=m*180/M_PI*atan(((double)d1)/((double)d));
-    *dist=sqrt(d1*d1+d*d);
-}
+    if (abs(d2) <abs(d1))
+      {
+        d1 = d2;
+      } /*if*/
+    m = 1;
+    if (d1 < 0)
+      {
+        d1 = -d1;
+        m = -1;
+      } /*if*/
+    *angle = m * 180 / M_PI * atan(((double)d1) / ((double)d));
+    *dist = sqrt(d1 * d1+d * d);
+  } /*brphelp*/
 
-static int buttonrelpos(rectangle *a,rectangle *b,int *angle,int *dist)
-{
+static int buttonrelpos(const rectangle *a, const rectangle *b, int *angle, int *dist)
+  /* computes an angle and distance from the position of rectangle a to that of rectangle b,
+    if I can figure one out. Returns 1 if the case is sufficiently simple for me to handle,
+    0 otherwise. */
+  {
     // from b to a
-
-    if( a->y1<=b->y0 ) {
-        brphelp(a->x0,a->x1,b->x0,b->x1,b->y0-a->y1,angle,dist);
-
+    if (a->y1 <= b->y0)
+      {
+      /* a lies above b with no vertical overlap */
+        brphelp(a->x0, a->x1, b->x0, b->x1, b->y0 - a->y1, angle, dist);
         // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d is angle %d, dist %d\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1,*angle,*dist);
         return 1;
-    }
-    if( a->y0>=b->y1 ) {
-        brphelp(a->x0,a->x1,b->x0,b->x1,a->y0-b->y1,angle,dist);
-        *angle=180-*angle;
-
+      } /*if*/
+    if (a->y0 >= b->y1)
+      {
+      /* a lies below b with no vertical overlap */
+        brphelp(a->x0, a->x1, b->x0, b->x1, a->y0 - b->y1, angle, dist);
+        *angle = 180 - *angle;
         // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d is angle %d, dist %d\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1,*angle,*dist);
         return 1;
-    }
-    if( a->x1<=b->x0 ) {
-        brphelp(a->y0,a->y1,b->y0,b->y1,b->x0-a->x1,angle,dist);
-        *angle=270-*angle;
-
+      } /*if*/
+    if (a->x1 <= b->x0)
+      {
+      /* a lies to the left of b with no horizontal overlap */
+        brphelp(a->y0, a->y1, b->y0, b->y1, b->x0 - a->x1, angle, dist);
+        *angle = 270 - *angle;
         // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d is angle %d, dist %d\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1,*angle,*dist);
         return 1;
-    }
-    if( a->x0>=b->x1 ) {
-        brphelp(a->y0,a->y1,b->y0,b->y1,a->x0-b->x1,angle,dist);
-        *angle=90+*angle;
-
+      } /*if*/
+    if (a->x0 >= b->x1)
+      {
+      /* a lies to the right of b with no horizontal overlap */
+        brphelp(a->y0, a->y1, b->y0, b->y1, a->x0 - b->x1, angle, dist);
+        *angle = 90 + *angle;
         // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d is angle %d, dist %d\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1,*angle,*dist);
         return 1;
-    }
-
+      } /*if*/
+  /* none of the above */
     // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d -- no easy comparison\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1);
     return 0;
-}
+  } /*buttonrelpos*/
 
-static void findbestbindir(stinfo *s,button *b,char **dest,int a)
-{
-    int i,la=0,ld=0;
-
-    if( *dest ) return;
+static void findbestbindir(stinfo *s, const button *b, char **dest, int a)
+  /* finds the best button to go to in the specified direction and returns its
+    name in *dest, if that has not already been set. */
+  {
+    int i, la = 0, ld = 0;
+    if (*dest) /* already got one */
+        return;
     // fprintf(stderr,"locating nearest button from %s, angle %d\n",b->name,a);
-    for( i=0; i<s->numbuttons; i++ )
-        if( b!=&s->buttons[i] ) {
-            int na,nd;
-
-            if( buttonrelpos(&s->buttons[i].r,&b->r,&na,&nd) ) {
-                na=abs(na-a);
-                if( na >= 90 )
+    for (i = 0; i < s->numbuttons; i++)
+        if (b != &s->buttons[i])
+          {
+            int na, nd;
+            if (buttonrelpos(&s->buttons[i].r, &b->r, &na, &nd))
+              {
+                na = abs(na - a); /* error from desired direction */
+                if (na >= 90) /* completely wrong direction */
                     continue;
-                if( !*dest || na<la || (na==la && nd<ld) ) {
+                if (!*dest || na < la || (na == la && nd < ld))
+                  {
+                  /* first candidate, or better score than previous candidate */
                     // fprintf(stderr,"\tchoosing %s, na=%d, d=%d\n",s->buttons[i].name,na,nd);
-                    *dest=s->buttons[i].name;
-                    la=na;
-                    ld=nd;
-                }
-            }
-        }
-    if( *dest )
-        *dest=strdup(*dest);
+                    *dest = s->buttons[i].name;
+                    la = na;
+                    ld = nd;
+                  } /*if*/
+              } /*if*/
+          } /*if; for*/
+    if (*dest)
+        *dest = strdup(*dest); /* copy the name I found */
     else
-        *dest=strdup(b->name);
-}
+        *dest = strdup(b->name); /* back to same button in this direction */
+  } /*findbestbindir*/
 
 static void detectdirections(stinfo *s)
   /* automatically detects the neighbours of each button in each direction, where
     these have not already been specified. */
-{
+  {
     int i;
-
-    for( i=0; i<s->numbuttons; i++ ) {
-        findbestbindir(s,&s->buttons[i],&s->buttons[i].up,0);
-        findbestbindir(s,&s->buttons[i],&s->buttons[i].down,180);
-        findbestbindir(s,&s->buttons[i],&s->buttons[i].left,270);
-        findbestbindir(s,&s->buttons[i],&s->buttons[i].right,90);
-    }
-}
+    for (i = 0; i < s->numbuttons; i++)
+      {
+        findbestbindir(s, &s->buttons[i], &s->buttons[i].up, 0);
+        findbestbindir(s, &s->buttons[i], &s->buttons[i].down, 180);
+        findbestbindir(s, &s->buttons[i], &s->buttons[i].left, 270);
+        findbestbindir(s, &s->buttons[i], &s->buttons[i].right, 90);
+      } /*for*/
+  } /*detectdirections*/
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -932,8 +947,7 @@ static int imgfix(stinfo *s)
         if (s->fimg[i] == 255)
           { /* haven't already done this pixel */
             int j;
-            palt *p = &s->img.pal[s->img.img[i]];
-
+            const palt * const p = &s->img.pal[s->img.img[i]];
             for (j = 0; j < 4; j++)
               /* see if colour is already in s->pal */
                 if (!memcmp(&s->pal[j], p, sizeof(palt)))
@@ -947,7 +961,6 @@ static int imgfix(stinfo *s)
           /* no room in s->pal */
             fprintf(stderr, "ERR: Too many colors in base picture\n");
             return 0;
-
 if_found:
             s->fimg[i] = j;
           } /*if; for*/
@@ -1049,21 +1062,21 @@ int process_subtitle(stinfo *s)
         constructblankpic(&s->img,w,h);
         fprintf(stderr,"INFO: Constructing blank img\n");
     } else if( s->img.width!=w || s->img.height!=h ) {
-        fprintf(stderr,"WARN: Inconsistant picture widths, skipping line %d\n",iline-1);
+        fprintf(stderr,"WARN: Inconsistent picture widths, skipping line %d\n",iline-1);
         return 0;
     }
     if( !s->hlt.img ) {
         constructblankpic(&s->hlt,w,h);
         fprintf(stderr,"INFO: Constructing blank hlt\n");
     } else if( s->hlt.width!=w || s->hlt.height!=h ) {
-        fprintf(stderr,"WARN: Inconsistant picture widths, skipping line %d\n",iline-1);
+        fprintf(stderr,"WARN: Inconsistent picture widths, skipping line %d\n",iline-1);
         return 0;
     }
     if( !s->sel.img ) {
         constructblankpic(&s->sel,w,h);
         fprintf(stderr,"INFO: Constructing blank sel\n");
     } else if( s->sel.width!=w || s->sel.height!=h ) {
-        fprintf(stderr,"WARN: Inconsistant picture widths, skipping line %d\n",iline-1);
+        fprintf(stderr,"WARN: Inconsistent picture widths, skipping line %d\n",iline-1);
         return 0;
     }
 

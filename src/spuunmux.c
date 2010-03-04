@@ -48,7 +48,6 @@
 #define CBUFSIZE 65536
 #define PSBUFSIZE 10
 
-
 static unsigned int add_offset;
 
 static int debug = 0;
@@ -58,7 +57,7 @@ static unsigned int pts, spts, subi, subs, subno;
 static int ofs, ofs1;
 static unsigned char sub[65536];
 static unsigned char next_bits;
-static char *base_name;
+static const char *base_name;
 static int have_bits;
 static FILE *fdo;
 
@@ -95,7 +94,7 @@ struct dispdetails {
     struct dispdetails *next;
 };
 
-static struct dispdetails *dd=0;
+static struct dispdetails *dd = 0;
 
 struct colormap {
     uint16_t color;
@@ -103,261 +102,274 @@ struct colormap {
     int x1,y1,x2,y2;
 };
 
-static unsigned int read4(unsigned char *p)
+static unsigned int read4(const unsigned char *p)
 {
-    return (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3];
+    return (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
 }
 
-static unsigned int read2(unsigned char *p)
+static unsigned int read2(const unsigned char *p)
 {
-    return (p[0]<<8)|p[1];
+    return (p[0] << 8) | p[1];
 }
 
-static char *readpstr(const unsigned char *b,int *i)
+static char *readpstr(const unsigned char *b, int *i)
 /* extracts a null-terminated string beginning at b[*i], advances *i past it and returns
 a copy of the string. */
-{
-    char *s=strdup((const char *)b+i[0]);
-    i[0]+=strlen(s)+1;
+  {
+    char * const s = strdup((const char *)b + i[0]);
+    i[0] += strlen(s) + 1;
     return s;
-}
+  } /*readpstr*/
 
 static unsigned char get_next_bits()
-{
-    if (!have_bits) {
-    next_bits = sub[ofs++];
-    have_bits = TRUE;
-    return next_bits >> 4;
-    }
+  /* returns next nibble from sub at offset ofs. */
+  {
+    if (!have_bits)
+      {
+        next_bits = sub[ofs++];
+        have_bits = TRUE;
+        return next_bits >> 4;
+      } /*if*/
     have_bits = FALSE;
     return next_bits & 15;
-}
+  } /*get_next_bits*/
 
-static unsigned int getpts(unsigned char *buf)
-{
-    if (!(buf[1] & 0xc0) ||
-    (buf[2] < 4) || ((buf[3] & 0xe1) != 0x21) ||
-    ((buf[5] & 1) != 1) || ((buf[7] & 1) != 1))
-    return -1;
-    return (buf[7] >> 1) + ((unsigned int) buf[6] << 7) +
-    (((unsigned int) buf[5] & 254) << 14) +
-    ((unsigned int) buf[4] << 22) +
-    (((unsigned int) buf[3] & 14) << 29);
-}
+static unsigned int getpts(const unsigned char *buf)
+  {
+    if
+      (
+            !(buf[1] & 0xc0)
+        ||
+            buf[2] < 4
+        ||
+            (buf[3] & 0xe1) != 0x21
+        ||
+            (buf[5] & 1) != 1
+        ||
+            (buf[7] & 1) != 1
+      )
+        return -1;
+    return
+            (buf[7] >> 1)
+        +
+            ((unsigned int)buf[6] << 7)
+        +
+            (((unsigned int)buf[5] & 254) << 14)
+        +
+            ((unsigned int)buf[4] << 22)
+        +
+            (((unsigned int)buf[3] & 14) << 29);
+  } /*getpts*/
 
 static void addspu(struct spu *s)
-{
-    struct spu **f=&spus;
-
-    while( *f )
-        f=&(f[0]->next);
-    *f=s;
-}
+  /* appends s onto spus. */
+  {
+    struct spu **f = &spus;
+    while (*f)
+        f = &(f[0]->next);
+    *f = s;
+  } /*addspu*/
 
 static void adddd(struct dispdetails *d)
-{
-    struct dispdetails **dp=&dd;
-
-    while (*dp )
-        dp=&(dp[0]->next);
-    *dp=d;
-}
+  /* appends d onto dd. */
+  {
+    struct dispdetails **dp = &dd;
+    while (*dp)
+        dp = &(dp[0]->next);
+    *dp = d;
+  } /*adddd*/
 
 static int dvddecode()
-{
+  /* decodes DVD-Video subpicture data. */
+  {
     unsigned int io;
     uint16_t size, dsize, i, x, y, t;
     unsigned char c;
     struct spu *s;
-
     size = read2(sub);
-    dsize = read2(sub+2);
-
+    dsize = read2(sub + 2);
     ofs = -1;
-
     if (debug > 1)
-    fprintf(stderr, "packet: %d bytes, first block offset=%d\n", size,
-        dsize);
-
-    s=malloc(sizeof(struct spu));
-    memset(s,0,sizeof(struct spu));
-
-    s->subno=subno++;
-
+        fprintf(stderr, "packet: %d bytes, first block offset=%d\n", size, dsize);
+    s = malloc(sizeof(struct spu));
+    memset(s, 0, sizeof(struct spu));
+    s->subno = subno++;
     s->pts[0] = s->pts[1] = -1;
-    s->nummap=1;
-    s->map=malloc(sizeof(struct colormap));
-    memset(s->map,0,sizeof(struct colormap));
-    s->map[0].x2=0x7fffffff;
-    s->map[0].y2=0x7fffffff;
+    s->nummap = 1;
+    s->map = malloc(sizeof(struct colormap));
+    memset(s->map, 0, sizeof(struct colormap));
+    s->map[0].x2 = 0x7fffffff;
+    s->map[0].y2 = 0x7fffffff;
     i = dsize + 4;
-
-    t = read2(sub+dsize);
-
+    t = read2(sub + dsize);
     if (debug > 2)
-    fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", dsize, t, read2(sub+dsize+2));
-
-    while (i < size) {
-    c = sub[i];
-
-    switch (c) {
-    case SPU_FSTA_DSP:       //force start display
-        if (debug > 4)
-        fprintf(stderr, "\tcmd(%5d): force start display\n",i);
-        s->force_display = TRUE;
-            // fall through
-    case SPU_STA_DSP:
-        if (debug > 4 && c==0x01)
-        fprintf(stderr, "\tcmd(%5d): start display\n",i);
-        i++;
-        s->pts[0] = t * 1024 + spts;
+        fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", dsize, t, read2(sub + dsize + 2));
+    while (i < size)
+      {
+        c = sub[i];
+        switch (c)
+          {
+        case SPU_FSTA_DSP:
+            if (debug > 4)
+                fprintf(stderr, "\tcmd(%5d): force start display\n", i);
+            s->force_display = TRUE;
+        // fall through
+        case SPU_STA_DSP:
+            if (debug > 4 && c == SPU_STA_DSP)
+                fprintf(stderr, "\tcmd(%5d): start display\n", i);
+            i++;
+            s->pts[0] = t * 1024 + spts;
         break;
 
-    case SPU_STP_DSP:
-        if (debug > 4)
-        fprintf(stderr, "\tcmd(%5d): end display\n",i);
-        s->pts[1] = t * 1024 + spts;
-        i++;
+        case SPU_STP_DSP:
+            if (debug > 4)
+                fprintf(stderr, "\tcmd(%5d): end display\n", i);
+            s->pts[1] = t * 1024 + spts;
+            i++;
         break;
 
-    case SPU_SET_COLOR:
-        if (debug > 4)
-        fprintf(stderr, "\tcmd(%5d): palette=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
-
-            s->map[0].color=read2(sub+i+1);
-        i += 3;
+        case SPU_SET_COLOR:
+            if (debug > 4)
+                fprintf(stderr, "\tcmd(%5d): palette=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
+            s->map[0].color = read2(sub + i + 1);
+            i += 3;
         break;
 
-    case SPU_SET_CONTR:
-        if (debug > 4)
-        fprintf(stderr, "\tcmd(%5d): transparency=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
-
-            s->map[0].contrast=read2(sub+i+1);
-        i += 3;
+        case SPU_SET_CONTR:
+            if (debug > 4)
+                fprintf(stderr, "\tcmd(%5d): transparency=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
+            s->map[0].contrast = read2(sub + i + 1);
+            i += 3;
         break;
 
-    case SPU_SET_DAREA:
-        s->x0 = ((((unsigned int) sub[i + 1]) << 4) + (sub[i + 2] >> 4));
-        s->xd = (((sub[i + 2] & 0x0f) << 8) + sub[i + 3]) - s->x0 + 1;
+        case SPU_SET_DAREA:
+            s->x0 = ((((unsigned int)sub[i + 1]) << 4) + (sub[i + 2] >> 4));
+            s->xd = (((sub[i + 2] & 0x0f) << 8) + sub[i + 3]) - s->x0 + 1;
 
-        s->y0 = ((((unsigned int) sub[i + 4]) << 4) + (sub[i + 5] >> 4));
-        s->yd = (((sub[i + 5] & 0x0f) << 8) + sub[i + 6]) - s->y0 + 1;
+            s->y0 = ((((unsigned int)sub[i + 4]) << 4) + (sub[i + 5] >> 4));
+            s->yd = (((sub[i + 5] & 0x0f) << 8) + sub[i + 6]) - s->y0 + 1;
 
-        if (debug > 4)
-        fprintf(stderr, "\tcmd(%5d): image corner=%d,%d, size=%d,%d\n", i, s->x0,
-            s->y0, s->xd, s->yd);
-        i += 7;
+            if (debug > 4)
+                fprintf(stderr, "\tcmd(%5d): image corner=%d,%d, size=%d,%d\n", i, s->x0,
+                    s->y0, s->xd, s->yd);
+            i += 7;
         break;
 
-    case SPU_SET_DSPXA:
-            if( ofs>=0 )
-                fprintf(stderr,"WARN: image pointer already supplied for this subpicture\n");
-        ofs = read2(sub+i+1);
-        ofs1 = read2(sub+i+3);
-        if (debug > 4)
-        fprintf(stderr, "\tcmd(%5d): image offsets=%d,%d\n", i, ofs,
-            ofs1);
-        i += 5;
+        case SPU_SET_DSPXA:
+            if (ofs >= 0)
+                fprintf(stderr, "WARN: image pointer already supplied for this subpicture\n");
+                  /* not necessarily wrong, it's just I can't handle it */
+            ofs = read2(sub + i + 1);
+            ofs1 = read2(sub + i + 3);
+            if (debug > 4)
+                fprintf(stderr, "\tcmd(%5d): image offsets=%d,%d\n", i, ofs, ofs1);
+            i += 5;
         break;
 
-    case SPU_CMD_END:
-        if (i + 5 > size) {
-        if (debug > 4)
-            fprintf(stderr,"\tcmd(%5d): end cmd\n",i);
-
-        i = size;
+        case SPU_CMD_END:
+            if (i + 5 > size)
+              {
+                if (debug > 4)
+                    fprintf(stderr,"\tcmd(%5d): end cmd\n",i);
+                i = size;
+                break;
+              } /*if*/
+            t = read2(sub + i + 1);
+            if (debug > 4)
+              {
+                fprintf(stderr, "\tcmd(%5d): end cmd\n", i);
+                fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", i + 1, t, read2(sub + i + 3));
+              }
+            if
+              (
+                    sub[i + 3] != sub[dsize + 2]
+                ||
+                    sub[i + 4] != sub[dsize + 3]
+              )
+              {
+                if (debug > 0)
+                  {
+                    fprintf(stderr,
+                        "invalid control header (%02x%02x != %02x%02x) dsize=%d!\n",
+                        sub[i + 3], sub[i + 4], sub[dsize + 2], sub[dsize + 3], dsize);
+                  } /*if*/
+                i = size;
+                break;
+              } /*if*/
+            i += 5;
         break;
-        }
 
-        t = read2(sub + i + 1);
-        if (debug > 4) {
-        fprintf(stderr, "\tcmd(%5d): end cmd\n",i);
-                fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", i+1, t, read2(sub+i+3));
-            }
-
-        if ((sub[i + 3] != sub[dsize + 2])
-        || (sub[i + 4] != sub[dsize + 3])) {
-        if (debug > 0) {
-            fprintf(stderr,
-                "invalid control header (%02x%02x != %02x%02x) dsize=%d!\n",
-                sub[i + 3], sub[i + 4], sub[dsize + 2],
-                sub[dsize + 3], dsize);
-        }
-
-        i = size;
-        break;
-        }
-
-        i += 5;
-        break;
-
-  /* case SPU_CHG_COLCON: */ /* fixme: not handled */
-    default:
+      /* case SPU_CHG_COLCON: */ /* fixme: not handled */
+        default:
             if (debug > 4)
                 fprintf(stderr, "\tcmd(%5d): 0x%x\n", i, c);
-        if (debug > 0)
-        fprintf(stderr,
-            "invalid sequence in control header (%02x)!\n", c);
-        return -1;
-    }           /* end switch command */
-    }               /* end while i < size */
+            if (debug > 0)
+                fprintf(stderr, "invalid sequence in control header (%02x)!\n", c);
+            return -1;
+          } /*switch*/
+      } /*while*/
 
     have_bits = FALSE;
     x = y = 0;
     io = 0;
     s->img = malloc( s->xd*s->yd);
 
-    if( ofs<0 && y<s->yd ) {
+    if (ofs < 0 && y < s->yd)
+      {
         fprintf(stderr,"WARN: No image data supplied for this subtitle\n");
-    } else {
-        while ((ofs < dsize) && (y < s->yd)) {
+      }
+    else
+      {
+        while ((ofs < dsize) && (y < s->yd))
+          {
             i = get_next_bits();
-
-            if (i < 4) {
+            if (i < 4)
+              {
                 i = (i << 4) + get_next_bits();
-                if (i < 16) {
+                if (i < 16)
+                  {
                     i = (i << 4) + get_next_bits();
-                    if (i < 0x40) {
+                    if (i < 0x40)
+                      {
                         i = (i << 4) + get_next_bits();
-                        if (i < 4) {
-                            i=i+(s->xd-x)*4;
-                        }
-                    }
-                }
-            }
+                        if (i < 4)
+                          {
+                            i = i + (s->xd - x) * 4;
+                          } /*if*/
+                      } /*if*/
+                  } /*if*/
+              } /*if*/
 
             c = i & 3;
             i = i >> 2;
-            while (i--) {
+            while (i--)
+              {
                 s->img[io++] = c;
-                if (++x == s->xd) {
+                if (++x == s->xd)
+                  {
                     y += 2;
                     x = 0;
-                    if ((y >= s->yd) && !(y & 1)) {
+                    if (y >= s->yd && !(y & 1))
+                      {
                         y = 1;
                         io = s->xd;
                         ofs = ofs1;
-                    } else
+                      }
+                    else
                         io += s->xd;
                     have_bits = FALSE;
-                }
-            }
-        }
-    }
-    
+                  } /*if*/
+              } /*while*/
+          } /*while*/
+      } /*if*/
     if (s->pts[0] == -1)
         return 0;
-    
     s->pts[0] += add_offset;
     if( s->pts[1] != -1 )
         s->pts[1] += add_offset;
-    
     addspu(s);
-
     return 0;
-}               /* end fuction dvd_decode */
-
-
+  } /*dvd_decode*/
 
  /*
   * from Y -> R
@@ -710,7 +722,6 @@ static void usage(void)
     fprintf(stderr, "\n");
 }
 
-
 int main(int argc, char **argv)
 {
     struct vfile fd;
@@ -719,55 +730,58 @@ int main(int argc, char **argv)
     char *temp;
     int firstvideo=-1;
     unsigned int c, next_word, stream_number, inc, Inc;
-    unsigned short int package_length;
     unsigned char cbuf[CBUFSIZE];
     unsigned char psbuf[PSBUFSIZE];
     char nbuf[256], *palet_file, *iname[256];
 
-    fputs(PACKAGE_HEADER("spuunmux"),stderr);
-
+    fputs(PACKAGE_HEADER("spuunmux"), stderr);
     base_name = "sub";
     stream_number = 0;
     palet_file = 0;
     Inc = inc = 0;
+    while ((option = getopt(argc, argv, "o:v:fs:p:Vh")) != -1)
+      {
+        switch (option)
+          {
+        case 'o':
+            base_name = optarg;
+        break;
+        case 'v':
+            debug = strtounsigned(optarg, "verbosity");
+        break;
+        case 'f':
+            full_size = TRUE;
+        break;
+        case 's':
+            stream_number = strtounsigned(optarg, "stream number");
+        break;
+        case 'p':
+            palet_file = optarg;
+        break;
+        case 'V':
+            exit(-1);
 
-    while ((option = getopt(argc, argv, "o:v:fs:p:Vh")) != -1) {
-    switch (option) {
-    case 'o':
-        base_name = optarg;
-        break;
-    case 'v':
-        debug = strtounsigned(optarg, "verbosity");
-        break;
-    case 'f':
-        full_size = TRUE;
-        break;
-    case 's':
-        stream_number = strtounsigned(optarg, "stream number");
-        break;
-    case 'p':
-        palet_file = optarg;
-        break;
-    case 'V':
-        exit(-1);
+        case 'h':
+        default:
+            usage();
+            return -1;
+          } /*switch*/
+      } /*while*/
 
-    case 'h':
-    default:
+    if (optind < argc)
+      {
+        int n, i;
+        for (i = 0, n = optind; n < argc; n++, i++)
+            iname[i] = argv[n];
+        Inc = i;
+      }
+    else
+      {
         usage();
         return -1;
-    }
-    }
+      } /*if*/
 
-    if (optind < argc) {
-    int n, i;
-    for (i = 0, n = optind; n < argc; n++, i++)
-        iname[i] = argv[n];
-    Inc = i;
-    } else {
-    usage();
-    return -1;
-    }
-
+  /* initialize bpal to default palette */
     bps(0, 0, 0, 0);
     bps(1, 127, 0, 0);
     bps(2, 0, 127, 0);
@@ -785,17 +799,20 @@ int main(int argc, char **argv)
     bps(14, 0, 128, 128);
     bps(15, 128, 128, 128);
 
-    if( palet_file ) {
+    if( palet_file )
+      {
         rgb = FALSE;
         temp = strrchr(palet_file, '.');
-        if (temp != NULL) {
+        if (temp != NULL)
+          {
             if (strcmp(temp, ".rgb") == 0)
                 rgb = TRUE;
-        }
-        
+          } /*if*/        
         fdo = fopen(palet_file, "r");
-        if (fdo != NULL) {
-            for (n = 0; n < 16; n++) {
+        if (fdo != NULL)
+          {
+            for (n = 0; n < 16; n++)
+              {
                 int r, g, b;
                 fscanf(fdo, "%02x%02x%02x", &r, &g, &b);
                 if (!rgb)
@@ -803,365 +820,361 @@ int main(int argc, char **argv)
                 bpal[n].r = r;
                 bpal[n].g = g;
                 bpal[n].b = b;
-                
                 if (debug > 3)
-                    fprintf(stderr, "pal: %d #%02x%02x%02x\n", n,
-                            bpal[n].r, bpal[n].g, bpal[n].b);
-
-            }
+                    fprintf(stderr, "pal: %d #%02x%02x%02x\n", n, bpal[n].r, bpal[n].g, bpal[n].b);
+              } /*for*/
             fclose(fdo);
-        } else {
+          }
+        else
+          {
             fprintf(stderr, "unable to open %s, using defaults\n", palet_file);
-        }
-    }
-
-    if (strlen(base_name) > 246) {
-    fprintf(stderr,
-        "error: max length of base for filename creation is 246 characters\n");
-    return -1;
-    }
-
+          } /*if*/
+      } /*if*/
+    if (strlen(base_name) > 246)
+      {
+        fprintf(stderr,
+            "error: max length of base for filename creation is 246 characters\n");
+        return -1;
+      } /*if*/
     sprintf(nbuf, "%s.xml", base_name);
     fdo = fopen(nbuf, "w+");
     fprintf(fdo, "<subpictures>\n\t<stream>\n");
-
     pts = 0;
     subno = 0;
     subi = 0;
-
     add_offset = 450; // for rounding purposes
-
-    while (inc < Inc) {
-    fd = varied_open(iname[inc], O_RDONLY, "input file");
-
-    if (debug > 0)
-        fprintf(stderr, "file: %s\n", iname[inc]);
-
-    inc++;
-
-    while (fread(&c, 1, 4, fd.h) == 4) {
-            c=ntohl(c);
-        if (c == 0x000001ba) {  // start PS (Program stream)
-        static unsigned int old_system_time = -1;
-        unsigned int new_system_time;
-          l_01ba:
-        if (debug > 5)
-            fprintf(stderr, "pack_start_code\n");
-
-        if (fread(psbuf, 1, PSBUFSIZE, fd.h) < 1)
-            break;
-
-        if ( (psbuf[0] & 0xc0) != 0x40 ) {
-            if (debug > 1)
-                fprintf(stderr, "not a MPEG-2 file, skipping.\n");
-            break;
-        }
-
-        new_system_time = (psbuf[4] >> 3) + (psbuf[3] * 32) +
-            ((psbuf[2] & 3) * 32 * 256) +
-            ((psbuf[2] & 0xf8) * 32 * 128) +
-            (psbuf[1] * 1024 * 1024) +
-            ((psbuf[0] & 3) * 1024 * 1024 * 256) +
-            ((psbuf[0] & 0x38) * 1024 * 1024 * 128);
-
-        if (new_system_time < old_system_time) {
-            if (old_system_time != -1) {
-            if (debug > 0)
-                printf
-                ("Time changed in stream header, use old time as offset for timecode in subtitle stream\n");
-            add_offset += old_system_time;
-            }
-        }
-        old_system_time = new_system_time;
-
+    while (inc < Inc)
+      {
+        fd = varied_open(iname[inc], O_RDONLY, "input file");
+        if (debug > 0)
+            fprintf(stderr, "file: %s\n", iname[inc]);
+        inc++;
+        while (fread(&c, 1, 4, fd.h) == 4)
+          {
+            c = ntohl(c);
+            if (c == 0x00000100 + MPID_PACK)
+              {  // start PS (Program stream)
+                static unsigned int old_system_time = -1;
+                unsigned int new_system_time;
+l_01ba:
+                if (debug > 5)
+                    fprintf(stderr, "pack_start_code\n");
+                if (fread(psbuf, 1, PSBUFSIZE, fd.h) < 1)
+                    break;
+                if ((psbuf[0] & 0xc0) != 0x40)
+                  {
+                    if (debug > 1)
+                        fprintf(stderr, "not a MPEG-2 file, skipping.\n");
+                    break;
+                  } /*if*/
+                new_system_time =
+                        (psbuf[4] >> 3)
+                    +
+                        psbuf[3] * 32
+                    +
+                        (psbuf[2] & 3) * 32 * 256
+                    +
+                        (psbuf[2] & 0xf8) * 32 * 128
+                    +
+                        psbuf[1] * 1024 * 1024
+                    +
+                        (psbuf[0] & 3) * 1024 * 1024 * 256
+                    +
+                        (psbuf[0] & 0x38) * 1024 * 1024 * 128;
+                if (new_system_time < old_system_time)
+                  {
+                    if (old_system_time != -1)
+                      {
+                        if (debug > 0)
+                            fprintf
+                              (
+                                stderr,
+                                "Time changed in stream header, use old time as offset for"
+                                    " timecode in subtitle stream\n"
+                              );
+                        add_offset += old_system_time;
+                      } /*if*/
+                  } /*if*/
+                old_system_time = new_system_time;
                 flushspus(old_system_time);
-
-        if (debug > 5) {
-            fprintf(stderr, "system time: %u\n", new_system_time);
-        }
-
-                c=psbuf[9]&7;
-        if (c) {
+                if (debug > 5)
+                  {
+                    fprintf(stderr, "system time: %u\n", new_system_time);
+                  } /*if*/
+                c = psbuf[9] & 7;
+                if (c)
+                  {
                     char s[7];
-
-            if (debug > 5)
-                fprintf(stderr, "found %d stuffing bytes\n", c);
-            if (fread(s, 1, c, fd.h) < c)
-                break;
-        }
-            } else if( c==0x1b9 ) {
+                    if (debug > 5)
+                        fprintf(stderr, "found %d stuffing bytes\n", c);
+                    if (fread(s, 1, c, fd.h) < c)
+                        break;
+                  } /*if*/
+              }
+            else if (c == 0x100 + MPID_PROGRAM_END)
+              {
                 if (debug > 5)
                     fprintf(stderr, "end packet\n");
-        } else {
-        fread(&package_length, 1, 2, fd.h);
-                package_length=ntohs(package_length);
-        if (package_length != 0) {
-
-            switch (c) {
-            case 0x01bb:
-            if (debug > 5)
-                fprintf(stderr, "system header\n");
-            break;
-            case 0x01bf:
-            if (debug > 5)
-                fprintf(stderr, "private stream 2\n");
-            break;
-            case 0x01bd:
-            if (debug > 5)
-                fprintf(stderr, "private stream\n");
-            fread(cbuf, 1, package_length, fd.h);
-
-            next_word = getpts(cbuf);
-            if (next_word != -1) {
-                pts = next_word;
-            }
-
-            next_word = cbuf[2] + 3;
-
-            if (debug > 5)
-                for (c = 0; c < next_word; c++)
-                fprintf(stderr, "0x%02x ", cbuf[c]);
-
-            if (debug > 5)
-                fprintf(stderr, "tid: %d\n", pts);
-
-            if ( /*(debug > 1) && */ (cbuf[next_word] == 0x70))
-                fprintf(stderr, "substr: %d\n",
-                    cbuf[next_word + 1]);
-
-            if (cbuf[next_word] == stream_number + 32) {
-                if ((debug < 6) && (debug > 1)) {
-                fprintf(stderr,
-                    "id: 0x%x 0x%x %d  tid: %d\n",
-                    cbuf[next_word], package_length,
-                    next_word, pts);
-                }
-
-                if (!subi) {
-                subs =
-                    ((unsigned int) cbuf[next_word + 1] <<
-                     8) + cbuf[next_word + 2];
-
-                spts = pts;
-                }
-
-                memcpy(sub + subi, cbuf + next_word + 1,
-                   package_length - next_word - 1);
-
-                if (debug > 1) {
-                fprintf(stderr, "found %d bytes of data\n",
-                    package_length - next_word - 1);
-                }
-
-                subi += package_length - next_word - 1;
-
-                if (debug > 2) {
-                fprintf(stderr,
-                    "subi: %d (0x%x)  subs: %d (0x%x) b-a-1: %d (0x%x)\n",
-                    subi, subi, subs, subs,
-                    package_length - next_word - 1,
-                    package_length - next_word - 1);
-                }
-
-                if (subs == subi) {
-                subi = 0;
-
-                next_word = dvddecode();
-
-                if (next_word) {
-                    fprintf(stderr,
-                        "found unreadable subtitle at %.2fs, skipping\n",
-                        (double) spts / 90000);
-                    continue;
-                }
-                }   /* end if subs == subi */
-            }
-                        package_length=0;
-            break;
-            case 0x01e0:
-                        if( firstvideo==-1 ) {
+              }
+            else /* packet with a length field */
+              {
+                unsigned short int package_length;
+                fread(&package_length, 1, 2, fd.h);
+                package_length = ntohs(package_length);
+                if (package_length != 0)
+                  {
+                    switch (c)
+                      {
+                    case 0x0100 + MPID_SYSTEM:
+                        if (debug > 5)
+                            fprintf(stderr, "system header\n");
+                    break;
+                    case 0x0100 + MPID_PRIVATE2:
+                        if (debug > 5)
+                            fprintf(stderr, "private stream 2\n");
+                    break;
+                    case 0x0100 + MPID_PRIVATE1:
+                        if (debug > 5)
+                            fprintf(stderr, "private stream\n");
+                        fread(cbuf, 1, package_length, fd.h);
+                        next_word = getpts(cbuf);
+                        if (next_word != -1)
+                          {
+                            pts = next_word;
+                          } /*if*/
+                        next_word = cbuf[2] + 3;
+                        if (debug > 5)
+                            for (c = 0; c < next_word; c++)
+                                fprintf(stderr, "0x%02x ", cbuf[c]);
+                        if (debug > 5)
+                            fprintf(stderr, "tid: %d\n", pts);
+                        if ( /*(debug > 1) && */ (cbuf[next_word] == 0x70))
+                            fprintf(stderr, "substr: %d\n", cbuf[next_word + 1]);
+                        if (cbuf[next_word] == stream_number + 32)
+                          {
+                            if (debug < 6 && debug > 1)
+                              {
+                                fprintf(stderr,
+                                    "id: 0x%x 0x%x %d  tid: %d\n",
+                                    cbuf[next_word], package_length,
+                                    next_word, pts);
+                              } /*if*/
+                            if (!subi)
+                              {
+                                subs =
+                                        ((unsigned int)cbuf[next_word + 1] << 8)
+                                    +
+                                        cbuf[next_word + 2];
+                                spts = pts;
+                              } /*if*/
+                            memcpy(sub + subi, cbuf + next_word + 1, package_length - next_word - 1);
+                            if (debug > 1)
+                              {
+                                fprintf(stderr, "found %d bytes of data\n",
+                                    package_length - next_word - 1);
+                              } /*if*/
+                            subi += package_length - next_word - 1;
+                            if (debug > 2)
+                              {
+                                fprintf(stderr,
+                                    "subi: %d (0x%x)  subs: %d (0x%x) b-a-1: %d (0x%x)\n",
+                                    subi, subi, subs, subs,
+                                    package_length - next_word - 1,
+                                    package_length - next_word - 1);
+                              } /*if*/
+                            if (subs == subi)
+                              {
+                                subi = 0;
+                                next_word = dvddecode();
+                                if (next_word)
+                                  {
+                                    fprintf(stderr,
+                                        "found unreadable subtitle at %.2fs, skipping\n",
+                                        (double) spts / 90000);
+                                    continue;
+                                  } /*if*/
+                              } /*if*/
+                          } /*if*/
+                        package_length = 0;
+                    break;
+                    case 0x0100 + MPID_VIDEO_FIRST:
+                        if (firstvideo == -1)
+                          {
                             fread(cbuf, 1, package_length, fd.h);
-                            firstvideo=getpts(cbuf);
-                            add_offset-=firstvideo;
-                            package_length=0;
-                        }
-            if (debug > 5)
-                fprintf(stderr, "video stream 0\n");
-            break;
+                            firstvideo = getpts(cbuf);
+                            add_offset -= firstvideo;
+                            package_length = 0;
+                          } /*if*/
+                        if (debug > 5)
+                            fprintf(stderr, "video stream 0\n");
+                    break;
                     case 0x01e1:
-            case 0x01e2:
-            case 0x01e3:
-            case 0x01e4:
-            case 0x01e5:
-            case 0x01e6:
-            case 0x01e7:
-            case 0x01e8:
-            case 0x01e9:
-            case 0x01ea:
-            case 0x01eb:
-            case 0x01ec:
-            case 0x01ed:
-            case 0x01ee:
-            case 0x01ef:
-            if (debug > 5)
-                fprintf(stderr, "video stream %d\n",c-0x1e0);
-            break;
-            case 0x01be:
-            if (debug > 5)
-                fprintf(stderr, "padding stream %d bytes\n",
-                    package_length);
-            fread(cbuf, 1, package_length, fd.h);
-                        if( package_length > 30 ) {
+                    case 0x01e2:
+                    case 0x01e3:
+                    case 0x01e4:
+                    case 0x01e5:
+                    case 0x01e6:
+                    case 0x01e7:
+                    case 0x01e8:
+                    case 0x01e9:
+                    case 0x01ea:
+                    case 0x01eb:
+                    case 0x01ec:
+                    case 0x01ed:
+                    case 0x01ee:
+                    case 0x01ef:
+                        if (debug > 5)
+                            fprintf(stderr, "video stream %d\n",c - 0x100 - MPID_VIDEO_FIRST);
+                    break;
+                    case 0x0100 + MPID_PAD:
+                        if (debug > 5)
+                            fprintf(stderr, "padding stream %d bytes\n", package_length);
+                        fread(cbuf, 1, package_length, fd.h);
+                        if (package_length > 30)
+                          {
                             int i;
-
-                            package_length=0;
-                            i=0;
-                            if( strcmp((const char *)cbuf+i,"dvdauthor-data") )
+                            package_length = 0;
+                            i = 0;
+                            if (strcmp((const char *)cbuf + i, "dvdauthor-data"))
                                 break;
-                            i=15;
-                            if( cbuf[i]!=2 )
+                            i = 15;
+                            if (cbuf[i] != 2)
                                 break;
-                            switch(cbuf[i+1]) {
+                            switch(cbuf[i + 1])
+                              {
                             case 1: // subtitle/menu color and button information
-                            {
-                                // int st=cbuf[i+2]&31; // we ignore which subtitle stream for now
+                              {
+                                // int st = cbuf[i + 2] & 31; // we ignore which subtitle stream for now
                                 struct dispdetails *d;
-                                i+=3;
-                                d=malloc(sizeof(struct dispdetails));
-                                memset(d,0,sizeof(struct dispdetails));
-                                d->pts[0]=read4(cbuf+i);
-                                d->pts[1]=read4(cbuf+i+4);
-                                i+=8;
-                                while(cbuf[i]!=0xff) {
-                                    switch(cbuf[i]) {
+                                i += 3;
+                                d = malloc(sizeof(struct dispdetails));
+                                memset(d, 0, sizeof(struct dispdetails));
+                                d->pts[0] = read4(cbuf + i);
+                                d->pts[1] = read4(cbuf + i + 4);
+                                i += 8;
+                                while(cbuf[i] != 0xff)
+                                  {
+                                    switch(cbuf[i])
+                                      {
                                     case 1:
-                                    {
+                                      {
                                         int j;
-
-                                        d->numpal=0;
-                                        for( j=0; j<cbuf[i+1]; j++ ) {
-                                            int c=read4(cbuf+i+1+3*j)&0xffFFff;
-                                            d->palette[j]=c;
+                                        d->numpal = 0;
+                                        for (j = 0; j < cbuf[i + 1]; j++)
+                                          {
+                                            int c = read4(cbuf + i + 1 + 3 * j) & 0xffffff;
+                                            d->palette[j] = c;
                                             d->numpal++;
-                                        }
-                                        i+=2+3*d->numpal;
-                                        break;
-                                    }
+                                          } /*for*/
+                                        i += 2 + 3 * d->numpal;
+                                      }
+                                    break;
                                     case 2:
-                                    {
+                                      {
                                         int j;
-
-                                        d->numcoli=cbuf[i+1];
-                                        for( j=0; j<2*d->numcoli; j++ )
-                                            d->coli[j]=read4(cbuf+i+2+j*4);
-                                        i+=2+8*d->numcoli;
-                                        break;
-                                    }
+                                        d->numcoli = cbuf[i + 1];
+                                        for (j = 0; j < 2 * d->numcoli; j++)
+                                            d->coli[j] = read4(cbuf + i + 2 + j * 4);
+                                        i += 2 + 8 * d->numcoli;
+                                      }
+                                    break;
                                     case 3:
-                                    {
+                                      {
                                         int j;
-                                        d->numbuttons=cbuf[i+1];
-                                        d->buttons=malloc(d->numbuttons*sizeof(struct button));
-                                        i+=2;
-                                        for( j=0; j<d->numbuttons; j++ ) {
-                                            struct button *b=&d->buttons[j];
-                                            b->name=readpstr(cbuf,&i);
-                                            i+=2;
-                                            b->autoaction=cbuf[i++];
-                                           b->grp=cbuf[i];
-                                           b->x1=read2(cbuf+i+1);
-                                           b->y1=read2(cbuf+i+3);
-                                           b->x2=read2(cbuf+i+5);
-                                           b->y2=read2(cbuf+i+7);
-                                           i+=9;
-                                           // up down left right
-                                           b->up=readpstr(cbuf,&i);
-                                           b->down=readpstr(cbuf,&i);
-                                           b->left=readpstr(cbuf,&i);
-                                           b->right=readpstr(cbuf,&i);
-                                        }
-                                        break;
-                                    }
-                                        
+                                        d->numbuttons = cbuf[i + 1];
+                                        d->buttons = malloc(d->numbuttons * sizeof(struct button));
+                                        i += 2;
+                                        for (j = 0; j < d->numbuttons; j++)
+                                          {
+                                            struct button *b = &d->buttons[j];
+                                            b->name = readpstr(cbuf, &i);
+                                            i += 2;
+                                            b->autoaction = cbuf[i++];
+                                            b->grp = cbuf[i];
+                                            b->x1 = read2(cbuf + i + 1);
+                                            b->y1 = read2(cbuf + i + 3);
+                                            b->x2 = read2(cbuf + i + 5);
+                                            b->y2 = read2(cbuf + i + 7);
+                                            i += 9;
+                                            // up down left right
+                                            b->up = readpstr(cbuf, &i);
+                                            b->down = readpstr(cbuf, &i);
+                                            b->left = readpstr(cbuf, &i);
+                                            b->right = readpstr(cbuf, &i);
+                                          } /*for*/
+                                      }
+                                    break;
                                     default:
                                         fprintf(stderr,"ERR:  unknown dvd info packet command: %d, offset %d\n",cbuf[i], i);
                                         exit(1);
-                                    }
-                                }
+                                      } /*switch*/
+                                  } /*while*/
                                 adddd(d);
-                                break;
-                            }
-                            }
-                        }
-                        package_length=0;
-            break;
-            case 0x01c0:
+                              } /*case 1*/
+                            break;
+                              } /*switch*/
+                          } /*if*/
+                        package_length = 0;
+                    break;
+                    case 0x01c0:
                     case 0x01c1:
-            case 0x01c2:
-            case 0x01c3:
-            case 0x01c4:
-            case 0x01c5:
-            case 0x01c6:
-            case 0x01c7:
-            case 0x01c8:
-            case 0x01c9:
-            case 0x01ca:
-            case 0x01cb:
-            case 0x01cc:
-            case 0x01cd:
-            case 0x01ce:
-            case 0x01cf:
-            case 0x01d0:
+                    case 0x01c2:
+                    case 0x01c3:
+                    case 0x01c4:
+                    case 0x01c5:
+                    case 0x01c6:
+                    case 0x01c7:
+                    case 0x01c8:
+                    case 0x01c9:
+                    case 0x01ca:
+                    case 0x01cb:
+                    case 0x01cc:
+                    case 0x01cd:
+                    case 0x01ce:
+                    case 0x01cf:
+                    case 0x01d0:
                     case 0x01d1:
-            case 0x01d2:
-            case 0x01d3:
-            case 0x01d4:
-            case 0x01d5:
-            case 0x01d6:
-            case 0x01d7:
-            case 0x01d8:
-            case 0x01d9:
-            case 0x01da:
-            case 0x01db:
-            case 0x01dc:
-            case 0x01dd:
-            case 0x01de:
-            case 0x01df:
-            if (debug > 5)
-                fprintf(stderr, "audio stream %d\n",c-0x1c0);
-            break;
-            default:
-            if (debug > 0)
-                fprintf(stderr, "unknown header %x\n", c);
-            next_word = (c<<16) | package_length;
-            package_length = 2;
-            while (next_word != 0x1ba) {
-                next_word = next_word << 8;
-                if (fread(&next_word, 1, 1, fd.h) < 1)
-                break;
-                package_length++;
-            }
-
-            if (debug > 0)
-                fprintf(stderr,
-                    "skipped %d bytes of garbage\n",
-                    package_length);
-            goto l_01ba;
-            }       /* end switch */
+                    case 0x01d2:
+                    case 0x01d3:
+                    case 0x01d4:
+                    case 0x01d5:
+                    case 0x01d6:
+                    case 0x01d7:
+                    case 0x01d8:
+                    case 0x01d9:
+                    case 0x01da:
+                    case 0x01db:
+                    case 0x01dc:
+                    case 0x01dd:
+                    case 0x01de:
+                    case 0x01df:
+                        if (debug > 5)
+                            fprintf(stderr, "audio stream %d\n", c - 0x100 - MPID_AUDIO_FIRST);
+                    break;
+                    default:
+                        if (debug > 0)
+                            fprintf(stderr, "unknown header %x\n", c);
+                        next_word = (c << 16) | package_length;
+                        package_length = 2;
+                        while (next_word != 0x100 + MPID_PACK)
+                          {
+                            next_word = next_word << 8;
+                            if (fread(&next_word, 1, 1, fd.h) < 1)
+                                break;
+                            package_length++;
+                          } /*while*/
+                        if (debug > 0)
+                            fprintf(stderr, "skipped %d bytes of garbage\n", package_length);
+                        goto l_01ba;
+                      } /*switch*/
                     fread(cbuf, 1, package_length, fd.h);
-        }
-
-        }           /* end if 0xbd010000 */
-
-    }           /* end while read 4 */
-
-    varied_close(fd);
-    }               /* end while inc < Inc */
-
+                  } /*if*/
+              } /*if*/
+        } /*while read 4*/
+        varied_close(fd);
+      } /*while inc < Inc*/
     flushspus(0x7fffffff);
-
     fprintf(fdo, "\t</stream>\n</subpictures>\n");
     fclose(fdo);
-
     return 0;
-}               /* end function main */
+  } /*main*/

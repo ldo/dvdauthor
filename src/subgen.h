@@ -79,11 +79,11 @@ extern int numspus;
 
 extern int skip;
 
-int calcY(palt *p);
-int calcCr(palt *p);
-int calcCb(palt *p);
+int calcY(const palt *p);
+int calcCr(const palt *p);
+int calcCb(const palt *p);
 
-int findmasterpal(stinfo *s,palt *p);
+int findmasterpal(stinfo *s, const palt *p);
   /* returns the index in s->masterpal corresponding to colour p, allocating a
     new palette entry if not there already. */
 
