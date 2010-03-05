@@ -1,3 +1,6 @@
+0.6.15+ldo: ??
+    implement link-subset jumps
+
 0.6.15-ldo: 2010 March 4
     consistently check for errors on all file opens and when creating output directories
     fix remapping of colours for more than 8 subpicture streams
