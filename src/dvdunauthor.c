@@ -473,6 +473,7 @@ static void dump_buttons(xmlNodePtr cellNode, int vob)
                     &b->cmd
                   );
               } /*for*/
+            last = h;
           } /*if; for*/
   } /*dump_buttons*/
 
