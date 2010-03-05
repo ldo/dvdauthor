@@ -55,6 +55,7 @@
 %token NEXT_TOK
 %token OPENBRACE_TOK
 %token OPENPAREN_TOK
+%token PGC_TOK
 %token PREV_TOK
 %token PROGRAM_TOK
 %token PTT_TOK
@@ -68,6 +69,7 @@
 %token TITLE_TOK
 %token TITLESET_TOK
 %token TOP_TOK
+%token UP_TOK
 %token VMGM_TOK
 
 
@@ -122,7 +124,8 @@ statement: jumpstatement {
 }
 | RESUME_TOK SEMICOLON_TOK {
     $$=statement_new();
-    $$->op=VM_RESUME;
+    $$->op=VM_LINK;
+    $$->i1=16;
 }
 | GOTO_TOK ID_TOK SEMICOLON_TOK {
     $$=statement_new();
@@ -219,6 +222,61 @@ jumpstatement: JUMP_TOK jtsl jtml jcl SEMICOLON_TOK {
     $$=statement_new();
     $$->op=VM_JUMP;
     $$->i3=65536+$3;
+}
+| JUMP_TOK CELL_TOK TOP_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=1;
+}
+| JUMP_TOK NEXT_TOK CELL_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=2;
+}
+| JUMP_TOK PREV_TOK CELL_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=3;
+}
+| JUMP_TOK PROGRAM_TOK TOP_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=5;
+}
+| JUMP_TOK NEXT_TOK PROGRAM_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=6;
+}
+| JUMP_TOK PREV_TOK PROGRAM_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=7;
+}
+| JUMP_TOK PGC_TOK TOP_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=9;
+}
+| JUMP_TOK NEXT_TOK PGC_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=10;
+}
+| JUMP_TOK PREV_TOK PGC_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=11;
+}
+| JUMP_TOK UP_TOK PGC_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=12;
+}
+| JUMP_TOK PGC_TOK TAIL_TOK SEMICOLON_TOK {
+    $$=statement_new();
+    $$->op=VM_LINK;
+    $$->i1=13;
 }
 ;
 

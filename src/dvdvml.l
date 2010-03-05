@@ -66,6 +66,7 @@ ne      { return NE_TOK; }
 next            { return NEXT_TOK; }
 not     { return NOT_TOK; }
 or      { return _OR_TOK; }
+pgc     { return PGC_TOK; }
 prev            { return PREV_TOK; }
 program     { return PROGRAM_TOK; }
 ptt     { return PTT_TOK; }
@@ -78,6 +79,7 @@ tail            { return TAIL_TOK; }
 title       { return TITLE_TOK; }
 titleset    { return TITLESET_TOK; }
 top             { return TOP_TOK; }
+up             { return UP_TOK; }
 vmgm        { return VMGM_TOK; }
 xor     { return XOR_TOK; }
 

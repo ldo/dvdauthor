@@ -618,8 +618,8 @@ static unsigned char *compilecs
             buf += 8;
         break;
 
-        case VM_RESUME:
-            write8(buf, 0x20, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10);
+        case VM_LINK:
+            write8(buf, 0x20, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, cs->i1);
             buf += 8;
         break;
 

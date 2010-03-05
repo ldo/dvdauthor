@@ -573,6 +573,11 @@ in the title where the call originated using
 by using the <literal>resume</literal> keyword, however if you do not
 specify one and you use the command in a post instruction block, then
 it will presume cell 1.</para>
+</listitem></varlistentry>
+
+</variablelist>
+
+<refsect2><title>Targets</title>
 
 <para>The following are possible targets (note that menus do not have
 chapters):</para>
@@ -604,9 +609,26 @@ instead.</para></listitem></varlistentry>
 this to create looping menus: <literal>jump cell
 1;</literal></para></listitem></varlistentry>
 
-</variablelist>
-
-</listitem></varlistentry>
+<varlistentry>
+<term><literal>cell top</literal></term>
+<term><literal>next cell</literal></term>
+<term><literal>prev cell</literal></term>
+<term><literal>program top</literal></term>
+<term><literal>next program</literal></term>
+<term><literal>prev program</literal></term>
+<term><literal>pgc top</literal></term>
+<term><literal>next pgc</literal></term>
+<term><literal>prev pgc</literal></term>
+<term><literal>up pgc</literal></term>
+<term><literal>pgc tail</literal></term>
+<listitem><para>
+(Jump only) performs relative transfers of control within the current menu/title.
+"<literal>cell/program/pgc top</literal>" goes back to the start of the current cell/program/PGC;
+"<literal>next/prev cell/program/pgc</literal>" goes to the next or previous cell/program/PGC;
+"<literal>up pgc</literal>" goes to the "up" PGC (not currently settable in
+<command>dvdauthor</command>); and "<literal>pgc tail</literal>" goes to the
+<literal>&lt;post&gt;</literal> sequence in the current PGC.
+</para></listitem></varlistentry>
 
 </variablelist>
 

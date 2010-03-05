@@ -35,7 +35,7 @@ enum /* values for vm_statement.op */
     VM_JUMP,
     VM_CALL,
     VM_EXIT,
-    VM_RESUME,
+    VM_LINK,
 
     VM_SET,
     VM_IF,
