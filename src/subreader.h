@@ -29,12 +29,12 @@
 #define SUB_ALIGNMENT_HRIGHT    2
 #define SUB_ALIGNMENT_DEFAULT 4
 
-sub_data* sub_read_file (char *filename, float pts);
+sub_data* sub_read_file (const char *filename, float pts);
 subtitle* subcp_recode1 (subtitle *sub);
 void subcp_open (void); /* for demux_ogg.c */
 void subcp_close (void); /* for demux_ogg.c */
 char ** sub_filenames(char *path, char *fname);
-void list_sub_file(sub_data* subd);
+void list_sub_file(const sub_data * subd);
 void dump_srt(sub_data* subd, float fps);
 void dump_mpsub(sub_data* subd, float fps);
 void dump_microdvd(sub_data* subd, float fps);

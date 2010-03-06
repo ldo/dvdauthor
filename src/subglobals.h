@@ -11,7 +11,7 @@ typedef struct {
 
 typedef struct {
     subtitle *subtitles;
-    char *filename;
+    const char *filename;
     int sub_uses_time;
     int sub_num;          // number of subtitle structs
     int sub_errs;

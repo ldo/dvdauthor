@@ -186,8 +186,8 @@ static int dvddecode()
     uint16_t size, dsize, i, x, y, t;
     unsigned char c;
     struct spu *s;
-    size = read2(sub);
-    dsize = read2(sub + 2);
+    size = read2(sub); /* size of SPU */
+    dsize = read2(sub + 2); /* offset to SP_DCSQT */
     ofs = -1;
     if (debug > 1)
         fprintf(stderr, "packet: %d bytes, first block offset=%d\n", size, dsize);
@@ -200,8 +200,8 @@ static int dvddecode()
     memset(s->map, 0, sizeof(struct colormap));
     s->map[0].x2 = 0x7fffffff;
     s->map[0].y2 = 0x7fffffff;
-    i = dsize + 4;
-    t = read2(sub + dsize);
+    i = dsize + 4; /* start of commands */
+    t = read2(sub + dsize); /* delay in 90kHz units / 1024 before executing commands */
     if (debug > 2)
         fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", dsize, t, read2(sub + dsize + 2));
     while (i < size)
@@ -259,8 +259,8 @@ static int dvddecode()
             if (ofs >= 0)
                 fprintf(stderr, "WARN: image pointer already supplied for this subpicture\n");
                   /* not necessarily wrong, it's just I can't handle it */
-            ofs = read2(sub + i + 1);
-            ofs1 = read2(sub + i + 3);
+            ofs = read2(sub + i + 1); /* offset to top field data */
+            ofs1 = read2(sub + i + 3); /* offset to bottom field data */
             if (debug > 4)
                 fprintf(stderr, "\tcmd(%5d): image offsets=%d,%d\n", i, ofs, ofs1);
             i += 5;
@@ -274,7 +274,8 @@ static int dvddecode()
                 i = size;
                 break;
               } /*if*/
-            t = read2(sub + i + 1);
+          /* expect another SP_DCSQT following */
+            t = read2(sub + i + 1); /* delay in 90kHz units / 1024 before executing commands */
             if (debug > 4)
               {
                 fprintf(stderr, "\tcmd(%5d): end cmd\n", i);
@@ -287,6 +288,7 @@ static int dvddecode()
                     sub[i + 4] != sub[dsize + 3]
               )
               {
+              /* disagreement about offset to next SP_DCSQ */
                 if (debug > 0)
                   {
                     fprintf(stderr,
@@ -312,7 +314,7 @@ static int dvddecode()
     have_bits = FALSE;
     x = y = 0;
     io = 0;
-    s->img = malloc( s->xd*s->yd);
+    s->img = malloc(s->xd*s->yd);
 
     if (ofs < 0 && y < s->yd)
       {
@@ -320,6 +322,7 @@ static int dvddecode()
       }
     else
       {
+      /* decode image data */
         while ((ofs < dsize) && (y < s->yd))
           {
             i = get_next_bits();
@@ -334,23 +337,24 @@ static int dvddecode()
                         i = (i << 4) + get_next_bits();
                         if (i < 4)
                           {
-                            i = i + (s->xd - x) * 4;
+                            i = i + (s->xd - x) * 4; /* run ends at end of line */
                           } /*if*/
                       } /*if*/
                   } /*if*/
               } /*if*/
-
-            c = i & 3;
-            i = i >> 2;
+            c = i & 3; /* pixel value */
+            i = i >> 2; /* count */
             while (i--)
               {
                 s->img[io++] = c;
                 if (++x == s->xd)
                   {
+                  /* end of scanline */
                     y += 2;
                     x = 0;
                     if (y >= s->yd && !(y & 1))
                       {
+                      /* end of top field, now do bottom field */
                         y = 1;
                         io = s->xd;
                         ofs = ofs1;

@@ -117,7 +117,7 @@ int sub_last;
 int sub_num_of_subtitles;
 char *img_name;
 
-sub_data * textsub_init(char *textsub_filename, float textsub_movie_fps, float textsub_movie_width, float textsub_movie_height)
+sub_data * textsub_init(const char *textsub_filename, float textsub_movie_fps, float textsub_movie_width, float textsub_movie_height)
 {
   vo_sub=NULL;
   font_name=NULL;
@@ -212,14 +212,14 @@ void textsub_statistics()
 }
 
 void textsub_finish()
-{
+  {
   free(image_buffer);
 #ifdef HAVE_FREETYPE
   if (vo_font) free_font_desc(vo_font);
     vo_font = NULL;
   done_freetype();
 #endif
-}
+  } /*textsub_finish*/
 
 #ifdef TEXTSUB_DEBUG
 /* test program to save text rendering to a PNG file */
@@ -233,73 +233,92 @@ struct pngdata {
     enum {OK,ERROR} status;
 };
 
-static struct pngdata create_png (char * fname, int image_width, int image_height, int swapped)
-{
+static struct pngdata create_png
+  (
+    const char * fname,
+    int image_width,
+    int image_height,
+    int swapped
+  )
+  /* creates and opens a PNG file and returns a structure ready for writing its contents. */
+  {
     struct pngdata png;
 
-    /*png_structp png_ptr = png_create_write_struct
-       (PNG_LIBPNG_VER_STRING, (png_voidp)user_error_ptr,
-        user_error_fn, user_warning_fn);*/
     //png_byte *row_pointers[image_height];
     png.png_ptr = png_create_write_struct
-       (PNG_LIBPNG_VER_STRING, NULL,
-        NULL, NULL);
+      (
+        /*user_png_ver =*/ PNG_LIBPNG_VER_STRING,
+        /*error_ptr =*/ NULL,
+        /*error_fn =*/ NULL,
+        /*warn_fn =*/ NULL
+      );
     png.info_ptr = png_create_info_struct(png.png_ptr);
-
     if (!png.png_ptr) {
-       if(verbose > 1) fprintf(stderr,"ERR: PNG Failed to init png pointer\n");
-       png.status = ERROR;
-       return png;
+        if(verbose > 1)
+            fprintf(stderr,"ERR: PNG Failed to init png pointer\n");
+        png.status = ERROR;
+        return png;
     }
-
     if (!png.info_ptr) {
-       if(verbose > 1) fprintf(stderr,"ERR: PNG Failed to init png infopointer\n");
-       png_destroy_write_struct(&png.png_ptr,
-         (png_infopp)NULL);
-       png.status = ERROR;
-       return png;
+        if(verbose > 1)
+            fprintf(stderr,"ERR: PNG Failed to init png infopointer\n");
+        png_destroy_write_struct
+          (
+            /*png_ptr_ptr =*/ &png.png_ptr,
+            /*info_ptr_ptr -*/ (png_infopp)NULL
+          );
+        png.status = ERROR;
+        return png;
     }
-
     if (setjmp(png.png_ptr->jmpbuf)) {
-    if(verbose > 1) fprintf(stderr,"ERR: PNG Internal error!\n");
+        if(verbose > 1)
+            fprintf(stderr,"ERR: PNG Internal error!\n");
         png_destroy_write_struct(&png.png_ptr, &png.info_ptr);
         fclose(png.fp);
         png.status = ERROR;
         return png;
     }
 
-    png.fp = fopen (fname, "wb");
+    png.fp = fopen(fname, "wb");
     if (png.fp == NULL) {
-    fprintf(stderr,"ERR: PNG Error opening %s for writing!\n", strerror(errno));
+        fprintf(stderr,"ERR: PNG Error opening %s for writing!\n", strerror(errno));
         png.status = ERROR;
         return png;
     }
 
-    if(verbose > 1) fprintf(stderr,"INFO: PNG Init IO\n");
+    if(verbose > 1)
+        fprintf(stderr,"INFO: PNG Init IO\n");
     png_init_io(png.png_ptr, png.fp);
 
     /* set the zlib compression level */
     png_set_compression_level(png.png_ptr, 0);
 
+    png_set_IHDR
+      (
+        /*png_ptr =*/ png.png_ptr,
+        /*info_ptr =*/ png.info_ptr,
+        /*width =*/ image_width,
+        /*height =*/ image_height,
+        /*bit_depth =*/ 8,
+        /*color_type =*/ PNG_COLOR_TYPE_RGB,
+        /*interlace_method =*/ PNG_INTERLACE_NONE,
+        /*compression_method =*/ PNG_COMPRESSION_TYPE_DEFAULT,
+        /*filter_method =*/ PNG_FILTER_TYPE_DEFAULT
+      );
 
-    /*png_set_IHDR(png_ptr, info_ptr, width, height,
-       bit_depth, color_type, interlace_type,
-       compression_type, filter_type)*/
-    png_set_IHDR(png.png_ptr, png.info_ptr, image_width, image_height,
-       8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
-       PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-
-    if(verbose > 1) fprintf(stderr,"INFO: PNG Write Info\n");
+    if(verbose > 1)
+        fprintf(stderr,"INFO: PNG Write Info\n");
     png_write_info(png.png_ptr, png.info_ptr);
 
     if(swapped) {
-        if(verbose > 1) fprintf(stderr,"INFO: PNG Set BGR Conversion\n");
+        if(verbose > 1)
+            fprintf(stderr,"INFO: PNG Set BGR Conversion\n");
         png_set_bgr(png.png_ptr);
     }
 
     png.status = OK;
     return png;
-}
+  } /*pngdata create_png*/
 
 static uint8_t destroy_png(struct pngdata png) {
 
