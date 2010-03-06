@@ -37,6 +37,28 @@ enum {AQ_NONE=0,AQ_16=1,AQ_20=2,AQ_24=3,AQ_DRC=4}; /* values for audiodesc.aquan
 enum {AD_NONE=0,AD_SURROUND=1}; /* values for audiodesc.adolby */
 enum {AL_NONE=0,AL_NOLANG=1,AL_LANG=2}; /* values for audiodesc.alangpresent and subpicdesc.slangpresent */
 enum {AS_NONE=0,AS_48KHZ=1,AS_96KHZ=2}; /* values for audiodesc.asample */
+enum /* values for audiodesc.acontent */
+  {
+    ACONTENT_UNSPEC = 0, /* unspecified */
+    ACONTENT_NORMAL = 1, /* normal */
+    ACONTENT_IMPAIRED = 2, /* visually impaired */
+    ACONTENT_COMMENTS1 = 3, /* director's comments */
+    ACONTENT_COMMENTS2 = 4, /* alternate director's comments */
+  };
+enum /* values for subpicdesc.scontent */
+  {
+    SCONTENT_UNSPEC = 0, /* unspecified */
+    SCONTENT_NORMAL = 1, /* normal */
+    SCONTENT_LARGE = 2, /* large */
+    SCONTENT_CHILDREN = 3, /* children */
+    SCONTENT_NORMAL_CC = 5, /* normal captions */
+    SCONTENT_LARGE_CC = 6, /* large captions */
+    SCONTENT_CHILDREN_CC = 7, /* children's captions */
+    SCONTENT_FORCED = 9, /* forced */
+    SCONTENT_DIRECTOR = 13, /* director comments */
+    SCONTENT_LARGE_DIRECTOR = 14, /* large director comments */
+    SCONTENT_CHILDREN_DIRECTOR = 15, /* director comments for children */
+  };
 
 typedef int64_t pts_t; /* timestamp in units of 90kHz clock */
 
@@ -73,6 +95,7 @@ struct audiodesc { /* describes an audio stream, info from an <audio> tag */
     int asample;
     int aid;
     char lang[2];
+    int acontent;
 };
 
 struct subpicdesc {
@@ -80,6 +103,7 @@ struct subpicdesc {
     streams, being alternative representations of the subpicture for different modes. */
     int slangpresent;
     char lang[2];
+    int scontent;
     unsigned char idmap[4];
       /* stream ID for each of normal, widescreen, letterbox, and panscan respectively,
         (128 | id) if defined, else 0 */

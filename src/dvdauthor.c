@@ -80,14 +80,26 @@ static const char * const alangdesc[4]={"","nolang","lang",0};
 static const char * const achanneldesc[10]={"","1ch","2ch","3ch","4ch","5ch","6ch","7ch","8ch",0};
 static const char * const asampledesc[4]={"","48khz","96khz",0};
   /* audio sample rates */
+static const char * const acontentdesc[6] =
+    {"", "normal", "impaired", "comments1", "comments2", 0};
+    /* audio content types */
 
 const char * const entries[9]={"","","title","root","subtitle","audio","angle","ptt",0};
   /* entry menu types */
 
 const char * const pstypes[3]={"VTS","VTSM","VMGM"};
 
-static const  char * const smodedesc[6]={"","normal","widescreen","letterbox","panscan",0};
+static const char * const smodedesc[6]={"","normal","widescreen","letterbox","panscan",0};
   /* subpicture usage modes */
+static const char * const scontentdesc[17] =
+    {
+        "", "normal", "large", "children",
+        "", "normal_cc", "large_cc", "children_cc",
+        "", "forced", "", "",
+        "", "director", "large_director", "children_director",
+        0
+    };
+    /* subpicture content types */
 
 static const int default_colors[16]={ /* default contents for new colour tables */
     COLOR_UNUSED,
@@ -464,6 +476,14 @@ int audiodesc_set_audio_attr(struct audiodesc *ad,struct audiodesc *adwarn,int a
         ad->lang[1]=tolower(s[1]);
         return w;
     }
+
+    if (ATTRMATCH(AUDIO_CONTENT))
+      {
+        w = scanandwarnupdate(&ad->acontent, s, &adwarn->acontent, "audio content type", acontentdesc);
+        if(w)
+            return w - 1;
+      } /*if*/
+
     fprintf(stderr,"ERR:  Cannot parse audio option '%s'\n",s);
     exit(1);
 }
@@ -483,8 +503,8 @@ static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,const char *s,i
 {
     int w;
 
-    if( ch>=va->numsubpicturetracks ) /* assert ch = va->numsubpicturetracks + 1 */
-        va->numsubpicturetracks=ch+1;
+    if (ch >= va->numsubpicturetracks) /* assert ch = va->numsubpicturetracks + 1 */
+        va->numsubpicturetracks = ch + 1;
 
     if (ATTRMATCH(SPU_ANY)) {
         w=scanandwarnupdate(&va->sp[ch].slangpresent,s,&va->spwarn[ch].slangpresent,"subpicture language",alangdesc);
@@ -502,6 +522,13 @@ static int vobgroup_set_subpic_attr(struct vobgroup *va,int attr,const char *s,i
         va->sp[ch].lang[1]=tolower(s[1]);
         return w;
     }
+
+    if (ATTRMATCH(SPU_CONTENT))
+      {
+        w = scanandwarnupdate(&va->sp[ch].scontent, s, &va->spwarn[ch].scontent, "subpicture content type", scontentdesc);
+        if(w)
+            return w - 1;
+      } /*if*/
     fprintf(stderr,"ERR:  Cannot parse subpicture option '%s' on track %d\n",s,ch);
     exit(1);
 }

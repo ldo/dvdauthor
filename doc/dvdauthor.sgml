@@ -200,10 +200,13 @@ Here is the basic structure of the control file:
                 [widescreen="nopanscan|noletterbox|crop"] /&gt;
          &lt;audio [format="mp2|ac3|dts|pcm"] [channels="<replaceable>numchannels</replaceable>"]
                 [quant="16bps|20bps|24bps|drc"] [dolby="surround"]
-                [samplerate="48khz|96khz"] [lang="<replaceable>language</replaceable>"] /&gt;
+                [samplerate="48khz|96khz"] [lang="<replaceable>language</replaceable>"]
+                [content="normal|impaired|comments1|comments2"] /&gt;
          [&lt;audio ... /&gt;]
          &lt;subpicture [lang="<replaceable>language-code</replaceable>"]&gt;
-            &lt;stream mode="normal|widescreen|letterbox|panscan" id="<replaceable>streamid</replaceable>" /&gt;
+            &lt;stream mode="normal|widescreen|letterbox|panscan"
+                [content="normal|large|children|normal_cc|large_cc|children_cc|forced|director|large_director|children_director"]
+                id="<replaceable>streamid</replaceable>" /&gt;
             [&lt;stream ... /&gt;]
          &lt;/subpicture&gt;
          [&lt;subpicture ... /&gt;]
@@ -304,21 +307,24 @@ inputs and round up to the nearest size.
 <varlistentry><term><literal>&lt;audio [format="mp2|ac3|dts|pcm"]
 [channels="<replaceable>numchannels</replaceable>"]
 [dolby="surround"] [quant="16bps|20bps|24bps|drc"] [samplerate="48khz|96khz"]
-[lang="<replaceable>language</replaceable>"] /&gt;</literal></term>
+[lang="<replaceable>language</replaceable>"]
+[content="normal|impaired|comments1|comments2"] /&gt;</literal></term>
 <listitem><para>Manually configures an audio stream for this
 pgcgroup.  List once for each stream.  Most parameters are inferred
 automatically from the source VOBs except for PCM parameters.
-However, language must be manually specified.  Note that it is
-possible to just list the language attribute and let
+However, language and content must be manually specified.  Note that it is
+possible to just list the language and content attributes and let
 <command>dvdauthor</command> fill in the rest.
 </para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;subpicture
-[lang="<replaceable>language</replaceable>"] /&gt;</literal></term>
+[lang="<replaceable>language</replaceable>"]
+[content="normal|large|children|normal_cc|large_cc|children_cc|forced|director|large_director|children_director"] /&gt;</literal></term>
 <listitem><para>Manually configures a subpicture/subtitle for this pgcgroup or PGC.
 At the pgcgroup level, list once for each language. Occurrences at the PGC level
-don't have a <literal>lang</literal> attribute; they inherit that from the corresponding
-<literal>&lt;subpicture&gt;</literal> tag at the pgcgroup level.</para></listitem></varlistentry>
+don't have <literal>lang</literal> or <literal>content</literal> attributes; they inherit those
+from the corresponding <literal>&lt;subpicture&gt;</literal> tag at the pgcgroup level.
+</para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;stream mode="normal|widescreen|letterbox|panscan"
 id="<replaceable>streamid</replaceable>" /&gt;</literal></term>

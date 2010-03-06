@@ -443,7 +443,7 @@ static int Create_TT_SRPT
             |
                 (va->ad[i].achannels - 1); /* nr channels - 1 */
 
-      /* audio code extension (buf[9 + i * 8], title audio only) currently left unspecified */
+        buf[9 + i * 8] = va->ad[i].acontent; /* audio code extension for title audio, not menu audio */
       } /*for*/
     buf[0x55] = va->numsubpicturetracks; /* nr subpicture streams, low byte */
     for (i = 0; i < va->numsubpicturetracks; i++)
@@ -454,7 +454,8 @@ static int Create_TT_SRPT
             buf[0x56 + i * 6] = 1; /* language type = as per language code */
             memcpy(buf + 0x58 + i * 6, va->sp[i].lang, 2); /* language code */
           } /*if*/
-    /* title code extension (buf[0x56 + i * 6 + 5], title subpicture only) currently left unspecified */
+        buf[0x56 + i * 6 + 5] = va->sp[i].scontent;
+          /* title code extension (title subpicture only) */
       } /*for*/
   } /*BuildAVInfo*/
 

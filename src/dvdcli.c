@@ -963,6 +963,11 @@ static void audio_samplerate(const char *c)
     set_audio_attr(AUDIO_SAMPLERATE, c, setaudio);
   }
 
+static void audio_content(const char *c)
+  {
+    set_audio_attr(AUDIO_CONTENT, c, setaudio);
+  } /*audio_content*/
+
 static void audio_channels(const char *c)
   {
     char ch[4];
@@ -1011,10 +1016,31 @@ static void subattr_lang(const char *c)
         set_subpic_attr(SPU_LANG, c, setsubpicture);
     else
       {
-        fprintf(stderr, "ERR:  Cannot set subpicture language within a pgc; do it within titles or menus\n");
+        fprintf
+          (
+            stderr,
+            "ERR:  Cannot set subpicture language within a pgc; do it within titles or menus\n"
+          );
         parser_err = 1;
       } /*if*/
   } /*subattr_lang*/
+
+static void subattr_content(const char * c)
+  {
+    if (subpmode == DA_PGCGROUP)
+      {
+        set_subpic_attr(SPU_CONTENT, c, setsubpicture);
+      }
+    else
+      {
+        fprintf
+          (
+            stderr,
+            "ERR:  Cannot set subpicture content type within a pgc; do it within titles or menus\n"
+          );
+        parser_err = 1;
+      } /*if*/
+  } /*subattr_content*/
 
 static void stream_start()
   /* called on a <stream> tag. */
@@ -1293,8 +1319,10 @@ static struct elemattr attrs[]={
     {"audio","lang",audio_lang},
     {"audio","channels",audio_channels},
     {"audio","samplerate",audio_samplerate},
+    {"audio","content",audio_content},
 
     {"subpicture","lang",subattr_lang},
+    {"subpicture","content",subattr_content},
     {"stream","mode",substream_mode},
     {"stream","id",substream_id},
 
