@@ -1,16 +1,16 @@
-#define SUB_MAX_TEXT 16
+#define SUB_MAX_TEXT 16 /* max nr lines of subtitles allowed */
 
 typedef struct {
-    int lines;
+    int lines; /* length of text array */
     unsigned long start;
     unsigned long end;
-    char *text[SUB_MAX_TEXT];
+    char *text[SUB_MAX_TEXT]; /* array [lines] of char* */
     unsigned char alignment;
     int text_forced;
 } subtitle;
 
 typedef struct {
-    subtitle *subtitles;
+    subtitle *subtitles; /* array [sub_num] */
     const char *filename;
     int sub_uses_time;
     int sub_num;          // number of subtitle structs
@@ -20,7 +20,7 @@ typedef struct {
 extern char* dvdsub_lang;
 
 #ifdef HAVE_ICONV
-extern char *sub_cp;
+extern char *sub_cp; /* code page for interpreting subtitles */
 #endif
 
 extern float sub_delay;

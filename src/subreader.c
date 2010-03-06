@@ -51,10 +51,8 @@
 #include <fribidi/fribidi.h>
 static char *fribidi_charset = NULL;
 static int flip_hebrew = 1;
+  /* used to control whether sub_fribidi does anything; but never set to any other value anywhere */
 #endif
-
-
-
 
 extern int sub_utf8;
 static int sub_utf8_prev=0;
@@ -89,65 +87,77 @@ static int sub_format=SUB_INVALID;
 static unsigned long previous_sub_end;
 #endif
 
-static int eol(char p) {
-    return (p=='\r' || p=='\n' || p=='\0');
-}
+static int eol(char p)
+  /* does p indicate the end of a line. */
+  {
+    return p=='\r' || p=='\n' || p=='\0';
+  } /*eol*/
 
 /* Remove leading and trailing space */
-static void trail_space(char *s) {
+static void trail_space(char *s)
+  {
     int i = 0;
-    while (isspace(s[i])) ++i;
-    if (i) strcpy(s, s + i);
+    while (isspace(s[i]))
+        ++i;
+    if (i)
+        strcpy(s, s + i);
     i = strlen(s) - 1;
-    while (i > 0 && isspace(s[i])) s[i--] = '\0';
-}
+    while (i > 0 && isspace(s[i]))
+        s[i--] = '\0';
+  } /*trail_space*/
 
-static char *stristr(const char *haystack, const char *needle) {
+static const char *stristr(const char *haystack, const char *needle)
+  /* case-insensitive substring search. */
+  {
     int len = 0;
     const char *p = haystack;
-
-    if (!(haystack && needle)) return NULL;
-
-    len=strlen(needle);
-    while (*p != '\0') {
-    if (strncasecmp(p, needle, len) == 0) return (char*)p;
-    p++;
-    }
-
+    if (!(haystack && needle))
+        return NULL;
+    len = strlen(needle);
+    while (*p != '\0')
+      {
+        if (strncasecmp(p, needle, len) == 0)
+            return p;
+        p++;
+      } /*while*/
     return NULL;
-}
+  } /*stristr*/
 
 subtitle *sub_read_line_sami(FILE *fd, subtitle *current)
   {
-    static char line[LINE_LEN+1];
-    static char *s = NULL, *slacktime_s;
-    char text[LINE_LEN+1], *p=NULL, *q;
+    static char line[LINE_LEN + 1];
+    static const char *s = NULL;
+    char text[LINE_LEN + 1], *p = NULL;
+    const char *q;
     int state;
     current->lines = current->start = current->end = 0;
     state = 0;
-    /* read the first line */
+  /* read the first line */
     if (!s)
         if (!(s = fgets(line, LINE_LEN, fd)))
             return 0;
-
     do
       {
         switch (state)
           {
         case 0: /* find "START=" or "Slacktime:" */
-            slacktime_s = stristr (s, "Slacktime:");
+          {
+            const char * const slacktime_s = stristr(s, "Slacktime:");
             if (slacktime_s)
-                sub_slacktime = strtol (slacktime_s+10, NULL, 0) / 10;
-            s = stristr (s, "Start=");
+                sub_slacktime = strtol(slacktime_s + 10, NULL, 0) / 10;
+            s = stristr(s, "Start=");
             if (s)
               {
-                current->start = strtol(s + 6, &s, 0) / 10;
-                state = 1; continue;
+                current->start = strtol(s + 6, (char **)&s, 0) / 10;
+                state = 1;
+                continue;
               } /*if*/
+          }
         break;
 
-        case 1: /* find "<P" */
-            if ((s = stristr (s, "<P")))
+        case 1: /* find first "<P" */
+            s = stristr(s, "<P");
+            if (s != 0)
               {
                 s += 2;
                 state = 2;
@@ -156,11 +166,12 @@ subtitle *sub_read_line_sami(FILE *fd, subtitle *current)
         break;
 
         case 2: /* find ">" */
-            if ((s = strchr (s, '>')))
+            s = strchr (s, '>');
+            if (s != 0)
               {
                 s++;
                 state = 3;
-                p = text;
+                p = text; /* start collecting text here */
                 continue;
               } /*if*/
         break;
@@ -170,51 +181,52 @@ subtitle *sub_read_line_sami(FILE *fd, subtitle *current)
                 break;
             else if (!strncasecmp (s, "<br>", 4))
               {
-                *p = '\0';
-                p = text;
-                trail_space(text);
-                if (text[0] != '\0')
+                *p = '\0'; /* end of collected text */
+                p = text; /* point to whole thing */
+                trail_space(text); /* less whitespace */
+                if (text[0] != '\0') /* what's left is nonempty */
                     current->text[current->lines++] = strdup(text);
-                s += 4;
+                s += 4; /* skip "<br>" tag and stay in this state */
               }
+          /* wot, no recognition of "<p>" here? */
             else if (*s == '<')
               {
                 state = 4;
               }
             else if (!strncasecmp (s, "&nbsp;", 6))
               {
-                *p++ = ' ';
+                *p++ = ' '; /* treat as space */
                 s += 6;
               }
             else if (*s == '\t')
               {
-                *p++ = ' ';
+                *p++ = ' '; /* treat as space */
                 s++;
               }
             else if (*s == '\r' || *s == '\n')
               {
-                s++;
+                s++; /* ignore line breaks */
               }
             else
               {
-                *p++ = *s++;
+                *p++ = *s++; /* preserve everything else */
               } /*if*/
-            /* skip duplicated space */
-            if (p > text + 2)
-                if (*(p - 1) == ' ' && *(p - 2) == ' ')
-                    p--;
+          /* skip duplicated space */
+            if (p > text + 2 && p[-1] == ' ' && p[-2] == ' ')
+                p--;
         continue;
 
-        case 4: /* get current->end or skip <TAG> */
+        case 4: /* get current->end or skip rest of <TAG> */
             q = stristr(s, "Start=");
             if (q)
               {
-                current->end = strtol(q + 6, &q, 0) / 10 - 1;
+                current->end = strtol(q + 6, (char **)&q, 0) / 10 - 1;
+                  /* start time of new line is end time of previous line */
                 *p = '\0';
                 trail_space(text);
                 if (text[0] != '\0')
-                    current->text[current->lines++] = strdup (text);
-                if (current->lines > 0)
+                    current->text[current->lines++] = strdup(text);
+                if (current->lines > 0) /* got one line, leave new one for next call */
                   {
                     state = 99;
                     break;
@@ -226,7 +238,7 @@ subtitle *sub_read_line_sami(FILE *fd, subtitle *current)
             if (s)
               {
                 s++;
-                state = 3;
+                state = 3; /* back to collecting text */
                 continue;
               } /*if*/
         break;
@@ -258,9 +270,9 @@ subtitle *sub_read_line_sami(FILE *fd, subtitle *current)
   } /*sub_read_line_sami*/
 
 static const char *sub_readtext(const char *source, char **dest)
-  /* extracts the next text item in source, and returns a copy of it in *dest.
-    Returns a pointer into the unprocessed remainder of source, or NULL
-    if there is nothing left. */
+  /* extracts the next text item in source, and returns a copy of it in *dest
+    (could be the empty string). Returns a pointer into the unprocessed remainder
+    of source, or NULL if there is nothing left. */
   {
     int len = 0;
     const char *p = source;
@@ -286,11 +298,11 @@ static const char *sub_readtext(const char *source, char **dest)
 
 subtitle *sub_read_line_microdvd(FILE *fd, subtitle *current)
   {
-    char line[LINE_LEN+1];
-    char line2[LINE_LEN+1];
+    char line[LINE_LEN + 1];
+    char line2[LINE_LEN + 1];
     const char *p, *next;
     int i;
-    do
+    do /* look for valid timing line */
       {
         if (!fgets(line, LINE_LEN, fd))
             return NULL;
@@ -371,7 +383,7 @@ subtitle *sub_read_line_subrip(FILE *fd, subtitle *current)
     return current;
   } /*sub_read_line_subrip*/
 
-subtitle *sub_read_line_subviewer(FILE *fd,subtitle *current)
+subtitle *sub_read_line_subviewer(FILE *fd, subtitle *current)
   {
     char line[LINE_LEN + 1];
     int a1, a2, a3, a4, b1, b2, b3, b4;
@@ -379,7 +391,7 @@ subtitle *sub_read_line_subviewer(FILE *fd,subtitle *current)
     int i, len;
     while (!current->text[0])
       {
-        if (!fgets (line, LINE_LEN, fd))
+        if (!fgets(line, LINE_LEN, fd))
             return NULL;
         if
           (
@@ -402,8 +414,8 @@ subtitle *sub_read_line_subviewer(FILE *fd,subtitle *current)
                 break;
             len = 0;
             for (p = line; *p != '\n' && *p != '\r' && *p; p++, len++)
-                ;
-            if (len)
+              /* find end of line */;
+            if (len) /* nonempty line */
               {
                 int j = 0, skip = 0;
                 char *curptr = current->text[i] = (char *)malloc(len + 1);
@@ -463,13 +475,14 @@ subtitle *sub_read_line_subviewer2(FILE *fd, subtitle *current)
         current->start = a1 * 360000 + a2 * 6000 + a3 * 100 + a4 / 10;
         for (i = 0; i < SUB_MAX_TEXT;)
           {
-            if (!fgets (line, LINE_LEN, fd))
+            if (!fgets(line, LINE_LEN, fd))
                 break;
             if (line[0] == '}')
                 break;
             len = 0;
-            for (p = line; *p != '\n' && *p != '\r' && *p; ++p, ++len);
-            if (len)
+            for (p = line; *p != '\n' && *p != '\r' && *p; ++p, ++len)
+              /* find end of line */;
+            if (len) /* nonempty line */
               {
                 current->text[i] = (char *)malloc(len + 1);
                 if (!current->text[i])
@@ -495,7 +508,6 @@ subtitle *sub_read_line_vplayer(FILE *fd, subtitle *current)
     const char *p = NULL, *next;
     char separator;
     int i, len, plen;
-
     while (!current->text[0])
       {
         if (!fgets(line, LINE_LEN, fd))
@@ -525,13 +537,12 @@ subtitle *sub_read_line_vplayer(FILE *fd, subtitle *current)
         // colon! look, what simple it can be:
         p = &line[plen];
 #endif
-
         i = 0;
         if (*p != '|')
           {
             //
             next = p, i = 0;
-            while ((next = sub_readtext(next, &current->text[i])))
+            while ((next = sub_readtext(next, &current->text[i])) != 0)
               {
                 if (current->text[i] == ERR)
                   {
@@ -725,13 +736,10 @@ subtitle *sub_read_line_ssa(FILE *fd, subtitle *current)
     int hour1, min1, sec1, hunsec1,
         hour2, min2, sec2, hunsec2, nothing;
     int num;
-
-    char line[LINE_LEN+1],
-         line3[LINE_LEN+1],
-         *line2;
-    char *tmp;
-
-    do
+    char line[LINE_LEN + 1], line3[LINE_LEN + 1];
+    const char *line2;
+    const char *tmp;
+    do /* look for valid timing line */
       {
         if (!fgets (line, LINE_LEN, fd))
             return NULL;
@@ -761,22 +769,20 @@ subtitle *sub_read_line_ssa(FILE *fd, subtitle *current)
             <
                 9
       );
-
     line2 = strchr(line3, ',');
-
     for (comma = 4; comma < max_comma; comma ++)
       {
         tmp = line2;
         if (!(tmp = strchr(++tmp, ',')))
             break;
-        if (*(++tmp) == ' ')
+        if (*++tmp == ' ')
             break;
               /* a space after a comma means we're already in a sentence */
         line2 = tmp;
       } /*for*/
     if (comma < max_comma)
         max_comma = comma;
-    /* eliminate the trailing comma */
+  /* eliminate the trailing comma */
     if (*line2 == ',')
         line2++;
     current->lines = 0;
@@ -802,7 +808,8 @@ subtitle *sub_read_line_ssa(FILE *fd, subtitle *current)
 void sub_pp_ssa(subtitle *sub)
   {
     int l = sub->lines;
-    char *so, *de, *start;
+    const char *so, *start;
+    char *de;
     while (l)
       {
       /* eliminate any text enclosed with {}, they are font and color settings */
@@ -847,7 +854,7 @@ subtitle *sub_read_line_mpsub(FILE *fd, subtitle *current)
     float a,b;
     int num = 0;
     char *p, *q;
-    do
+    do /* look for valid timing line */
       {
         if (!fgets(line, LINE_LEN, fd))
             return NULL;
@@ -873,9 +880,10 @@ subtitle *sub_read_line_mpsub(FILE *fd, subtitle *current)
             return current;
         if (eol(*p))
             return NULL;
-        for (q = p; !eol(*q); q++);
+        for (q = p; !eol(*q); q++)
+          /* look for end of line */;
         *q = '\0';
-        if (strlen(p))
+        if (strlen(p)) /* nonempty line */
           {
             current->text[num] = strdup(p);
 //          fprintf(stderr, ">%s<\n", p);
@@ -897,7 +905,7 @@ subtitle *sub_read_line_mpsub(FILE *fd, subtitle *current)
 static subtitle *previous_aqt_sub = NULL;
 #endif
 
-subtitle *sub_read_line_aqt(FILE *fd,subtitle *current)
+subtitle *sub_read_line_aqt(FILE *fd, subtitle *current)
   {
     char line[LINE_LEN + 1];
     const char *next;
@@ -907,7 +915,7 @@ subtitle *sub_read_line_aqt(FILE *fd,subtitle *current)
       // try to locate next subtitle
         if (!fgets(line, LINE_LEN, fd))
             return NULL;
-        if (!(sscanf(line, "-->> %ld", &current->start) < 1))
+        if (sscanf(line, "-->> %ld", &current->start) == 1)
             break;
       } /*while*/
 #ifdef USE_SORTSUB
@@ -919,13 +927,13 @@ subtitle *sub_read_line_aqt(FILE *fd,subtitle *current)
 #endif
     if (!fgets(line, LINE_LEN, fd))
         return NULL;
-    sub_readtext((const char *)&line, &current->text[0]);
+    (void)sub_readtext(line, &current->text[0]);
     current->lines = 1;
     current->end = current->start; // will be corrected by next subtitle
     if (!fgets(line, LINE_LEN, fd))
         return current;
     next = line, i = 1;
-    while ((next =sub_readtext (next, &current->text[i])))
+    while ((next = sub_readtext (next, &current->text[i])) != 0)
       {
         if (current->text[i] == ERR)
           {
@@ -965,10 +973,11 @@ subtitle *sub_read_line_subrip09(FILE *fd, subtitle *current)
     int i, len;
     while (1)
       {
-    // try to locate next subtitle
+      // try to locate next subtitle
         if (!fgets(line, LINE_LEN, fd))
             return NULL;
-        if (!((len = sscanf(line, "[%d:%d:%d]",&a1,&a2,&a3)) < 3))
+        len = sscanf(line, "[%d:%d:%d]", &a1, &a2, &a3);
+        if (len == 3)
             break;
       } /*while*/
     current->start = a1 * 360000 + a2 * 6000 + a3 * 100;
@@ -982,8 +991,6 @@ subtitle *sub_read_line_subrip09(FILE *fd, subtitle *current)
     if (!fgets(line, LINE_LEN, fd))
         return NULL;
     next = line, i = 0;
-    current->text[0] = ""; // just to be sure that string is clear
-      /* fixme: what if it's disposed? */
     while ((next = sub_readtext(next, &current->text[i])) != 0)
       {
         if (current->text[i] == ERR)
@@ -1014,10 +1021,12 @@ subtitle *sub_read_line_subrip09(FILE *fd, subtitle *current)
 
 subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
   {
-    char line1[LINE_LEN], line2[LINE_LEN], directive[LINE_LEN], *p, *q;
+    char line1[LINE_LEN], line2[LINE_LEN], directive[LINE_LEN];
     unsigned a1, a2, a3, a4, b1, b2, b3, b4, comment = 0;
     static unsigned jacoTimeres = 30;
     static int jacoShift = 0;
+    const char *p;
+    char *q;
 
     bzero(current, sizeof(subtitle));
     bzero(line1, LINE_LEN);
@@ -1116,7 +1125,7 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
                   } /*if*/
                 continue;
               }
-            else
+            else /* timing line */
               {
                 current->start =
                     (unsigned long)((a4 + jacoShift) * 100.0 / jacoTimeres);
@@ -1124,7 +1133,7 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
                     (unsigned long)((b4 + jacoShift) * 100.0 / jacoTimeres);
               } /*if*/
           }
-        else
+        else /* timing line */
           {
             current->start =
                 (unsigned long)
@@ -1149,13 +1158,13 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
         p = line2;
         while (*p == ' ' || *p == '\t')
           {
-            ++p;
+            ++p; /* ignore leading whitespace */
           } /*while*/
         if (isalpha(*p) || *p == '[')
           {
             int cont, jLength;
             if (sscanf(p, "%s %[^\n\r]", directive, line1) < 2)
-                return (subtitle *) ERR;
+                return (subtitle *)ERR;
             jLength = strlen(directive);
             for (cont = 0; cont < jLength; ++cont)
               {
@@ -1191,7 +1200,7 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
             p = line2;
           } /*if*/
         for (q = line1; !eol(*p) && current->lines < SUB_MAX_TEXT; ++p)
-          {
+          { /* collect text from p into q */
             switch (*p)
               {
             case '{':
@@ -1202,7 +1211,7 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
                   {
                     --comment;
                     //the next line to get rid of a blank after the comment
-                    if (*(p + 1) == ' ')
+                    if (p[1] == ' ')
                         p++;
                   } /*if*/
             break;
@@ -1215,16 +1224,16 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
             break;
             case ' ':
             case '\t':
-                if (*(p + 1) == ' ' || *(p + 1) == '\t')
+                if (p[1] == ' ' || p[1] == '\t') /* ignore duplicated space/tab */
                     break;
                 if (!comment)
                   {
-                    *q = ' ';
+                    *q = ' '; /* whitespace => single space */
                     ++q;
                   } /*if*/
             break;
             case '\\':
-                if (*(p + 1) == 'n')
+                if (p[1] == 'n') /* non-literal line break */
                   {
                     *q = '\0';
                     q = line1;
@@ -1232,47 +1241,47 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
                     ++p;
                     break;
                   } /*if*/
-                if (toupper(*(p + 1)) == 'C' || toupper(*(p + 1)) == 'F')
+                if (toupper(p[1]) == 'C' || toupper(p[1]) == 'F')
                   {
-                    ++p, ++p;
+                    ++p, ++p; /* ignore following character as well */
                     break;
                   } /*if*/
                 if
                   (
-                        *(p + 1) == 'B'
+                        p[1] == 'B'
                     ||
-                        *(p + 1) == 'b'
+                        p[1] == 'b'
                     ||
-                        *(p + 1) == 'D'
+                        p[1] == 'D'
                     || //actually this means "insert current date here"
-                        *(p + 1) == 'I'
+                        p[1] == 'I'
                     ||
-                        *(p + 1) == 'i'
+                        p[1] == 'i'
                     ||
-                        *(p + 1) == 'N'
+                        p[1] == 'N'
                     ||
-                        *(p + 1) == 'T'
+                        p[1] == 'T'
                     || //actually this means "insert current time here"
-                        *(p + 1) == 'U'
+                        p[1] == 'U'
                     ||
-                        *(p + 1) == 'u'
+                        p[1] == 'u'
                   )
                   {
-                    ++p;
+                    ++p; /* ignore */
                     break;
                   } /*if*/
                 if
                   (
-                        *(p + 1) == '\\'
+                        p[1] == '\\'
                     ||
-                        *(p + 1) == '~'
+                        p[1] == '~'
                     ||
-                        *(p + 1) == '{'
+                        p[1] == '{'
                   )
                   {
-                    ++p;
+                    ++p; /* fallthrough to insert char following "\" literally */
                   }
-                else if (eol(*(p + 1)))
+                else if (eol(p[1]))
                   {
                     if (!fgets(directive, LINE_LEN, fd))
                         return NULL;
@@ -1281,7 +1290,7 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
                     break;
                   } /*if*/
           /* fallthrough */
-            default:
+            default: /* copy character *p literally */
                 if (!comment)
                   {
                     *q = *p;
@@ -1419,6 +1428,7 @@ int sub_autodetect(FILE *fd, int *uses_time)
 static iconv_t icdsc = (iconv_t)(-1);
 
 void subcp_open(void)
+  /* opens an iconv context for converting subtitles from sub_cp to UTF-8 if appropriate. */
   {
     const char * const tocp = "UTF-8";
     if (sub_cp)
@@ -1434,6 +1444,7 @@ void subcp_open(void)
   } /*subcp_open*/
 
 void subcp_close(void)
+  /* closes the previously-opened iconv context, if any. */
   {
     if (icdsc != (iconv_t)(-1))
       {
@@ -1447,6 +1458,7 @@ void subcp_close(void)
 static char icbuffer[ICBUFFSIZE];
 
 subtitle* subcp_recode(subtitle *sub)
+  /* converts the subtitle text from the sub_cp encoding to UTF-8. */
   {
     int l = sub->lines;
     size_t ileft, oleft;
@@ -1469,7 +1481,8 @@ subtitle* subcp_recode(subtitle *sub)
             l++;
             break;
           } /*if*/
-        if (!(ot = (char *)malloc(op - icbuffer + 1)))
+        ot = (char *)malloc(op - icbuffer + 1);
+        if (!ot)
           {
             fprintf(stderr, "ERR: Error allocating mem.\n");
             l++;
@@ -1490,7 +1503,7 @@ subtitle* subcp_recode(subtitle *sub)
   } /*subcp_recode*/
 
 // for demux_ogg.c:
-subtitle *subcp_recode1(subtitle *sub)
+subtitle *subcp_recode1(subtitle *sub) /* not used anywhere */
   {
     int l = sub->lines;
     size_t ileft, oleft;
@@ -1519,6 +1532,7 @@ subtitle *subcp_recode1(subtitle *sub)
 #define max(a,b)  (((a)>(b))?(a):(b))
 #endif
 subtitle *sub_fribidi(subtitle *sub, int sub_utf8)
+  /* reorders glyphs as necessary so right-to-left text will be displayed in the right order. */
   {
     FriBidiChar logical[LINE_LEN + 1], visual[LINE_LEN + 1]; // Hopefully these two won't smash the stack
     char *ip = NULL, *op = NULL;
@@ -1552,25 +1566,39 @@ subtitle *sub_fribidi(subtitle *sub, int sub_utf8)
                 break;
               } /*if*/
             len = fribidi_charset_to_unicode(char_set_num, ip, len, logical);
+              /* fixme: how do I know it will fit? */
             base = FRIBIDI_TYPE_ON;
-            log2vis = fribidi_log2vis (logical, len, &base,
-                   /* output */
-                   visual, NULL, NULL, NULL);
+            log2vis = fribidi_log2vis
+              (
+                /*str =*/ logical, /* input logical string */
+                /*len =*/ len, /* input logical string length */
+                /*pbase_dir =*/ &base, /* requested and resolved paragraph base direction */
+                /*visual_str =*/ visual, /* output visual string */
+                /*positions_L_to_V =*/ NULL,
+                  /* output mapping from logical to visual string positions */
+                /*positions_V_to_L =*/ NULL,
+                  /* output mapping from visual string back to the logical string positions */
+                /*embedding_levels =*/ NULL /* output list of embedding levels */
+              );
+              /* result is maximum level found plus one, or zero if any error occured */
+              /* Note this function is deprecated because it only handles one-line paragraphs */
             if (log2vis)
               {
                 len = fribidi_remove_bidi_marks(visual, len, NULL, NULL, NULL);
-                if ((op = (char*)malloc(sizeof(char) * (max(2 * orig_len, 2 * len) + 1))) == NULL)
+                op = (char*)malloc(sizeof(char) * (max(2 * orig_len, 2 * len) + 1));
+                if (op == NULL)
                   {
                     fprintf(stderr, "ERR: Error allocating mem.\n");
                     l++;
                     break;
                   } /*if*/
-                fribidi_unicode_to_charset( char_set_num, visual, len,op);
+                fribidi_unicode_to_charset(char_set_num, visual, len, op);
+                  /* fixme: how do I know it will fit? */
                 free(ip);
                 sub->text[l] = op;
               } /*if*/
           } /*while*/
-        if (l)
+        if (l) /* unprocessed lines remaining */
           {
             for (l = sub->lines; l;)
               free(sub->text[--l]);
@@ -1652,21 +1680,22 @@ static void adjust_subs_time
         fprintf(stderr, "INFO: Adjusted %d subtitle(s).\n", n);
   } /*adjust_subs_time*/
 
-struct subreader {
-    subtitle * (*read)(FILE *fd,subtitle *dest);
-    void       (*post)(subtitle *dest);
-    const char *name;
+struct subreader { /* describes a subtitle format */
+    subtitle * (*read)(FILE *fd, subtitle *dest); /* file reader routine */
+    void       (*post)(subtitle *dest); /* post-processor routine */
+    const char *name; /* descriptive name */
 };
 
 sub_data *sub_read_file(const char *filename, float fps)
   {
-        //filename is assumed to be malloc'ed,  free() is used in sub_free()
+    //filename is assumed to be malloc'ed, free() is used in sub_free()
     FILE *fd;
     int n_max, n_first, i, j, sub_first, sub_orig;
     subtitle *first, *second, *sub, *return_sub;
     sub_data *subt_data;
     int uses_time = 0, sub_num = 0, sub_errs = 0;
     struct subreader const sr[] =
+      /* all the subtitle formats I know about, indexed by the codes defined in subreader.h */
       {
         {sub_read_line_microdvd, NULL, "microdvd"},
         {sub_read_line_subrip, NULL, "subrip"},
@@ -1682,7 +1711,7 @@ sub_data *sub_read_file(const char *filename, float fps)
         {sub_read_line_subrip09, NULL, "subrip 0.9"},
         {sub_read_line_jacosub, NULL, "jacosub"},
       };
-    const struct subreader *srp;
+    const struct subreader *srp; /* the autodetected format */
 
     if (filename == NULL)
         return NULL; //qnx segfault
@@ -1698,13 +1727,14 @@ sub_data *sub_read_file(const char *filename, float fps)
       } /*if*/
     srp = sr + sub_format;
     fprintf(stderr, "INFO: Detected subtitle file format: %s\n", srp->name);
-    rewind (fd);
+    rewind(fd);
 #ifdef HAVE_ICONV
     sub_utf8_prev = sub_utf8;
-    {
+      {
         int l, k;
         k = -1;
-        if ((l = strlen(filename)) > 4)
+        l = strlen(filename);
+        if (l > 4) /* long enough to have an extension */
           {
             const char * const exts[] = {".utf", ".utf8", ".utf-8"};
             for (k = 3; --k >= 0;)
@@ -1714,9 +1744,9 @@ sub_data *sub_read_file(const char *filename, float fps)
                     break;
                   } /*if; for*/
           } /*if*/
-        if (k < 0)
-            subcp_open();
-    }
+        if (k < 0) /* assume it's not UTF-8 */
+            subcp_open(); /* to convert the text to UTF-8 */
+      }
 #endif
     sub_num = 0;
     n_max = 32;
@@ -1737,7 +1767,7 @@ sub_data *sub_read_file(const char *filename, float fps)
 #endif
     while(1)
       {
-        if (sub_num >= n_max)
+        if (sub_num == n_max) /* need more room in first array */
           {
             n_max += 16;
             first = realloc(first, n_max * sizeof(subtitle));
@@ -1828,10 +1858,10 @@ sub_data *sub_read_file(const char *filename, float fps)
 #ifdef HAVE_ICONV
     subcp_close();
 #endif
-//    fprintf(stderr, "SUB: Subtitle format %s time.\n", uses_time?"uses":"doesn't use");
+//  fprintf(stderr, "SUB: Subtitle format %s time.\n", uses_time ? "uses" : "doesn't use");
     fprintf(stderr, "INFO: Read %i subtitles\n", sub_num);
     if (sub_errs)
-        fprintf(stderr,"INFO: %i bad line(s).\n", sub_errs);
+        fprintf(stderr, "INFO: %i bad line(s).\n", sub_errs);
     if (sub_num <= 0)
       {
         free(first);
@@ -1851,7 +1881,7 @@ sub_data *sub_read_file(const char *filename, float fps)
       )
       {
         adjust_subs_time(first, 6.0, fps, 0, sub_num, uses_time); /*~6 secs AST*/
-    // here we manage overlapping subtitles
+      // here we manage overlapping subtitles
         sub_orig = sub_num;
         n_first = sub_num;
         sub_num = 0;
@@ -1889,11 +1919,11 @@ sub_data *sub_read_file(const char *filename, float fps)
             // we need a structure to keep trace of the screen lines
             // used by the subs, a 'placeholder'
             counter = 2 * sub_to_add + 1;  // the maximum number of subs derived
-                                           // from a block of sub_to_add+1 subs
+                                           // from a block of sub_to_add + 1 subs
             placeholder = (int **)malloc(sizeof(int *) * counter);
             for (i = 0; i < counter; ++i)
               {
-                placeholder[i] = (int *) malloc(sizeof(int) * lines_to_add);
+                placeholder[i] = (int *)malloc(sizeof(int) * lines_to_add);
                 for (j = 0; j < lines_to_add; ++j)
                   {
                     placeholder[i][j] = -1;
@@ -1947,7 +1977,6 @@ sub_data *sub_read_file(const char *filename, float fps)
                             tmp = 0;
                         char boolean = 0;
                         int fragment_position = -1;
-
                         // if this is not the first new sub of the block
                         // we find if this sub was present in the previous
                         // new sub
@@ -2049,7 +2078,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                         int ls;
                         memset(&second[sub_num + j], '\0', sizeof(subtitle));
                         second[sub_num + j].start = first[sub_first + j].start;
-                        second[sub_num + j].end   = first[sub_first + j].end;
+                        second[sub_num + j].end = first[sub_first + j].end;
                         second[sub_num + j].lines = first[sub_first + j].lines;
                         second[sub_num + j].alignment = first[sub_first + j].alignment;
                         for (ls = 0; ls < second[sub_num + j].lines; ls++)
