@@ -29,14 +29,91 @@
 #include "dvdauthor.h"
 #include "da-internal.h"
 
+static unsigned char *
+    bigbuf = 0;
+static size_t
+    bigbufsize = 0;
 
-#define BIGWRITEBUFLEN (16*2048)
-static unsigned char bigwritebuf[BIGWRITEBUFLEN];
+static void buf_init()
+  /* ensures there's no leftover junk in bigbuf. */
+  {
+    free(bigbuf);
+    bigbuf = 0;
+    bigbufsize = 0;
+  } /*buf_init*/
+
+static void buf_need(size_t sizeneeded)
+  /* ensures that bigbuf is at least sizeneeded bytes in size. */
+  {
+    if (sizeneeded > bigbufsize)
+      {
+        const size_t newbufsize = (sizeneeded + 2047) / 2048 * 2048; /* allocate next whole sector */
+        // fprintf(stderr, "INFO: need_buf: bigbufsize now %ld sectors.\n", newbufsize / 2048);
+        bigbuf = realloc(bigbuf, newbufsize);
+        if (bigbuf == 0)
+          {
+            fprintf(stderr, "ERR:  buf_need: out of memory\n");
+            exit(1);
+          } /*if*/
+        memset(bigbuf + bigbufsize, 0, newbufsize - bigbufsize); /* zero added memory */
+        bigbufsize = newbufsize;
+      } /*if*/
+  } /*buf_need*/
+
+static void buf_write1(size_t o, unsigned char b)
+  /* puts a byte into buf at offset o. */
+  {
+    buf_need(o + 1);
+    bigbuf[o] = b;
+  }/*buf_write1*/
+
+static void buf_write2(size_t o, unsigned short w)
+  /* puts a big-endian word into buf at offset o. */
+  {
+    buf_need(o + 2);
+    bigbuf[o] = w >> 8 & 255;
+    bigbuf[o + 1] = w & 255;
+  } /*buf_write2*/
+
+static void buf_write4(size_t o, unsigned int l)
+  /* puts a big-endian longword into buf at offset o. */
+  {
+    buf_need(o + 4);
+    bigbuf[o] = l >> 24 & 255;
+    bigbuf[o + 1] = l >> 16 & 255;
+    bigbuf[o + 2] = l >> 8 & 255;
+    bigbuf[o + 3] = l & 255;
+  } /*buf_write4*/
+
+static void buf_write8b
+  (
+    size_t o,
+    unsigned char b0,
+    unsigned char b1,
+    unsigned char b2,
+    unsigned char b3,
+    unsigned char b4,
+    unsigned char b5,
+    unsigned char b6,
+    unsigned char b7
+  )
+  /* writes 8 bytes into buf at offset o. */
+  {
+    buf_need(o + 8);
+    bigbuf[o] = b0;
+    bigbuf[o + 1] = b1;
+    bigbuf[o + 2] = b2;
+    bigbuf[o + 3] = b3;
+    bigbuf[o + 4] = b4;
+    bigbuf[o + 5] = b5;
+    bigbuf[o + 6] = b6;
+    bigbuf[o + 7] = b7;
+  } /*buf_write8b*/
 
 static void nfwrite(const void *ptr, size_t len, FILE *h)
   /* writes to h, or turns into a noop if h is null. */
   {
-    if( h )
+    if (h)
         fwrite(ptr, len, 1, h);
   } /*nfwrite*/
 
@@ -118,22 +195,22 @@ static int get_pgc_duration_seconds(const struct pgcgroup *va, int c)
   } /*get_pgc_duration_seconds*/
 
 static int secunit(int ns)
-  /* returns ns / 2040 rounded up. This seems to be a time-unit divider to ensure
-    the number of entries in a VTS_TMAP never exceeds 2048. */
+  /* returns ns / 2040 rounded up. This is the duration in seconds of each VTS_TMAP entry
+    for a PGC with total duration ns to ensure the number of entries never exceeds 2048. */
   {
-    const int maxunits = 2040;
+    const int maxunits = 2040; /* ensure nr entries don't exceed 2040, just to be safe I guess */
     if (!ns)
-        return 1;
+        return 1; /* minimum unit of 1 second */
     return
         (ns + maxunits - 1) / maxunits;
-  }
+  } /*secunit*/
 
 static int tmapt_block_size(const struct pgcgroup *va, int pgc)
   /* computes the size of the VTS_TMAP entries for one PGC. */
   {
-    int v = get_pgc_duration_seconds(va, pgc); /* one VOBU per second? */
+    int v = get_pgc_duration_seconds(va, pgc);
+      /* start by assuming one VOBU per second (VOBUs shouldn't be longer than one second) */
     v = v / secunit(v); /* if that would be too many, then adjust to one per n seconds */
-      /* is there an assumption here that the input VOBUs have been contructed on this basis? */
     return
         v * 4 + 4; /* 4-byte header plus 4 bytes per VOBU */
   } /*tmapt_block_size*/
@@ -237,9 +314,8 @@ static int numsectVOBUAD(const struct vobgroup *va)
 static int CreateCellAddressTable(FILE *h, const struct vobgroup *va)
   /* outputs a VMGM_C_ADT, VTSM_C_ADT or VTS_C_ADT structure containing pointers to all cells. */
   {
-    unsigned char * const buf = bigwritebuf;
     int i, p, k;
-    memset(buf, 0, BIGWRITEBUFLEN);
+    buf_init();
     p = 8;
     for (k = 0; k < va->numvobs; k++)
       {
@@ -250,25 +326,24 @@ static int CreateCellAddressTable(FILE *h, const struct vobgroup *va)
               { /* starting a new cell */
                 if (i)
                   {
-                    write4(buf + p + 8, thisvob->vobu[i-1].lastsector);
+                    buf_write4(p + 8, thisvob->vobu[i-1].lastsector);
                       /* ending sector within VOB in previous entry */
                     p += 12;
                   } /*if*/
-                write2(buf + p, thisvob->vobu[i].vobcellid >> 8); /* VOBidn */
-                buf[p + 2] = thisvob->vobu[i].vobcellid; /* CELLidn */
-                write4(buf + p + 4, thisvob->vobu[i].sector); /* starting sector within VOB */
+                buf_write2(p, thisvob->vobu[i].vobcellid >> 8); /* VOBidn */
+                buf_write1(p + 2, thisvob->vobu[i].vobcellid); /* CELLidn */
+                buf_write4(p + 4, thisvob->vobu[i].sector); /* starting sector within VOB */
               } /*if*/
           } /*for*/
-        write4(buf + p + 8, thisvob->vobu[i-1].lastsector);
+        buf_write4(p + 8, thisvob->vobu[i-1].lastsector);
           /* ending sector within VOB in last entry */
         p += 12;
       } /*for*/
-    write4(buf + 4, p - 1); /* end address (last byte of last entry) */
+    buf_write4(4, p - 1); /* end address (last byte of last entry) */
     // first 2 bytes of C_ADT contains number of vobs
-    write2(buf, va->numvobs);
-    assert(p <= BIGWRITEBUFLEN);
+    buf_write2(0, va->numvobs);
     p = (p + 2047) & (-2048); /* round up to whole sectors */
-    nfwrite(buf, p, h);
+    nfwrite(bigbuf, p, h);
     return p / 2048; /* nr sectors written */
   } /*CreateCellAddressTable*/
 
@@ -309,10 +384,9 @@ static void CreateVOBUAD(FILE *h, const struct vobgroup *va)
 static int Create_PTT_SRPT(FILE *h, const struct pgcgroup *t)
   /* creates the VTS_PTT_SRPT and VTS_PTT tables for each title. */
   {
-    unsigned char * const buf = bigwritebuf;
     int i, j, p;
-    memset(buf, 0, BIGWRITEBUFLEN);
-    write2(buf, t->numpgcs); // # of titles
+    buf_init();
+    buf_write2(0, t->numpgcs); // # of titles
     p = 8 + t->numpgcs * 4; /* start generating VTS_PTT entries here */
     assert(p <= 2048);
       // need to make sure all the pgc pointers fit in the first sector because of
@@ -321,7 +395,7 @@ static int Create_PTT_SRPT(FILE *h, const struct pgcgroup *t)
       {
         const struct pgc * const pgc = t->pgcs[j];
         int pgm = 1, k;
-        write4(buf + 8 + j * 4, p); /* offset to VTS_PTT for title */
+        buf_write4(8 + j * 4, p); /* offset to VTS_PTT for title */
         for (i = 0; i < pgc->numsources; i++) /* generate the associated VTS_PTT entries */
             for (k = 0;  k < pgc->sources[i]->numcells; k++)
               {
@@ -330,8 +404,8 @@ static int Create_PTT_SRPT(FILE *h, const struct pgcgroup *t)
                     switch (thiscell->ischapter)
                       {
                     case CELL_CHAPTER_PROGRAM:
-                        buf[1 + p] = j + 1; /* PGCN low byte */
-                        buf[3 + p] = pgm; /* PGN low byte */
+                        buf_write1(1 + p, j + 1); /* PGCN low byte */
+                        buf_write1(3 + p, pgm); /* PGN low byte */
                         p += 4;
                   /* fallthru */
                     case CELL_PROGRAM:
@@ -339,10 +413,9 @@ static int Create_PTT_SRPT(FILE *h, const struct pgcgroup *t)
                       } /*switch*/
               } /*for; for*/
       } /*for*/
-    write4(buf + 4, p - 1); /* end address (last byte of last VTS_PTT) */
-    assert(p <= BIGWRITEBUFLEN);
+    buf_write4(4, p - 1); /* end address (last byte of last VTS_PTT) */
     p = (p + 2047) & (-2048); /* round up to next whole sector */
-    nfwrite(buf, p, h); /* write it all out */
+    nfwrite(bigbuf, p, h); /* write it all out */
     return p / 2048; /* nr sectors generated */
   } /*Create_PTT_SRPT*/
 
@@ -354,9 +427,8 @@ static int Create_TT_SRPT
   )
   /* creates a TT_SRPT structure containing pointers to all the titles on the disc. */
   {
-    unsigned char * const buf = bigwritebuf;
     int i, j, k, p, tn;
-    memset(buf, 0, BIGWRITEBUFLEN);
+    buf_init();
     j = vtsstart;
     tn = 0;
     p = 8; /* offset to first entry */
@@ -364,24 +436,23 @@ static int Create_TT_SRPT
       {
         for (k = 0; k < ts->vts[i].numtitles; k++)
           {
-            buf[0 + p] = 0x3c;
+            buf_write1(0 + p, 0x3c);
               /* title type = one sequential PGC, jump/link/call may be found in all places,
                 PTT & time play/search uops not inhibited */
-            buf[1 + p] = 0x1; /* number of angles always 1 for now */
-            write2(buf + 2 + p, ts->vts[i].numchapters[k]); /* number of chapters (PTTs) */
-            buf[6 + p] = i + 1; /* video titleset number, VTSN */
-            buf[7 + p] = k + 1; /* title nr within VTS, VTS_TTN */
-            write4(buf + 8 + p, j); // start sector for VTS
+            buf_write1(1 + p, 0x1); /* number of angles always 1 for now */
+            buf_write2(2 + p, ts->vts[i].numchapters[k]); /* number of chapters (PTTs) */
+            buf_write1(6 + p, i + 1); /* video titleset number, VTSN */
+            buf_write1(7 + p, k + 1); /* title nr within VTS, VTS_TTN */
+            buf_write4(8 + p, j); // start sector for VTS
             tn++;
             p += 12; /* offset to next entry */
           } /*for*/
         j += ts->vts[i].numsectors;
       } /*for*/
-    write2(buf, tn); // # of titles
-    write4(buf + 4, p - 1); /* end address (last byte of last entry) */
-    assert(p <= BIGWRITEBUFLEN);
+    buf_write2(0, tn); // # of titles
+    buf_write4(4, p - 1); /* end address (last byte of last entry) */
     p = (p + 2047) & (-2048); /* round up to next whole sector */
-    nfwrite(buf, p, h);
+    nfwrite(bigbuf, p, h);
     return p / 2048; /* nr sectors generated */
   } /*Create_TT_SRPT*/
 
