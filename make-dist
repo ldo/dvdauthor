@@ -17,7 +17,7 @@ rm -rf .git
 (cd src; flex -s -B -Cem -odvdvml.c -Pdvdvm dvdvml.l)
 (cd src; bison -o dvdvmy.c -d -p dvdvm dvdvmy.y)
 (cd doc; docbook2man root.sgml)
-rm -rf autom4te.cache
+rm -rf autom4te.cache src/.deps
 rm doc/manpage.links doc/manpage.refs
 rm doc/*.sgml doc/html.dsl
 sed -i '/\.\/bootstrap/d' INSTALL
