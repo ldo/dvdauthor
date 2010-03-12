@@ -377,7 +377,14 @@ inline static void vo_update_text_sub
                         value += tmp_ott->osd_kerning + tmp_ott->osd_length;
                         tmp_ott = tmp_ott->next;
                       } /*while*/
-                    if (tmp_ott != NULL)
+                    if
+                      (
+                            tmp_ott != NULL
+                        &&
+                            tmp_ott != tmp_otp->ott
+                              /* not sure what this does, but trying to stop it getting stuck in
+								here (fix Ubuntu bug 385187) */
+                      )
                       {
                       /* append another element onto otp chain */
                         struct osd_text_p *tmp =
