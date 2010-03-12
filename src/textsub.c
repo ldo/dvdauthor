@@ -117,48 +117,54 @@ int sub_last;
 int sub_num_of_subtitles;
 char *img_name;
 
-sub_data * textsub_init(const char *textsub_filename, float textsub_movie_fps, float textsub_movie_width, float textsub_movie_height)
-{
-  vo_sub=NULL;
-  font_name=NULL;
-  current_sub=-1;
-  vo_font=NULL;
-  sub_last=1;
-  sub_max_chars=0;
-  sub_max_lines=0;
-  sub_max_font_height=0;
-  sub_max_bottom_font_height=0;
-  sub_num_of_subtitles=0;
-  movie_fps=textsub_movie_fps;
-  movie_width=textsub_movie_width;
-  movie_height=textsub_movie_height;
-#ifdef HAVE_FREETYPE
-  if (!vo_font)
-    init_freetype();
-#endif
-  vo_init_osd();
-#ifdef ICONV
-  if (sub_cp)
-    if (!strcmp(sub_cp,""))
-      sub_cp=NULL;
-#endif
-  if (dvdsub_lang)
-    if (!strcmp(dvdsub_lang,""))
-      dvdsub_lang=NULL;
-  image_buffer=malloc(sizeof(uint8_t)*3*textsub_movie_height*textsub_movie_width*3);
-  memset(image_buffer,128,sizeof(uint8_t)*3*textsub_movie_height*textsub_movie_width*3);
-  if ( image_buffer==NULL)
+sub_data * textsub_init
+  (
+    const char *textsub_filename,
+    float textsub_movie_fps,
+    float textsub_movie_width,
+    float textsub_movie_height
+  )
   {
-    fprintf(stderr,"ERR: Failed to allocate memory\n");
-    exit(1);
-  }
-  textsub_subdata=sub_read_file(textsub_filename,textsub_movie_fps);
-  vo_update_osd(textsub_movie_width,textsub_movie_height);
-  vo_osd_changed(OSDTYPE_SUBTITLE);
-  if (textsub_subdata!=NULL)
-    textsub_subs=textsub_subdata->subtitles;
-  return(textsub_subdata);
-}
+    vo_sub = NULL;
+    font_name = NULL;
+    current_sub = -1;
+    vo_font = NULL;
+    sub_last = 1;
+    sub_max_chars = 0;
+    sub_max_lines = 0;
+    sub_max_font_height = 0;
+    sub_max_bottom_font_height = 0;
+    sub_num_of_subtitles = 0;
+    movie_fps = textsub_movie_fps;
+    movie_width = textsub_movie_width;
+    movie_height = textsub_movie_height;
+#ifdef HAVE_FREETYPE
+    if (!vo_font)
+        init_freetype();
+#endif
+    vo_init_osd();
+#ifdef ICONV
+    if (sub_cp)
+        if (!strcmp(sub_cp, ""))
+            sub_cp = NULL;
+#endif
+    if (dvdsub_lang)
+        if (!strcmp(dvdsub_lang,""))
+            dvdsub_lang = NULL;
+    image_buffer = malloc(sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width * 3);
+    if (image_buffer == NULL)
+     {
+        fprintf(stderr, "ERR: Failed to allocate memory\n");
+        exit(1);
+      } /*if*/
+    memset(image_buffer, 128, sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width * 3);
+    textsub_subdata = sub_read_file(textsub_filename, textsub_movie_fps);
+    vo_update_osd(textsub_movie_width, textsub_movie_height);
+    vo_osd_changed(OSDTYPE_SUBTITLE);
+    if (textsub_subdata != NULL)
+        textsub_subs = textsub_subdata->subtitles;
+    return textsub_subdata;
+  } /*textsub_init*/
 
 void textsub_dump_file()
 {

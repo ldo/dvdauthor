@@ -2,8 +2,8 @@
 
 typedef struct {
     int lines; /* length of text array */
-    unsigned long start;
-    unsigned long end;
+    unsigned long start; /* start time for displaying subtitle */
+    unsigned long end; /* end time for displaying subtitle */
     char *text[SUB_MAX_TEXT]; /* array [lines] of char* */
     unsigned char alignment;
     int text_forced;
@@ -12,7 +12,7 @@ typedef struct {
 typedef struct {
     subtitle *subtitles; /* array [sub_num] */
     const char *filename;
-    int sub_uses_time;
+    int sub_uses_time; /* true => start and end are in hundredths of a second; false => they are frame numbers */
     int sub_num;          // number of subtitle structs
     int sub_errs;
 } sub_data;

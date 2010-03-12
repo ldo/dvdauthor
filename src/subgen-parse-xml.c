@@ -42,59 +42,67 @@ static void printtime(char *b,int t)
 }
 
 static unsigned int parsetime(const char *t)
-{
-    int tf=1;
-    int rt=0,n=0,nd=0;
-
-    while(*t) {
-        if(isdigit(*t)) {
-            if( nd<10000 ) {
-                n=n*10+t[0]-'0';
-                nd*=10;
-            }
-        } else if( *t == ':' ) {
+  /* parses a time as [[hh:]mm:]ss[.cc], returning the value in 90kHz clock units. */
+  {
+    int tf = 1; /* haven't seen decimal point yet */
+    int rt = 0; /* accumulation of all componetns except last */
+    int n = 0; /* value of last copmonent accumulated here */
+    int nd = 0; /* multiplier for next digit of n */
+    while (*t)
+      {
+        if (isdigit(*t))
+          {
+            if (nd < 10000)
+              {
+                n = n * 10 + t[0] - '0';
+                nd *= 10;
+              } /*if*/
+          }
+        else if (*t == ':')
+          {
             assert(tf);
-            rt=rt*60+n;
-            n=0;
-            nd=1;
-        } else if( *t == '.' || *t == ',' ) {
+            rt = rt * 60 + n;
+            n = 0;
+            nd = 1;
+          }
+        else if (*t == '.' || *t == ',')
+          {
+          /* on to fractions of a second */
             assert(tf);
-            rt=rt*60+n;
-            n=0;
-            nd=1;
-            tf=0;
-        }
+            rt = rt * 60 + n;
+            n = 0;
+            nd = 1;
+            tf = 0;
+          } /*if*/
         t++;
-    }
-    if( tf )
-        return (rt*60+n)*90000;
+      } /*while*/
+    if (tf)
+        return (rt * 60 + n) * 90000;
     else
-        return rt*90000+90000*n/nd;
-}
+        return rt * 90000 + 90000 * n / nd;
+  } /*parsetime*/
 
 #if 0
 #endif
 
-
-
-
-static int had_stream=0;
-static stinfo *st=0;
+static int had_stream=0; /* whether I've seen <stream> */
+static stinfo *st=0; /* current <spu> directive collected here */
 static button *curbutton=0;
 
 void stream_begin()
 {
-    if(had_stream) {
+    if (had_stream)
+      {
         fprintf(stderr,"ERR:  Only one stream is currently allowed.\n");
         exit(1);
-    }
-    had_stream=1;
+      } /*if*/
+    had_stream = 1;
 }
 
 void spu_begin()
 {
-    st=malloc(sizeof(stinfo));
-    memset(st,0,sizeof(stinfo));
+    st = malloc(sizeof(stinfo));
+    memset(st, 0, sizeof(stinfo));
 }
 
 void spu_image(const char *v)        { st->img.fname=utf8tolocal(v); }
@@ -109,82 +117,84 @@ void spu_yoffset(const char *v)      { st->y0 = strtounsigned(v, "spu yoffset");
 void spu_force(const char *v)
 {
     st->forced = xml_ison(v);
-    if( st->forced==-1 ) {
-        fprintf(stderr,"ERR:  Cannot parse 'force' value '%s'\n",v);
+    if (st->forced == -1)
+      {
+        fprintf(stderr, "ERR:  Cannot parse 'force' value '%s'\n", v);
         exit(1);
-    }
+      } /*if*/
 }
 
 void spu_transparent(const char *v)
 {
-    int c=0;
-
-    sscanf(v,"%x",&c);
-    st->transparentc.r=c>>16;
-    st->transparentc.g=c>>8;
-    st->transparentc.b=c;
-    st->transparentc.t=255;
+    int c = 0;
+    sscanf(v, "%x", &c);
+    st->transparentc.r = c>>16;
+    st->transparentc.g = c>>8;
+    st->transparentc.b = c;
+    st->transparentc.t = 255;
 }
 
 void spu_autooutline(const char *v)
 {
-    if( !strcmp(v,"infer") )
-        st->autooutline=1;
-    else {
-        fprintf(stderr,"ERR:  Unknown autooutline type %s\n",v);
+    if (!strcmp(v,"infer"))
+        st->autooutline = 1;
+    else
+      {
+        fprintf(stderr, "ERR:  Unknown autooutline type %s\n", v);
         exit(1);
-    }
+      } /*if*/
 }
 
 void spu_autoorder(const char *v)
 {
-    if(!strcmp(v,"rows"))
-        st->autoorder=0;
-    else if(!strcmp(v,"columns"))
-        st->autoorder=1;
-    else {
-        fprintf(stderr,"ERR:  Unknown autoorder type %s\n",v);
+    if (!strcmp(v,"rows"))
+        st->autoorder = 0;
+    else if (!strcmp(v,"columns"))
+        st->autoorder = 1;
+    else
+      {
+        fprintf(stderr, "ERR:  Unknown autoorder type %s\n", v);
         exit(1);
-    }
+      } /*if*/
 }
 
 void spu_complete()
 {
-    if (!st->sd)
-        st->sd = -1;
+    if (!st->sd) /* no end time specified */
+        st->sd = -1; /* default to indefinite */
     else
-    {
+      {
         if (st->sd <= st->spts)
-        {
-            char stime[50],etime[50];
-            printtime(stime,st->spts);
-            printtime(etime,st->sd);
-            fprintf(stderr, "ERR:  sub has end (%s)<=start (%s), skipping\n",etime,stime);
+          {
+            char stime[50], etime[50];
+            printtime(stime, st->spts);
+            printtime(etime, st->sd);
+            fprintf(stderr, "ERR:  sub has end (%s)<=start (%s), skipping\n", etime, stime);
             skip++;
             return;
-        }
+          } /*if*/
         st->sd -= st->spts;
-    }
-    spus=realloc(spus,(numspus+1)*sizeof(stinfo *));
-    spus[numspus++]=st;
-    st=0;
+      } /*if*/
+    spus = realloc(spus, (numspus + 1) * sizeof(stinfo *));
+    spus[numspus++] = st;
+    st = 0;
 }
 
 void button_begin()
 {
-    st->buttons=realloc(st->buttons,(st->numbuttons+1)*sizeof(button));
-    curbutton=&st->buttons[st->numbuttons++];
-    memset(curbutton,0,sizeof(button));
-    curbutton->r.x0=-1;
-    curbutton->r.y0=-1;
-    curbutton->r.x1=-1;
-    curbutton->r.y1=-1;
+    st->buttons = realloc(st->buttons, (st->numbuttons + 1) * sizeof(button));
+    curbutton = &st->buttons[st->numbuttons++];
+    memset(curbutton, 0, sizeof(button));
+    curbutton->r.x0 = -1;
+    curbutton->r.y0 = -1;
+    curbutton->r.x1 = -1;
+    curbutton->r.y1 = -1;
 }
 
 void action_begin()
 {
     button_begin();
-    curbutton->autoaction=1;
+    curbutton->autoaction = 1;
 }
 
 void button_label(const char *v) { curbutton->name  = strdup(v); }
@@ -199,93 +209,107 @@ void button_y1(const char *v)    { curbutton->r.y1  = strtounsigned(v, "button y
 
 void textsub_filename(const char *v)
 {
-    filename=utf8tolocal(v);
+    filename = utf8tolocal(v);
 }
 
 void textsub_characterset(const char *v)
 {
 #ifdef HAVE_ICONV
-    sub_cp=strdup(v);
+    sub_cp = strdup(v);
 #endif
 }
 
 void textsub_h_alignment(const char *v)
 {
-    if(!strcmp(v,"left"))
-        h_sub_alignment=1;
-    else if(!strcmp(v,"right"))
-        h_sub_alignment=2;
-    else if(!strcmp(v,"center"))
-        h_sub_alignment=0;
-    else if(!strcmp(v,"default"))
-        h_sub_alignment=4;
-
-    else {
-        fprintf(stderr,"ERR:  Unknown horizontal-alignment type %s\n",v);
-        exit(1);}
+    if (!strcmp(v, "left"))
+        h_sub_alignment = 1;
+    else if (!strcmp(v, "right"))
+        h_sub_alignment = 2;
+    else if (!strcmp(v, "center"))
+        h_sub_alignment = 0;
+    else if (!strcmp(v, "default"))
+        h_sub_alignment = 4;
+    else
+      {
+        fprintf(stderr, "ERR:  Unknown horizontal-alignment type %s\n", v);
+        exit(1);
+      } /*if*/
 }
 
 void textsub_v_alignment(const char *v)
 {
-    if(!strcmp(v,"top"))
-        sub_alignment=0;
-    else if(!strcmp(v,"center"))
-        sub_alignment=1;
-    else if(!strcmp(v,"bottom"))
-        sub_alignment=2;
-    else {
-        fprintf(stderr,"ERR:  Unknown vertical-alignment type %s\n",v);
-        exit(1);}
+    if (!strcmp(v, "top"))
+        sub_alignment = 0;
+    else if (!strcmp(v, "center"))
+        sub_alignment = 1;
+    else if (!strcmp(v, "bottom"))
+        sub_alignment = 2;
+    else
+      {
+        fprintf(stderr ,"ERR:  Unknown vertical-alignment type %s\n", v);
+        exit(1);
+      } /*if*/
 }
 
 void textsub_complete()
-{
-    unsigned long pts=0;
+  /* called on a </textsub> tag to load and parse the subtitles. */
+  {
+    unsigned long pts = 0;
     subtitle *last_sub;
     textsub_subtitle_type *textsub_subtitle;
-
-    if (filename==NULL)
-    {
-        fprintf(stderr,"ERR: Filename of subtitle file missing");
+    if (filename == NULL)
+      {
+        fprintf(stderr, "ERR: Filename of subtitle file missing");
         exit(1);
-    }
+      }
     else
-    {
-        if(textsub_init(filename,movie_fps,movie_width,movie_height)==NULL)
-        {
-            fprintf(stderr,"ERR: Couldn't load file %s.\n",filename);
+      {
+        if (textsub_init(filename, movie_fps, movie_width, movie_height) == NULL)
+          {
+            fprintf(stderr, "ERR: Couldn't load file %s.\n", filename);
             exit(1);
-        }
-        have_textsub=1;
-        last_sub=(&textsub_subs[textsub_subdata->sub_num-1]);
-        for ( pts=0;pts<last_sub->end;pts++)
-        {
-            textsub_subtitle=textsub_find_sub(pts);
+          } /*if*/
+        have_textsub = 1;
+        last_sub = &textsub_subs[textsub_subdata->sub_num - 1];
+          /* describes the file I just loaded */
+        for (pts = 0; pts < last_sub->end; pts++)
+          {
+            textsub_subtitle = textsub_find_sub(pts);
             if (textsub_subtitle->valid)
-            {
-                st=malloc(sizeof(stinfo));
-                memset(st,0,sizeof(stinfo));
-                if( !textsub_subdata->sub_uses_time) {
-                    st->spts=textsub_subtitle->start*90000.0/movie_fps;
-                    st->sd=((textsub_subtitle->end)-(textsub_subtitle->start))*90000.0/movie_fps;
-                } else {
-                    st->spts=textsub_subtitle->start*900;
-                    st->sd=((textsub_subtitle->end)-(textsub_subtitle->start))*900;
-                }
-                st->sub_title=vo_sub;
-                if ( have_transparent)
-                {
-                    st->transparentc.r=transparent_color>>16;
-                    st->transparentc.g=transparent_color>>8;
-                    st->transparentc.b=transparent_color;
-                    st->transparentc.t=255;
-                }
-                spus=realloc(spus,(numspus+1)*sizeof(stinfo *));
-                spus[numspus++]=st;
-            }
-        }
-    }
-}
+              {
+                st = malloc(sizeof(stinfo));
+                memset(st, 0, sizeof(stinfo));
+                if (!textsub_subdata->sub_uses_time)
+                  {
+                  /* start and end are in frame numbers */
+                    st->spts = textsub_subtitle->start * 90000.0 / movie_fps;
+                    st->sd =
+                            (textsub_subtitle->end - textsub_subtitle->start)
+                        *
+                            90000.0
+                        /
+                            movie_fps;
+                  }
+                else
+                  {
+                  /* start and end are in hundredths of a second */
+                    st->spts = textsub_subtitle->start * 900;
+                    st->sd = (textsub_subtitle->end - textsub_subtitle->start) * 900;
+                  } /*if*/
+                st->sub_title = vo_sub;
+                if (have_transparent)
+                  {
+                    st->transparentc.r = transparent_color >> 16;
+                    st->transparentc.g = transparent_color >> 8;
+                    st->transparentc.b = transparent_color;
+                    st->transparentc.t = 255;
+                  } /*if*/
+                spus = realloc(spus, (numspus + 1) * sizeof(stinfo *));
+                spus[numspus++] = st;
+              } /*if*/
+          } /*for*/
+      } /*if*/
+  } /*textsub_complete*/
 
 void textsub_l_margin(const char *v)     { sub_left_margin=strtounsigned(v, "textsub left-margin");        }
 void textsub_r_margin(const char *v)     { sub_right_margin=strtounsigned(v, "textsub right-margin");       }
@@ -301,25 +325,25 @@ void textsub_fontsize(const char *v)     { text_font_scale_factor=atof(v); }
 void textsub_force(const char *v)
 {
     text_forceit = xml_ison(v);
-    if( text_forceit ==-1 ) {
+    if (text_forceit == -1)
+      {
         fprintf(stderr,"ERR:  Cannot parse 'force' value '%s'\n",v);
         exit(1);
-    }
+      } /*if*/
 }
 
 void textsub_transparent(const char *v)
 {
-    sscanf(v,"%x",&transparent_color);
-    have_transparent=1;
+    sscanf(v, "%x", &transparent_color);
+    have_transparent = 1;
 }
 
-
-enum {
-    SPU_BEGIN=0,
-    SPU_ROOT,
-    SPU_STREAM,
-    SPU_SPU,
-    SPU_NOSUB
+enum { /* parse states */
+    SPU_BEGIN=0, /* initial state must be 0 */
+    SPU_ROOT, /* expect <stream> */
+    SPU_STREAM, /* expect <spu> or <textsub> */
+    SPU_SPU, /* within <spu>, expect <button> or <action> */
+    SPU_NOSUB /* not expecting subtags */
 };
 
 static struct elemdesc spu_elems[]={

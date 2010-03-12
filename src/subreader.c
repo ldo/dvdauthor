@@ -410,7 +410,7 @@ subtitle *sub_read_line_subviewer(FILE *fd, subtitle *current)
         current->end = b1 * 360000 + b2 * 6000 + b3 * 100 + b4 / 10;
         for (i = 0; i < SUB_MAX_TEXT;)
           {
-            if (!fgets (line, LINE_LEN, fd))
+            if (!fgets(line, LINE_LEN, fd))
                 break;
             len = 0;
             for (p = line; *p != '\n' && *p != '\r' && *p; p++, len++)
@@ -1749,7 +1749,7 @@ sub_data *sub_read_file(const char *filename, float fps)
       }
 #endif
     sub_num = 0;
-    n_max = 32;
+    n_max = 32; /* initial size of "first" array */
     first = (subtitle *)malloc(n_max * sizeof(subtitle));
     if(!first)
       {
@@ -1767,7 +1767,7 @@ sub_data *sub_read_file(const char *filename, float fps)
 #endif
     while(1)
       {
-        if (sub_num == n_max) /* need more room in first array */
+        if (sub_num == n_max) /* need more room in "first" array */
           {
             n_max += 16;
             first = realloc(first, n_max * sizeof(subtitle));
@@ -2746,13 +2746,17 @@ void sub_free(sub_data * subd)
 static long nosub_range_start = -1;
 static long nosub_range_end = -1;
 
-void find_sub(sub_data* subd,unsigned long key)
+void find_sub(sub_data * subd, unsigned long key)
+  /* puts into current_sub the index of the subd->subtitles array element,
+    and into vo_sub a pointer to this element, which overlaps the time specified
+    by key. vo_sub will be NULL if no such element can be found. */
   {
     subtitle *subs;
     int i,j;
     if (!subd || subd->sub_num == 0)
         return;
     subs = subd->subtitles;
+  /* first, see if previously-returned result will do */
     if (vo_sub)
       {
         if (key >= vo_sub->start && key <= vo_sub->end)
@@ -2763,17 +2767,17 @@ void find_sub(sub_data* subd,unsigned long key)
         if (key > nosub_range_start && key < nosub_range_end)
             return; // OK!
       } /*if*/
-    // sub changed!
+  /* no it won't */
     if (key <= 0)
       {
         vo_sub = NULL; // no sub here
         return;
       } /*if*/
 //    fprintf(stderr, "\r---- sub changed ----\n");
-    // check next sub.
+  /* see if the following one will do */
     if (current_sub >= 0 && current_sub + 1 < subd->sub_num)
       {
-        if (key > subs[current_sub].end && key < subs[current_sub+1].start)
+        if (key > subs[current_sub].end && key < subs[current_sub + 1].start)
           {
             // no sub
             nosub_range_start = subs[current_sub].end;
@@ -2788,7 +2792,7 @@ void find_sub(sub_data* subd,unsigned long key)
             return; // OK!
       } /*if*/
 //    fprintf(stderr, "\r---- sub log search... ----\n");
-    // use logarithmic search:
+ /* nope, do a binary search over the entire array to find a suitable entry */
     i = 0;
     j = subd->sub_num - 1;
 //    fprintf(stderr, "Searching %d in %d..%d\n",key,subs[i].start,subs[j].end);
@@ -2817,7 +2821,7 @@ void find_sub(sub_data* subd,unsigned long key)
             return;
           } /*if*/
         --current_sub;
-        if (key > subs[current_sub].end && key < subs[current_sub+1].start)
+        if (key > subs[current_sub].end && key < subs[current_sub + 1].start)
           {
             // no sub
             nosub_range_start = subs[current_sub].end;
@@ -2859,5 +2863,3 @@ void find_sub(sub_data* subd,unsigned long key)
       );
     vo_sub = NULL; // no sub here
   } /*find_sub*/
-
-

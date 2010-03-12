@@ -238,7 +238,7 @@ static uint64_t getgts(const unsigned char *buf)
     return th * 300 + tl;
   } /*getgts*/
 
-static void fixgts(uint64_t *gts,uint64_t *nextgts)
+static void fixgts(uint64_t *gts, uint64_t *nextgts)
   {
     if (gts[0] < nextgts[0])
         gts[0] = nextgts[0];
@@ -451,7 +451,6 @@ static void mux(int eoinput)
   {
     if (gts == 0 || tofs == -1 || (lps % secsize && !eoinput))
         return;
-
     while (newsti)
       {
         stinfo *cursti;
@@ -459,18 +458,21 @@ static void mux(int eoinput)
         unsigned char seq;
         unsigned int q;
         int64_t dgts;
-        
-        /* wait for correct time to insert sub, leave time for vpts to occur */
+      /* wait for correct time to insert sub, leave time for vpts to occur */
         dgts = (newsti->spts - .15 * 90000) * 300;
         if (dgts < 0)
             dgts = 0;
         if (dgts > gts && !eoinput)
             break; /* not yet time */
-
         cursti = newsti;
         if (debug > 1)
           {
-            fprintf(stderr, "INFO: After read_bmp(): xd=%d yd=%d x0=%d y0=%d\n", cursti->xd, cursti->yd, cursti->x0, cursti->y0);
+            fprintf
+              (
+                stderr,
+                "INFO: After read_bmp(): xd=%d yd=%d x0=%d y0=%d\n",
+                cursti->xd, cursti->yd, cursti->x0, cursti->y0
+              );
           } /*if*/
         newsti = getnextsub();
         if (!newsti)
@@ -496,7 +498,6 @@ static void mux(int eoinput)
                 cursti->sd = -1;
               } /*if*/
           } /*if*/
-
         if (debug > 4)
           {
             if (newsti)
@@ -510,7 +511,6 @@ static void mux(int eoinput)
                         cursti->spts / 90000, cursti->sd / 90000);
               } /*if*/
           } /*if*/
-        
         if ((cursti->sd == -1) && newsti && ((!svcd) || until_next_sub))
           {
             if (newsti->spts > cursti->spts + tbs)
@@ -528,7 +528,6 @@ static void mux(int eoinput)
                 continue;
               } /*if*/
           } /*if*/
-
         switch(mode)
           {
         case DVD_SUB:
@@ -545,7 +544,6 @@ static void mux(int eoinput)
             sub_size = 0;
         break;
           } /*switch*/
-
         if (sub_size == -1)
           {
             if (debug > -1)
@@ -555,32 +553,26 @@ static void mux(int eoinput)
             skip++;
             continue;
           } /*if*/
-
         if (sub_size > max_sub_size)
           {
             max_sub_size = sub_size;
             if (have_textsub == 0)
                 fprintf(stderr, "INFO: Max_sub_size=%d\n", max_sub_size);
           } /*if*/
-
         seq = 0;
         subno++;
-
         gts = dgts;
-
-        /* write out custom dvdauthor information */
-        if (mode==DVD_SUB)
+        if (mode == DVD_SUB)
           {
+          /* write out custom dvdauthor information */
             int pdl = secsize - 6 - 10 - 4, i;
             unsigned int c;
-
           /* write packet start code */
             c = htonl(0x100 + MPID_PACK);
             swrite(fdo, &c, 4);
             mkpackh(gts, muxrate, 0);
             fixgts(&gts, &nextgts);
             swrite(fdo, header, 10);
-
             // start padding streamcode
             header[0] = 0;
             header[1] = 0;
@@ -655,9 +647,8 @@ static void mux(int eoinput)
                 wdbyte(cursti->numbuttons);
                 for (i = 0; i < cursti->numbuttons; i++)
                   {
-                    button *b=&cursti->buttons[i];
-                    char nm1[10],nm2[10];
-
+                    const button * const b = &cursti->buttons[i];
+                    char nm1[10], nm2[10];
                     wdstr(b->name);
                     wdshort(0);
                     wdbyte(b->autoaction);
@@ -688,22 +679,18 @@ static void mux(int eoinput)
                     wdstr(b->right ? b->right : nm2);
                   } /*for*/
               } /*if*/
-
-            /*         fprintf(stderr,"INFO: Private sector size %d\n",wdest-sector); */
-
+          /* fprintf(stderr,"INFO: Private sector size %d\n",wdest-sector); */
             swrite(fdo, sector, pdl);
-          } /*if mode==DVD_SUB*/
-
+          } /*if mode == DVD_SUB*/
         // header_size is 12 before while starts
-
-        /* search packet start code */
+      /* search packet start code */
         bytes_send = 0;
         while (bytes_send != sub_size)
           {
             int i, stuffing;
             uint32_t c;
             uint16_t b;
-            /* if not first time here */
+          /* if not first time here */
             if (bytes_send)
                 header_size = 4;
             else if (header_size != 12)
@@ -729,7 +716,6 @@ static void mux(int eoinput)
   fprintf(stderr, "spts=%d\n", spts);
 */
             swrite(fdo, header, 10);
-
           /* write private stream code */
             c = htonl(0x100 + MPID_PRIVATE1);
             swrite(fdo, &c, 4);
@@ -745,8 +731,8 @@ static void mux(int eoinput)
                 mkpesh2();
             header[2] += stuffing;
             memset(header + header_size - 1, 0xff, stuffing);
-            header[header_size + stuffing - 1] = svcd ? SVCD_SUB_CHANNEL : substr; /* substream ID */
-            swrite(fdo, header, header_size+stuffing);
+            header[header_size + stuffing - 1] = svcd ? SVCD_SUB_CHANNEL : substr; /* subpicture stream number */
+            swrite(fdo, header, header_size + stuffing);
             if (svcd)
               {
               /* 4 byte svcd header */
@@ -809,26 +795,22 @@ int main(int argc,char **argv)
     unsigned char psbuf[psbufs], ncnt;
     int optch;
 
-    newsti=0;
+    newsti = 0;
     mode = 0; /* default DVD */
-    sub = malloc( SUB_BUFFER_MAX + SUB_BUFFER_HEADROOM );
-    if(! sub)
-    {
-    fprintf(stderr, "ERR: Could not allocate space for sub, aborting.\n");
-
-    exit(1);
-    }
+    sub = malloc(SUB_BUFFER_MAX + SUB_BUFFER_HEADROOM);
+    if (!sub)
+      {
+        fprintf(stderr, "ERR: Could not allocate space for sub, aborting.\n");
+        exit(1);
+      } /*if*/
 //fprintf(stderr, "malloc sub=%p\n", sub);
-
-    if ( !(cbuf = malloc(65536)) ) {
-    fprintf(stderr, "ERR: Could not allocate space for sub buffer, aborting.\n");
-    exit(1);
-    }
-
+    if (!(cbuf = malloc(65536)))
+      {
+        fprintf(stderr, "ERR: Could not allocate space for sub buffer, aborting.\n");
+        exit(1);
+      } /*if*/
     image_init();
-
-    fputs(PACKAGE_HEADER("spumux"),stderr);
-
+    fputs(PACKAGE_HEADER("spumux"), stderr);
     gts = 0;
     nextgts = 0;
     tofs = -1;
@@ -836,43 +818,51 @@ int main(int argc,char **argv)
     debug = 0;
     ncnt = 0;
     substr = 0;
-
-    while( -1 != (optch=getopt(argc,argv,"hm:s:v:P")) ) {
-        switch( optch ) {
-    case 'm':
-            switch(optarg[0]) {
+    while (-1 != (optch = getopt(argc, argv, "hm:s:v:P")))
+      {
+        switch (optch)
+          {
+        case 'm':
+            switch (optarg[0])
+              {
             case 'd':
             case 'D':
-                mode=DVD_SUB;
-                break;
+                mode = DVD_SUB;
+            break;
 
             case 's':
             case 'S':
-                mode=SVCD_SUB;
-                break;
+                mode = SVCD_SUB;
+            break;
 
             case 'c':
             case 'C':
-                mode=CVD_SUB;
-                break;
+                mode = CVD_SUB;
+            break;
 
             default:
                 fprintf(stderr,"ERR: Mode must be one of dvd, svcd, or cvd\n");
                 usage();
-            }
-            break;
-
-    case 's': substr = strtounsigned(optarg, "substream id"); break;
-    case 'v': debug  = strtounsigned(optarg, "verbosity"); break;
-    case 'P': progr  = 1;            break;
-
-        case 'h': usage();
-
-    default:
-            fprintf(stderr,"WARN: Getopt returned %d\n",optch);
+              } /*switch*/
+        break;
+        case 's':
+            substr = strtounsigned(optarg, "substream id");
+        break;
+        case 'v':
+            debug = strtounsigned(optarg, "verbosity");
+        break;
+        case 'P':
+            progr = 1;
+        break;
+        case 'h':
             usage();
-        }
-    } /* end switch argv */
+        break;
+        default:
+            fprintf(stderr, "WARN: Getopt returned %d\n",optch);
+            usage();
+        break;
+          } /*switch*/
+      } /*while*/
 
     switch(mode)
       {
@@ -881,7 +871,7 @@ int main(int argc,char **argv)
         svcd = 0;
         substr += DVD_SUB_CHANNEL;
         muxrate = 10080 * 10 / 4; // 0x1131; // 10080 kbps
-        secsize = 2048; //2324;
+        secsize = 2048;
     break;
     case CVD_SUB:
         svcd = 0;
@@ -897,31 +887,28 @@ int main(int argc,char **argv)
         secsize = 2324;
     break;
       } /*switch*/
-
-    if( argc-optind!=1 ) {
-        fprintf(stderr,"WARN: Only one argument expected\n");
+    if (argc - optind != 1)
+      {
+        fprintf(stderr, "WARN: Only one argument expected\n");
         usage();
-    }
-
+      } /*if*/
     fdi = 0;
     fdo = 1;
     win32_setmode(fdi,O_BINARY);
     win32_setmode(fdo,O_BINARY);
-    if( spumux_parse(argv[optind]) )
+    if (spumux_parse(argv[optind]))
         return -1;
-    if(tofs>=0  &&  (debug > 0) )
-    fprintf(stderr, "INFO: Subtitles offset by %fs\n", (double)tofs / 90000);
+    if (tofs >= 0 && debug > 0)
+        fprintf(stderr, "INFO: Subtitles offset by %fs\n", (double)tofs / 90000);
+    spuindex = 0;
+    skip = 0;
+    if (!(sector = malloc(secsize)))
+      {
+        fprintf(stderr, "ERR: Could not allocate space for sector buffer, aborting.\n");
+        exit(1);
+      } /*if*/
 
-    spuindex=0;
-
-    skip=0;
-
-    if ( !(sector=malloc(secsize)) ) {
-    fprintf(stderr, "ERR: Could not allocate space for sector buffer, aborting.\n");
-    exit(1);
-    }
-
-    newsti=getnextsub();
+    newsti = getnextsub();
     max_sub_size = 0;
     header_size = 12;
     vss = 0;
@@ -929,7 +916,7 @@ int main(int argc,char **argv)
     lps = 0;
     gts = 0;
     subno = -1;
-    while(1)
+    while (1)
       {
         mux(0);
         if (sread(fdi, &c, 4) != 4)
@@ -937,29 +924,32 @@ int main(int argc,char **argv)
         ch = ntohl(c); /* header ID */
         if (ch == 0x100 + MPID_PACK)
           {
-            l_01ba:
-                if(progr)
-                {
-                    if (lps % 1024 * 1024 * 10 < secsize)
-                        fprintf(stderr, "INFO: %" PRIu64 " bytes of data written\r", lps);
-                }
-
-                if(debug > 5) fprintf(stderr, "INFO: pack_start_code\n");
-                if(sread( fdi, psbuf, psbufs) != psbufs) break;
-                gts = getgts(psbuf);
-                if(gts != -1) {
-                    mux(0);
-                    fixgts(&gts,&nextgts);
-                    muxrate = getmuxr(psbuf);
-                }
-                else {
-                    if (debug >- 1)
-                        fprintf(stderr, "WARN: Incorrect pack header\n");
-                    gts=nextgts;
-                }
-                mkpackh(gts,muxrate,0);
-                swrite(fdo, &c, 4);
-                swrite(fdo, header, psbufs);
+l_01ba:
+            if (progr) /* show progress */
+              {
+                if (lps % 1024 * 1024 * 10 < secsize)
+                    fprintf(stderr, "INFO: %" PRIu64 " bytes of data written\r", lps);
+              } /*if*/
+            if (debug > 5)
+                fprintf(stderr, "INFO: pack_start_code\n");
+            if (sread( fdi, psbuf, psbufs) != psbufs)
+                break;
+            gts = getgts(psbuf);
+            if (gts != -1)
+              {
+                mux(0);
+                fixgts(&gts, &nextgts);
+                muxrate = getmuxr(psbuf);
+              }
+            else
+              {
+                if (debug >- 1)
+                    fprintf(stderr, "WARN: Incorrect pack header\n");
+                gts = nextgts;
+              } /*if*/
+            mkpackh(gts, muxrate, 0);
+            swrite(fdo, &c, 4);
+            swrite(fdo, header, psbufs);
           }
         else if (ch >= 0x100 + MPID_SYSTEM && ch <= 0x100 + MPID_VIDEO_LAST)
           {
@@ -1016,14 +1006,12 @@ int main(int argc,char **argv)
 
  eoi:
     mux(1); // end of input
-
 /*    fprintf(stderr, "max_sub_size=%d\n", max_sub_size); */
-
-    if (subno  !=  0xffff)
+    if (subno != 0xffff)
       {
-        fprintf(stderr,\
-                "INFO: %d subtitles added, %d subtitles skipped, stream: %d, offset: %.2f\n",\
-                subno + 1, skip, substr, (double)tofs / 90000);
+        fprintf(stderr,
+            "INFO: %d subtitles added, %d subtitles skipped, stream: %d, offset: %.2f\n",
+            subno + 1, skip, substr, (double)tofs / 90000);
       }
     else
       {
