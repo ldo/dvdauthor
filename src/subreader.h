@@ -24,11 +24,6 @@
 
 #define MAX_SUBTITLE_FILES 128
 
-#define SUB_ALIGNMENT_HLEFT 1
-#define SUB_ALIGNMENT_HCENTER   0
-#define SUB_ALIGNMENT_HRIGHT    2
-#define SUB_ALIGNMENT_DEFAULT 4
-
 sub_data* sub_read_file (const char *filename, float pts);
 subtitle* subcp_recode1 (subtitle *sub);
 void subcp_open (void); /* for demux_ogg.c */

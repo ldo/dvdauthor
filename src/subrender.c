@@ -202,20 +202,22 @@ inline static void vo_update_text_sub
     struct osd_text_p
       {
         int value;
-        struct osd_text_t *ott; /* head of word list */
+        struct osd_text_t *words; /* head of word list */
         struct osd_text_p *prev, *next; /* doubly-linked list */
       };
     const unsigned char *text;
-    int c, i, j, prev_j, linesleft, x, y, font, prevc, counter;
+    int c, i, j, prev_j, linesleft, x, y, font;
     int textlen;
     int k;
     int lastStripPosition;
     int xsize, subs_height;
-    int xmin = dxs-sub_left_margin - sub_right_margin, xmax = 0;
+  /* const int xlimit = dxs * sub_width_p / 100; */
+    const int xlimit = dxs - sub_right_margin - sub_left_margin;
+    int xmin = xlimit, xmax = 0;
     int h, lasth;
     int xtblc, utblc;
-    obj->flags |= OSDFLAG_CHANGED | OSDFLAG_VISIBLE;
 
+    obj->flags |= OSDFLAG_CHANGED | OSDFLAG_VISIBLE;
     if (!vo_sub || !vo_font || !sub_visibility)
       {
         obj->flags &= ~OSDFLAG_VISIBLE;
@@ -234,14 +236,12 @@ inline static void vo_update_text_sub
             *osl, /* head of list */
             *osl_tail /* last element of list */;
         struct osd_text_p
-            *otp_sub = NULL, *otp_sub_tmp = NULL,
+            *otp_sub = NULL, *otp_sub_last = NULL;
               // these are used to store the whole sub text osd
-            *otp;
-              // these are used to manage sub text osd coming from a single sub line
-      /* int *char_seq, char_position, xlimit = dxs * sub_width_p / 100, counter; */
-        int *char_seq, char_position, xlimit = dxs - sub_right_margin - sub_left_margin, counter;
+        int *char_seq, char_position;
         while (linesleft)
           { /* process next subtitle line */
+            int prevc;
             xsize = -vo_font->charspace;
             linesleft--;
             text = (const unsigned char *)vo_sub->text[i++];
@@ -249,7 +249,6 @@ inline static void vo_update_text_sub
             char_position = 0;
             char_seq = (int *)malloc((textlen + 1) * sizeof(int));
             prevc = -1;
-            otp = NULL;
             osl = NULL;
             osl_tail = NULL;
             x = 1;
@@ -285,6 +284,7 @@ inline static void vo_update_text_sub
                   /* word break */
                     struct osd_text_t * const newelt =
                         (struct osd_text_t *)calloc(1, sizeof(struct osd_text_t));
+                    int counter;
                     if (osl == NULL)
                       {
                       /* first element on list */
@@ -316,8 +316,9 @@ inline static void vo_update_text_sub
                             vo_font->charspace
                         +
                             kerning(vo_font, prevc, c);
-                    if (xsize + delta_xsize <= dxs-sub_right_margin - sub_left_margin)
+                    if (xsize + delta_xsize <= xlimit)
                       {
+                      /* word fits in available space */
                         if (!x)
                             x = 1;
                         prevc = c;
@@ -345,6 +346,7 @@ inline static void vo_update_text_sub
         // osl holds an ordered (as they appear in the lines) chain of the subtitle words
               {
                 struct osd_text_t * const newelt = (struct osd_text_t *)calloc(1, sizeof(struct osd_text_t));
+                int counter;
                 if (osl == NULL)
                   {
                   /* only element on list */
@@ -368,46 +370,47 @@ inline static void vo_update_text_sub
             if (osl != NULL) /* will always be true! */
               {
                 int value = 0, minimum = 0;
-                struct osd_text_p *tmp_otp;
-                struct osd_text_t *tmp_ott;
-                // otp will contain the chain of the osd subtitle lines coming from the single vo_sub line.
-                otp = tmp_otp = (struct osd_text_p *)calloc(1, sizeof(struct osd_text_p));
-                tmp_otp->ott = osl;
-                tmp_ott = tmp_otp->ott;
+                struct osd_text_p *lastnewelt;
+                struct osd_text_t *curword;
+                struct osd_text_p *otp_new;
+                // otp_new will contain the chain of the osd subtitle lines coming from the single vo_sub line.
+                otp_new = lastnewelt = (struct osd_text_p *)calloc(1, sizeof(struct osd_text_p));
+                lastnewelt->words = osl;
+                curword = lastnewelt->words;
                 for (;;)
                   {
                     while
                       (
-                            tmp_ott != NULL
+                            curword != NULL
                         &&
-                            value + tmp_ott->osd_kerning + tmp_ott->osd_length <= xlimit
+                            value + curword->osd_kerning + curword->osd_length <= xlimit
                       )
                       {
-                        value += tmp_ott->osd_kerning + tmp_ott->osd_length;
-                        tmp_ott = tmp_ott->next;
+                        value += curword->osd_kerning + curword->osd_length;
+                        curword = curword->next;
                       } /*while*/
                     if
                       (
-                            tmp_ott != NULL
+                            curword != NULL
                         &&
-                            tmp_ott != tmp_otp->ott
+                            curword != lastnewelt->words
                               /* not sure what this does, but trying to stop it getting stuck in
                                 here (fix Ubuntu bug 385187) */
                       )
                       {
-                      /* append another element onto otp chain */
-                        struct osd_text_p * const tmp =
+                      /* append yet another element onto otp_new chain */
+                        struct osd_text_p * const nextnewelt =
                             (struct osd_text_p *)calloc(1, sizeof(struct osd_text_p));
-                        tmp_otp->value = value;
-                        tmp_otp->next = tmp;
-                        tmp->prev = tmp_otp;
-                        tmp_otp = tmp; /* last element in list */
-                        tmp_otp->ott = tmp_ott;
+                        lastnewelt->value = value;
+                        lastnewelt->next = nextnewelt;
+                        nextnewelt->prev = lastnewelt;
+                        lastnewelt = nextnewelt;
+                        lastnewelt->words = curword;
                         value = -2 * vo_font->charspace - vo_font->width[' '];
                       }
                     else
                       {
-                        tmp_otp->value = value;
+                        lastnewelt->value = value;
                         break;
                       } /*if*/
                   } /*for*/
@@ -417,7 +420,7 @@ inline static void vo_update_text_sub
                 // a measure of the eveness of the lengths of the lines
                   {
                     struct osd_text_p *tmp_otp;
-                    for (tmp_otp = otp; tmp_otp->next != NULL; tmp_otp = tmp_otp->next)
+                    for (tmp_otp = otp_new; tmp_otp->next != NULL; tmp_otp = tmp_otp->next)
                       {
                         const struct osd_text_p * pmt = tmp_otp->next;
                         while (pmt != NULL)
@@ -427,30 +430,31 @@ inline static void vo_update_text_sub
                           } /*while*/
                       } /*for*/
                   }
-                if (otp->next != NULL)
+                if (otp_new->next != NULL)
                   {
                     int mem1, mem2;
-                    struct osd_text_p *mem, *hold;
                     // until the last word of a line can be moved to the beginning of following line
                     // reducing the 'sum of the differences in length among the lines', it is done
                     for (;;)
                       {
                         struct osd_text_p *tmp_otp;
                         int exit1 = 1; /* initial assumption */
-                        hold = NULL;
-                        for (tmp_otp = otp; tmp_otp->next != NULL; tmp_otp = tmp_otp->next)
+                        struct osd_text_p *hold = NULL;
+                        for (tmp_otp = otp_new; tmp_otp->next != NULL; tmp_otp = tmp_otp->next)
                           {
                             struct osd_text_t *tmp;
                             struct osd_text_p *pmt = tmp_otp->next;
-                            for (tmp = tmp_otp->ott; tmp->next != pmt->ott; tmp = tmp->next);
-                            if (pmt->value + tmp->osd_length + pmt->ott->osd_kerning <= xlimit)
+                            for (tmp = tmp_otp->words; tmp->next != pmt->words; tmp = tmp->next)
+                              /* find predecessor to pmt */;
+                            if (pmt->value + tmp->osd_length + pmt->words->osd_kerning <= xlimit)
                               {
+                                struct osd_text_p *mem;
                                 mem1 = tmp_otp->value;
                                 mem2 = pmt->value;
                                 tmp_otp->value = mem1 - tmp->osd_length - tmp->osd_kerning;
-                                pmt->value = mem2 + tmp->osd_length + pmt->ott->osd_kerning;
+                                pmt->value = mem2 + tmp->osd_length + pmt->words->osd_kerning;
                                 value = 0;
-                                for (mem = otp; mem->next != NULL; mem = mem->next)
+                                for (mem = otp_new; mem->next != NULL; mem = mem->next)
                                   {
                                     pmt = mem->next;
                                     while (pmt != NULL)
@@ -477,38 +481,43 @@ inline static void vo_update_text_sub
                             struct osd_text_p *pmt;
                             tmp_otp = hold;
                             pmt = tmp_otp->next;
-                            for (tmp = tmp_otp->ott; tmp->next != pmt->ott; tmp = tmp->next)
+                            for (tmp = tmp_otp->words; tmp->next != pmt->words; tmp = tmp->next)
                               /* find predecessor element */;
                             mem1 = tmp_otp->value;
                             mem2 = pmt->value;
                             tmp_otp->value = mem1 - tmp->osd_length - tmp->osd_kerning;
-                            pmt->value = mem2 + tmp->osd_length + pmt->ott->osd_kerning;
-                            pmt->ott = tmp;
+                            pmt->value = mem2 + tmp->osd_length + pmt->words->osd_kerning;
+                            pmt->words = tmp;
                           } //~merging
                       } /*for*/
                   } //~if (otp->next != NULL)
 #endif
-
                 // adding otp (containing splitted lines) to otp chain
                 if (otp_sub == NULL)
                   {
-                    otp_sub = otp;
-                    for (otp_sub_tmp = otp_sub; otp_sub_tmp->next != NULL; otp_sub_tmp = otp_sub_tmp->next);
+                    otp_sub = otp_new;
+                    for
+                      (
+                        otp_sub_last = otp_sub;
+                        otp_sub_last->next != NULL;
+                        otp_sub_last = otp_sub_last->next
+                      )
+                      /* find last element in chain */;
                   }
                 else
                   {
-                    //updating ott chain
-                    struct osd_text_t *tmp = otp_sub->ott;
-                    while (tmp->next != NULL)
-                        tmp = tmp->next;
-                    tmp->next = otp->ott;
-                    otp->ott->prev = tmp;
+                  /* append otp_new to otp_sub chain */
+                    struct osd_text_t * ott_last = otp_sub->words;
+                    while (ott_last->next != NULL)
+                        ott_last = ott_last->next;
+                    ott_last->next = otp_new->words;
+                    otp_new->words->prev = ott_last;
                     //attaching new subtitle line at the end
-                    otp_sub_tmp->next = otp;
-                    otp->prev = otp_sub_tmp;
+                    otp_sub_last->next = otp_new;
+                    otp_new->prev = otp_sub_last;
                     do
-                        otp_sub_tmp = otp_sub_tmp->next;
-                    while (otp_sub_tmp->next != NULL);
+                        otp_sub_last = otp_sub_last->next;
+                    while (otp_sub_last->next != NULL);
                   } /*if*/
               } //~ if (osl != NULL)
           } // while (linesleft)
@@ -535,26 +544,27 @@ inline static void vo_update_text_sub
                     break;
                   } /*if*/
                 xsize = tmp_otp->value;
-                obj->params.subtitle.xtbl[xtblc++] =
-                    ((dxs-sub_right_margin - sub_left_margin - xsize) / 2)+sub_left_margin;
-                if (xmin > (((dxs-sub_right_margin - sub_left_margin - xsize) / 2) + sub_left_margin))
-                    xmin = ((dxs-sub_right_margin - sub_left_margin - xsize) / 2) + sub_left_margin;
-                if (xmax < (((dxs-sub_right_margin - sub_left_margin + xsize) / 2) + sub_left_margin))
-                    xmax = ((dxs-sub_right_margin - sub_left_margin + xsize) / 2) + sub_left_margin;
+                obj->params.subtitle.xtbl[xtblc++] = (xlimit - xsize) / 2 + sub_left_margin;
+                if (xmin > (xlimit - xsize) / 2 + sub_left_margin)
+                    xmin = (xlimit - xsize) / 2 + sub_left_margin;
+                if (xmax < (xlimit + xsize) / 2 + sub_left_margin)
+                    xmax = (xlimit + xsize) / 2 + sub_left_margin;
         /*      fprintf(stderr, "lm %d rm: %d xm:%d xs:%d\n", sub_left_margin, sub_right_margin, xmax,xsize); */
-                tmp = (tmp_otp->next == NULL) ? NULL : tmp_otp->next->ott;
-                for (tmp_ott = tmp_otp->ott; tmp_ott != tmp; tmp_ott = tmp_ott->next)
+                tmp = tmp_otp->next == NULL ? NULL : tmp_otp->next->words;
+                for (tmp_ott = tmp_otp->words; tmp_ott != tmp; tmp_ott = tmp_ott->next)
                   {
-                    for (counter = 0; counter < tmp_ott->text_length; ++counter)
+                    int counter = 0;
+                    for (;;)
                       {
-                        if (utblc > MAX_UCS)
-                          {
+                        if (counter == tmp_ott->text_length)
                             break;
-                          } /*if*/
+                        if (utblc > MAX_UCS)
+                            break;
                         c = tmp_ott->text[counter];
                         render_one_glyph(vo_font, c);
                         obj->params.subtitle.utbl[utblc++] = c;
                         k++;
+                        ++counter;
                       } /*for*/
                     obj->params.subtitle.utbl[utblc++] = ' ';
                   } /*for*/
@@ -576,7 +586,7 @@ inline static void vo_update_text_sub
           {
             struct osd_text_t *tmp;
             struct osd_text_p *pmt;
-            for (tmp = otp_sub->ott; tmp->next != NULL; free(tmp->prev))
+            for (tmp = otp_sub->words; tmp->next != NULL; free(tmp->prev))
               {
                 free(tmp->text);
                 tmp = tmp->next;
@@ -600,10 +610,10 @@ inline static void vo_update_text_sub
             (obj->params.subtitle.lines - 1) * vo_font->height
         +
             vo_font->pic_a[vo_font->font[40]]->h;
-  /* fprintf(stderr,"^1 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d f:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,sub_alignment,subs_height,font); */
-    if (sub_alignment == 2)
+  /* fprintf(stderr,"^1 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d f:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height,font); */
+    if (v_sub_alignment == V_SUB_ALIGNMENT_BOTTOM)
         obj->y = dys * sub_pos / 100 - sub_bottom_margin - subs_height;
-    else if (sub_alignment == 1)
+    else if (v_sub_alignment == V_SUB_ALIGNMENT_CENTER)
         obj->y =
                 (
                     dys * sub_pos / 100
@@ -618,7 +628,7 @@ inline static void vo_update_text_sub
                 )
             /
                 2;
-    else
+    else /* v_sub_alignment = V_SUB_ALIGNMENT_TOP */
         obj->y = sub_top_margin;
     if (obj->y < sub_top_margin)
         obj->y = sub_top_margin;
@@ -633,7 +643,7 @@ inline static void vo_update_text_sub
     obj->bbox.x1 = xmin - 3;
     obj->bbox.x2 = xmax + 3 + vo_font->spacewidth;
 
-  /* if ( obj->bbox.x2 >= dxs-sub_right_margin - 20)
+  /* if ( obj->bbox.x2 >= dxs - sub_right_margin - 20)
        {
          obj->bbox.x2 = dxs;
        }
@@ -644,41 +654,41 @@ inline static void vo_update_text_sub
 
     alloc_buf(obj);
     y = obj->y;
-  /* fprintf(stderr,"^2 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,sub_alignment,subs_height); */
+  /* fprintf(stderr,"^2 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height); */
 
     switch (vo_sub->alignment)
       {
-    case SUB_ALIGNMENT_HLEFT:
-        obj->alignment |= 0x1;
+    case H_SUB_ALIGNMENT_LEFT:
+        obj->alignment |= H_SUB_ALIGNMENT_LEFT;
     break;
-    case SUB_ALIGNMENT_HCENTER:
-        obj->alignment |= 0x0;
+    case H_SUB_ALIGNMENT_CENTER:
+        obj->alignment |= H_SUB_ALIGNMENT_CENTER;
     break;
-    case SUB_ALIGNMENT_HRIGHT:
+    case H_SUB_ALIGNMENT_RIGHT:
     default:
-        obj->alignment |= 0x2;
+        obj->alignment |= H_SUB_ALIGNMENT_RIGHT;
     break;
       } /*switch*/
     j = prev_j = 0;
     linesleft = obj->params.subtitle.lines;
     if (linesleft != 0)
       {
-        for (counter = dxs-sub_right_margin-sub_left_margin; i < linesleft; ++i)
+        int counter;
+        for (counter = xlimit; i < linesleft; ++i)
             if (obj->params.subtitle.xtbl[i] < counter)
                 counter = obj->params.subtitle.xtbl[i];
         for (i = 0; i < linesleft; ++i)
           {
+            int prevc;
             switch (obj->alignment & 0x3)
               {
-            case 1:
-                // left
+            case H_SUB_ALIGNMENT_LEFT:
                 if (sub_justify)
                     x = xmin;
                 else
                     x = counter;
             break;
-            case 2:
-                // right
+            case H_SUB_ALIGNMENT_RIGHT:
                 x =
                         2 * obj->params.subtitle.xtbl[i]
                     -
@@ -686,8 +696,8 @@ inline static void vo_update_text_sub
                     -
                         (obj->params.subtitle.xtbl[i] == counter ? 0 : 1);
             break;
+            case H_SUB_ALIGNMENT_CENTER:
             default:
-                //center
                 x = obj->params.subtitle.xtbl[i];
             break;
               } /*switch*/
@@ -726,20 +736,21 @@ inline static void vo_update_text_sub
       } /*if*/
   } /*vo_update_text_sub*/
 
-mp_osd_obj_t* new_osd_obj(int type){
-    mp_osd_obj_t* osd=malloc(sizeof(mp_osd_obj_t));
-    memset(osd,0,sizeof(mp_osd_obj_t));
-    osd->next=vo_osd_list;
-    vo_osd_list=osd;
-    osd->type=type;
+mp_osd_obj_t * new_osd_obj(int type)
+  {
+    mp_osd_obj_t * const osd = malloc(sizeof(mp_osd_obj_t));
+    memset(osd, 0, sizeof(mp_osd_obj_t));
+    osd->next = vo_osd_list;
+    vo_osd_list = osd;
+    osd->type = type;
     osd->alpha_buffer = NULL;
     osd->bitmap_buffer = NULL;
     osd->allocated = -1;
     return osd;
-}
+  } /*new_osd_obj*/
 
 void free_osd_list()
-  /* frees up memory allocated for vo_ost_list. */
+  /* frees up memory allocated for vo_osd_list. */
   {
     mp_osd_obj_t * obj = vo_osd_list;
     while (obj)
@@ -780,7 +791,7 @@ int vo_update_osd(int dxs, int dys)
             switch (obj->type)
               {
             case OSDTYPE_SUBTITLE:
-                if ( vo_sub)
+                if (vo_sub)
                   {
                     obj->dxs = dxs;
                     obj->dys = dys;
@@ -833,7 +844,7 @@ void vo_init_osd()
 int vo_osd_changed(int new_value)
   {
     mp_osd_obj_t * obj = vo_osd_list;
-    int ret = vo_osd_changed_status;
+    const int previous_value = vo_osd_changed_status;
     vo_osd_changed_status = new_value;
     while (obj)
       {
@@ -841,6 +852,6 @@ int vo_osd_changed(int new_value)
             obj->flags |= OSDFLAG_FORCE_UPDATE;
         obj = obj->next;
       } /*while*/
-    return ret;
+    return previous_value;
   } /*vo_osd_changed*/
 

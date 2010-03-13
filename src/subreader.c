@@ -1186,15 +1186,15 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
               } /*if*/
             if (strstr(directive, "JL") != NULL)
               {
-                current->alignment = SUB_ALIGNMENT_HLEFT;
+                current->alignment = H_SUB_ALIGNMENT_LEFT;
               }
             else if (strstr(directive, "JR") != NULL)
               {
-                current->alignment = SUB_ALIGNMENT_HRIGHT;
+                current->alignment = H_SUB_ALIGNMENT_RIGHT;
               }
             else
               {
-                current->alignment = SUB_ALIGNMENT_HCENTER;
+                current->alignment = H_SUB_ALIGNMENT_CENTER;
               } /*if*/
             strcpy(line2, line1);
             p = line2;
@@ -2097,7 +2097,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                 memset(&second[sub_num], '\0', sizeof(subtitle));
                 second[sub_num].start = local_start;
                 second[sub_num].end = local_end;
-                second[sub_num].alignment = SUB_ALIGNMENT_HCENTER;
+                second[sub_num].alignment = H_SUB_ALIGNMENT_CENTER;
                 n_max = (lines_to_add < SUB_MAX_TEXT) ? lines_to_add : SUB_MAX_TEXT;
                 for (i = 0, j = 0; j < n_max; ++j)
                   {

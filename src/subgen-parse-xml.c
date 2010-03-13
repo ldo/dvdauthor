@@ -222,13 +222,13 @@ void textsub_characterset(const char *v)
 void textsub_h_alignment(const char *v)
 {
     if (!strcmp(v, "left"))
-        h_sub_alignment = 1;
+        h_sub_alignment = H_SUB_ALIGNMENT_LEFT;
     else if (!strcmp(v, "right"))
-        h_sub_alignment = 2;
+        h_sub_alignment = H_SUB_ALIGNMENT_RIGHT;
     else if (!strcmp(v, "center"))
-        h_sub_alignment = 0;
+        h_sub_alignment = H_SUB_ALIGNMENT_CENTER;
     else if (!strcmp(v, "default"))
-        h_sub_alignment = 4;
+        h_sub_alignment = H_SUB_ALIGNMENT_DEFAULT;
     else
       {
         fprintf(stderr, "ERR:  Unknown horizontal-alignment type %s\n", v);
@@ -239,11 +239,11 @@ void textsub_h_alignment(const char *v)
 void textsub_v_alignment(const char *v)
 {
     if (!strcmp(v, "top"))
-        sub_alignment = 0;
+        v_sub_alignment = V_SUB_ALIGNMENT_TOP;
     else if (!strcmp(v, "center"))
-        sub_alignment = 1;
+        v_sub_alignment = V_SUB_ALIGNMENT_CENTER;
     else if (!strcmp(v, "bottom"))
-        sub_alignment = 2;
+        v_sub_alignment = V_SUB_ALIGNMENT_BOTTOM;
     else
       {
         fprintf(stderr ,"ERR:  Unknown vertical-alignment type %s\n", v);

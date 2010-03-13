@@ -23,6 +23,21 @@ extern char* dvdsub_lang;
 extern char *sub_cp; /* code page for interpreting subtitles */
 #endif
 
+enum /* horizontal alignment settings */
+  {
+    H_SUB_ALIGNMENT_LEFT = 1,
+    H_SUB_ALIGNMENT_CENTER = 0,
+    H_SUB_ALIGNMENT_RIGHT = 2,
+    H_SUB_ALIGNMENT_DEFAULT = 4,
+  };
+
+enum /* vertical alignment settings */
+  {
+    V_SUB_ALIGNMENT_TOP = 0,
+    V_SUB_ALIGNMENT_CENTER = 1,
+    V_SUB_ALIGNMENT_BOTTOM = 2,
+  };
+
 extern float sub_delay;
 extern float sub_fps;
 extern int suboverlap_enabled;
@@ -42,7 +57,7 @@ extern float subtitle_font_radius;
 extern float subtitle_font_thickness;
 extern int subtitle_autoscale;
 extern int h_sub_alignment;
-extern int sub_alignment;
+extern int v_sub_alignment;
 extern int sub_bg_color; /* subtitles background color */
 extern int sub_bg_alpha;
 extern subtitle* vo_sub;
