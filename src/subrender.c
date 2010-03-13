@@ -39,7 +39,6 @@
 #define NEW_SPLITTING
 
 
-static int sub_unicode=0;
 static int sub_pos=100;
 /* static int sub_width_p=100; */
 static int sub_visibility=1;
@@ -189,32 +188,28 @@ inline static void vo_update_text_sub
   )
   {
     // Structures needed for the new splitting algorithm.
-    // osd_text_t contains the single subtitle word.
-    // osd_text_p is used to mark the lines of subtitles
-    struct osd_text_t
+    // osd_text_word contains the single subtitle word.
+    // osd_text_line is used to mark the lines of subtitles
+    struct osd_text_word
       {
         int osd_kerning; //kerning with the previous word
         int osd_length;  //horizontal length inside the bbox
         int text_length; //number of characters
         int *text;       //characters
-        struct osd_text_t *prev, *next; /* doubly-linked list */
+        struct osd_text_word *prev, *next; /* doubly-linked list */
       };
-    struct osd_text_p
+    struct osd_text_line
       {
         int value;
-        struct osd_text_t *words; /* head of word list */
-        struct osd_text_p *prev, *next; /* doubly-linked list */
+        struct osd_text_word *words; /* head of word list */
+        struct osd_text_line *prev, *next; /* doubly-linked list */
       };
-    const unsigned char *text;
-    int c, i, j, prev_j, linesleft, x, y, font;
-    int textlen;
-    int k;
-    int lastStripPosition;
-    int xsize, subs_height;
+    int linedone, linesleft, warn_overlong_word;
+    int textlen, sub_totallen, xsize;
   /* const int xlimit = dxs * sub_width_p / 100; */
     const int xlimit = dxs - sub_right_margin - sub_left_margin;
     int xmin = xlimit, xmax = 0;
-    int h, lasth;
+    int max_height;
     int xtblc, utblc;
 
     obj->flags |= OSDFLAG_CHANGED | OSDFLAG_VISIBLE;
@@ -227,63 +222,60 @@ inline static void vo_update_text_sub
     obj->params.subtitle.lines = 0;
 
     // too long lines divide into a smaller ones
-    i = k = lasth = 0;
-    h = vo_font->height;
-    lastStripPosition = -1;
+    linedone = sub_totallen = 0;
+    max_height = vo_font->height;
     linesleft = vo_sub->lines;
       {
-        struct osd_text_t
-            *osl, /* head of list */
-            *osl_tail /* last element of list */;
-        struct osd_text_p
-            *otp_sub = NULL, *otp_sub_last = NULL;
-              // these are used to store the whole sub text osd
-        int *char_seq, char_position;
+        struct osd_text_line
+          // these are used to store the whole sub text osd
+            *otp_sub = NULL, /* head of list */
+            *otp_sub_last = NULL; /* last element of list */
+        int *wordbuf = NULL;
         while (linesleft)
-          { /* process next subtitle line */
-            int prevc;
+          { /* split next subtitle line into words */
+            struct osd_text_word
+                *osl, /* head of list */
+                *osl_tail; /* last element of list */
+            int j, prevch, char_position;
+            const unsigned char *text;
             xsize = -vo_font->charspace;
             linesleft--;
-            text = (const unsigned char *)vo_sub->text[i++];
+            text = (const unsigned char *)vo_sub->text[linedone++];
             textlen = strlen((const char *)text) - 1;
             char_position = 0;
-            char_seq = (int *)malloc((textlen + 1) * sizeof(int));
-            prevc = -1;
+            wordbuf = (int *)realloc(wordbuf, (textlen + 1) * sizeof(int));
+            prevch = -1;
             osl = NULL;
             osl_tail = NULL;
-            x = 1;
+            warn_overlong_word = 1;
             // reading the subtitle words from vo_sub->text[]
             for (j = 0; j <= textlen; j++)
               {
-                if ((c = text[j]) >= 0x80)
+                int curch = text[j];
+                if (curch >= 0x80 && sub_utf8)
                   {
                   /* fixme: no checking for j going out of range */
-                    if (sub_utf8)
+                    if ((curch & 0xe0) == 0xc0)    /* 2 bytes U+00080..U+0007FF*/
+                        curch = (curch & 0x1f) << 6 | (text[++j] & 0x3f);
+                    else if ((curch & 0xf0) == 0xe0) /* 3 bytes U+00800..U+00FFFF*/
                       {
-                        if ((c & 0xe0) == 0xc0)    /* 2 bytes U+00080..U+0007FF*/
-                            c = (c & 0x1f) << 6 | (text[++j] & 0x3f);
-                        else if ((c & 0xf0) == 0xe0) /* 3 bytes U+00800..U+00FFFF*/
-                          {
-                            c = (((c & 0x0f) << 6) | (text[++j] & 0x3f)) << 6;
-                            c |= (text[++j] & 0x3f);
-                          } /*if*/
-                      }
-                    else if (sub_unicode)
-                        c = (c << 8) + text[++j];
+                        curch = (((curch & 0x0f) << 6) | (text[++j] & 0x3f)) << 6;
+                        curch |= text[++j] & 0x3f;
+                      } /*if*/
                   } /*if*/
-                if (k == MAX_UCS)
+                if (sub_totallen == MAX_UCS)
                   {
                     textlen = j; // end here
                     fprintf(stderr, "WARN: MAX_UCS exceeded!\n");
                   } /*if*/
-                if (!c)
-                    c++; // avoid UCS 0
-                render_one_glyph(vo_font, c);
-                if (c == ' ')
+                if (!curch)
+                    curch++; // avoid UCS 0
+                render_one_glyph(vo_font, curch);
+                if (curch == ' ')
                   {
                   /* word break */
-                    struct osd_text_t * const newelt =
-                        (struct osd_text_t *)calloc(1, sizeof(struct osd_text_t));
+                    struct osd_text_word * const newelt =
+                        (struct osd_text_word *)calloc(1, sizeof(struct osd_text_word));
                     int counter;
                     if (osl == NULL)
                       {
@@ -302,50 +294,51 @@ inline static void vo_update_text_sub
                     newelt->text_length = char_position;
                     newelt->text = (int *)malloc(char_position * sizeof(int));
                     for (counter = 0; counter < char_position; ++counter)
-                        newelt->text[counter] = char_seq[counter];
+                        newelt->text[counter] = wordbuf[counter];
                     char_position = 0;
                     xsize = 0;
-                    prevc = c;
+                    prevch = curch;
                   }
                 else
                   {
                   /* continue accumulating word */
-                    int delta_xsize =
-                            vo_font->width[c]
+                    const int delta_xsize =
+                            vo_font->width[curch]
                         +
                             vo_font->charspace
                         +
-                            kerning(vo_font, prevc, c);
+                            kerning(vo_font, prevch, curch);
                     if (xsize + delta_xsize <= xlimit)
                       {
                       /* word fits in available space */
-                        if (!x)
-                            x = 1;
-                        prevc = c;
-                        char_seq[char_position++] = c;
+                        if (!warn_overlong_word)
+                            warn_overlong_word = 1;
+                        prevch = curch;
+                        wordbuf[char_position++] = curch;
                         xsize += delta_xsize;
-                        if (!suboverlap_enabled && ((font = vo_font->font[c]) >= 0))
+                        if (!suboverlap_enabled)
                           {
-                            if (vo_font->pic_a[font]->h > h)
+                            const int font = vo_font->font[curch];
+                            if (font >= 0 && vo_font->pic_a[font]->h > max_height)
                               {
-                                h = vo_font->pic_a[font]->h;
+                                max_height = vo_font->pic_a[font]->h;
                               } /*if*/
                           } /*if*/
                       }
                     else
                       {
-                        if (x)
+                        if (warn_overlong_word)
                           {
                             fprintf(stderr, "WARN: Subtitle word '%s' too long!\n", text);
-                            x = 0;
+                            warn_overlong_word = 0; /* only warn once per line */
                           } /*if*/
                       } /*if*/
                   } /*if*/
               } // for textlen (all words from subtitle line read)
-
         // osl holds an ordered (as they appear in the lines) chain of the subtitle words
               {
-                struct osd_text_t * const newelt = (struct osd_text_t *)calloc(1, sizeof(struct osd_text_t));
+              /* append last/only word */
+                struct osd_text_word * const newelt = (struct osd_text_word *)calloc(1, sizeof(struct osd_text_word));
                 int counter;
                 if (osl == NULL)
                   {
@@ -363,18 +356,18 @@ inline static void vo_update_text_sub
                 newelt->text_length = char_position;
                 newelt->text = (int *)malloc(char_position * sizeof(int));
                 for (counter = 0; counter < char_position; ++counter)
-                    newelt->text[counter] = char_seq[counter];
+                    newelt->text[counter] = wordbuf[counter];
                 char_position = 0;
                 xsize = -vo_font->charspace;
               }
             if (osl != NULL) /* will always be true! */
               {
                 int value = 0, minimum = 0;
-                struct osd_text_p *lastnewelt;
-                struct osd_text_t *curword;
-                struct osd_text_p *otp_new;
+                struct osd_text_line *lastnewelt;
+                struct osd_text_word *curword;
+                struct osd_text_line *otp_new;
                 // otp_new will contain the chain of the osd subtitle lines coming from the single vo_sub line.
-                otp_new = lastnewelt = (struct osd_text_p *)calloc(1, sizeof(struct osd_text_p));
+                otp_new = lastnewelt = (struct osd_text_line *)calloc(1, sizeof(struct osd_text_line));
                 lastnewelt->words = osl;
                 curword = lastnewelt->words;
                 for (;;)
@@ -399,8 +392,8 @@ inline static void vo_update_text_sub
                       )
                       {
                       /* append yet another element onto otp_new chain */
-                        struct osd_text_p * const nextnewelt =
-                            (struct osd_text_p *)calloc(1, sizeof(struct osd_text_p));
+                        struct osd_text_line * const nextnewelt =
+                            (struct osd_text_line *)calloc(1, sizeof(struct osd_text_line));
                         lastnewelt->value = value;
                         lastnewelt->next = nextnewelt;
                         nextnewelt->prev = lastnewelt;
@@ -419,10 +412,10 @@ inline static void vo_update_text_sub
                 // minimum holds the 'sum of the differences in length among the lines',
                 // a measure of the eveness of the lengths of the lines
                   {
-                    struct osd_text_p *tmp_otp;
+                    struct osd_text_line *tmp_otp;
                     for (tmp_otp = otp_new; tmp_otp->next != NULL; tmp_otp = tmp_otp->next)
                       {
-                        const struct osd_text_p * pmt = tmp_otp->next;
+                        const struct osd_text_line * pmt = tmp_otp->next;
                         while (pmt != NULL)
                           {
                             minimum += abs(tmp_otp->value - pmt->value);
@@ -437,18 +430,18 @@ inline static void vo_update_text_sub
                     // reducing the 'sum of the differences in length among the lines', it is done
                     for (;;)
                       {
-                        struct osd_text_p *tmp_otp;
+                        struct osd_text_line *tmp_otp;
                         int exit1 = 1; /* initial assumption */
-                        struct osd_text_p *hold = NULL;
+                        struct osd_text_line *hold = NULL;
                         for (tmp_otp = otp_new; tmp_otp->next != NULL; tmp_otp = tmp_otp->next)
                           {
-                            struct osd_text_t *tmp;
-                            struct osd_text_p *pmt = tmp_otp->next;
+                            struct osd_text_word *tmp;
+                            struct osd_text_line *pmt = tmp_otp->next;
                             for (tmp = tmp_otp->words; tmp->next != pmt->words; tmp = tmp->next)
                               /* find predecessor to pmt */;
                             if (pmt->value + tmp->osd_length + pmt->words->osd_kerning <= xlimit)
                               {
-                                struct osd_text_p *mem;
+                                struct osd_text_line *mem;
                                 mem1 = tmp_otp->value;
                                 mem2 = pmt->value;
                                 tmp_otp->value = mem1 - tmp->osd_length - tmp->osd_kerning;
@@ -477,8 +470,8 @@ inline static void vo_update_text_sub
                         if (exit1)
                             break;
                           {
-                            struct osd_text_t *tmp;
-                            struct osd_text_p *pmt;
+                            struct osd_text_word *tmp;
+                            struct osd_text_line *pmt;
                             tmp_otp = hold;
                             pmt = tmp_otp->next;
                             for (tmp = tmp_otp->words; tmp->next != pmt->words; tmp = tmp->next)
@@ -507,7 +500,7 @@ inline static void vo_update_text_sub
                 else
                   {
                   /* append otp_new to otp_sub chain */
-                    struct osd_text_t * ott_last = otp_sub->words;
+                    struct osd_text_word * ott_last = otp_sub->words;
                     while (ott_last->next != NULL)
                         ott_last = ott_last->next;
                     ott_last->next = otp_new->words;
@@ -521,26 +514,28 @@ inline static void vo_update_text_sub
                   } /*if*/
               } //~ if (osl != NULL)
           } // while (linesleft)
+        free(wordbuf);
         // write lines into utbl
         xtblc = 0;
         utblc = 0;
         obj->y = dys - sub_bottom_margin;
         obj->params.subtitle.lines = 0;
           {
-            struct osd_text_p *tmp_otp;
+            struct osd_text_line *tmp_otp;
             for (tmp_otp = otp_sub; tmp_otp != NULL; tmp_otp = tmp_otp->next)
               {
-                struct osd_text_t *tmp_ott, *tmp;
+                struct osd_text_word *tmp_ott, *tmp;
                 if (obj->params.subtitle.lines++ >= MAX_UCSLINES)
                   {
                     fprintf(stderr, "WARN: max_ucs_lines\n");
                     break;
                   } /*if*/
-                if (h + sub_top_margin > obj->y)    // out of the screen so end parsing
+                if (max_height + sub_top_margin > obj->y)    // out of the screen so end parsing
                   {
-                    obj->y -= lasth - vo_font->height;  // correct the y position
+                    obj->y += vo_font->height;  // correct the y position
                     fprintf(stderr, "WARN: Out of screen at Y: %d\n", obj->y);
-                    obj->params.subtitle.lines = obj->params.subtitle.lines - 1;
+                    obj->params.subtitle.lines -= 1;
+                      /* discard overlong line */
                     break;
                   } /*if*/
                 xsize = tmp_otp->value;
@@ -549,21 +544,22 @@ inline static void vo_update_text_sub
                     xmin = (xlimit - xsize) / 2 + sub_left_margin;
                 if (xmax < (xlimit + xsize) / 2 + sub_left_margin)
                     xmax = (xlimit + xsize) / 2 + sub_left_margin;
-        /*      fprintf(stderr, "lm %d rm: %d xm:%d xs:%d\n", sub_left_margin, sub_right_margin, xmax,xsize); */
+             /* fprintf(stderr, "lm %d rm: %d xm:%d xs:%d\n", sub_left_margin, sub_right_margin, xmax, xsize); */
                 tmp = tmp_otp->next == NULL ? NULL : tmp_otp->next->words;
                 for (tmp_ott = tmp_otp->words; tmp_ott != tmp; tmp_ott = tmp_ott->next)
                   {
                     int counter = 0;
                     for (;;)
                       {
+                        int curch;
                         if (counter == tmp_ott->text_length)
                             break;
                         if (utblc > MAX_UCS)
                             break;
-                        c = tmp_ott->text[counter];
-                        render_one_glyph(vo_font, c);
-                        obj->params.subtitle.utbl[utblc++] = c;
-                        k++;
+                        curch = tmp_ott->text[counter];
+                        render_one_glyph(vo_font, curch);
+                        obj->params.subtitle.utbl[utblc++] = curch;
+                        sub_totallen++;
                         ++counter;
                       } /*for*/
                     obj->params.subtitle.utbl[utblc++] = ' ';
@@ -579,13 +575,13 @@ inline static void vo_update_text_sub
         if (sub_max_bottom_font_height < vo_font->pic_a[vo_font->font[40]]->h)
             sub_max_bottom_font_height = vo_font->pic_a[vo_font->font[40]]->h;
         if (obj->params.subtitle.lines)
-            obj->y = dys - sub_bottom_margin - (obj->params.subtitle.lines * vo_font->height); /* + vo_font->pic_a[vo_font->font[40]]->h);*/
+            obj->y = dys - sub_bottom_margin - (obj->params.subtitle.lines * vo_font->height); /* + vo_font->pic_a[vo_font->font[40]]->h; */
 
         // free memory
         if (otp_sub != NULL)
           {
-            struct osd_text_t *tmp;
-            struct osd_text_p *pmt;
+            struct osd_text_word *tmp;
+            struct osd_text_line *pmt;
             for (tmp = otp_sub->words; tmp->next != NULL; free(tmp->prev))
               {
                 free(tmp->text);
@@ -603,59 +599,57 @@ inline static void vo_update_text_sub
           {
             fprintf(stderr, "WARN: Subtitles requested but not found.\n");
           } /*if*/
-
       }
+      {
+        const int subs_height =
+                (obj->params.subtitle.lines - 1) * vo_font->height
+            +
+                vo_font->pic_a[vo_font->font[40]]->h;
+      /* fprintf(stderr,"^1 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d f:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height,font); */
+        if (v_sub_alignment == V_SUB_ALIGNMENT_BOTTOM)
+            obj->y = dys * sub_pos / 100 - sub_bottom_margin - subs_height;
+        else if (v_sub_alignment == V_SUB_ALIGNMENT_CENTER)
+            obj->y =
+                    (
+                        dys * sub_pos / 100
+                    -
+                        sub_bottom_margin
+                    -
+                        sub_top_margin
+                    -
+                        subs_height
+                    +
+                        vo_font->height
+                    )
+                /
+                    2;
+        else /* v_sub_alignment = V_SUB_ALIGNMENT_TOP */
+            obj->y = sub_top_margin;
+        if (obj->y < sub_top_margin)
+            obj->y = sub_top_margin;
+        if (obj->y > dys - sub_bottom_margin-vo_font->height)
+            obj->y = dys - sub_bottom_margin-vo_font->height;
 
-    subs_height =
-            (obj->params.subtitle.lines - 1) * vo_font->height
-        +
-            vo_font->pic_a[vo_font->font[40]]->h;
-  /* fprintf(stderr,"^1 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d f:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height,font); */
-    if (v_sub_alignment == V_SUB_ALIGNMENT_BOTTOM)
-        obj->y = dys * sub_pos / 100 - sub_bottom_margin - subs_height;
-    else if (v_sub_alignment == V_SUB_ALIGNMENT_CENTER)
-        obj->y =
-                (
-                    dys * sub_pos / 100
-                -
-                    sub_bottom_margin
-                -
-                    sub_top_margin
-                -
-                    subs_height
-                +
-                    vo_font->height
-                )
-            /
-                2;
-    else /* v_sub_alignment = V_SUB_ALIGNMENT_TOP */
-        obj->y = sub_top_margin;
-    if (obj->y < sub_top_margin)
-        obj->y = sub_top_margin;
-    if (obj->y > dys - sub_bottom_margin-vo_font->height)
-        obj->y = dys - sub_bottom_margin-vo_font->height;
+        obj->bbox.y2 = obj->y + subs_height + 3;
 
-    obj->bbox.y2 = obj->y + subs_height + 3;
+        // calculate bbox:
+        if (sub_justify)
+            xmin = sub_left_margin;
+        obj->bbox.x1 = xmin - 3;
+        obj->bbox.x2 = xmax + 3 + vo_font->spacewidth;
 
-    // calculate bbox:
-    if (sub_justify)
-        xmin = sub_left_margin;
-    obj->bbox.x1 = xmin - 3;
-    obj->bbox.x2 = xmax + 3 + vo_font->spacewidth;
+      /* if ( obj->bbox.x2 >= dxs - sub_right_margin - 20)
+           {
+             obj->bbox.x2 = dxs;
+           }
+        */
+        obj->bbox.y1 = obj->y-3;
+    //  obj->bbox.y2 = obj->y+obj->params.subtitle.lines * vo_font->height;
+        obj->flags |= OSDFLAG_BBOX;
 
-  /* if ( obj->bbox.x2 >= dxs - sub_right_margin - 20)
-       {
-         obj->bbox.x2 = dxs;
-       }
-    */
-    obj->bbox.y1 = obj->y-3;
-//  obj->bbox.y2 = obj->y+obj->params.subtitle.lines * vo_font->height;
-    obj->flags |= OSDFLAG_BBOX;
-
-    alloc_buf(obj);
-    y = obj->y;
-  /* fprintf(stderr,"^2 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height); */
-
+        alloc_buf(obj);
+      /* fprintf(stderr,"^2 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height); */
+      }
     switch (vo_sub->alignment)
       {
     case H_SUB_ALIGNMENT_LEFT:
@@ -669,71 +663,76 @@ inline static void vo_update_text_sub
         obj->alignment |= H_SUB_ALIGNMENT_RIGHT;
     break;
       } /*switch*/
-    j = prev_j = 0;
-    linesleft = obj->params.subtitle.lines;
-    if (linesleft != 0)
       {
-        int counter;
-        for (counter = xlimit; i < linesleft; ++i)
-            if (obj->params.subtitle.xtbl[i] < counter)
-                counter = obj->params.subtitle.xtbl[i];
-        for (i = 0; i < linesleft; ++i)
+        int i, j, prev_j;
+        j = prev_j = 0;
+        linesleft = obj->params.subtitle.lines;
+        if (linesleft != 0)
           {
-            int prevc;
-            switch (obj->alignment & 0x3)
+            int xtbl_min, x;
+            int y = obj->y;
+            for (xtbl_min = xlimit; linedone < linesleft; ++linedone)
+                if (obj->params.subtitle.xtbl[linedone] < xtbl_min)
+                    xtbl_min = obj->params.subtitle.xtbl[linedone];
+            for (i = 0; i < linesleft; ++i)
               {
-            case H_SUB_ALIGNMENT_LEFT:
-                if (sub_justify)
-                    x = xmin;
-                else
-                    x = counter;
-            break;
-            case H_SUB_ALIGNMENT_RIGHT:
-                x =
-                        2 * obj->params.subtitle.xtbl[i]
-                    -
-                        counter
-                    -
-                        (obj->params.subtitle.xtbl[i] == counter ? 0 : 1);
-            break;
-            case H_SUB_ALIGNMENT_CENTER:
-            default:
-                x = obj->params.subtitle.xtbl[i];
-            break;
-              } /*switch*/
-            prevc = -1;
-            while ((c = obj->params.subtitle.utbl[j++]) != 0)
-              {
-                x += kerning(vo_font, prevc, c);
-                if ((font = vo_font->font[c]) >= 0)
+                int prevch, curch;
+                switch (obj->alignment & 0x3)
                   {
-                  /* fprintf(stderr, "^3 vfh:%d vfh+y:%d odys:%d\n", vo_font->pic_a[font]->h, vo_font->pic_a[font]->h+y, obj->dys); */
-                    draw_alpha_buf
-                      (
-                        /*obj =*/ obj,
-                        /*x0 =*/ x,
-                        /*y0 =*/ y,
-                        /*w =*/ vo_font->width[c],
-                        /*h =*/
-                            vo_font->pic_a[font]->h + y < obj->dys-sub_bottom_margin ?
-                                vo_font->pic_a[font]->h
-                            :
-                                obj->dys-sub_bottom_margin - y,
-                        /*src =*/ vo_font->pic_b[font]->bmp + vo_font->start[c],
-                        /*srca =*/ vo_font->pic_a[font]->bmp + vo_font->start[c],
-                        /*stride =*/ vo_font->pic_a[font]->w
-                      );
-                  } /*if*/
-                x += vo_font->width[c] + vo_font->charspace;
-                prevc = c;
-              } /*while*/
-            if (sub_max_chars < j - prev_j)
-                sub_max_chars = j - prev_j;
-            prev_j = j;
-            y += vo_font->height;
-          } /*for*/
-        /* Here you could retreive the buffers*/
-      } /*if*/
+                case H_SUB_ALIGNMENT_LEFT:
+                    if (sub_justify)
+                        x = xmin;
+                    else
+                        x = xtbl_min;
+                break;
+                case H_SUB_ALIGNMENT_RIGHT:
+                    x =
+                            2 * obj->params.subtitle.xtbl[i]
+                        -
+                            xtbl_min
+                        -
+                            (obj->params.subtitle.xtbl[i] == xtbl_min ? 0 : 1);
+                break;
+                case H_SUB_ALIGNMENT_CENTER:
+                default:
+                    x = obj->params.subtitle.xtbl[i];
+                break;
+                  } /*switch*/
+                prevch = -1;
+                while ((curch = obj->params.subtitle.utbl[j++]) != 0)
+                  {
+                    const int font = vo_font->font[curch];
+                    x += kerning(vo_font, prevch, curch);
+                    if (font >= 0)
+                      {
+                      /* fprintf(stderr, "^3 vfh:%d vfh+y:%d odys:%d\n", vo_font->pic_a[font]->h, vo_font->pic_a[font]->h + y, obj->dys); */
+                        draw_alpha_buf
+                          (
+                            /*obj =*/ obj,
+                            /*x0 =*/ x,
+                            /*y0 =*/ y,
+                            /*w =*/ vo_font->width[curch],
+                            /*h =*/
+                                vo_font->pic_a[font]->h + y < obj->dys-sub_bottom_margin ?
+                                    vo_font->pic_a[font]->h
+                                :
+                                    obj->dys-sub_bottom_margin - y,
+                            /*src =*/ vo_font->pic_b[font]->bmp + vo_font->start[curch],
+                            /*srca =*/ vo_font->pic_a[font]->bmp + vo_font->start[curch],
+                            /*stride =*/ vo_font->pic_a[font]->w
+                          );
+                      } /*if*/
+                    x += vo_font->width[curch] + vo_font->charspace;
+                    prevch = curch;
+                  } /*while*/
+                if (sub_max_chars < j - prev_j)
+                    sub_max_chars = j - prev_j;
+                prev_j = j;
+                y += vo_font->height;
+              } /*for*/
+            /* Here you could retreive the buffers*/
+          } /*if*/
+      }
   } /*vo_update_text_sub*/
 
 mp_osd_obj_t * new_osd_obj(int type)
