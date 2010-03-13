@@ -149,7 +149,7 @@ sub_data * textsub_init
             sub_cp = NULL;
 #endif
     if (dvdsub_lang)
-        if (!strcmp(dvdsub_lang,""))
+        if (!strcmp(dvdsub_lang, ""))
             dvdsub_lang = NULL;
     image_buffer = malloc(sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width * 3);
     if (image_buffer == NULL)
