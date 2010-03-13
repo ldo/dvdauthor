@@ -167,63 +167,62 @@ sub_data * textsub_init
   } /*textsub_init*/
 
 void textsub_dump_file()
-{
-  list_sub_file(textsub_subdata);
-}
-
-textsub_subtitle_type *textsub_find_sub(unsigned long text_sub_pts)
-{
-  textsub_subtitle_type *tsub;
-
-  tsub=(textsub_subtitle_type*)malloc(sizeof(textsub_subtitle_type));
-  tsub->valid=0;
-  tsub->start=-1;
-  find_sub(textsub_subdata,text_sub_pts);
-  if ( (vo_sub)&& (current_sub!=sub_last))
   {
-    if (h_sub_alignment != H_SUB_ALIGNMENT_DEFAULT)
-    {
-      vo_sub->alignment = h_sub_alignment;
-    }
-    vo_sub->text_forced=text_forceit;   // Not sure where this should go... PMD
-    sub_num_of_subtitles++;
-    sub_last=current_sub;
-    tsub->start=vo_sub->start;
-    tsub->end=vo_sub->end;
-    tsub->valid=1;
-  }
-  return (tsub);
-}
+    list_sub_file(textsub_subdata);
+  } /*textsub_dump_file*/
+
+textsub_subtitle_type textsub_find_sub(unsigned long text_sub_pts)
+  {
+    textsub_subtitle_type result;
+    result.valid = 0;
+    result.start = -1;
+    find_sub(textsub_subdata, text_sub_pts);
+    if (vo_sub && current_sub != sub_last)
+      {
+        if (h_sub_alignment != H_SUB_ALIGNMENT_DEFAULT)
+          {
+            vo_sub->alignment = h_sub_alignment;
+          } /*if*/
+        vo_sub->text_forced = text_forceit;   // Not sure where this should go... PMD
+        sub_num_of_subtitles++;
+        sub_last = current_sub;
+        result.start = vo_sub->start;
+        result.end = vo_sub->end;
+        result.valid = 1;
+      } /*if*/
+    return result;
+  } /*textsub_find_sub*/
 
 /* extern char *draw_image(int p_w, int p_h, unsigned char* p_planes,unsigned int p_stride); */
 
-void textsub_render(subtitle* sub)
-{
-  vo_sub=sub;
-  vo_osd_changed(OSDTYPE_SUBTITLE);
-  memset(image_buffer,128,sizeof(uint8_t)*3*movie_height*movie_width*3);
-  vo_update_osd(movie_width,movie_height);
-/*  draw_image(movie_width,movie_height,image_buffer,movie_width*3); */
-}
+void textsub_render(subtitle * sub)
+  {
+    vo_sub = sub;
+    vo_osd_changed(OSDTYPE_SUBTITLE);
+    memset(image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width * 3);
+    vo_update_osd(movie_width, movie_height);
+/*  draw_image(movie_width, movie_height, image_buffer, movie_width * 3); */
+  } /*textsub_render*/
 
 void textsub_statistics()
-{
-  fprintf(stderr,"\nStatistics:\n");
-  fprintf(stderr,"- Processed %d subtitles.\n",sub_num_of_subtitles);
-  fprintf(stderr,"- The longest display line had %d characters.\n",sub_max_chars-1);
-  fprintf(stderr,"- The maximum number of displayed lines was %d.\n",sub_max_lines);
-  fprintf(stderr,"- The normal display height of the font %s was %d.\n",sub_font,sub_max_font_height);
-  fprintf(stderr,"- The bottom display height of the font %s was %d.\n",sub_font,sub_max_bottom_font_height);
-  fprintf(stderr,"- The biggest subtitle box had %d bytes.\n",max_sub_size);
-}
+  {
+    fprintf(stderr, "\nStatistics:\n");
+    fprintf(stderr, "- Processed %d subtitles.\n", sub_num_of_subtitles);
+    fprintf(stderr, "- The longest display line had %d characters.\n", sub_max_chars - 1);
+    fprintf(stderr, "- The maximum number of displayed lines was %d.\n", sub_max_lines);
+    fprintf(stderr, "- The normal display height of the font %s was %d.\n", sub_font, sub_max_font_height);
+    fprintf(stderr, "- The bottom display height of the font %s was %d.\n", sub_font, sub_max_bottom_font_height);
+    fprintf(stderr, "- The biggest subtitle box had %d bytes.\n", max_sub_size);
+  } /*textsub_statistics*/
 
 void textsub_finish()
   {
-  free(image_buffer);
+    free(image_buffer);
 #ifdef HAVE_FREETYPE
-  if (vo_font) free_font_desc(vo_font);
+    if (vo_font)
+        free_font_desc(vo_font);
     vo_font = NULL;
-  done_freetype();
+    done_freetype();
 #endif
   } /*textsub_finish*/
 
@@ -410,7 +409,7 @@ int main(int argc, char **argv)
 
   unsigned long pts=0;
   subtitle *last_sub;
-  textsub_subtitle_type *textsub_subtitle;
+  textsub_subtitle_type textsub_subtitle;
   stinfo **spus=NULL;
   stinfo *st=NULL;
   int numspus=0;
@@ -434,15 +433,15 @@ int main(int argc, char **argv)
   last_sub=(&textsub_subs[textsub_subdata->sub_num-1]);
   for ( pts=0;pts<last_sub->end;pts++)
   {
-    textsub_subtitle=textsub_find_sub(pts);
-    if ( textsub_subtitle->image!=NULL)
-      if (draw_image(movie_width,movie_height,textsub_subtitle->image,movie_width*3)!=NULL)
+    textsub_subtitle = textsub_find_sub(pts);
+    if ( textsub_subtitle.image!=NULL)
+      if (draw_image(movie_width,movie_height,textsub_subtitle.image,movie_width*3)!=NULL)
       {
         st=malloc(sizeof(stinfo));
         memset(st,0,sizeof(stinfo));
         strcpy(st->img.fname,img_name);
-        st->spts=textsub_subtitle->start;
-        st->sd=(textsub_subtitle->end)-(textsub_subtitle->start);
+        st->spts=textsub_subtitle.start;
+        st->sd=(textsub_subtitle.end)-(textsub_subtitle.start);
         spus=realloc(spus,(numspus+1)*sizeof(stinfo *));
         spus[numspus++]=st;
       }

@@ -2267,6 +2267,7 @@ typedef struct _subfn
   } subfn;
 
 static int compare_sub_priority(const void *a, const void *b)
+  /* sort comparison function that orders firstly on priority, and secondly on name. */
   {
     if (((const subfn*)a)->priority > ((const subfn*)b)->priority)
       {
@@ -2282,20 +2283,24 @@ static int compare_sub_priority(const void *a, const void *b)
       } /*if*/
   } /*compare_sub_priority*/
 
-char** sub_filenames(char* path, char *fname)
+char ** sub_filenames
+  (
+    const char * path, /* another directory to search */
+    const char * fname /* name of movie file, parent directory also searched */
+  )
+  /* returns a list of names of candidate subtitle files for the specified movie file,
+    sorted in order of decreasing preference. */
+  /* not used anywhere */
   {
-    char *f_dir, *f_fname, *f_fname_noext, *f_fname_trim, *tmp, *tmp_sub_id;
+    char *f_dir, *f_fname, *f_fname_noext, *f_fname_trim, *foundpos, *tmp_sub_id;
     char *tmp_fname_noext, *tmp_fname_trim, *tmp_fname_ext, *tmpresult;
-
-    int len, pos, found, i, j;
+    int len, extindex, j;
     const char * const sub_exts[] =
         {"utf", "utf8", "utf-8", "sub", "srt", "smi", "rt", "txt", "ssa", "aqt", "jss", "js", "ass", NULL};
+          /* filename extensions to look for, note first 3 are UTF-8 encoded */
     subfn *result;
     char **result2;
     int subcnt;
-    FILE *f;
-    DIR *d;
-    struct dirent *de;
 
     len =
             (strlen(fname) > 256 ? strlen(fname) : 256)
@@ -2314,19 +2319,19 @@ char** sub_filenames(char* path, char *fname)
     result = (subfn*)malloc(sizeof(subfn) * MAX_SUBTITLE_FILES);
     memset(result, 0, sizeof(subfn) * MAX_SUBTITLE_FILES);
     subcnt = 0;
-    tmp = strrchr(fname,'/');
+    foundpos = strrchr(fname, '/');
     // extract filename & dirname from fname
-    if (tmp)
+    if (foundpos)
       {
-        strcpy(f_fname, tmp + 1);
-        pos = tmp - fname;
+        const int pos = foundpos - fname;
+        strcpy(f_fname, foundpos + 1);
         strncpy(f_dir, fname, pos + 1);
         f_dir[pos + 1] = 0;
       }
-     else
+     else /* relative path */
        {
         strcpy(f_fname, fname);
-        strcpy(f_dir, "./");
+        strcpy(f_dir, "./"); /* default to current directory */
       } /*if*/
     strcpy_strip_ext(f_fname_noext, f_fname);
     strcpy_trim(f_fname_trim, f_fname_noext);
@@ -2342,109 +2347,113 @@ char** sub_filenames(char* path, char *fname)
     // 3 = sub file containing movie name and the lang extension
     for (j = 0; j <= 1; j++)
       {
-        d = opendir(j == 0 ? f_dir : path);
-        if (d)
+        DIR * const d = opendir(j == 0 ? f_dir : path);
+        if (!d)
+            continue;
+        for (;;)
           {
-            while ((de = readdir(d)) != 0)
-              {
-                // retrieve various parts of the filename
-                strcpy_strip_ext(tmp_fname_noext, de->d_name);
-                strcpy_get_ext(tmp_fname_ext, de->d_name);
-                strcpy_trim(tmp_fname_trim, tmp_fname_noext);
-                // does it end with a subtitle extension?
-                found = 0;
-        #ifdef HAVE_ICONV
-                for (i = (sub_cp ? 3 : 0); sub_exts[i]; i++)
-        #else
-                for (i = 0; sub_exts[i]; i++)
-        #endif
-                  {
-                    if (strcmp(sub_exts[i], tmp_fname_ext) == 0)
-                      {
-                        found = 1;
-                        break;
-                      } /*if*/
-                  }
-                // we have a (likely) subtitle file
-                if (found)
-                  {
-                    int prio = 0;
-                    if (!prio && tmp_sub_id)
-                      {
-                        sprintf(tmpresult, "%s %s", f_fname_trim, tmp_sub_id);
-                        if (strcmp(tmp_fname_trim, tmpresult) == 0 && sub_match_fuzziness >= 1)
-                          {
-                            // matches the movie name + lang extension
-                            prio = 5;
-                          } /*if*/
-                      } /*if*/
-                    if (!prio && strcmp(tmp_fname_trim, f_fname_trim) == 0)
-                      {
-                        // matches the movie name
-                        prio = 4;
-                      } /*if*/
-                    if
-                      (
-                            !prio
-                        &&
-                            (tmp = strstr(tmp_fname_trim, f_fname_trim))
-                        &&
-                            sub_match_fuzziness >= 1
-                      )
-                      {
-                        // contains the movie name
-                        tmp += strlen(f_fname_trim);
-                        if (tmp_sub_id && strstr(tmp, tmp_sub_id))
-                          {
-                            // with sub_id specified prefer localized subtitles
-                            prio = 3;
-                          }
-                        else if (tmp_sub_id == NULL && whiteonly(tmp))
-                          {
-                            // without sub_id prefer "plain" name
-                            prio = 3;
-                          }
-                        else
-                          {
-                            // with no localized subs found, try any else instead
-                            prio = 2;
-                          } /*if*/
-                      } /*if*/
-                    if (!prio)
-                      {
-                        // doesn't contain the movie name
-                        // don't try in the mplayer subtitle directory
-                        if (j == 0 && sub_match_fuzziness >= 2)
-                          {
-                            prio = 1;
-                          } /*if*/
-                      } /*if*/
-                    if (prio)
-                      {
-                        prio += prio;
+            struct dirent * de;
+            int foundext;
+            int prio;
+            de = readdir(d);
+            if (de == 0)
+                break;
+            // retrieve various parts of the filename
+            strcpy_strip_ext(tmp_fname_noext, de->d_name);
+            strcpy_get_ext(tmp_fname_ext, de->d_name);
+            strcpy_trim(tmp_fname_trim, tmp_fname_noext);
+            // does it end with a subtitle extension?
+            foundext = 0;
 #ifdef HAVE_ICONV
-                        if (i < 3)
-                          { // prefer UTF-8 coded
-                            prio++;
-                          } /*if*/
+            for (extindex = (sub_cp ? 3 : 0); sub_exts[extindex]; extindex++)
+#else
+            for (extindex = 0; sub_exts[extindex]; extindex++)
 #endif
-                        sprintf(tmpresult, "%s%s", j == 0 ? f_dir : path, de->d_name);
-            //          fprintf(stderr, "%s priority %d\n", tmpresult, prio);
-                        if ((f = fopen(tmpresult, "rt")) != 0)
-                          {
-                            fclose(f);
-                            result[subcnt].priority = prio;
-                            result[subcnt].fname = strdup(tmpresult);
-                            subcnt++;
-                          } /*if*/
-                      } /*if*/
-
-                  } /*if*/
-                if (subcnt >= MAX_SUBTITLE_FILES)
+              {
+                if (strcmp(sub_exts[extindex], tmp_fname_ext) == 0)
+                  {
+                    foundext = 1;
                     break;
-              } /*while*/
-            closedir(d);
-          } /*if*/
+                  } /*if*/
+              }
+            if (!foundext)
+                continue;
+            // we have a (likely) subtitle file
+            prio = 0; /* score it on various criteria */
+            if (!prio && tmp_sub_id)
+              {
+                sprintf(tmpresult, "%s %s", f_fname_trim, tmp_sub_id);
+                if (strcmp(tmp_fname_trim, tmpresult) == 0 && sub_match_fuzziness >= 1)
+                  {
+                    // matches the movie name + lang extension
+                    prio = 5;
+                  } /*if*/
+              } /*if*/
+            if (!prio && strcmp(tmp_fname_trim, f_fname_trim) == 0)
+              {
+                // matches the movie name
+                prio = 4;
+              } /*if*/
+            if
+              (
+                    !prio
+                &&
+                    (foundpos = strstr(tmp_fname_trim, f_fname_trim))
+                &&
+                    sub_match_fuzziness >= 1
+              )
+              {
+                // contains the movie name
+                foundpos += strlen(f_fname_trim);
+                if (tmp_sub_id && strstr(foundpos, tmp_sub_id))
+                  {
+                    // with sub_id specified prefer localized subtitles
+                    prio = 3;
+                  }
+                else if (tmp_sub_id == NULL && whiteonly(foundpos))
+                  {
+                    // without sub_id prefer "plain" name
+                    prio = 3;
+                  }
+                else
+                  {
+                    // with no localized subs found, try any else instead
+                    prio = 2;
+                  } /*if*/
+              } /*if*/
+            if (!prio)
+              {
+                // doesn't contain the movie name
+                // don't try in the mplayer subtitle directory
+                if (j == 0 && sub_match_fuzziness >= 2)
+                  {
+                    prio = 1;
+                  } /*if*/
+              } /*if*/
+            if (prio) /* likely candidate */
+              {
+                FILE *f;
+                prio += prio;
+#ifdef HAVE_ICONV
+                if (extindex < 3)
+                  { // prefer UTF-8 coded
+                    prio++;
+                  } /*if*/
+#endif
+                sprintf(tmpresult, "%s%s", j == 0 ? f_dir : path, de->d_name);
+    //          fprintf(stderr, "%s priority %d\n", tmpresult, prio);
+                if ((f = fopen(tmpresult, "rt")) != 0)
+                  {
+                    fclose(f);
+                    result[subcnt].priority = prio;
+                    result[subcnt].fname = strdup(tmpresult);
+                    subcnt++;
+                    if (subcnt == MAX_SUBTITLE_FILES)
+                        break;
+                  } /*if*/
+              } /*if*/
+          } /*for*/
+        closedir(d);
       } /*for*/
     if (tmp_sub_id)
         free(tmp_sub_id);
@@ -2459,10 +2468,13 @@ char** sub_filenames(char* path, char *fname)
     qsort(result, subcnt, sizeof(subfn), compare_sub_priority);
     result2 = (char**)malloc(sizeof(char*) * (subcnt + 1));
     memset(result2, 0, sizeof(char*) * (subcnt + 1));
-    for (i = 0; i < subcnt; i++)
       {
-        result2[i] = result[i].fname;
-      } /*for*/
+        int i;
+        for (i = 0; i < subcnt; i++)
+          {
+            result2[i] = result[i].fname;
+          } /*for*/
+      }
     result2[subcnt] = NULL;
     free(result);
     return result2;

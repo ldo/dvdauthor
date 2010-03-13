@@ -256,7 +256,7 @@ void textsub_complete()
   {
     unsigned long pts = 0;
     subtitle *last_sub;
-    textsub_subtitle_type *textsub_subtitle;
+    textsub_subtitle_type textsub_subtitle;
     if (filename == NULL)
       {
         fprintf(stderr, "ERR: Filename of subtitle file missing");
@@ -275,16 +275,16 @@ void textsub_complete()
         for (pts = 0; pts < last_sub->end; pts++)
           {
             textsub_subtitle = textsub_find_sub(pts);
-            if (textsub_subtitle->valid)
+            if (textsub_subtitle.valid)
               {
                 st = malloc(sizeof(stinfo));
                 memset(st, 0, sizeof(stinfo));
                 if (!textsub_subdata->sub_uses_time)
                   {
                   /* start and end are in frame numbers */
-                    st->spts = textsub_subtitle->start * 90000.0 / movie_fps;
+                    st->spts = textsub_subtitle.start * 90000.0 / movie_fps;
                     st->sd =
-                            (textsub_subtitle->end - textsub_subtitle->start)
+                            (textsub_subtitle.end - textsub_subtitle.start)
                         *
                             90000.0
                         /
@@ -293,8 +293,8 @@ void textsub_complete()
                 else
                   {
                   /* start and end are in hundredths of a second */
-                    st->spts = textsub_subtitle->start * 900;
-                    st->sd = (textsub_subtitle->end - textsub_subtitle->start) * 900;
+                    st->spts = textsub_subtitle.start * 900;
+                    st->sd = (textsub_subtitle.end - textsub_subtitle.start) * 900;
                   } /*if*/
                 st->sub_title = vo_sub;
                 if (have_transparent)
