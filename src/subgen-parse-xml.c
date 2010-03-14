@@ -88,6 +88,7 @@ static unsigned int parsetime(const char *t)
 static int had_stream=0; /* whether I've seen <stream> */
 static stinfo *st=0; /* current <spu> directive collected here */
 static button *curbutton=0;
+static char * filename = 0;
 
 void stream_begin()
 {
@@ -209,13 +210,13 @@ void button_y1(const char *v)    { curbutton->r.y1  = strtounsigned(v, "button y
 
 void textsub_filename(const char *v)
 {
-    filename = utf8tolocal(v);
+    filename = utf8tolocal(v); /* won't leak, because I won't be called more than once */
 }
 
 void textsub_characterset(const char *v)
 {
 #ifdef HAVE_ICONV
-    sub_cp = strdup(v);
+    sub_cp = strdup(v); /* won't leak, because I won't be called more than once */
 #endif
 }
 
@@ -246,7 +247,7 @@ void textsub_v_alignment(const char *v)
         v_sub_alignment = V_SUB_ALIGNMENT_BOTTOM;
     else
       {
-        fprintf(stderr ,"ERR:  Unknown vertical-alignment type %s\n", v);
+        fprintf(stderr, "ERR:  Unknown vertical-alignment type %s\n", v);
         exit(1);
       } /*if*/
 }
@@ -274,8 +275,10 @@ void textsub_complete()
           /* describes the file I just loaded */
         for (pts = 0; pts < last_sub->end; pts++)
           {
+          /* scan the entire duration of the <textsub> tag, and each time a new
+            subtitle entry appears, append a description of it to the spus array */
             textsub_subtitle = textsub_find_sub(pts);
-            if (textsub_subtitle.valid)
+            if (textsub_subtitle.valid) /* another subtitle entry appears */
               {
                 st = malloc(sizeof(stinfo));
                 memset(st, 0, sizeof(stinfo));
@@ -308,6 +311,8 @@ void textsub_complete()
                 spus[numspus++] = st;
               } /*if*/
           } /*for*/
+        free(filename);
+        filename = NULL;
       } /*if*/
   } /*textsub_complete*/
 

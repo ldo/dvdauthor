@@ -804,7 +804,7 @@ int vo_update_osd(int dxs, int dys)
                         /*src =*/ obj->bitmap_buffer,
                         /*srca =*/ obj->alpha_buffer,
                         /*srcstride =*/ obj->stride,
-                        /*dstbase =*/ image_buffer + 3 * obj->bbox.x1 + 3 * obj->bbox.y1 * movie_width,
+                        /*dstbase =*/ textsub_image_buffer + 3 * obj->bbox.x1 + 3 * obj->bbox.y1 * movie_width,
                         /*dststride =*/ movie_width * 3
                       );
                   } /*if*/

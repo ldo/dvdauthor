@@ -104,18 +104,18 @@ int movie_height=574;
 sub_data *textsub_subdata;
 subtitle *textsub_subs;
 subtitle *vo_sub;
-unsigned char *image_buffer;
-char *font_name;
+unsigned char *textsub_image_buffer;
+char *textsub_font_name;
 int current_sub;
 font_desc_t* vo_font;
-char *filename=NULL;
 int sub_max_chars;
 int sub_max_lines;
 int sub_max_font_height;
 int sub_max_bottom_font_height;
-int sub_last;
-int sub_num_of_subtitles;
-char *img_name;
+
+static int sub_last;
+static int sub_num_of_subtitles;
+static char *img_name;
 
 sub_data * textsub_init
   (
@@ -125,8 +125,10 @@ sub_data * textsub_init
     float textsub_movie_height
   )
   {
+    const size_t image_buffer_size =
+        sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width * 3;
     vo_sub = NULL;
-    font_name = NULL;
+    textsub_font_name = NULL;
     current_sub = -1;
     vo_font = NULL;
     sub_last = 1;
@@ -151,13 +153,13 @@ sub_data * textsub_init
     if (dvdsub_lang)
         if (!strcmp(dvdsub_lang, ""))
             dvdsub_lang = NULL;
-    image_buffer = malloc(sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width * 3);
-    if (image_buffer == NULL)
+    textsub_image_buffer = malloc(image_buffer_size);
+    if (textsub_image_buffer == NULL)
      {
         fprintf(stderr, "ERR: Failed to allocate memory\n");
         exit(1);
       } /*if*/
-    memset(image_buffer, 128, sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width * 3);
+    memset(textsub_image_buffer, 128, image_buffer_size);
     textsub_subdata = sub_read_file(textsub_filename, textsub_movie_fps);
     vo_update_osd(textsub_movie_width, textsub_movie_height);
     vo_osd_changed(OSDTYPE_SUBTITLE);
@@ -199,9 +201,9 @@ void textsub_render(subtitle * sub)
   {
     vo_sub = sub;
     vo_osd_changed(OSDTYPE_SUBTITLE);
-    memset(image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width * 3);
+    memset(textsub_image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width * 3);
     vo_update_osd(movie_width, movie_height);
-/*  draw_image(movie_width, movie_height, image_buffer, movie_width * 3); */
+/*  draw_image(movie_width, movie_height, textsub_image_buffer, movie_width * 3); */
   } /*textsub_render*/
 
 void textsub_statistics()
@@ -217,7 +219,7 @@ void textsub_statistics()
 
 void textsub_finish()
   {
-    free(image_buffer);
+    free(textsub_image_buffer);
 #ifdef HAVE_FREETYPE
     if (vo_font)
         free_font_desc(vo_font);

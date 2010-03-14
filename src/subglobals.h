@@ -43,10 +43,9 @@ extern float sub_fps;
 extern int suboverlap_enabled;
 extern int sub_utf8;
 extern float font_factor;
-extern char * filename;
-extern char * font_name;
+extern char * textsub_font_name;
 extern int current_sub;
-extern unsigned char * image_buffer; /* where text subtitles are rendered */
+extern unsigned char * textsub_image_buffer; /* where text subtitles are rendered */
 extern float movie_fps;
 extern int movie_width;
 extern int movie_height;

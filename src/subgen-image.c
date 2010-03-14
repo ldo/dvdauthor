@@ -308,14 +308,14 @@ static int read_png(pict *s)
 #endif
 
 static int read_frame(pict *s)
-  /* fills in s from image_buffer. */
+  /* fills in s from textsub_image_buffer. */
 {
   int x,y;
 
   createimage(s,movie_width,movie_height);
   for( y=0; y<movie_height; y++ )
   {
-    unsigned char *d=image_buffer+(y*movie_width*3);
+    unsigned char *d=textsub_image_buffer+(y*movie_width*3);
 
     for( x=0; x<movie_width; x++ )
     {

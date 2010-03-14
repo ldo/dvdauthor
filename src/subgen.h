@@ -70,7 +70,7 @@ typedef struct { /* representation of a subpicture and associated buttons */
 
 extern unsigned char *sub;
 extern int debug;
-extern int have_textsub;
+extern int have_textsub; /* whether a <textsub> tag has been seen */
 extern int have_transparent;
 extern int transparent_color;
 
