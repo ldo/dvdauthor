@@ -73,7 +73,7 @@ int verbose=0;
 float osd_font_scale_factor = 6.0;
 float subtitle_font_radius = 0.0;     /*2.0*/
 float subtitle_font_thickness = 3.0;  /*2.0*/
-int subtitle_autoscale = 0; /* 0=no autoscale 1=video height 2=video width 3=diagonal */
+int subtitle_autoscale = AUTOSCALE_NONE;
 int sub_bg_color=8; /* subtitles background color */
 int sub_bg_alpha=0;
 int sub_justify=1;

@@ -62,7 +62,7 @@ static char *subtitle_font_encoding = NULL;
 //// constants
 static unsigned int const colors = 256;
 static unsigned int const maxcolor = 255;
-static unsigned const   base = 256;
+static unsigned const base = 256;
 static unsigned const first_char = 33; /* first non-printable, non-whitespace character */
 #define MAX_CHARSET_SIZE 60000
 
@@ -201,9 +201,8 @@ static int check_font
     int width, height;
     unsigned char *bbuffer;
     int i, uni_charmap = 1;
-
     error = FT_Select_Charmap(face, ft_encoding_unicode);
-//    fprintf(stderr, "select unicode charmap: %d\n", error);
+//  fprintf(stderr, "select unicode charmap: %d\n", error);
     if (face->charmap == NULL || face->charmap->encoding != ft_encoding_unicode)
       {
         WARNING("Unicode charmap not available for this font. Very bad!");
@@ -277,7 +276,8 @@ static int check_font
             if (glyph_index == 0)
               {
                 WARNING("Glyph for char 0x%02x|U+%04X|%c not found.",
-                    (unsigned int)code,(unsigned int)character,
+                    (unsigned int)code,
+                    (unsigned int)character,
                     code < ' ' || code > 255 ? '.' : (unsigned int)code);
                 desc->font[unicode ? character : code] = -1;
                 continue;
@@ -287,8 +287,8 @@ static int check_font
       } /*for*/
 //    fprintf(stderr, "font height: %lf\n", (double)(face->bbox.yMax - face->bbox.yMin) / (double)face->units_per_EM * ppem);
 //    fprintf(stderr, "font width: %lf\n", (double)(face->bbox.xMax - face->bbox.xMin)/(double)face - >units_per_EM * ppem);
-    ymax = (double)(face->bbox.yMax) / (double)face->units_per_EM * ppem + 1;
-    ymin = (double)(face->bbox.yMin) / (double)face->units_per_EM * ppem - 1;
+    ymax = (double)face->bbox.yMax / (double)face->units_per_EM * ppem + 1;
+    ymin = (double)face->bbox.yMin / (double)face->units_per_EM * ppem - 1;
     width = ppem * (face->bbox.xMax - face->bbox.xMin) / face->units_per_EM + 3 + 2 * padding;
     if (desc->max_width < width)
         desc->max_width = width;
@@ -313,7 +313,7 @@ static int check_font
     if (desc->max_height < height)
         desc->max_height = height;
     desc->pic_b[pic_idx]->charheight = height;
-//    fprintf(stderr, "font height2: %d\n", height);
+//  fprintf(stderr, "font height2: %d\n", height);
     desc->pic_b[pic_idx]->baseline = ymax + padding;
     desc->pic_b[pic_idx]->padding = padding;
     desc->pic_b[pic_idx]->current_alloc = 0;
@@ -347,15 +347,14 @@ static void outline
         for (x = 0; x < width; x++)
           {
             const int src = s[x];
-            if (src == 0)
-                continue;
+            if (src != 0)
               {
                 const int x1 = x < r ? r - x : 0;
                 const int y1 = y < r ? r - y : 0;
                 const int x2 = x + r >= width ? r + width - x : 2 * r + 1;
                 const int y2 = y + r >= height ? r + height - y : 2 * r + 1;
                 register unsigned char * dstp = t + (y1 + y - r) * stride + x - r;
-                //register int *mp  = m +  y1     *mwidth;
+                //register int *mp = m + y1 * mwidth;
                 const register unsigned char * mp = m + msize * src + y1 * mwidth;
                 int my;
                 for (my = y1; my < y2; my++)
@@ -369,9 +368,9 @@ static void outline
                     dstp += stride;
                     mp += mwidth;
                   } /*for*/
-              }
+              } /*if*/
           } /*for*/
-        s+= stride;
+        s += stride;
       } /*for*/
   } /*outline*/
 
@@ -385,48 +384,48 @@ static void outline1
     int stride
   )
   {
-    const int skip = stride - width;
+    const int skip = stride - width; /* for skipping rest of each row */
     int x, y;
-    for (x = 0; x < width; ++x, ++s, ++t)
+    for (x = 0; x < width; ++x, ++s, ++t) /* copy first row as is */
         *t = *s;
     s += skip;
     t += skip;
     for (y = 1; y < height - 1; ++y)
       {
-        *t++ = *s++;
+        *t++ = *s++; /* copy first column as is */
         for (x = 1; x < width - 1; ++x, ++s, ++t)
           {
-            unsigned v =
+            const unsigned int v =
                         (
-                            s[-1 - stride]
+                            s[-1 - stride] /* upper-left neighbour */
                         +
-                            s[-1 + stride]
+                            s[-1 + stride] /* lower-left neighbour */
                         +
-                            s[+1 - stride]
+                            s[+1 - stride] /* upper-right neighbour */
                         +
-                            s[+1 + stride]
+                            s[+1 + stride] /* lower-right neighbour */
                         )
                     /
                         2
                 +
                     (
-                        s[-1]
+                        s[-1] /* left neighbour */
                     +
-                        s[+1]
+                        s[+1] /* right neighbour */
                     +
-                        s[-stride]
+                        s[-stride] /* upper neighbour */
                     +
-                        s[+stride]
+                        s[+stride] /* lower neighbour */
                     +
-                        s[0]
+                        s[0] /* pixel itself */
                     );
             *t = v > maxcolor ? maxcolor : v;
           } /*for*/
-        *t++ = *s++;
+        *t++ = *s++; /* copy last column as is */
         s += skip;
         t += skip;
       } /*for*/
-    for (x = 0; x < width; ++x, ++s, ++t)
+    for (x = 0; x < width; ++x, ++s, ++t) /* copy last row as is */
         *t = *s;
   } /*outline1*/
 
@@ -441,7 +440,7 @@ static void outline0
   )
   {
     int y;
-    for (y = 0; y < height; ++y)
+    for (y = 0; y < height; ++y) /* just copy all pixels as is */
       {
         memcpy(t, s, width);
         s += stride;
@@ -596,7 +595,7 @@ static void resample_alpha
     int stride, /* width in bytes of both buffers */
     float factor
   )
-  /* copies 8-bit pixels from bbuf to abuf, scaled by factor. */
+  /* copies 8-bit pixels from bbuf to abuf, amplitudes scaled by factor. */
   {
     int f = factor * 256.0f;
     int i, j;
@@ -620,7 +619,6 @@ static void resample_alpha
       } /*for*/
   } /*resample_alpha*/
 
-#define ALLOC_INCR 32
 void render_one_glyph(font_desc_t *desc, int c)
   {
     FT_GlyphSlot slot;
@@ -637,10 +635,10 @@ void render_one_glyph(font_desc_t *desc, int c)
     raw_file * const pic_a = desc->pic_a[font];
     raw_file * const pic_b = desc->pic_b[font];
     int error;
-//    fprintf(stderr, "render_one_glyph %d\n", c);
+//  fprintf(stderr, "render_one_glyph %d\n", c);
     if (!desc->dynamic)
         return;
-    if (desc->width[c] != -1)
+    if (desc->width[c] != -1) /* already rendered */
         return;
     if (desc->font[c] == -1)
         return;
@@ -680,7 +678,7 @@ void render_one_glyph(font_desc_t *desc, int c)
         return;
       } /*if*/
     glyph = (FT_BitmapGlyph)oglyph;
-//    fprintf(stderr, "glyph generated\n");
+//  fprintf(stderr, "glyph generated\n");
     maxw = pic_b->charwidth;
     if (glyph->bitmap.width > maxw)
       {
@@ -688,8 +686,9 @@ void render_one_glyph(font_desc_t *desc, int c)
       } /*if*/
     // allocate new memory, if needed
 //  fprintf(stderr, "\n%d %d %d\n", pic_b->charwidth, pic_b->charheight, pic_b->current_alloc);
-    if (pic_b->current_count >= pic_b->current_alloc)
-      {
+    if (pic_b->current_count == pic_b->current_alloc)
+      { /* filled allocated space, need more */
+        const size_t ALLOC_INCR = 32; /* grow in steps of this */
         const int newsize =
                 pic_b->charwidth
             *
@@ -706,6 +705,7 @@ void render_one_glyph(font_desc_t *desc, int c)
     //  fprintf(stderr, "\nns = %d inc = %d\n", newsize, increment);
         pic_b->bmp = realloc(pic_b->bmp, newsize);
         pic_a->bmp = realloc(pic_a->bmp, newsize);
+      /* initialize newly-added memory to zero: */
         off =
                 pic_b->current_count
             *
@@ -733,7 +733,7 @@ void render_one_glyph(font_desc_t *desc, int c)
         pic_b->charheight,
         glyph->bitmap.width <= maxw ? glyph->bitmap.width : maxw
       );
-//    fprintf(stderr, "glyph pasted\n");
+//  fprintf(stderr, "glyph pasted\n");
     FT_Done_Glyph((FT_Glyph)glyph);
   /* advance pen */
     pen_xa = f266ToInt(slot->advance.x) + 2 * pic_b->padding;
@@ -766,7 +766,7 @@ void render_one_glyph(font_desc_t *desc, int c)
             desc->tables.o_size
           );
       } /*if*/
-//    fprintf(stderr, "fg: outline t = %lf\n", GetTimer()-t);
+//  fprintf(stderr, "fg: outline t = %lf\n", GetTimer()-t);
     if (desc->tables.g_r)
       {
         blur
@@ -780,7 +780,7 @@ void render_one_glyph(font_desc_t *desc, int c)
             desc->tables.g_r,
             desc->tables.g_w
           );
-//      fprintf(stderr, "fg: blur t = %lf\n", GetTimer()-t);
+//      fprintf(stderr, "fg: blur t = %lf\n", GetTimer() - t);
       } /*if*/
     resample_alpha(abuffer + off, bbuffer + off, width, height, stride, font_factor);
     pic_b->current_count++;
@@ -802,43 +802,54 @@ static int prepare_font
   {
     int i, err;
     const int padding = ceil(radius) + ceil(thickness);
+    raw_file * pic_a, * pic_b;
     desc->faces[pic_idx] = face;
-    desc->pic_a[pic_idx] = (raw_file *)malloc(sizeof(raw_file));
-    if (!desc->pic_a[pic_idx])
+    pic_a = (raw_file *)malloc(sizeof(raw_file));
+    if (pic_a == NULL)
         return -1;
-    desc->pic_b[pic_idx] = (raw_file *)malloc(sizeof(raw_file));
-    if (!desc->pic_b[pic_idx])
+    pic_b = (raw_file *)malloc(sizeof(raw_file));
+    if (pic_b == NULL)
+      {
+        free(pic_a);
         return -1;
-    desc->pic_a[pic_idx]->bmp = NULL;
-    desc->pic_a[pic_idx]->pal = NULL;
-    desc->pic_b[pic_idx]->bmp = NULL;
-    desc->pic_b[pic_idx]->pal = NULL;
-    desc->pic_a[pic_idx]->pal = (unsigned char *)malloc(sizeof(unsigned char) * 256 * 3);
-    if (!desc->pic_a[pic_idx]->pal)
+      } /*if*/
+    desc->pic_a[pic_idx] = pic_a;
+    desc->pic_b[pic_idx] = pic_b;
+    pic_a->bmp = NULL;
+    pic_a->pal = NULL;
+    pic_b->bmp = NULL;
+    pic_b->pal = NULL;
+    pic_a->pal = (unsigned char *)malloc(sizeof(unsigned char) * 256 * 3);
+    if (!pic_a->pal)
         return -1;
     for (i = 0; i < 768; ++i)
-        desc->pic_a[pic_idx]->pal[i] = i / 3;
-    desc->pic_b[pic_idx]->pal = (unsigned char *)malloc(sizeof(unsigned char) * 256 * 3);
-    if (!desc->pic_b[pic_idx]->pal)
+        pic_a->pal[i] = i / 3;
+    pic_b->pal = (unsigned char *)malloc(sizeof(unsigned char) * 256 * 3);
+    if (!pic_b->pal)
         return -1;
     for (i = 0; i < 768; ++i)
-        desc->pic_b[pic_idx]->pal[i] = i / 3;
+        pic_b->pal[i] = i / 3;
 //  ttime = GetTimer();
     err = check_font(desc, ppem, padding, pic_idx, charset_size, charset, charcodes, unicode);
-//  ttime =GetTimer() - ttime;
+//  ttime = GetTimer() - ttime;
 //  printf("render:   %7lf us\n", ttime);
     if (err)
         return -1;
 //  fprintf(stderr, "fg: render t = %lf\n", GetTimer() - t);
-    desc->pic_a[pic_idx]->w = desc->pic_b[pic_idx]->w;
-    desc->pic_a[pic_idx]->h = desc->pic_b[pic_idx]->h;
-    desc->pic_a[pic_idx]->c = colors;
-    desc->pic_a[pic_idx]->bmp = NULL;
-//  fprintf(stderr, "fg: w = %d, h = %d\n", desc->pic_a[pic_idx]->w, desc->pic_a[pic_idx]->h);
+    pic_a->w = pic_b->w;
+    pic_a->h = pic_b->h;
+    pic_a->c = colors;
+    pic_a->bmp = NULL;
+//  fprintf(stderr, "fg: w = %d, h = %d\n", pic_a->w, pic_a->h);
     return 0;
   } /*prepare_font*/
 
-static int generate_tables(font_desc_t *desc, double thickness, double radius)
+static int generate_tables
+  (
+    font_desc_t *desc,
+    double thickness,
+    double radius
+  )
   {
     const int width = desc->max_height;
     const int height = desc->max_width;
@@ -848,8 +859,8 @@ static int generate_tables(font_desc_t *desc, double thickness, double radius)
     unsigned char *omtp;
     desc->tables.g_r = ceil(radius);
     desc->tables.o_r = ceil(thickness);
-    desc->tables.g_w = 2*desc->tables.g_r+1;
-    desc->tables.o_w = 2*desc->tables.o_r+1;
+    desc->tables.g_w = 2 * desc->tables.g_r + 1;
+    desc->tables.o_w = 2 * desc->tables.o_r + 1;
     desc->tables.o_size = desc->tables.o_w * desc->tables.o_w;
 //  fprintf(stderr, "o_r = %d\n", desc->tables.o_r);
     if (desc->tables.g_r)
@@ -1069,7 +1080,7 @@ static font_desc_t* init_font_desc()
         return NULL;
     memset(desc, 0, sizeof(font_desc_t));
     desc->dynamic = 1;
-  /* setup sane defaults */
+  /* setup sane defaults, mark all associated storage as unallocated */
     desc->name = NULL;
     desc->fpath = NULL;
     desc->face_cnt = 0;
@@ -1095,7 +1106,7 @@ void free_font_desc(font_desc_t *desc)
   {
     int i;
     if (!desc)
-        return;
+        return; /* nothing to do */
 //  if (!desc->dynamic) return; // some vo_aa crap, better leaking than crashing
     free(desc->name);
     free(desc->fpath);
@@ -1126,7 +1137,7 @@ void free_font_desc(font_desc_t *desc)
     free(desc);
   } /*free_font_desc*/
 
-static int load_sub_face(char *name, FT_Face *face)
+static int load_sub_face(const char *name, FT_Face *face)
   {
     int err = -1;
     if (name)
@@ -1160,184 +1171,200 @@ static int load_sub_face(char *name, FT_Face *face)
   } /*load_sub_face*/
 
 int kerning(font_desc_t *desc, int prevc, int c)
-{
+  /* returns the amount of kerning to apply between character c and previous character prevc. */
+  {
     FT_Vector kern;
-
-    if (!vo_font->dynamic) return 0;
-    if (prevc < 0 || c < 0) return 0;
-    if (desc->font[prevc] != desc->font[c]) return 0;
-    if (desc->font[prevc] == -1 || desc->font[c] == -1) return 0;
-    FT_Get_Kerning(desc->faces[desc->font[c]],
-           desc->glyph_index[prevc], desc->glyph_index[c],
-           ft_kerning_default, &kern);
-
-//    fprintf(stderr, "kern: %c %c %d\n", prevc, c, f266ToInt(kern.x));
-
+    if (!vo_font->dynamic)
+        return 0;
+    if (prevc < 0 || c < 0) /* need 2 characters to kern */
+        return 0;
+    if (desc->font[prevc] != desc->font[c]) /* font change => don't kern */
+        return 0;
+    if (desc->font[prevc] == -1 /* <=> desc->font[c] == -1 */)
+        return 0;
+    FT_Get_Kerning
+      (
+        desc->faces[desc->font[c]],
+        desc->glyph_index[prevc],
+        desc->glyph_index[c],
+        ft_kerning_default,
+        &kern
+      );
+//  fprintf(stderr, "kern: %c %c %d\n", prevc, c, f266ToInt(kern.x));
     return f266ToInt(kern.x);
-}
+  } /*kerning*/
 
-font_desc_t* read_font_desc_ft(char *fname, int movie_width, int movie_height)
-{
+font_desc_t* read_font_desc_ft
+  (
+    const char *fname,
+    int movie_width,
+    int movie_height
+  )
+  {
     font_desc_t *desc;
-
     FT_Face face;
-
     FT_ULong my_charset[MAX_CHARSET_SIZE]; /* characters we want to render; Unicode */
     FT_ULong my_charcodes[MAX_CHARSET_SIZE]; /* character codes in 'encoding' */
-
-    char *charmap = "ucs-4";
+    const char * const charmap = "ucs-4";
     int err;
     int charset_size;
     int i, j;
     int unicode;
-
     float movie_size;
-
     float subtitle_font_ppem;
     float osd_font_ppem;
-
-    switch (subtitle_autoscale) {
-    case 1:
-    movie_size = movie_height;
+    switch (subtitle_autoscale)
+      {
+    case AUTOSCALE_MOVIE_HEIGHT:
+        movie_size = movie_height;
     break;
-    case 2:
-    movie_size = movie_width;
+    case AUTOSCALE_MOVIE_WIDTH:
+        movie_size = movie_width;
     break;
-    case 3:
-    movie_size = sqrt(movie_height*movie_height+movie_width*movie_width);
+    case AUTOSCALE_MOVIE_DIAGONAL:
+        movie_size = sqrt(movie_height * movie_height + movie_width * movie_width);
     break;
+    case AUTOSCALE_NONE:
     default:
-    movie_size = 100;
+        movie_size = 100;
     break;
-    }
-
-    subtitle_font_ppem = movie_size*text_font_scale_factor/100.0;
-    osd_font_ppem = movie_size*osd_font_scale_factor/100.0;
-
-    if (subtitle_font_ppem < 5) subtitle_font_ppem = 5;
-    if (osd_font_ppem < 5) osd_font_ppem = 5;
-
-    if (subtitle_font_ppem > 128) subtitle_font_ppem = 128;
-    if (osd_font_ppem > 128) osd_font_ppem = 128;
-
-    if ((subtitle_font_encoding == NULL)
-    || (strcasecmp(subtitle_font_encoding, "unicode") == 0)) {
-    unicode = 1;
-    } else {
-    unicode = 0;
-    }
-
+      } /*switch*/
+    subtitle_font_ppem = movie_size * text_font_scale_factor / 100.0;
+    osd_font_ppem = movie_size * osd_font_scale_factor / 100.0;
+    if (subtitle_font_ppem < 5)
+        subtitle_font_ppem = 5;
+    if (osd_font_ppem < 5)
+        osd_font_ppem = 5;
+    if (subtitle_font_ppem > 128)
+        subtitle_font_ppem = 128;
+    if (osd_font_ppem > 128)
+        osd_font_ppem = 128;
+    unicode =
+            subtitle_font_encoding == NULL
+        ||
+            strcasecmp(subtitle_font_encoding, "unicode") == 0;
     desc = init_font_desc();
-    if(!desc) return NULL;
-
-//    t=GetTimer();
-
-    /* generate the subtitle font */
+    if (!desc)
+        return NULL;
+//  t = GetTimer();
+  /* generate the subtitle font */
     err = load_sub_face(fname, &face);
-    if (err) {
-    fprintf(stderr,"WARN: subtitle font: load_sub_face failed.\n");
-    goto skip_a_part;
-    }
+    if (err)
+      {
+        fprintf(stderr, "WARN: subtitle font: load_sub_face failed.\n");
+        goto skip_a_part;
+      } /*if*/
     desc->face_cnt++;
-
-    if (unicode) {
-    charset_size = prepare_charset_unicode(face, my_charset, my_charcodes);
-    } else {
-    if (subtitle_font_encoding) {
-        charset_size = prepare_charset(charmap, subtitle_font_encoding, my_charset, my_charcodes);
-    } else {
-        charset_size = prepare_charset(charmap, "iso-8859-1", my_charset, my_charcodes);
-    }
-    }
-
-    if (charset_size < 0) {
-    fprintf(stderr,"ERR: subtitle font: prepare_charset failed.\n");
-    free_font_desc(desc);
-    return NULL;
-    }
-
-//    fprintf(stderr, "fg: prepare t = %lf\n", GetTimer()-t);
-
-    err = prepare_font(desc, face, subtitle_font_ppem, desc->face_cnt-1,
-               charset_size, my_charset, my_charcodes, unicode,
-               subtitle_font_thickness, subtitle_font_radius);
-
-    if (err) {
-    fprintf(stderr,"ERR: Cannot prepare subtitle font.\n");
-    free_font_desc(desc);
-    return NULL;
-    }
-
+    if (unicode)
+      {
+        charset_size = prepare_charset_unicode(face, my_charset, my_charcodes);
+      }
+    else
+      {
+        charset_size = prepare_charset
+          (
+            charmap,
+            subtitle_font_encoding != NULL ?
+                subtitle_font_encoding
+            :
+                "iso-8859-1" /* fixme: use locale default? */,
+            my_charset,
+            my_charcodes
+          );
+      } /*if*/
+    if (charset_size < 0)
+      {
+        fprintf(stderr, "ERR: subtitle font: prepare_charset failed.\n");
+        free_font_desc(desc);
+        return NULL;
+      } /*if*/
+//  fprintf(stderr, "fg: prepare t = %lf\n", GetTimer() - t);
+    err = prepare_font
+      (
+        desc,
+        face,
+        subtitle_font_ppem,
+        desc->face_cnt - 1,
+        charset_size,
+        my_charset,
+        my_charcodes,
+        unicode,
+        subtitle_font_thickness,
+        subtitle_font_radius
+      );
+    if (err)
+      {
+        fprintf(stderr, "ERR: Cannot prepare subtitle font.\n");
+        free_font_desc(desc);
+        return NULL;
+      } /*if*/
 skip_a_part:
-
     err = generate_tables(desc, subtitle_font_thickness, subtitle_font_radius);
-
-    if (err) {
-    fprintf(stderr,"ERR: Cannot generate tables.\n");
-    free_font_desc(desc);
-    return NULL;
-    }
-
+    if (err)
+      {
+        fprintf(stderr, "ERR: Cannot generate tables.\n");
+        free_font_desc(desc);
+        return NULL;
+      } /*if*/
     // final cleanup
-    desc->font[' ']=-1;
-    desc->width[' ']=desc->spacewidth;
-
+    desc->font[' '] = -1;
+    desc->width[' '] = desc->spacewidth;
     j = '_';
-    if (desc->font[j] < 0) j = '?';
-    if (desc->font[j] < 0) j = ' ';
+    if (desc->font[j] < 0)
+        j = '?';
+    if (desc->font[j] < 0)
+        j = ' ';
     render_one_glyph(desc, j);
-    for(i = 0; i < 65536; i++) {
-    if (desc->font[i] < 0 && i != ' ') {
-        desc->start[i] = desc->start[j];
-        desc->width[i] = desc->width[j];
-        desc->font[i] = desc->font[j];
-    }
-    }
+    for (i = 0; i < 65536; i++)
+      {
+        if (i != ' ' && desc->font[i] < 0)
+          {
+            desc->start[i] = desc->start[j];
+            desc->width[i] = desc->width[j];
+            desc->font[i] = desc->font[j];
+          } /*if*/
+      } /*for*/
     return desc;
-}
+  } /*read_font_desc_ft*/
 
 int init_freetype()
-{
+  {
     int err;
-
-    /* initialize freetype */
+  /* initialize freetype */
     err = FT_Init_FreeType(&library);
-    if (err) {
-    fprintf(stderr,"ERR: Init_FreeType failed.\n");
-    return -1;
-    }
-/*  fprintf(stderr,"INFO: init_freetype\n"); */
+    if (err)
+      {
+        fprintf(stderr, "ERR: Init_FreeType failed.\n");
+        return -1;
+      } /*if*/
+/*  fprintf(stderr, "INFO: init_freetype\n"); */
     using_freetype = 1;
     return 0;
-}
+  } /*init_freetype*/
 
 int done_freetype()
-{
+  {
     int err;
-
     if (!using_freetype)
-    return 0;
-
+        return 0;
     err = FT_Done_FreeType(library);
-    if (err) {
-    fprintf(stderr,"ERR: FT_Done_FreeType failed.\n");
-    return -1;
-    }
-
+    if (err)
+      {
+        fprintf(stderr, "ERR: FT_Done_FreeType failed.\n");
+        return -1;
+      } /*if*/
     return 0;
-}
+  } /*done_freetype*/
 
 void load_font_ft(int width, int height)
-{
+  {
     vo_image_width = width;
     vo_image_height = height;
-
     // protection against vo_aa font hacks
-    if (vo_font && !vo_font->dynamic) return;
-
-    if (vo_font) free_font_desc(vo_font);
-
-    vo_font=read_font_desc_ft(textsub_font_name, width, height);
-}
+    if (vo_font && !vo_font->dynamic)
+        return;
+    free_font_desc(vo_font);
+    vo_font = read_font_desc_ft(textsub_font_name, width, height);
+  } /*load_font_ft*/
 
 #endif /* HAVE_FREETYPE */

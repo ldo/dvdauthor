@@ -38,6 +38,14 @@ enum /* vertical alignment settings */
     V_SUB_ALIGNMENT_BOTTOM = 2,
   };
 
+enum /* values for subtitle_autoscale */
+  {
+    AUTOSCALE_NONE = 0, /* no autoscale */
+    AUTOSCALE_MOVIE_HEIGHT = 1, /* video height */
+    AUTOSCALE_MOVIE_WIDTH = 2, /* video width */
+    AUTOSCALE_MOVIE_DIAGONAL = 3, /* diagonal */
+  };
+
 extern float sub_delay;
 extern float sub_fps;
 extern int suboverlap_enabled;
@@ -54,7 +62,7 @@ extern int text_forceit;
 extern float osd_font_scale_factor;
 extern float subtitle_font_radius;
 extern float subtitle_font_thickness;
-extern int subtitle_autoscale;
+extern int subtitle_autoscale; /* fixme: not user-settable */
 extern int h_sub_alignment;
 extern int v_sub_alignment;
 extern int sub_bg_color; /* subtitles background color */

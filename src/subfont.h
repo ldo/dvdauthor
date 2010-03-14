@@ -73,7 +73,7 @@ extern font_desc_t* vo_font;
 int init_freetype();
 int done_freetype();
 
-font_desc_t* read_font_desc_ft(char* fname,int movie_width, int movie_height);
+font_desc_t* read_font_desc_ft(const char* fname,int movie_width, int movie_height);
 void free_font_desc(font_desc_t *desc);
 
 void render_one_glyph(font_desc_t *desc, int c);
