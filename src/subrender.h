@@ -53,4 +53,5 @@ typedef struct mp_osd_obj_s {
 void vo_init_osd();
 int vo_update_osd(int dxs,int dys);
 int vo_osd_changed(int new_value);
+void vo_finish_osd();
 #endif

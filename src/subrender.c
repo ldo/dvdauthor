@@ -51,14 +51,14 @@ static inline void vo_draw_alpha_rgb24
   (
     int w,
     int h,
-    const unsigned char * src,
-    const unsigned char * srca,
+    const unsigned char * src, /* source luma */
+    const unsigned char * srca, /* source alpha */
     int srcstride,
     unsigned char * dstbase,
     int dststride
   )
-  /* composites pixels from src onto dstbase according to transparency
-    taken from srca. */
+  /* composites pixels from monochrome src onto full-colour dstbase according to
+    transparency taken from srca. */
   {
     int y, i;
     for (y = 0; y < h; y++)
@@ -77,6 +77,8 @@ static inline void vo_draw_alpha_rgb24
                 dst[2] = (src[x] >> 6) << 6; */
                 for (i = 0; i < 3; i++)
                   {
+                  /* quantize dst to just 3 component intensities: 1, 127 and 255,
+                    for 27 colour combinations in all */
                     if (dst[i])
                       {
                         if (dst[i] >= 170)
@@ -108,8 +110,8 @@ static void draw_alpha_buf
     int y0,
     int w,
     int h,
-    const unsigned char * src,
-    const unsigned char * srca,
+    const unsigned char * src, /* source luma */
+    const unsigned char * srca, /* source alpha */
     int stride
   )
   {
@@ -200,7 +202,7 @@ inline static void vo_update_text_sub
       };
     struct osd_text_line
       {
-        int value;
+        int linewidth;
         struct osd_text_word *words; /* head of word list */
         struct osd_text_line *prev, *next; /* doubly-linked list */
       };
@@ -208,6 +210,8 @@ inline static void vo_update_text_sub
     int textlen, sub_totallen, xsize;
   /* const int xlimit = dxs * sub_width_p / 100; */
     const int xlimit = dxs - sub_right_margin - sub_left_margin;
+      /* maximum width of display lines after deducting space for margins
+        and starting point */
     int xmin = xlimit, xmax = 0;
     int max_height;
     int xtblc, utblc;
@@ -236,42 +240,48 @@ inline static void vo_update_text_sub
             struct osd_text_word
                 *osl, /* head of list */
                 *osl_tail; /* last element of list */
-            int j, prevch, char_position;
+            int chindex, prevch, wordlen;
             const unsigned char *text;
             xsize = -vo_font->charspace;
+              /* cancels out extra space left before first word of first line */
             linesleft--;
             text = (const unsigned char *)vo_sub->text[linedone++];
             textlen = strlen((const char *)text) - 1;
-            char_position = 0;
+            wordlen = 0;
             wordbuf = (int *)realloc(wordbuf, (textlen + 1) * sizeof(int));
             prevch = -1;
             osl = NULL;
             osl_tail = NULL;
             warn_overlong_word = 1;
             // reading the subtitle words from vo_sub->text[]
-            for (j = 0; j <= textlen; j++)
+            chindex = 0;
+            for (;;) /* split line into words */
               {
-                int curch = text[j];
-                if (curch >= 0x80 && sub_utf8)
+                int curch;
+                if (chindex < textlen)
                   {
-                  /* fixme: no checking for j going out of range */
-                    if ((curch & 0xe0) == 0xc0)    /* 2 bytes U+00080..U+0007FF*/
-                        curch = (curch & 0x1f) << 6 | (text[++j] & 0x3f);
-                    else if ((curch & 0xf0) == 0xe0) /* 3 bytes U+00800..U+00FFFF*/
+                    curch = text[chindex];
+                    if (curch >= 0x80 && sub_utf8)
                       {
-                        curch = (((curch & 0x0f) << 6) | (text[++j] & 0x3f)) << 6;
-                        curch |= text[++j] & 0x3f;
+                      /* fixme: no checking for chindex going out of range */
+                        if ((curch & 0xe0) == 0xc0)    /* 2 bytes U+00080..U+0007FF*/
+                            curch = (curch & 0x1f) << 6 | (text[++chindex] & 0x3f);
+                        else if ((curch & 0xf0) == 0xe0) /* 3 bytes U+00800..U+00FFFF*/
+                          {
+                            curch = (((curch & 0x0f) << 6) | (text[++chindex] & 0x3f)) << 6;
+                            curch |= text[++chindex] & 0x3f;
+                          } /*if*/
                       } /*if*/
+                    if (sub_totallen == MAX_UCS)
+                      {
+                        textlen = chindex; // end here
+                        fprintf(stderr, "WARN: MAX_UCS exceeded!\n");
+                      } /*if*/
+                    if (!curch)
+                        curch++; // avoid UCS 0
+                    render_one_glyph(vo_font, curch);
                   } /*if*/
-                if (sub_totallen == MAX_UCS)
-                  {
-                    textlen = j; // end here
-                    fprintf(stderr, "WARN: MAX_UCS exceeded!\n");
-                  } /*if*/
-                if (!curch)
-                    curch++; // avoid UCS 0
-                render_one_glyph(vo_font, curch);
-                if (curch == ' ')
+                if (chindex >= textlen || curch == ' ')
                   {
                   /* word break */
                     struct osd_text_word * const newelt =
@@ -291,11 +301,17 @@ inline static void vo_update_text_sub
                       } /*if*/
                     osl_tail = newelt;
                     newelt->osd_length = xsize;
-                    newelt->text_length = char_position;
-                    newelt->text = (int *)malloc(char_position * sizeof(int));
-                    for (counter = 0; counter < char_position; ++counter)
+                    newelt->text_length = wordlen;
+                    newelt->text = (int *)malloc(wordlen * sizeof(int));
+                    for (counter = 0; counter < wordlen; ++counter)
                         newelt->text[counter] = wordbuf[counter];
-                    char_position = 0;
+                    wordlen = 0;
+                    if (chindex == textlen)
+                      {
+                        xsize = -vo_font->charspace;
+                          /* cancels out extra space left before first word of next line */
+                        break;
+                      } /*if*/
                     xsize = 0;
                     prevch = curch;
                   }
@@ -308,13 +324,14 @@ inline static void vo_update_text_sub
                             vo_font->charspace
                         +
                             kerning(vo_font, prevch, curch);
+                      /* width which will be added to word by this character */
                     if (xsize + delta_xsize <= xlimit)
                       {
-                      /* word fits in available space */
+                      /* word still fits in available width */
                         if (!warn_overlong_word)
                             warn_overlong_word = 1;
                         prevch = curch;
-                        wordbuf[char_position++] = curch;
+                        wordbuf[wordlen++] = curch;
                         xsize += delta_xsize;
                         if (!suboverlap_enabled)
                           {
@@ -327,6 +344,7 @@ inline static void vo_update_text_sub
                       }
                     else
                       {
+                      /* truncate word to fit */
                         if (warn_overlong_word)
                           {
                             fprintf(stderr, "WARN: Subtitle word '%s' too long!\n", text);
@@ -334,35 +352,12 @@ inline static void vo_update_text_sub
                           } /*if*/
                       } /*if*/
                   } /*if*/
-              } // for textlen (all words from subtitle line read)
+                ++chindex;
+              } /*for*/
         // osl holds an ordered (as they appear in the lines) chain of the subtitle words
-              {
-              /* append last/only word */
-                struct osd_text_word * const newelt = (struct osd_text_word *)calloc(1, sizeof(struct osd_text_word));
-                int counter;
-                if (osl == NULL)
-                  {
-                  /* only element on list */
-                    osl = newelt;
-                  }
-                else
-                  {
-                    newelt->prev = osl_tail;
-                    osl_tail->next = newelt;
-                    newelt->osd_kerning = vo_font->charspace + vo_font->width[' '];
-                  } /*if*/
-                osl_tail = newelt;
-                newelt->osd_length = xsize;
-                newelt->text_length = char_position;
-                newelt->text = (int *)malloc(char_position * sizeof(int));
-                for (counter = 0; counter < char_position; ++counter)
-                    newelt->text[counter] = wordbuf[counter];
-                char_position = 0;
-                xsize = -vo_font->charspace;
-              }
             if (osl != NULL) /* will always be true! */
               {
-                int value = 0, minimum = 0;
+                int linewidth = 0, linewidth_variation = 0;
                 struct osd_text_line *lastnewelt;
                 struct osd_text_word *curword;
                 struct osd_text_line *otp_new;
@@ -376,10 +371,11 @@ inline static void vo_update_text_sub
                       (
                             curword != NULL
                         &&
-                            value + curword->osd_kerning + curword->osd_length <= xlimit
+                            linewidth + curword->osd_kerning + curword->osd_length <= xlimit
                       )
                       {
-                        value += curword->osd_kerning + curword->osd_length;
+                      /* include another word on this line */
+                        linewidth += curword->osd_kerning + curword->osd_length;
                         curword = curword->next;
                       } /*while*/
                     if
@@ -387,29 +383,29 @@ inline static void vo_update_text_sub
                             curword != NULL
                         &&
                             curword != lastnewelt->words
-                              /* not sure what this does, but trying to stop it getting stuck in
-                                here (fix Ubuntu bug 385187) */
+                              /* ensure new line contains at least one word (fix Ubuntu bug 385187) */
                       )
                       {
-                      /* append yet another element onto otp_new chain */
+                      /* append yet another new display line onto otp_new chain */
                         struct osd_text_line * const nextnewelt =
                             (struct osd_text_line *)calloc(1, sizeof(struct osd_text_line));
-                        lastnewelt->value = value;
+                        lastnewelt->linewidth = linewidth;
                         lastnewelt->next = nextnewelt;
                         nextnewelt->prev = lastnewelt;
                         lastnewelt = nextnewelt;
                         lastnewelt->words = curword;
-                        value = -2 * vo_font->charspace - vo_font->width[' '];
+                        linewidth = -2 * vo_font->charspace - vo_font->width[' '];
                       }
                     else
                       {
-                        lastnewelt->value = value;
+                        lastnewelt->linewidth = linewidth;
                         break;
                       } /*if*/
                   } /*for*/
-
 #ifdef NEW_SPLITTING
-                // minimum holds the 'sum of the differences in length among the lines',
+              /* rebalance split among multiple onscreen lines corresponding to a single
+                subtitle line */
+                // linewidth_variation holds the 'sum of the differences in length among the lines',
                 // a measure of the eveness of the lengths of the lines
                   {
                     struct osd_text_line *tmp_otp;
@@ -418,69 +414,109 @@ inline static void vo_update_text_sub
                         const struct osd_text_line * pmt = tmp_otp->next;
                         while (pmt != NULL)
                           {
-                            minimum += abs(tmp_otp->value - pmt->value);
+                            linewidth_variation += abs(tmp_otp->linewidth - pmt->linewidth);
                             pmt = pmt->next;
                           } /*while*/
                       } /*for*/
                   }
-                if (otp_new->next != NULL)
+                if (otp_new->next != NULL) /* line split into more than one display line */
                   {
-                    int mem1, mem2;
                     // until the last word of a line can be moved to the beginning of following line
                     // reducing the 'sum of the differences in length among the lines', it is done
                     for (;;)
+                      /* even out variations in width of screen lines corresponding to
+                        a single subtitle line */
                       {
-                        struct osd_text_line *tmp_otp;
+                        struct osd_text_line *this_display_line;
                         int exit1 = 1; /* initial assumption */
-                        struct osd_text_line *hold = NULL;
-                        for (tmp_otp = otp_new; tmp_otp->next != NULL; tmp_otp = tmp_otp->next)
+                        struct osd_text_line *rebalance_line = NULL;
+                          /* if non-null, then word at end of this line should be moved to
+                            following line */
+                        for (this_display_line = otp_new; this_display_line->next != NULL; this_display_line = this_display_line->next)
                           {
-                            struct osd_text_word *tmp;
-                            struct osd_text_line *pmt = tmp_otp->next;
-                            for (tmp = tmp_otp->words; tmp->next != pmt->words; tmp = tmp->next)
-                              /* find predecessor to pmt */;
-                            if (pmt->value + tmp->osd_length + pmt->words->osd_kerning <= xlimit)
+                            struct osd_text_line *next_display_line = this_display_line->next;
+                            struct osd_text_word *prev_word;
+                            for
+                              (
+                                prev_word = this_display_line->words;
+                                prev_word->next != next_display_line->words;
+                                prev_word = prev_word->next
+                              )
+                              /* find predecessor word to next_display_line */;
+                              /* seems a shame I can't make use of the doubly-linked lists
+                                somehow to speed this up */
+                            if
+                              (
+                                        next_display_line->linewidth
+                                    +
+                                        prev_word->osd_length
+                                    +
+                                        next_display_line->words->osd_kerning
+                                <=
+                                    xlimit
+                              )
                               {
-                                struct osd_text_line *mem;
-                                mem1 = tmp_otp->value;
-                                mem2 = pmt->value;
-                                tmp_otp->value = mem1 - tmp->osd_length - tmp->osd_kerning;
-                                pmt->value = mem2 + tmp->osd_length + pmt->words->osd_kerning;
-                                value = 0;
-                                for (mem = otp_new; mem->next != NULL; mem = mem->next)
+                              /* prev_word can be moved from this_display_line line onto
+                                next_display_line line; see if doing this improves the layout */
+                                struct osd_text_line *that_display_line;
+                                int new_variation;
+                                int prev_line_width, cur_line_width;
+                                prev_line_width = this_display_line->linewidth;
+                                cur_line_width = next_display_line->linewidth;
+                              /* temporary change to line widths to see effect of new layout */
+                                this_display_line->linewidth = prev_line_width - prev_word->osd_length - prev_word->osd_kerning;
+                                next_display_line->linewidth = cur_line_width + prev_word->osd_length + next_display_line->words->osd_kerning;
+                                new_variation = 0;
+                                for
+                                  (
+                                    that_display_line = otp_new;
+                                    that_display_line->next != NULL;
+                                    that_display_line = that_display_line->next
+                                  )
                                   {
-                                    pmt = mem->next;
-                                    while (pmt != NULL)
+                                    next_display_line = that_display_line->next;
+                                    while (next_display_line != NULL)
                                       {
-                                        value += abs(mem->value - pmt->value);
-                                        pmt = pmt->next;
+                                        new_variation += abs(that_display_line->linewidth - next_display_line->linewidth);
+                                        next_display_line = next_display_line->next;
                                       } /*while*/
                                   } /*for*/
-                                if (value < minimum)
+                                if (new_variation < linewidth_variation)
                                   {
-                                    minimum = value;
-                                    hold = tmp_otp;
+                                  /* implement this new layout unless I find something better */
+                                    linewidth_variation = new_variation;
+                                    rebalance_line = this_display_line;
                                     exit1 = 0;
                                   } /*if*/
-                                tmp_otp->value = mem1;
-                                tmp_otp->next->value = mem2;
+                              /* undo the temporary line width changes */
+                                this_display_line->linewidth = prev_line_width;
+                                this_display_line->next->linewidth = cur_line_width;
                               } /*if*/
                           } /*for*/
                         // merging
-                        if (exit1)
+                        if (exit1) /* no improvement found */
                             break;
                           {
-                            struct osd_text_word *tmp;
-                            struct osd_text_line *pmt;
-                            tmp_otp = hold;
-                            pmt = tmp_otp->next;
-                            for (tmp = tmp_otp->words; tmp->next != pmt->words; tmp = tmp->next)
-                              /* find predecessor element */;
-                            mem1 = tmp_otp->value;
-                            mem2 = pmt->value;
-                            tmp_otp->value = mem1 - tmp->osd_length - tmp->osd_kerning;
-                            pmt->value = mem2 + tmp->osd_length + pmt->words->osd_kerning;
-                            pmt->words = tmp;
+                          /* word at end of rebalance_line line should be moved to following line */
+                            struct osd_text_word *word_to_move;
+                            struct osd_text_line *next_display_line;
+                            this_display_line = rebalance_line;
+                            next_display_line = this_display_line->next;
+                            for
+                              (
+                                word_to_move = this_display_line->words;
+                                word_to_move->next != next_display_line->words;
+                                word_to_move = word_to_move->next
+                              )
+                              /* find previous word to be moved to this line */;
+                              /* seems a shame I can't make use of the doubly-linked lists
+                                somehow to speed this up, not to mention having to do
+                                it twice */
+                            this_display_line->linewidth -=
+                                word_to_move->osd_length + word_to_move->osd_kerning;
+                            next_display_line->linewidth +=
+                                word_to_move->osd_length + next_display_line->words->osd_kerning;
+                            next_display_line->words = word_to_move;
                           } //~merging
                       } /*for*/
                   } //~if (otp->next != NULL)
@@ -521,10 +557,15 @@ inline static void vo_update_text_sub
         obj->y = dys - sub_bottom_margin;
         obj->params.subtitle.lines = 0;
           {
-            struct osd_text_line *tmp_otp;
-            for (tmp_otp = otp_sub; tmp_otp != NULL; tmp_otp = tmp_otp->next)
+            struct osd_text_line *this_display_line;
+            for
+              (
+                this_display_line = otp_sub;
+                this_display_line != NULL;
+                this_display_line = this_display_line->next
+              )
               {
-                struct osd_text_word *tmp_ott, *tmp;
+                struct osd_text_word *this_word, *next_line_words;
                 if (obj->params.subtitle.lines++ >= MAX_UCSLINES)
                   {
                     fprintf(stderr, "WARN: max_ucs_lines\n");
@@ -538,33 +579,40 @@ inline static void vo_update_text_sub
                       /* discard overlong line */
                     break;
                   } /*if*/
-                xsize = tmp_otp->value;
+                xsize = this_display_line->linewidth;
                 obj->params.subtitle.xtbl[xtblc++] = (xlimit - xsize) / 2 + sub_left_margin;
                 if (xmin > (xlimit - xsize) / 2 + sub_left_margin)
                     xmin = (xlimit - xsize) / 2 + sub_left_margin;
                 if (xmax < (xlimit + xsize) / 2 + sub_left_margin)
                     xmax = (xlimit + xsize) / 2 + sub_left_margin;
              /* fprintf(stderr, "lm %d rm: %d xm:%d xs:%d\n", sub_left_margin, sub_right_margin, xmax, xsize); */
-                tmp = tmp_otp->next == NULL ? NULL : tmp_otp->next->words;
-                for (tmp_ott = tmp_otp->words; tmp_ott != tmp; tmp_ott = tmp_ott->next)
+                next_line_words = this_display_line->next == NULL ? NULL : this_display_line->next->words;
+                for
+                  (
+                    this_word = this_display_line->words;
+                    this_word != next_line_words;
+                    this_word = this_word->next
+                  )
                   {
-                    int counter = 0;
+                  /* assemble display lines into obj->params.subtitle */
+                    int chindex = 0;
                     for (;;)
                       {
                         int curch;
-                        if (counter == tmp_ott->text_length)
+                        if (chindex == this_word->text_length)
                             break;
                         if (utblc > MAX_UCS)
                             break;
-                        curch = tmp_ott->text[counter];
+                        curch = this_word->text[chindex];
                         render_one_glyph(vo_font, curch);
                         obj->params.subtitle.utbl[utblc++] = curch;
                         sub_totallen++;
-                        ++counter;
+                        ++chindex;
                       } /*for*/
-                    obj->params.subtitle.utbl[utblc++] = ' ';
+                    obj->params.subtitle.utbl[utblc++] = ' '; /* separate from next word */
                   } /*for*/
                 obj->params.subtitle.utbl[utblc - 1] = 0;
+                  /* overwrite last space with string terminator */
                 obj->y -= vo_font->height;
               } /*for*/
           }
@@ -601,6 +649,7 @@ inline static void vo_update_text_sub
           } /*if*/
       }
       {
+      /* work out positioning of subtitle */
         const int subs_height =
                 (obj->params.subtitle.lines - 1) * vo_font->height
             +
@@ -627,26 +676,21 @@ inline static void vo_update_text_sub
             obj->y = sub_top_margin;
         if (obj->y < sub_top_margin)
             obj->y = sub_top_margin;
-        if (obj->y > dys - sub_bottom_margin-vo_font->height)
-            obj->y = dys - sub_bottom_margin-vo_font->height;
-
+        if (obj->y > dys - sub_bottom_margin - vo_font->height)
+            obj->y = dys - sub_bottom_margin - vo_font->height;
         obj->bbox.y2 = obj->y + subs_height + 3;
-
         // calculate bbox:
         if (sub_justify)
             xmin = sub_left_margin;
         obj->bbox.x1 = xmin - 3;
         obj->bbox.x2 = xmax + 3 + vo_font->spacewidth;
-
       /* if ( obj->bbox.x2 >= dxs - sub_right_margin - 20)
            {
              obj->bbox.x2 = dxs;
-           }
-        */
-        obj->bbox.y1 = obj->y-3;
-    //  obj->bbox.y2 = obj->y+obj->params.subtitle.lines * vo_font->height;
+           } */
+        obj->bbox.y1 = obj->y - 3;
+    //  obj->bbox.y2 = obj->y + obj->params.subtitle.lines * vo_font->height;
         obj->flags |= OSDFLAG_BBOX;
-
         alloc_buf(obj);
       /* fprintf(stderr,"^2 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height); */
       }
@@ -677,7 +721,7 @@ inline static void vo_update_text_sub
             for (i = 0; i < linesleft; ++i)
               {
                 int prevch, curch;
-                switch (obj->alignment & 0x3)
+                switch (obj->alignment & 0x3) /* determine start position for rendering line */
                   {
                 case H_SUB_ALIGNMENT_LEFT:
                     if (sub_justify)
@@ -701,6 +745,7 @@ inline static void vo_update_text_sub
                 prevch = -1;
                 while ((curch = obj->params.subtitle.utbl[j++]) != 0)
                   {
+                  /* render the characters of this subtitle display line */
                     const int font = vo_font->font[curch];
                     x += kerning(vo_font, prevch, curch);
                     if (font >= 0)
@@ -747,23 +792,6 @@ mp_osd_obj_t * new_osd_obj(int type)
     osd->allocated = -1;
     return osd;
   } /*new_osd_obj*/
-
-void free_osd_list()
-  /* frees up memory allocated for vo_osd_list. */
-  {
-    mp_osd_obj_t * obj = vo_osd_list;
-    while (obj)
-      {
-        mp_osd_obj_t * const next = obj->next;
-        if (obj->alpha_buffer)
-            free(obj->alpha_buffer);
-        if (obj->bitmap_buffer)
-            free(obj->bitmap_buffer);
-        free(obj);
-        obj = next;
-      } /*while*/
-    vo_osd_list = NULL;
-  } /*free_osd_list*/
 
 int vo_update_osd(int dxs, int dys)
   {
@@ -828,8 +856,7 @@ int vo_update_osd(int dxs, int dys)
 
 void vo_init_osd()
   {
-    if (vo_osd_list)
-        free_osd_list();
+    vo_finish_osd(); /* if previously allocated */
   // temp hack, should be moved to mplayer/mencoder later
   /* new_osd_obj(OSDTYPE_OSD); */
     new_osd_obj(OSDTYPE_SUBTITLE);
@@ -854,3 +881,17 @@ int vo_osd_changed(int new_value)
     return previous_value;
   } /*vo_osd_changed*/
 
+void vo_finish_osd()
+  /* frees up memory allocated for vo_osd_list. */
+  {
+    mp_osd_obj_t * obj = vo_osd_list;
+    while (obj)
+      {
+        mp_osd_obj_t * const next = obj->next;
+        free(obj->alpha_buffer);
+        free(obj->bitmap_buffer);
+        free(obj);
+        obj = next;
+      } /*while*/
+    vo_osd_list = NULL;
+  } /*vo_finish_osd*/

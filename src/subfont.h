@@ -1,5 +1,5 @@
 /*
-    Interface to FreeType font rendering
+    Lowest-level interface to FreeType font rendering
 */
 #ifndef __SUBFONT_H
 #define __SUBFONT_H
@@ -12,12 +12,14 @@
 #endif
 
 typedef struct {
-    unsigned char *bmp;
-    unsigned char *pal;
-    int w,h,c;
+    unsigned char *bmp; /* 8-bit-per-pixel image bitmap accumulated here */
+    unsigned char *pal; /* colour palette */
+    int w, h, c;
 #ifdef HAVE_FREETYPE
-    int charwidth,charheight,pen,baseline,padding;
-    int current_count, current_alloc;
+    int charwidth,charheight;
+    int pen,baseline,padding;
+    int current_count; /* multiplied by charwidth * charheight = used size of bmp */
+    int current_alloc; /* multiplied by charwidth * charheight = allocated size of bmp */
 #endif
 } raw_file;
 
@@ -28,40 +30,41 @@ typedef struct {
     char *name;
     char *fpath;
     int spacewidth;
-    int charspace;
+    int charspace; /* extra inter-character spacing, may be negative */
     int height;
 //    char *fname_a;
 //    char *fname_b;
     raw_file* pic_a[16];
     raw_file* pic_b[16];
     short font[65536];
+      /* index into faces array, which FT_Face to use for rendering this Unicode character */
     int start[65536];   // short is not enough for unicode fonts
-    short width[65536];
+      /* horizontal offset into bmp at which to find image for each Unicode character */
+    short width[65536]; /* width in pixels of image for each Unicode character */
     int freetype;
 
 #ifdef HAVE_FREETYPE
-    int face_cnt;
-
+    int face_cnt; /* how many entries in faces are used */
     FT_Face faces[16];
-    FT_UInt glyph_index[65536];
+    FT_UInt glyph_index[65536]; /* glyph index indexed by Unicode character code */
 
     int max_width, max_height;
 
     struct
-    {
-    int g_r;
-    int o_r;
-    int g_w;
-    int o_w;
-    int o_size;
-    unsigned volume;
+      {
+        int g_r;
+        int o_r;
+        int g_w;
+        int o_w;
+        int o_size;
+        unsigned volume;
 
-    unsigned *g;
-    unsigned *gt2;
-    unsigned *om;
-    unsigned char *omt;
-    unsigned short *tmp;
-    } tables;
+        unsigned *g;
+        unsigned *gt2;
+        unsigned *om;
+        unsigned char *omt;
+        unsigned short *tmp;
+      } tables;
 #endif
 
 } font_desc_t;
@@ -87,8 +90,5 @@ static void render_one_glyph(font_desc_t *desc, int c) {}
 static int kerning(font_desc_t *desc, int prevc, int c) { return 0; }
 
 #endif
-
-raw_file* load_raw(char *name,int verbose);
-font_desc_t* read_font_desc(char* fname,float factor,int verbose);
 
 #endif /* ! __MPLAYER_FONT_LOAD_H */

@@ -219,10 +219,10 @@ void textsub_statistics()
 
 void textsub_finish()
   {
+	vo_finish_osd();
     free(textsub_image_buffer);
 #ifdef HAVE_FREETYPE
-    if (vo_font)
-        free_font_desc(vo_font);
+    free_font_desc(vo_font);
     vo_font = NULL;
     done_freetype();
 #endif

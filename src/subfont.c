@@ -1,3 +1,6 @@
+/*
+    Lowest-level interface to FreeType font rendering
+*/
 /* Copyright (C) 2000 - 2003 various authors of the MPLAYER project
  * This module uses various parts of the MPLAYER project (http://www.mplayerhq.hu)
  * With many changes by Sjef van Gool (svangool@hotmail.com) November 2003
@@ -64,7 +67,7 @@ static unsigned int const colors = 256;
 static unsigned int const maxcolor = 255;
 static unsigned const base = 256;
 static unsigned const first_char = 33; /* first non-printable, non-whitespace character */
-#define MAX_CHARSET_SIZE 60000
+#define MAX_CHARSET_SIZE 60000 /* hope this is enough! */
 
 static FT_Library library;
 
@@ -75,7 +78,7 @@ static FT_Library library;
 #define f1616ToInt(x)       (((x)+0x8000)>>16)  // 16.16
 #define floatTof266(x)      ((int)((x)*(1<<6)+0.5))
 
-#define ALIGN(x)                (((x)+7)&~7)    // 8 byte align
+#define ALIGN_8BYTES(x)                (((x)+7)&~7)    // 8 byte align
 
 #define WARNING(msg, args...)      fprintf(stderr,"WARN:" msg "\n", ## args)
 
@@ -153,7 +156,7 @@ static void paste_bitmap
     int drow = x + y * width;
     int srow = 0;
     int sp, dp, w, h;
-    if (bitmap->pixel_mode == ft_pixel_mode_mono)
+    if (bitmap->pixel_mode == FT_PIXEL_MODE_MONO)
       /* map one-bit-per-pixel source to 8 bits per pixel */
         for
           (
@@ -168,7 +171,7 @@ static void paste_bitmap
                     :
                         0;
     else
-      /* greyscale source, copy pixels as is */
+      /* assume FT_PIXEL_MODE_GRAY, copy pixels as is */
         for
           (
             h = bitmap->rows;
@@ -184,29 +187,30 @@ static int check_font
     font_desc_t *desc,
     float ppem,
     int padding,
-    int pic_idx,
-    int charset_size,
-    const FT_ULong *charset,
+    int pic_idx, /* which face to select from desc->faces */
+    int charset_size, /* length of charset and charcodes arrays */
+    const FT_ULong *charset, /* character codes to get glyphs for */
     const FT_ULong *charcodes,
-    int unicode
+      /* corresponding Unicode character codes, unless charset entries are already Unicode */
+    int unicode /* whether charset entries are already Unicode */
   )
+  /* computes various information about the specified font and puts it into desc. */
   {
     FT_Error error;
     const FT_Face face = desc->faces[pic_idx];
-    int const load_flags =
-        FT_LOAD_DEFAULT | FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
-  /* int const load_flags = FT_LOAD_DEFAULT | FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
+    int const load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
+  /* int const load_flags = FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
+    raw_file * const pic_b = desc->pic_b[pic_idx];
     int ymin = INT_MAX, ymax = INT_MIN;
     int space_advance = 20;
     int width, height;
-    unsigned char *bbuffer;
     int i, uni_charmap = 1;
-    error = FT_Select_Charmap(face, ft_encoding_unicode);
+    error = FT_Select_Charmap(face, FT_ENCODING_UNICODE);
 //  fprintf(stderr, "select unicode charmap: %d\n", error);
-    if (face->charmap == NULL || face->charmap->encoding != ft_encoding_unicode)
+    if (face->charmap == NULL || face->charmap->encoding != FT_ENCODING_UNICODE)
       {
         WARNING("Unicode charmap not available for this font. Very bad!");
-        uni_charmap = 0;
+        uni_charmap = 0; /* fallback to whatever encoding is available */
         error = FT_Set_Charmap(face, face->charmaps[0]);
         if (error)
             WARNING("No charmaps! Strange.");
@@ -214,7 +218,14 @@ static int check_font
   /* set size */
     if (FT_IS_SCALABLE(face))
       {
-        error = FT_Set_Char_Size(face, 0, floatTof266(ppem), 0, 0);
+        error = FT_Set_Char_Size
+          (
+            /*face =*/ face,
+            /*char_width =*/ 0, /* use height */
+            /*char_height =*/ floatTof266(ppem),
+            /*horiz_resolution =*/ 0, /* use 72dpi */
+            /*vert_resolution =*/ 0 /* what he said */
+          );
         if (error)
             WARNING("FT_Set_Char_Size failed.");
       }
@@ -239,9 +250,9 @@ static int check_font
         WARNING("Selected font is not scalable. Using ppem=%i.", face->available_sizes[j].height);
         error = FT_Set_Pixel_Sizes
           (
-            face,
-            face->available_sizes[j].width,
-            face->available_sizes[j].height
+            /*face =*/ face,
+            /*pixel_width =*/ face->available_sizes[j].width,
+            /*pixel_height =*/ face->available_sizes[j].height
           );
         if (error)
             WARNING("FT_Set_Pixel_Sizes failed.");
@@ -257,43 +268,49 @@ static int check_font
     if (!desc->spacewidth)
         desc->spacewidth = 2 * padding + space_advance;
     if (!desc->charspace)
-        desc->charspace = -2*padding;
+        desc->charspace = -2 * padding;
     if (!desc->height)
         desc->height = f266ToInt(face->size->metrics.height);
     for (i = 0; i < charset_size; ++i)
       {
-        FT_ULong character, code;
+        const FT_ULong character = charset[i];
+        const FT_ULong charunicode = charcodes[i];
         FT_UInt glyph_index;
-        character = charset[i];
-        code = charcodes[i];
-        desc->font[unicode ? character : code] = pic_idx;
+        desc->font[unicode ? character : charunicode] = pic_idx;
         // get glyph index
         if (character == 0)
             glyph_index = 0;
         else
           {
-            glyph_index = FT_Get_Char_Index(face, uni_charmap ? character : code);
+            glyph_index = FT_Get_Char_Index
+              (
+                face,
+                uni_charmap ? /* fixme: wrong, because charunicode is meaningless if unicode */
+                    character
+                :
+                    charunicode
+              );
             if (glyph_index == 0)
               {
                 WARNING("Glyph for char 0x%02x|U+%04X|%c not found.",
-                    (unsigned int)code,
+                    (unsigned int)charunicode,
                     (unsigned int)character,
-                    code < ' ' || code > 255 ? '.' : (unsigned int)code);
-                desc->font[unicode ? character : code] = -1;
+                    charunicode < ' ' || charunicode > 255 ? '.' : (unsigned int)charunicode);
+                desc->font[unicode ? character : charunicode] = -1;
                 continue;
               } /*if*/
           } /*if*/
-        desc->glyph_index[unicode ? character : code] = glyph_index;
+        desc->glyph_index[unicode ? character : charunicode] = glyph_index;
       } /*for*/
-//    fprintf(stderr, "font height: %lf\n", (double)(face->bbox.yMax - face->bbox.yMin) / (double)face->units_per_EM * ppem);
-//    fprintf(stderr, "font width: %lf\n", (double)(face->bbox.xMax - face->bbox.xMin)/(double)face - >units_per_EM * ppem);
+//  fprintf(stderr, "font height: %lf\n", (double)(face->bbox.yMax - face->bbox.yMin) / (double)face->units_per_EM * ppem);
+//  fprintf(stderr, "font width: %lf\n", (double)(face->bbox.xMax - face->bbox.xMin)/(double)face - >units_per_EM * ppem);
     ymax = (double)face->bbox.yMax / (double)face->units_per_EM * ppem + 1;
     ymin = (double)face->bbox.yMin / (double)face->units_per_EM * ppem - 1;
     width = ppem * (face->bbox.xMax - face->bbox.xMin) / face->units_per_EM + 3 + 2 * padding;
     if (desc->max_width < width)
         desc->max_width = width;
-    width = ALIGN(width);
-    desc->pic_b[pic_idx]->charwidth = width;
+    width = ALIGN_8BYTES(width);
+    pic_b->charwidth = width;
     if (width <= 0)
       {
         fprintf(stderr, "ERR: Wrong bounding box, width <= 0 !\n");
@@ -312,18 +329,17 @@ static int check_font
       } /*if*/
     if (desc->max_height < height)
         desc->max_height = height;
-    desc->pic_b[pic_idx]->charheight = height;
+    pic_b->charheight = height;
 //  fprintf(stderr, "font height2: %d\n", height);
-    desc->pic_b[pic_idx]->baseline = ymax + padding;
-    desc->pic_b[pic_idx]->padding = padding;
-    desc->pic_b[pic_idx]->current_alloc = 0;
-    desc->pic_b[pic_idx]->current_count = 0;
-    bbuffer = NULL;
-    desc->pic_b[pic_idx]->w = width;
-    desc->pic_b[pic_idx]->h = height;
-    desc->pic_b[pic_idx]->c = colors;
-    desc->pic_b[pic_idx]->bmp = bbuffer;
-    desc->pic_b[pic_idx]->pen = 0;
+    pic_b->baseline = ymax + padding;
+    pic_b->padding = padding;
+    pic_b->current_alloc = 0;
+    pic_b->current_count = 0;
+    pic_b->w = width;
+    pic_b->h = height;
+    pic_b->c = colors;
+    pic_b->bmp = NULL;
+    pic_b->pen = 0;
     return 0;
   } /*check_font*/
 
@@ -620,6 +636,8 @@ static void resample_alpha
   } /*resample_alpha*/
 
 void render_one_glyph(font_desc_t *desc, int c)
+  /* renders the glyph corresponding to Unicode character code c and saves the
+    image in desc, if it is not there already. */
   {
     FT_GlyphSlot slot;
     FT_UInt glyph_index;
@@ -627,9 +645,8 @@ void render_one_glyph(font_desc_t *desc, int c)
     FT_BitmapGlyph glyph;
     int width, height, stride, maxw, off;
     unsigned char *abuffer, *bbuffer;
-    int const load_flags =
-        FT_LOAD_DEFAULT | FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
-  /* int const load_flags = FT_LOAD_DEFAULT | FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
+    int const load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
+  /* int const load_flags = FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
     int pen_xa;
     const int font = desc->font[c];
     raw_file * const pic_a = desc->pic_a[font];
@@ -655,7 +672,8 @@ void render_one_glyph(font_desc_t *desc, int c)
     // render glyph
     if (slot->format != ft_glyph_format_bitmap)
       {
-        error = FT_Render_Glyph(slot, ft_render_mode_normal);
+      /* make it a bitmap */
+        error = FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL);
         if (error)
           {
             WARNING("FT_Render_Glyph 0x%04x (char 0x%04x) failed.", glyph_index, c);
@@ -686,8 +704,14 @@ void render_one_glyph(font_desc_t *desc, int c)
       } /*if*/
     // allocate new memory, if needed
 //  fprintf(stderr, "\n%d %d %d\n", pic_b->charwidth, pic_b->charheight, pic_b->current_alloc);
+    off =
+            pic_b->current_count
+        *
+            pic_b->charwidth
+        *
+            pic_b->charheight;
     if (pic_b->current_count == pic_b->current_alloc)
-      { /* filled allocated space, need more */
+      { /* filled allocated space for bmp blocks, need more */
         const size_t ALLOC_INCR = 32; /* grow in steps of this */
         const int newsize =
                 pic_b->charwidth
@@ -706,32 +730,20 @@ void render_one_glyph(font_desc_t *desc, int c)
         pic_b->bmp = realloc(pic_b->bmp, newsize);
         pic_a->bmp = realloc(pic_a->bmp, newsize);
       /* initialize newly-added memory to zero: */
-        off =
-                pic_b->current_count
-            *
-                pic_b->charwidth
-            *
-                pic_b->charheight;
         memset(pic_b->bmp + off, 0, increment);
         memset(pic_a->bmp + off, 0, increment);
       } /*if*/
-    abuffer = pic_a->bmp;
-    bbuffer = pic_b->bmp;
-    off =
-            pic_b->current_count
-        *
-            pic_b->charwidth
-        *
-            pic_b->charheight;
-    paste_bitmap
+    abuffer = pic_a->bmp + off;
+    bbuffer = pic_b->bmp + off;
+    paste_bitmap /* copy glyph into next available space in pic_b->bmp */
       (
-        bbuffer + off,
-        &glyph->bitmap,
-        pic_b->padding + glyph->left,
-        pic_b->baseline - glyph->top,
-        pic_b->charwidth,
-        pic_b->charheight,
-        glyph->bitmap.width <= maxw ? glyph->bitmap.width : maxw
+        /*bbuffer =*/ bbuffer,
+        /*bitmap =*/ &glyph->bitmap,
+        /*x =*/ pic_b->padding + glyph->left,
+        /*y =*/ pic_b->baseline - glyph->top,
+        /*width =*/ pic_b->charwidth,
+        /*height =*/ pic_b->charheight,
+        /*bwidth =*/ glyph->bitmap.width <= maxw ? glyph->bitmap.width : maxw
       );
 //  fprintf(stderr, "glyph pasted\n");
     FT_Done_Glyph((FT_Glyph)glyph);
@@ -745,18 +757,18 @@ void render_one_glyph(font_desc_t *desc, int c)
     stride = pic_b->w;
     if (desc->tables.o_r == 0)
       {
-        outline0(bbuffer + off, abuffer + off, width, height, stride);
+        outline0(bbuffer, abuffer, width, height, stride);
       }
     else if (desc->tables.o_r == 1)
       {
-        outline1(bbuffer + off, abuffer + off, width, height, stride);
+        outline1(bbuffer, abuffer, width, height, stride);
       }
     else
       {
         outline
           (
-            bbuffer + off,
-            abuffer + off,
+            bbuffer,
+            abuffer,
             width,
             height,
             stride,
@@ -771,7 +783,7 @@ void render_one_glyph(font_desc_t *desc, int c)
       {
         blur
           (
-            abuffer + off,
+            abuffer,
             desc->tables.tmp,
             width,
             height,
@@ -782,7 +794,7 @@ void render_one_glyph(font_desc_t *desc, int c)
           );
 //      fprintf(stderr, "fg: blur t = %lf\n", GetTimer() - t);
       } /*if*/
-    resample_alpha(abuffer + off, bbuffer + off, width, height, stride, font_factor);
+    resample_alpha(abuffer, bbuffer, width, height, stride, font_factor);
     pic_b->current_count++;
   } /*render_one_glyph*/
 
@@ -791,10 +803,10 @@ static int prepare_font
     font_desc_t *desc,
     FT_Face face,
     float ppem,
-    int pic_idx,
+    int pic_idx, /* where in desc->faces to save face */
     int charset_size,
-    FT_ULong *charset,
-    FT_ULong *charcodes,
+    const FT_ULong *charset,
+    const FT_ULong *charcodes,
     int unicode,
     double thickness,
     double radius
@@ -823,12 +835,12 @@ static int prepare_font
     if (!pic_a->pal)
         return -1;
     for (i = 0; i < 768; ++i)
-        pic_a->pal[i] = i / 3;
+        pic_a->pal[i] = i / 3; /* fill with greyscale ramp */
     pic_b->pal = (unsigned char *)malloc(sizeof(unsigned char) * 256 * 3);
     if (!pic_b->pal)
         return -1;
     for (i = 0; i < 768; ++i)
-        pic_b->pal[i] = i / 3;
+        pic_b->pal[i] = i / 3; /* fill with greyscale ramp */
 //  ttime = GetTimer();
     err = check_font(desc, ppem, padding, pic_idx, charset_size, charset, charcodes, unicode);
 //  ttime = GetTimer() - ttime;
@@ -969,11 +981,15 @@ static FT_ULong decode_char(const iconv_t *cd, char c)
 
 static int prepare_charset
   (
-    const char *charmap, /* source encoding */
-    const char *encoding, /* destination encoding */
+    const char *charmap, /* destination encoding, actually always UCS-4 */
+    const char *encoding, /* source encoding, must be 8-bit */
     FT_ULong *charset, /* array [256 - first_char], filled in with [33 .. 255] */
-    FT_ULong *charcodes /* array [256 - first_char], translation of corresponding charset codes from charmp to encoding */
+    FT_ULong *charcodes
+      /* array [256 - first_char], translation of corresponding charset codes from
+        charmap to encoding */
   )
+  /* fills in charset with the values [33 .. 255] in sequence, and charcodes with
+    the corresponding character codes when translating these from encoding to charmap. */
   {
     FT_ULong i;
     int count = 0;
@@ -1022,19 +1038,20 @@ static int prepare_charset
 static int prepare_charset_unicode
   (
     FT_Face face,
-    FT_ULong *charset, /* filled in with all the character codes for which glyphs are defined in the font */
-    FT_ULong *charcodes /* filled in with zeroes to the same length as charset */
+    FT_ULong *charset,
+      /* filled in with all the character codes for which glyphs are defined in the font */
+    FT_ULong *charcodes
+      /* filled in with zeroes to the same length as charset */
   )
   {
 #ifdef HAVE_FREETYPE21
-    FT_ULong  charcode;
+    FT_ULong charcode;
 #else
     int j;
 #endif
     FT_UInt gindex;
     int i;
-
-    if (face->charmap == NULL || face->charmap->encoding != ft_encoding_unicode)
+    if (face->charmap == NULL || face->charmap->encoding != FT_ENCODING_UNICODE)
       {
         WARNING("Unicode charmap not available for this font. Very bad!");
         return -1;
@@ -1254,7 +1271,7 @@ font_desc_t* read_font_desc_ft
         fprintf(stderr, "WARN: subtitle font: load_sub_face failed.\n");
         goto skip_a_part;
       } /*if*/
-    desc->face_cnt++;
+    desc->face_cnt++; /* will always be 1, since I just created desc */
     if (unicode)
       {
         charset_size = prepare_charset_unicode(face, my_charset, my_charcodes);
@@ -1263,7 +1280,7 @@ font_desc_t* read_font_desc_ft
       {
         charset_size = prepare_charset
           (
-            charmap,
+            charmap, /* always UCS-4 */
             subtitle_font_encoding != NULL ?
                 subtitle_font_encoding
             :
@@ -1281,16 +1298,16 @@ font_desc_t* read_font_desc_ft
 //  fprintf(stderr, "fg: prepare t = %lf\n", GetTimer() - t);
     err = prepare_font
       (
-        desc,
-        face,
-        subtitle_font_ppem,
-        desc->face_cnt - 1,
-        charset_size,
-        my_charset,
-        my_charcodes,
-        unicode,
-        subtitle_font_thickness,
-        subtitle_font_radius
+        /*desc =*/ desc,
+        /*face =*/ face,
+        /*ppem =*/ subtitle_font_ppem,
+        /*pic_idx =*/ desc->face_cnt - 1,
+        /*charset_size =*/ charset_size,
+        /*charset =*/ my_charset,
+        /*charcodes =*/ my_charcodes,
+        /*unicode =*/ unicode,
+        /*thickness =*/ subtitle_font_thickness,
+        /*radius =*/ subtitle_font_radius
       );
     if (err)
       {
