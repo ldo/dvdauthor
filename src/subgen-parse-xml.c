@@ -208,6 +208,8 @@ void button_y0(const char *v)    { curbutton->r.y0  = strtounsigned(v, "button y
 void button_x1(const char *v)    { curbutton->r.x1  = strtounsigned(v, "button x1");   }
 void button_y1(const char *v)    { curbutton->r.y1  = strtounsigned(v, "button y1");   }
 
+/* fixme: can there be more than one <textsub> tag? If not, then put in checks to block it */
+
 void textsub_filename(const char *v)
 {
     filename = utf8tolocal(v); /* won't leak, because I won't be called more than once */
@@ -256,7 +258,7 @@ void textsub_complete()
   /* called on a </textsub> tag to load and parse the subtitles. */
   {
     unsigned long pts = 0;
-    subtitle *last_sub;
+    unsigned long subtitle_end;
     textsub_subtitle_type textsub_subtitle;
     if (filename == NULL)
       {
@@ -270,10 +272,10 @@ void textsub_complete()
             fprintf(stderr, "ERR: Couldn't load file %s.\n", filename);
             exit(1);
           } /*if*/
+        filename = NULL; /* belongs to textsub_subdata now */
         have_textsub = 1;
-        last_sub = &textsub_subs[textsub_subdata->sub_num - 1];
-          /* describes the file I just loaded */
-        for (pts = 0; pts < last_sub->end; pts++)
+        subtitle_end = textsub_subdata->subtitles[textsub_subdata->sub_num - 1].end;
+        for (pts = 0; pts < subtitle_end; pts++)
           {
           /* scan the entire duration of the <textsub> tag, and each time a new
             subtitle entry appears, append a description of it to the spus array */

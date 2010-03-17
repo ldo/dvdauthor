@@ -1682,7 +1682,7 @@ static void adjust_subs_time
 
 struct subreader { /* describes a subtitle format */
     subtitle * (*read)(FILE *fd, subtitle *dest); /* file reader routine */
-    void       (*post)(subtitle *dest); /* post-processor routine */
+    void       (*post)(subtitle *dest); /* optional post-processor routine */
     const char *name; /* descriptive name */
 };
 
@@ -1734,11 +1734,11 @@ sub_data *sub_read_file(const char *filename, float fps)
         int l, k;
         k = -1;
         l = strlen(filename);
-        if (l > 4) /* long enough to have an extension */
+        if (l > 4) /* long enough to have an extension */ /* fixme: one of them is 5 chars! */
           {
             const char * const exts[] = {".utf", ".utf8", ".utf-8"};
             for (k = 3; --k >= 0;)
-                if (!strcasecmp(filename+(l - strlen(exts[k])), exts[k]))
+                if (!strcasecmp(filename + (l - strlen(exts[k])), exts[k]))
                   {
                     sub_utf8 = 1;
                     break;
@@ -1828,7 +1828,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                   {
                     first[j + 1].text[i] = first[j].text[i];
                   } /*for*/
-                if (!j || (first[j - 1].start <= sub->start))
+                if (!j || first[j - 1].start <= sub->start)
                   {
                     first[j].start = sub->start;
                     first[j].end = sub->end;
@@ -1933,7 +1933,6 @@ sub_data *sub_read_file(const char *filename, float fps)
             local_end = global_start - 1;
             do
               {
-                int ls;
                 // here we find the beginning and the end of a new
                 // subtitle in the block
                 local_start = local_end + 1;
@@ -2104,6 +2103,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                     if (placeholder[counter][j] != -1)
                       {
                         int lines = first[placeholder[counter][j]].lines;
+                        int ls;
                         for (ls = 0; ls < lines; ++ls)
                           {
                             second[sub_num].text[i++] =
@@ -2748,10 +2748,9 @@ void sub_free(sub_data * subd)
       {
         for (i = 0; i < subd->subtitles->lines; i++)
             free(subd->subtitles->text[i]);
-        free(subd->subtitles);
       } /*if*/
-    if (subd->filename)
-        free((void *)subd->filename);
+    free(subd->subtitles);
+    free((void *)subd->filename);
     free(subd);
   } /*sub_free*/
 

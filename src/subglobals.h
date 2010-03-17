@@ -1,6 +1,6 @@
 #define SUB_MAX_TEXT 16 /* max nr lines of subtitles allowed */
 
-typedef struct {
+typedef struct { /* holds subtitle info to be displayed over a particular interval */
     int lines; /* length of text array */
     unsigned long start; /* start time for displaying subtitle */
     unsigned long end; /* end time for displaying subtitle */
@@ -9,8 +9,8 @@ typedef struct {
     int text_forced;
 } subtitle;
 
-typedef struct {
-    subtitle *subtitles; /* array [sub_num] */
+typedef struct { /* holds text and related information read from a subtitle file */
+    subtitle *subtitles; /* array [sub_num] */ /* succession of subtitles to be displayed */
     const char *filename;
     int sub_uses_time; /* true => start and end are in hundredths of a second; false => they are frame numbers */
     int sub_num;          // number of subtitle structs

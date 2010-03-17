@@ -284,11 +284,12 @@ static int check_font
           {
             glyph_index = FT_Get_Char_Index
               (
-                face,
-                uni_charmap ? /* fixme: wrong, because charunicode is meaningless if unicode */
-                    character
-                :
-                    charunicode
+                /*face =*/ face,
+                /*charcode =*/
+                    uni_charmap ? /* fixme: wrong, because charunicode is meaningless if unicode */
+                        character
+                    :
+                        charunicode
               );
             if (glyph_index == 0)
               {
@@ -657,10 +658,10 @@ void render_one_glyph(font_desc_t *desc, int c)
         return;
     if (desc->width[c] != -1) /* already rendered */
         return;
-    if (desc->font[c] == -1)
+    if (desc->font[c] == -1) /* can't render without a font face */
         return;
     glyph_index = desc->glyph_index[c];
-    // load glyph
+    // load glyph into the face's glyph slot
     error = FT_Load_Glyph(desc->faces[font], glyph_index, load_flags);
     if (error)
       {
@@ -670,7 +671,7 @@ void render_one_glyph(font_desc_t *desc, int c)
       } /*if*/
     slot = desc->faces[font]->glyph;
     // render glyph
-    if (slot->format != ft_glyph_format_bitmap)
+    if (slot->format != FT_GLYPH_FORMAT_BITMAP)
       {
       /* make it a bitmap */
         error = FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL);
@@ -803,14 +804,16 @@ static int prepare_font
     font_desc_t *desc,
     FT_Face face,
     float ppem,
-    int pic_idx, /* where in desc->faces to save face */
-    int charset_size,
-    const FT_ULong *charset,
+    int pic_idx, /* which entry in desc->faces to set up */
+    int charset_size, /* length of charset and charcodes arrays */
+    const FT_ULong *charset, /* character codes to get glyphs for */
     const FT_ULong *charcodes,
-    int unicode,
+      /* corresponding Unicode character codes, unless charset entries are already Unicode */
+    int unicode, /* whether charset entries are already Unicode */
     double thickness,
     double radius
   )
+  /* fills in parts of desc indexed by pic_idx  with face and related information. */
   {
     int i, err;
     const int padding = ceil(radius) + ceil(thickness);
@@ -862,6 +865,8 @@ static int generate_tables
     double thickness,
     double radius
   )
+  /* generates the tables used for anti-aliased compositing.
+    This is all a waste of time for DVD-Video subtitles. */
   {
     const int width = desc->max_height;
     const int height = desc->max_width;
@@ -886,7 +891,6 @@ static int generate_tables
       } /*if*/
     desc->tables.om = (unsigned *)malloc(desc->tables.o_w * desc->tables.o_w * sizeof(unsigned));
     desc->tables.omt = malloc(desc->tables.o_size * 256);
-    omtp = desc->tables.omt;
     desc->tables.tmp = malloc((width + 1) * height * sizeof(short));
     if (desc->tables.om == NULL || desc->tables.omt == NULL || desc->tables.tmp == NULL)
       {
@@ -902,7 +906,13 @@ static int generate_tables
             for (i = 0; i < desc->tables.g_w; ++i)
               {
                 desc->tables.g[i] = (unsigned)
-                    (exp(A * (i - desc->tables.g_r) * (i - desc->tables.g_r)) * volume_factor + .5);
+                    (
+                            exp(A * (i - desc->tables.g_r) * (i - desc->tables.g_r))
+                        *
+                            volume_factor
+                    +
+                        .5
+                    );
                 desc->tables.volume += desc->tables.g[i];
               } /*for*/
             if (desc->tables.volume > 256)
@@ -912,10 +922,15 @@ static int generate_tables
         for (i = 0; i < desc->tables.g_w; ++i)
           {
             desc->tables.g[i] = (unsigned)
-                (exp(A * (i - desc->tables.g_r) * (i - desc->tables.g_r)) * volume_factor + .5);
+                (
+                        exp(A * (i - desc->tables.g_r) * (i - desc->tables.g_r))
+                    *
+                        volume_factor
+                +
+                    .5
+                );
             desc->tables.volume += desc->tables.g[i];
           } /*for*/
-
         // gauss table:
         for (mx = 0; mx < desc->tables.g_w; mx++)
           {
@@ -931,11 +946,11 @@ static int generate_tables
         for (mx = 0; mx < desc->tables.o_w; ++mx)
           {
           // antialiased circle would be perfect here, but this one is good enough
-            double d =
+            const double d =
                     thickness
                 +
                     1
-                 -
+                -
                     sqrt
                       (
                             (mx - desc->tables.o_r) * (mx - desc->tables.o_r)
@@ -952,6 +967,7 @@ static int generate_tables
           } /*for*/
       } /*for*/
   // outline table:
+    omtp = desc->tables.omt;
     for (i = 0; i < 256; i++)
       {
         for (mx = 0; mx < desc->tables.o_size; mx++)
@@ -1039,10 +1055,10 @@ static int prepare_charset_unicode
   (
     FT_Face face,
     FT_ULong *charset,
-      /* filled in with all the character codes for which glyphs are defined in the font */
     FT_ULong *charcodes
       /* filled in with zeroes to the same length as charset */
   )
+  /* fills in charset with all the character codes for which glyphs are defined in the font. */
   {
 #ifdef HAVE_FREETYPE21
     FT_ULong charcode;
@@ -1155,12 +1171,14 @@ void free_font_desc(font_desc_t *desc)
   } /*free_font_desc*/
 
 static int load_sub_face(const char *name, FT_Face *face)
+  /* loads the font with the specified name and returns it in face. */
   {
     int err = -1;
     if (name)
         err = FT_New_Face(library, name, 0, face);
     if (err)
       {
+      /* fall back to sub_font */
         const char * const fontpath = get_config_path(sub_font);
         err = FT_New_Face(library, fontpath, 0, face);
         free((void *)fontpath);
@@ -1201,11 +1219,11 @@ int kerning(font_desc_t *desc, int prevc, int c)
         return 0;
     FT_Get_Kerning
       (
-        desc->faces[desc->font[c]],
-        desc->glyph_index[prevc],
-        desc->glyph_index[c],
-        ft_kerning_default,
-        &kern
+        /*face =*/ desc->faces[desc->font[c]],
+        /*left_glyph =*/ desc->glyph_index[prevc],
+        /*right_glyph =*/ desc->glyph_index[c],
+        /*kern_mode =*/ FT_KERNING_DEFAULT,
+        /*akerning =*/ &kern
       );
 //  fprintf(stderr, "kern: %c %c %d\n", prevc, c, f266ToInt(kern.x));
     return f266ToInt(kern.x);
@@ -1217,6 +1235,9 @@ font_desc_t* read_font_desc_ft
     int movie_width,
     int movie_height
   )
+  /* returns a font_desc_t structure that can be used to render glyphs with
+    the font loaded from the specified file to make subtitles for a movie
+    with the specified dimensions. */
   {
     font_desc_t *desc;
     FT_Face face;
@@ -1345,6 +1366,7 @@ skip_a_part:
   } /*read_font_desc_ft*/
 
 int init_freetype()
+ /* initializes the FreeType library. */
   {
     int err;
   /* initialize freetype */
@@ -1360,6 +1382,7 @@ int init_freetype()
   } /*init_freetype*/
 
 int done_freetype()
+  /* called when finished with the FreeType library. */
   {
     int err;
     if (!using_freetype)
@@ -1374,6 +1397,9 @@ int done_freetype()
   } /*done_freetype*/
 
 void load_font_ft(int width, int height)
+  /* sets up vo_font for rendering glyphs with the font loaded from the file
+    textsub_font_name to make subtitles for a movie with the specified width
+    and height. */
   {
     vo_image_width = width;
     vo_image_height = height;

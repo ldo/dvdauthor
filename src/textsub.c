@@ -102,7 +102,6 @@ float movie_fps=25.0;
 int movie_width=720;
 int movie_height=574;
 sub_data *textsub_subdata;
-subtitle *textsub_subs;
 subtitle *vo_sub;
 unsigned char *textsub_image_buffer;
 char *textsub_font_name;
@@ -115,7 +114,6 @@ int sub_max_bottom_font_height;
 
 static int sub_last;
 static int sub_num_of_subtitles;
-static char *img_name;
 
 sub_data * textsub_init
   (
@@ -124,11 +122,13 @@ sub_data * textsub_init
     float textsub_movie_width,
     float textsub_movie_height
   )
+  /* loads subtitles from textsub_filename and sets up structures for rendering
+    the text. */
   {
     const size_t image_buffer_size =
         sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width * 3;
     vo_sub = NULL;
-    textsub_font_name = NULL;
+    textsub_font_name = NULL; /* never set to any other value! */
     current_sub = -1;
     vo_font = NULL;
     sub_last = 1;
@@ -154,6 +154,7 @@ sub_data * textsub_init
         if (!strcmp(dvdsub_lang, ""))
             dvdsub_lang = NULL;
     textsub_image_buffer = malloc(image_buffer_size);
+      /* fixme: not freed from previous call! */
     if (textsub_image_buffer == NULL)
      {
         fprintf(stderr, "ERR: Failed to allocate memory\n");
@@ -161,10 +162,9 @@ sub_data * textsub_init
       } /*if*/
     memset(textsub_image_buffer, 128, image_buffer_size);
     textsub_subdata = sub_read_file(textsub_filename, textsub_movie_fps);
+      /* fixme: sub_free never called! */
     vo_update_osd(textsub_movie_width, textsub_movie_height);
     vo_osd_changed(OSDTYPE_SUBTITLE);
-    if (textsub_subdata != NULL)
-        textsub_subs = textsub_subdata->subtitles;
     return textsub_subdata;
   } /*textsub_init*/
 
@@ -219,7 +219,7 @@ void textsub_statistics()
 
 void textsub_finish()
   {
-	vo_finish_osd();
+    vo_finish_osd();
     free(textsub_image_buffer);
 #ifdef HAVE_FREETYPE
     free_font_desc(vo_font);
@@ -230,8 +230,10 @@ void textsub_finish()
 
 #ifdef TEXTSUB_DEBUG
 /* test program to save text rendering to a PNG file */
+/* this probably will not compile any more */
 
 static int framenum = 0;
+static char *img_name;
 
 struct pngdata {
     FILE * fp;
@@ -432,7 +434,7 @@ int main(int argc, char **argv)
   }
   if (argc==3)
     textsub_dump_file();
-  last_sub=(&textsub_subs[textsub_subdata->sub_num-1]);
+  last_sub=(&textsub_subdata->subtitles[textsub_subdata->sub_num-1]);
   for ( pts=0;pts<last_sub->end;pts++)
   {
     textsub_subtitle = textsub_find_sub(pts);

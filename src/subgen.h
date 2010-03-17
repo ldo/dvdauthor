@@ -47,7 +47,7 @@ typedef struct { /* representation of a menu button */
 typedef struct { /* representation of a subpicture and associated buttons */
     unsigned int x0, y0; /* top-left coords of pixels actually present */
     unsigned int xd, yd;
-    int spts, sd; // start pts, subtitle duration
+    int spts, sd; // start pts, subtitle duration in 90kHz clock units
     int forced;
     int numbuttons; /* nr entries in buttons */
     int numpal; /* nr entries used in masterpal */

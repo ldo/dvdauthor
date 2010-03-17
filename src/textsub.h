@@ -5,7 +5,6 @@ typedef struct /* return result from textsub_find_sub */
     int valid;
   } textsub_subtitle_type;
 
-extern subtitle *textsub_subs;
 extern sub_data *textsub_subdata;
 
 extern sub_data * textsub_init
