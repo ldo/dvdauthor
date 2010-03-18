@@ -22,7 +22,8 @@ for i in "$@"; do
 done
 
 if [ $help = 1 -o "x$WORKDIR" = "x" ]; then
-    echo "@PACKAGE_NAME@, version @PACKAGE_VERSION@.  Send bugs to <@PACKAGE_BUGREPORT@>"
+    echo "@PACKAGE_NAME@::dvddirdel, version @PACKAGE_VERSION@."
+    echo "Send bug reports to <@PACKAGE_BUGREPORT@>"
     echo "syntax: dvddirdel [-o DIR]"
     echo "        deletes a previously authored DVD directory structure in DIR"
     exit 1

@@ -110,7 +110,7 @@ char * strndup
 #define win32_setmode(x,y)
 #endif
 
-#define PACKAGE_HEADER(x) PACKAGE_NAME "::" x ", version " PACKAGE_VERSION ".\nBuild options:" BUILDSPEC "\nSend bugs to <" PACKAGE_BUGREPORT ">\n\n"
+#define PACKAGE_HEADER(x) PACKAGE_NAME "::" x ", version " PACKAGE_VERSION ".\nBuild options:" BUILDSPEC "\nSend bug reports to <" PACKAGE_BUGREPORT ">\n\n"
 
 #ifndef HAVE_FT2BUILD_H
 #define FT_FREETYPE_H <freetype/freetype.h>
