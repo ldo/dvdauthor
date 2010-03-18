@@ -1286,7 +1286,7 @@ subtitle *sub_read_line_jacosub(FILE * fd, subtitle * current)
                     if (!fgets(directive, LINE_LEN, fd))
                         return NULL;
                     trail_space(directive);
-                    strncat(line2, directive, (LINE_LEN > 511) ? LINE_LEN : 511);
+                    strncat(line2, directive, LINE_LEN);
                     break;
                   } /*if*/
           /* fallthrough */

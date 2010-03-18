@@ -178,6 +178,7 @@ textsub_subtitle_type textsub_find_sub(unsigned long text_sub_pts)
     textsub_subtitle_type result;
     result.valid = 0;
     result.start = -1;
+    result.end = -1;
     find_sub(textsub_subdata, text_sub_pts);
     if (vo_sub && current_sub != sub_last)
       {

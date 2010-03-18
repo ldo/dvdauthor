@@ -786,8 +786,9 @@ static void dump_pgcs(const ifo_handle_t *ifo, const pgcit_t *pgcs, const struct
                 case CELL_PROGRAM:
                     xmlNewProp(cellNode, (const xmlChar *)"program", (const xmlChar *)"1");
                 break;
-             /* case CELL_NEITHER:
-                    do nothing */
+                case CELL_NEITHER:
+                  /* do nothing */
+                break;
                   } /*switch*/
               /* add cell still time attribute */
                 if (cp->still_time)

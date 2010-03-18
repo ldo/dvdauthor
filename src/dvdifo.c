@@ -410,6 +410,10 @@ static int Create_PTT_SRPT(FILE *h, const struct pgcgroup *t)
                   /* fallthru */
                     case CELL_PROGRAM:
                         pgm++; /* keep right count for next chapter */
+                    break;
+                    case CELL_NEITHER:
+                      /* fine */
+                    break;
                       } /*switch*/
               } /*for; for*/
       } /*for*/
