@@ -246,9 +246,9 @@ inline static void vo_update_text_sub
               /* cancels out extra space left before first word of first line */
             linesleft--;
             text = (const unsigned char *)vo_sub->text[linedone++];
-            textlen = strlen((const char *)text) - 1;
+            textlen = strlen((const char *)text);
             wordlen = 0;
-            wordbuf = (int *)realloc(wordbuf, (textlen + 1) * sizeof(int));
+            wordbuf = (int *)realloc(wordbuf, textlen * sizeof(int));
             prevch = -1;
             osl = NULL;
             osl_tail = NULL;
