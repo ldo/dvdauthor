@@ -1,7 +1,8 @@
-0.6.15+ldo: ??
+0.6.18: 2010 March 18
     implement link-subset jumps
     implement audio and subpicture content attributes
     use dynamically-sized buffer for building IFO files
+    version jump to forestall fork confusion
 
 0.6.15-ldo: 2010 March 4
     consistently check for errors on all file opens and when creating output directories
