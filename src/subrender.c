@@ -1,3 +1,6 @@
+/*
+    Layout and rendering of subtitles for spumux
+*/
 /* Copyright (C) 2000 - 2003 various authors of the MPLAYER project
  * This module uses various parts of the MPLAYER project (http://www.mplayerhq.hu)
  * With many changes by Sjef van Gool (svangool@hotmail.com) November 2003
@@ -49,7 +52,7 @@ int force_load_font;
 
 static inline void vo_draw_alpha_rgb24
   (
-    int w,
+    int w, /* dimensions of area to copy */
     int h,
     const unsigned char * src, /* source luma */
     const unsigned char * srca, /* source alpha */
@@ -57,7 +60,7 @@ static inline void vo_draw_alpha_rgb24
     unsigned char * dstbase,
     int dststride
   )
-  /* composites pixels from monochrome src onto full-colour dstbase according to
+  /* composites pixels from monochrome src onto full-colour 24-bit dstbase according to
     transparency taken from srca. */
   {
     int y, i;
@@ -67,7 +70,7 @@ static inline void vo_draw_alpha_rgb24
         register int x;
         for (x = 0; x < w; x++)
           {
-            if (srca[x]) /* not fully transparent */
+            if (srca[x]) /* not fully opaque?? */
               {
                 dst[0] = (dst[0] * srca[x] >> 8) + src[x];
                 dst[1] = (dst[1] * srca[x] >> 8) + src[x];
@@ -77,8 +80,8 @@ static inline void vo_draw_alpha_rgb24
                 dst[2] = (src[x] >> 6) << 6; */
                 for (i = 0; i < 3; i++)
                   {
-                  /* quantize dst to just 3 component intensities: 1, 127 and 255,
-                    for 27 colour combinations in all */
+                  /* quantize dst to just 4 component intensities: 0, 1, 127 and 255,
+                    for 64 colour combinations in all */
                     if (dst[i])
                       {
                         if (dst[i] >= 170)
@@ -106,18 +109,18 @@ static inline void vo_draw_alpha_rgb24
 static void draw_alpha_buf
   (
     mp_osd_obj_t * obj,
-    int x0,
+    int x0, /* origin in destination buffer to copy to */
     int y0,
-    int w,
+    int w, /* dimensions of area to copy */
     int h,
     const unsigned char * src, /* source luma */
     const unsigned char * srca, /* source alpha */
-    int stride
+    int stride /* of source */
   )
   {
     int dststride = obj->stride;
-    int dstskip = obj->stride-w;
-    int srcskip = stride-w;
+    int dstskip = obj->stride - w;
+    int srcskip = stride - w;
     int i, j;
     unsigned char * b = obj->bitmap_buffer + (y0 - obj->bbox.y1) * dststride + (x0 - obj->bbox.x1);
     unsigned char * a = obj->alpha_buffer + (y0 - obj->bbox.y1) * dststride + (x0 - obj->bbox.x1);
@@ -432,7 +435,12 @@ inline static void vo_update_text_sub
                         struct osd_text_line *rebalance_line = NULL;
                           /* if non-null, then word at end of this line should be moved to
                             following line */
-                        for (this_display_line = otp_new; this_display_line->next != NULL; this_display_line = this_display_line->next)
+                        for
+                          (
+                            this_display_line = otp_new;
+                            this_display_line->next != NULL;
+                            this_display_line = this_display_line->next
+                          )
                           {
                             struct osd_text_line *next_display_line = this_display_line->next;
                             struct osd_text_word *prev_word;
@@ -464,8 +472,18 @@ inline static void vo_update_text_sub
                                 prev_line_width = this_display_line->linewidth;
                                 cur_line_width = next_display_line->linewidth;
                               /* temporary change to line widths to see effect of new layout */
-                                this_display_line->linewidth = prev_line_width - prev_word->osd_length - prev_word->osd_kerning;
-                                next_display_line->linewidth = cur_line_width + prev_word->osd_length + next_display_line->words->osd_kerning;
+                                this_display_line->linewidth =
+                                        prev_line_width
+                                    -
+                                        prev_word->osd_length
+                                    -
+                                        prev_word->osd_kerning;
+                                next_display_line->linewidth =
+                                        cur_line_width
+                                    +
+                                        prev_word->osd_length
+                                    +
+                                        next_display_line->words->osd_kerning;
                                 new_variation = 0;
                                 for
                                   (
@@ -477,7 +495,13 @@ inline static void vo_update_text_sub
                                     next_display_line = that_display_line->next;
                                     while (next_display_line != NULL)
                                       {
-                                        new_variation += abs(that_display_line->linewidth - next_display_line->linewidth);
+                                        new_variation +=
+                                            abs
+                                              (
+                                                    that_display_line->linewidth
+                                                -
+                                                    next_display_line->linewidth
+                                              );
                                         next_display_line = next_display_line->next;
                                       } /*while*/
                                   } /*for*/

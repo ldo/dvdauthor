@@ -78,6 +78,9 @@
 
 #ifdef HAVE_FRIBIDI
 #define BUILDSPEC_FRIBIDI " fribidi"
+#ifndef HAVE_FRIBIDI2
+#define FriBidiParType FriBidiCharType
+#endif
 #else
 #define BUILDSPEC_FRIBIDI ""
 #endif

@@ -1,5 +1,5 @@
 /*
-    Reading of subtitle files
+    Reading of subtitle files for spumux
 */
 /* Copyright (C) 2000 - 2003 various authors of the MPLAYER project
  * This module uses various parts of the MPLAYER project (http://www.mplayerhq.hu)
@@ -49,7 +49,7 @@
 
 #ifdef HAVE_FRIBIDI
 #include <fribidi/fribidi.h>
-static char *fribidi_charset = NULL;
+static char *fribidi_charset = NULL; /* never set to anything else! */
 static int flip_hebrew = 1;
   /* used to control whether sub_fribidi does anything; but never set to any other value anywhere */
 #endif
@@ -1425,7 +1425,7 @@ int sub_autodetect(FILE *fd, int *uses_time)
   } /*sub_autodetect*/
 
 #ifdef HAVE_ICONV
-static iconv_t icdsc = (iconv_t)(-1);
+static iconv_t icdsc = (iconv_t)(-1); /* for converting subtitle text encoding to UTF-8 */
 
 void subcp_open(void)
   /* opens an iconv context for converting subtitles from sub_cp to UTF-8 if appropriate. */
@@ -1457,7 +1457,7 @@ void subcp_close(void)
 #define ICBUFFSIZE 512
 static char icbuffer[ICBUFFSIZE];
 
-subtitle* subcp_recode(subtitle *sub)
+static subtitle* subcp_recode(subtitle *sub)
   /* converts the subtitle text from the sub_cp encoding to UTF-8. */
   {
     int l = sub->lines;
@@ -1503,7 +1503,7 @@ subtitle* subcp_recode(subtitle *sub)
   } /*subcp_recode*/
 
 // for demux_ogg.c:
-subtitle *subcp_recode1(subtitle *sub) /* not used anywhere */
+static subtitle *subcp_recode1(subtitle *sub) /* not used anywhere */
   {
     int l = sub->lines;
     size_t ileft, oleft;
@@ -1532,11 +1532,12 @@ subtitle *subcp_recode1(subtitle *sub) /* not used anywhere */
 #define max(a,b)  (((a)>(b))?(a):(b))
 #endif
 subtitle *sub_fribidi(subtitle *sub, int sub_utf8)
-  /* reorders glyphs as necessary so right-to-left text will be displayed in the right order. */
+  /* reorders character codes as necessary so right-to-left text will come out
+    in the correct order when rendered left-to-right. */
   {
     FriBidiChar logical[LINE_LEN + 1], visual[LINE_LEN + 1]; // Hopefully these two won't smash the stack
     char *ip = NULL, *op = NULL;
-    FriBidiCharType base;
+    FriBidiParType base;
     size_t len, orig_len;
     int l = sub->lines;
     int char_set_num;
@@ -1545,10 +1546,11 @@ subtitle *sub_fribidi(subtitle *sub, int sub_utf8)
       {
         fribidi_set_mirroring(1);
         fribidi_set_reorder_nsm(0);
-        if (sub_utf8 == 0)
+        if (sub_utf8 == 0) /* will only happen if I don't have iconv */
           {
             char_set_num = fribidi_parse_charset(fribidi_charset ? fribidi_charset : "ISO8859-8");
-              /* fixme: default to locale? */
+              /* should this be more general than just Hebrew? How about Arabic?
+                Depend on locale? */
           }
         else
           {
@@ -1567,7 +1569,7 @@ subtitle *sub_fribidi(subtitle *sub, int sub_utf8)
               } /*if*/
             len = fribidi_charset_to_unicode(char_set_num, ip, len, logical);
               /* fixme: how do I know it will fit? */
-            base = FRIBIDI_TYPE_ON;
+            base = FRIBIDI_TYPE_ON; /* request order-neutral */
             log2vis = fribidi_log2vis
               (
                 /*str =*/ logical, /* input logical string */
@@ -1580,11 +1582,18 @@ subtitle *sub_fribidi(subtitle *sub, int sub_utf8)
                   /* output mapping from visual string back to the logical string positions */
                 /*embedding_levels =*/ NULL /* output list of embedding levels */
               );
-              /* result is maximum level found plus one, or zero if any error occured */
+              /* result is maximum level found plus one, or zero if any error occurred */
               /* Note this function is deprecated because it only handles one-line paragraphs */
             if (log2vis)
               {
-                len = fribidi_remove_bidi_marks(visual, len, NULL, NULL, NULL);
+                len = fribidi_remove_bidi_marks
+                  (
+                    /*str =*/ visual,
+                    /*len =*/ len,
+                    /*positions_to_this =*/ NULL,
+                    /*positions_from_this_list =*/ NULL,
+                    /*embedding_levels =*/ NULL
+                  );
                 op = (char*)malloc(sizeof(char) * (max(2 * orig_len, 2 * len) + 1));
                 if (op == NULL)
                   {
@@ -1619,44 +1628,49 @@ static void adjust_subs_time
     int sub_num,
     int sub_uses_time
   )
+  /* adjusts for overlapping subtitle durations, and also for sub_fps if specified. */
   {
-    int n, m;
+    int nradjusted, adjusted;
     subtitle* nextsub;
     int i = sub_num;
-    unsigned long subfms = (sub_uses_time ? 100 : fps) * subtime;
-    unsigned long overlap = (sub_uses_time ? 100 : fps) / 5; // 0.2s
-    n = m = 0;
+    unsigned long const subfms = (sub_uses_time ? 100 : fps) * subtime;
+    unsigned long const short_overlap = (sub_uses_time ? 100 : fps) / 5; // 0.2s
+    nradjusted = 0;
     if (i)
         for (;;)
           {
+            adjusted = 0; /* to begin with */
             if (sub->end <= sub->start)
               {
                 sub->end = sub->start + subfms;
-                m++;
-                n++;
+                adjusted++;
+                nradjusted++;
               } /*if*/
             if (!--i)
-                break;
+                break; /* no nextsub */
             nextsub = sub + 1;
             if (block)
               {
-                if (sub->end > nextsub->start && sub->end <= nextsub->start + overlap)
+                if (sub->end > nextsub->start && sub->end <= nextsub->start + short_overlap)
                   {
                     // these subtitles overlap for less than 0.2 seconds
                     // and would result in very short overlapping subtitle
                     // so let's fix the problem here, before overlapping code
                     // get its hands on them
-                    unsigned delta = sub->end - nextsub->start, half = delta / 2;
+                    const unsigned delta = sub->end - nextsub->start, half = delta / 2;
+                  /* remove the overlap by splitting the difference */
                     sub->end -= half + 1;
                     nextsub->start += delta - half;
                   } /*if*/
                 if (sub->end >= nextsub->start)
                   {
+                  /* either exact abut, or overlap by more than short_overlap */
                     sub->end = nextsub->start - 1;
                     if (sub->end - sub->start > subfms)
                         sub->end = sub->start + subfms;
-                    if (!m)
-                        n++;
+                          /* maximum subtitle duration -- why? */
+                    if (!adjusted)
+                        nradjusted++;
                   } /*if*/
               } /*if*/
             /* Theory:
@@ -1674,10 +1688,9 @@ static void adjust_subs_time
                 sub->end *= sub_fps / fps;
               } /*if*/
             sub = nextsub;
-            m = 0;
           } /*for; if*/
-    if (n)
-        fprintf(stderr, "INFO: Adjusted %d subtitle(s).\n", n);
+    if (nradjusted != 0)
+        fprintf(stderr, "INFO: Adjusted %d subtitle(s).\n", nradjusted);
   } /*adjust_subs_time*/
 
 struct subreader { /* describes a subtitle format */
@@ -1687,6 +1700,12 @@ struct subreader { /* describes a subtitle format */
 };
 
 sub_data *sub_read_file(const char *filename, float fps)
+  /* parses the contents of filename, auto-recognizing the subtitle file format,
+    and returns the result. The subtitles will be translated from the sub_cp
+    character set to Unicode if specified, unless the file name ends in ".utf",
+    ".utf8" or ".utf-8" (case-insensitive), in which case they will be assumed
+    to already be in UTF-8. fps is the movie frame rate, needed for subtitle
+    formats which specify fractional-second durations in frames. */
   {
     //filename is assumed to be malloc'ed, free() is used in sub_free()
     FILE *fd;
@@ -1729,16 +1748,18 @@ sub_data *sub_read_file(const char *filename, float fps)
     fprintf(stderr, "INFO: Detected subtitle file format: %s\n", srp->name);
     rewind(fd);
 #ifdef HAVE_ICONV
-    sub_utf8_prev = sub_utf8;
+    sub_utf8_prev = sub_utf8; /* for restoration in case of failure to allocate "first" array */
       {
         int l, k;
         k = -1;
         l = strlen(filename);
-        if (l > 4) /* long enough to have an extension */ /* fixme: one of them is 5 chars! */
+        if (l > 4) /* long enough to have an extension */
           {
             const char * const exts[] = {".utf", ".utf8", ".utf-8"};
+              /* if filename ends with one of these extensions, then its contents
+                are assumed to be in UTF-8 encoding, and sub_cp is ignored */
             for (k = 3; --k >= 0;)
-                if (!strcasecmp(filename + (l - strlen(exts[k])), exts[k]))
+                if (l > strlen(exts[k]) && !strcasecmp(filename + (l - strlen(exts[k])), exts[k]))
                   {
                     sub_utf8 = 1;
                     break;
@@ -1780,7 +1801,7 @@ sub_data *sub_read_file(const char *filename, float fps)
         if (!sub)
             break;   // EOF
 #ifdef HAVE_ICONV
-        if (sub != ERR && (sub_utf8 & 2))
+        if (sub != ERR && (sub_utf8 & 2)) /* decode through iconv context if opened */
             sub = subcp_recode(sub);
 #endif
 #ifdef HAVE_FRIBIDI
@@ -1918,8 +1939,8 @@ sub_data *sub_read_file(const char *filename, float fps)
               } /*while*/
             // we need a structure to keep trace of the screen lines
             // used by the subs, a 'placeholder'
-            counter = 2 * sub_to_add + 1;  // the maximum number of subs derived
-                                           // from a block of sub_to_add + 1 subs
+            counter = 2 * sub_to_add + 1;
+              // the maximum number of subs derived from a block of sub_to_add + 1 subs
             placeholder = (int **)malloc(sizeof(int *) * counter);
             for (i = 0; i < counter; ++i)
               {
@@ -2486,7 +2507,7 @@ void list_sub_file(const sub_data * subd)
     const subtitle * const subs = subd->subtitles;
     for (j = 0; j < subd->sub_num; j++)
       {
-        const subtitle * const egysub=&subs[j];
+        const subtitle * const egysub = &subs[j];
         fprintf(stdout, "%i line%c (%li-%li)\n",
             egysub->lines,
             1 == egysub->lines ? ' ' : 's',
@@ -2498,7 +2519,7 @@ void list_sub_file(const sub_data * subd)
           } /*for*/
         fprintf(stdout, "\n");
       } /*for*/
-    fprintf(stdout, "Subtitle format %s time.\n", subd->sub_uses_time ? "uses":"doesn't use");
+    fprintf(stdout, "Subtitle format %s time.\n", subd->sub_uses_time ? "uses" : "doesn't use");
     fprintf(stdout, "Read %i subtitles, %i errors.\n", subd->sub_num, subd->sub_errs);
   } /*list_sub_file*/
 

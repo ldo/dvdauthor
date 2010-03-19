@@ -25,7 +25,6 @@
 #define MAX_SUBTITLE_FILES 128
 
 sub_data* sub_read_file (const char *filename, float pts);
-subtitle* subcp_recode1 (subtitle *sub);
 void subcp_open (void); /* for demux_ogg.c */
 void subcp_close (void); /* for demux_ogg.c */
 char ** sub_filenames(const char *path, const char *fname);

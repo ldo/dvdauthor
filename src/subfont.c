@@ -60,10 +60,10 @@
 static int vo_image_width = 0;
 static int vo_image_height = 0;
 static int using_freetype = 0;
-static char *subtitle_font_encoding = NULL;
+static char *subtitle_font_encoding = NULL; /* never set to any other value! */
 
 //// constants
-static unsigned int const colors = 256;
+static unsigned int const nr_colors = 256;
 static unsigned int const maxcolor = 255;
 static unsigned const base = 256;
 static unsigned const first_char = 33; /* first non-printable, non-whitespace character */
@@ -338,7 +338,7 @@ static int check_font
     pic_b->current_count = 0;
     pic_b->w = width;
     pic_b->h = height;
-    pic_b->c = colors;
+    pic_b->c = nr_colors;
     pic_b->bmp = NULL;
     pic_b->pen = 0;
     return 0;
@@ -853,7 +853,7 @@ static int prepare_font
 //  fprintf(stderr, "fg: render t = %lf\n", GetTimer() - t);
     pic_a->w = pic_b->w;
     pic_a->h = pic_b->h;
-    pic_a->c = colors;
+    pic_a->c = nr_colors;
     pic_a->bmp = NULL;
 //  fprintf(stderr, "fg: w = %d, h = %d\n", pic_a->w, pic_a->h);
     return 0;

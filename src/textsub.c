@@ -1,3 +1,6 @@
+/*
+    Top-level loading and rendering of subtitle files for spumux
+*/
 /* Copyright (C) 2003 Sjef van Gool (svangool@hotmail.com)
  *
  * This module uses various parts of the MPLAYER project (http://www.mplayerhq.hu)
@@ -63,11 +66,14 @@ int suboverlap_enabled=1;
 /* suboverlap_enabled (int) indicates overlap if the user forced it (suboverlap_enabled == 2) or
    the user didn't forced no-overlapsub and the format is Jacosub or Ssa.
    this is because usually overlapping subtitles are found in these formats,
-   while in others they are probably result of bad timing (set by subtile file type if initialized on 1)*/
-int sub_utf8=0;
-/* sub_utf8 (int) is a flag which indicates the characterset encoding: 0=initial 1=utf8 dictated by filename
-   extension ".utf", ".utf8" or "utf-8" or 2: set by sub_cp being validated is a valid ICONV "from character-set"
-   (set by filename or valid sub_cp when initialized on 0) */
+   while in others they are probably result of bad timing (set by subtile file type if
+   initialized on 1) */
+ /* never set to any other value */
+int sub_utf8 = 0;
+/* sub_utf8 (int) is a flag which indicates the characterset encoding: 0=initial 1=utf8
+  dictated by filename extension ".utf", ".utf8" or "utf-8" or 2: set by sub_cp being
+  validated is a valid ICONV "from character-set" (set by filename or valid sub_cp
+  when initialized on 0) */
 float font_factor=0.75;
 int verbose=0;
 float osd_font_scale_factor = 6.0;
@@ -83,8 +89,10 @@ int sub_justify=1;
  *
  * 23-04-05   Added the text_forceit default value (by Pierre Dumuid)
  * --------------------------------------------------*/
-char* sub_cp="ISO8859-1";    /* sub_cp (char) contains "from character-set" for ICONV like ISO8859-1 and UTF-8, */
-                          /* "to character-set" is set to UTF-8 (optional user parameter, NULL for non-applicable)*/
+char* sub_cp = "ISO8859-1";
+  /* sub_cp (char) contains "from character-set" for ICONV like ISO8859-1 and UTF-8, */
+  /* "to character-set" is set to UTF-8 (optional user parameter, NULL for non-applicable)*/
+  /* fixme: get default from locale? */
 float text_font_scale_factor = 28.0; /* font size in font units */
 int text_forceit = 0;     /* Forcing of the subtitles */
 int h_sub_alignment = H_SUB_ALIGNMENT_LEFT;  /* Horizontal alignment 0=center, 1=left, 2=right, 4=subtitle default */
