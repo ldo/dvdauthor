@@ -3,8 +3,8 @@
 # Create distribution source tarball from repository source tree.
 #
 # Execute this script with the working directory set to the top of
-# the dvdauthor source tree, and it will create dvdauthor.tar.gz in
-# the parent directory.
+# the dvdauthor source tree, and it will create
+# dvdauthor-$PACKAGE_VERSION.tar.gz in the parent directory.
 #
 # Created by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 #-
@@ -18,11 +18,12 @@ rm -rf .git
 (cd src; bison -o dvdvmy.c -d -p dvdvm dvdvmy.y)
 (cd doc; docbook2man root.sgml)
 rm -rf autom4te.cache src/.deps
+eval $(grep PACKAGE_VERSION= configure)
 rm doc/manpage.links doc/manpage.refs
 rm doc/*.sgml doc/html.dsl
 sed -i '/\.\/bootstrap/d' INSTALL
 rm bootstrap make-dist
 cd ..
-tar czhvf ../dvdauthor.tar.gz dvdauthor/
+tar czhvf ../dvdauthor-$PACKAGE_VERSION.tar.gz dvdauthor/
 cd ..
 rm -rf $dstdir/
