@@ -1,5 +1,7 @@
 0.6.18+: ??
     Reworked subtitle file reading so it can now deal with encodings like UTF-16
+    Default encoding for subtitle files is no longer ISO-8859-1, but taken from
+        user's locale
 
 0.6.18: 2010 March 18
     implement link-subset jumps
