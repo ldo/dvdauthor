@@ -795,6 +795,7 @@ int main(int argc,char **argv)
     unsigned char psbuf[psbufs], ncnt;
     int optch;
 
+    init_locale();
     newsti = 0;
     mode = 0; /* default DVD */
     sub = malloc(SUB_BUFFER_MAX + SUB_BUFFER_HEADROOM);

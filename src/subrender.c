@@ -264,7 +264,7 @@ inline static void vo_update_text_sub
                 if (chindex < textlen)
                   {
                     curch = text[chindex];
-                    if (curch >= 0x80 && sub_utf8)
+                    if (curch >= 0x80)
                       {
                       /* fixme: no checking for chindex going out of range */
                         if ((curch & 0xe0) == 0xc0)    /* 2 bytes U+00080..U+0007FF*/

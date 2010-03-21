@@ -404,6 +404,8 @@ int main(int argc,char **argv)
         {"allgprm",0,0,'g'},
         {0,0,0,0}
     };
+
+    init_locale();
 #define GETOPTFUNC(x,y,z) getopt_long(x,y,"-" z,longopts,NULL)
 #else
 #define GETOPTFUNC(x,y,z) getopt(x,y,z)

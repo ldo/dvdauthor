@@ -227,9 +227,9 @@ static iconv_t get_conv()
   /* returns a reusable iconv_t object (allocated on the first call)
     for converting strings from UTF-8 to the current locale encoding. */
 {
-    static iconv_t ic=(iconv_t)-1; /* initially unallocated */
+    static iconv_t ic=ICONV_NULL; /* initially unallocated */
 
-    if( ic==((iconv_t)-1) ) {
+    if( ic==ICONV_NULL ) {
       /* first call */
         char *enc;
 
@@ -246,7 +246,7 @@ static iconv_t get_conv()
         enc=nl_langinfo(CODESET);
         fprintf(stderr,"INFO: Converting filenames to %s\n",enc);
         ic=iconv_open(enc,"UTF-8");
-        if( ic==((iconv_t)-1) ) {
+        if( ic==ICONV_NULL ) {
             fprintf(stderr,"ERR:  Cannot generate charset conversion from UTF8 to %s\n",enc);
             exit(1);
         }

@@ -1,5 +1,6 @@
 /*
-    Lowest-level interface to FreeType font rendering
+    Lowest-level interface to FreeType font rendering. Assumes all text
+    to be rendered is UTF-8-encoded.
 */
 /* Copyright (C) 2000 - 2003 various authors of the MPLAYER project
  * This module uses various parts of the MPLAYER project (http://www.mplayerhq.hu)
@@ -41,10 +42,6 @@
 
 #include <math.h>
 
-#ifdef HAVE_ICONV
-#include <iconv.h>
-#endif
-
 #include <netinet/in.h>
 
 #include "subconfig.h"
@@ -60,7 +57,6 @@
 static int vo_image_width = 0;
 static int vo_image_height = 0;
 static int using_freetype = 0;
-static char *subtitle_font_encoding = NULL; /* never set to any other value! */
 
 //// constants
 static unsigned int const nr_colors = 256;
@@ -188,11 +184,8 @@ static int check_font
     float ppem,
     int padding,
     int pic_idx, /* which face to select from desc->faces */
-    int charset_size, /* length of charset and charcodes arrays */
-    const FT_ULong *charset, /* character codes to get glyphs for */
-    const FT_ULong *charcodes,
-      /* corresponding Unicode character codes, unless charset entries are already Unicode */
-    int unicode /* whether charset entries are already Unicode */
+    int charset_size, /* length of charset array */
+    const FT_ULong *charset /* character codes to get glyphs for */
   )
   /* computes various information about the specified font and puts it into desc. */
   {
@@ -274,34 +267,24 @@ static int check_font
     for (i = 0; i < charset_size; ++i)
       {
         const FT_ULong character = charset[i];
-        const FT_ULong charunicode = charcodes[i];
         FT_UInt glyph_index;
-        desc->font[unicode ? character : charunicode] = pic_idx;
+        desc->font[character] = pic_idx;
         // get glyph index
         if (character == 0)
             glyph_index = 0;
         else
           {
-            glyph_index = FT_Get_Char_Index
-              (
-                /*face =*/ face,
-                /*charcode =*/
-                    uni_charmap ? /* fixme: wrong, because charunicode is meaningless if unicode */
-                        character
-                    :
-                        charunicode
-              );
+            glyph_index = FT_Get_Char_Index(face, character);
             if (glyph_index == 0)
               {
-                WARNING("Glyph for char 0x%02x|U+%04X|%c not found.",
-                    (unsigned int)charunicode,
+                WARNING("Glyph for char U+%04X|%c not found.",
                     (unsigned int)character,
-                    charunicode < ' ' || charunicode > 255 ? '.' : (unsigned int)charunicode);
-                desc->font[unicode ? character : charunicode] = -1;
+                    character < ' ' || character > 255 ? '.' : (unsigned int)character);
+                desc->font[character] = -1;
                 continue;
               } /*if*/
           } /*if*/
-        desc->glyph_index[unicode ? character : charunicode] = glyph_index;
+        desc->glyph_index[character] = glyph_index;
       } /*for*/
 //  fprintf(stderr, "font height: %lf\n", (double)(face->bbox.yMax - face->bbox.yMin) / (double)face->units_per_EM * ppem);
 //  fprintf(stderr, "font width: %lf\n", (double)(face->bbox.xMax - face->bbox.xMin)/(double)face - >units_per_EM * ppem);
@@ -805,11 +788,8 @@ static int prepare_font
     FT_Face face,
     float ppem,
     int pic_idx, /* which entry in desc->faces to set up */
-    int charset_size, /* length of charset and charcodes arrays */
+    int charset_size, /* length of charset array */
     const FT_ULong *charset, /* character codes to get glyphs for */
-    const FT_ULong *charcodes,
-      /* corresponding Unicode character codes, unless charset entries are already Unicode */
-    int unicode, /* whether charset entries are already Unicode */
     double thickness,
     double radius
   )
@@ -845,7 +825,7 @@ static int prepare_font
     for (i = 0; i < 768; ++i)
         pic_b->pal[i] = i / 3; /* fill with greyscale ramp */
 //  ttime = GetTimer();
-    err = check_font(desc, ppem, padding, pic_idx, charset_size, charset, charcodes, unicode);
+    err = check_font(desc, ppem, padding, pic_idx, charset_size, charset);
 //  ttime = GetTimer() - ttime;
 //  printf("render:   %7lf us\n", ttime);
     if (err)
@@ -976,87 +956,10 @@ static int generate_tables
     return 0;
   } /*generate_tables*/
 
-/* decode from 'encoding' to unicode */
-static FT_ULong decode_char(const iconv_t *cd, char c)
-  {
-    FT_ULong o;
-    char *inbuf = &c;
-    char *outbuf = (char*)&o;
-    size_t inbytesleft = 1;
-    size_t outbytesleft = sizeof(FT_ULong);
-    iconv(*cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
-    o = ntohl(o);
-    // if (count == -1) o = 0; // not OK, at least my iconv() returns E2BIG for all
-    if (outbytesleft != 0)
-        o = 0;
-  /* we don't want control characters */
-    if (o >= 0x7f && o < 0xa0)
-        o = 0;
-    return o;
-  } /*decode_char*/
-
-static int prepare_charset
-  (
-    const char *charmap, /* destination encoding, actually always UCS-4 */
-    const char *encoding, /* source encoding, must be 8-bit */
-    FT_ULong *charset, /* array [256 - first_char], filled in with [33 .. 255] */
-    FT_ULong *charcodes
-      /* array [256 - first_char], translation of corresponding charset codes from
-        charmap to encoding */
-  )
-  /* fills in charset with the values [33 .. 255] in sequence, and charcodes with
-    the corresponding character codes when translating these from encoding to charmap. */
-  {
-    FT_ULong i;
-    int count = 0;
-    int charset_size;
-    iconv_t cd;
-    // check if ucs-4 is available
-    cd = iconv_open(charmap, charmap);
-    if (cd == (iconv_t)-1)
-      {
-        fprintf(stderr,"ERR: Iconv doesn't know %s encoding. Use the source!\n", charmap);
-        return -1;
-      } /*if*/
-    iconv_close(cd);
-    cd = iconv_open(charmap, encoding);
-    if (cd == (iconv_t)-1)
-      {
-        fprintf
-          (
-            stderr,
-            "ERR: Unsupported encoding `%s', use iconv --list to list"
-                " character sets known on your system.\n",
-            encoding
-          );
-        return -1;
-      } /*if*/
-    charset_size = 256 - first_char;
-    for (i = 0; i < charset_size; ++i)
-      {
-        charcodes[count] = i + first_char;
-        charset[count] = decode_char(&cd, i + first_char);
-        if (charset[count] != 0)
-            ++count;
-      } /*for*/
-    charcodes[count] = charset[count] = 0;
-    ++count;
-    charset_size = count;
-    iconv_close(cd);
-    if (charset_size == 0)
-      {
-        fprintf(stderr, "ERR: No characters to render!\n");
-        return -1;
-      } /*if*/
-    return charset_size;
-  } /*prepare_charset*/
-
 static int prepare_charset_unicode
   (
     FT_Face face,
-    FT_ULong *charset,
-    FT_ULong *charcodes
-      /* filled in with zeroes to the same length as charset */
+    FT_ULong *charset
   )
   /* fills in charset with all the character codes for which glyphs are defined in the font. */
   {
@@ -1080,7 +983,6 @@ static int prepare_charset_unicode
         if (charcode < 65536 && charcode >= 33) // sanity check
           {
             charset[i] = charcode;
-            charcodes[i] = 0;
             i++;
           } /*if*/
         charcode = FT_Get_Next_Char(face, charcode, &gindex);
@@ -1094,7 +996,6 @@ static int prepare_charset_unicode
         if (gindex > 0)
           {
             charset[i] = j;
-            charcodes[i] = 0;
             i++;
           } /*if*/
       } /*for*/
@@ -1242,7 +1143,6 @@ font_desc_t* read_font_desc_ft
     font_desc_t *desc;
     FT_Face face;
     FT_ULong my_charset[MAX_CHARSET_SIZE]; /* characters we want to render; Unicode */
-    FT_ULong my_charcodes[MAX_CHARSET_SIZE]; /* character codes in 'encoding' */
     const char * const charmap = "ucs-4";
     int err;
     int charset_size;
@@ -1277,10 +1177,6 @@ font_desc_t* read_font_desc_ft
         subtitle_font_ppem = 128;
     if (osd_font_ppem > 128)
         osd_font_ppem = 128;
-    unicode =
-            subtitle_font_encoding == NULL
-        ||
-            strcasecmp(subtitle_font_encoding, "unicode") == 0;
     desc = init_font_desc();
     if (!desc)
         return NULL;
@@ -1293,26 +1189,10 @@ font_desc_t* read_font_desc_ft
         goto skip_a_part;
       } /*if*/
     desc->face_cnt++; /* will always be 1, since I just created desc */
-    if (unicode)
-      {
-        charset_size = prepare_charset_unicode(face, my_charset, my_charcodes);
-      }
-    else
-      {
-        charset_size = prepare_charset
-          (
-            charmap, /* always UCS-4 */
-            subtitle_font_encoding != NULL ?
-                subtitle_font_encoding
-            :
-                "iso-8859-1" /* fixme: use locale default? */,
-            my_charset,
-            my_charcodes
-          );
-      } /*if*/
+    charset_size = prepare_charset_unicode(face, my_charset);
     if (charset_size < 0)
       {
-        fprintf(stderr, "ERR: subtitle font: prepare_charset failed.\n");
+        fprintf(stderr, "ERR: subtitle font: prepare_charset_unicode failed.\n");
         free_font_desc(desc);
         return NULL;
       } /*if*/
@@ -1325,8 +1205,6 @@ font_desc_t* read_font_desc_ft
         /*pic_idx =*/ desc->face_cnt - 1,
         /*charset_size =*/ charset_size,
         /*charset =*/ my_charset,
-        /*charcodes =*/ my_charcodes,
-        /*unicode =*/ unicode,
         /*thickness =*/ subtitle_font_thickness,
         /*radius =*/ subtitle_font_radius
       );

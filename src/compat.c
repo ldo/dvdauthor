@@ -6,6 +6,77 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <assert.h>
+#include <locale.h>
+#include <langinfo.h>
+
+#ifdef HAVE_ICONV
+
+const char *
+    default_charset;
+static char
+    default_charset_buf[32]; /* big enough? */
+static iconv_t
+    from_locale = ICONV_NULL;
+
+#endif /*HAVE_ICONV*/
+
+void init_locale()
+  /* does locale initialization and obtains the default character set. */
+  {
+#ifdef HAVE_ICONV
+    setlocale(LC_ALL, "");
+    strncpy(default_charset_buf, nl_langinfo(CODESET), sizeof default_charset_buf - 1);
+    default_charset_buf[sizeof default_charset_buf - 1] = 0;
+    default_charset = default_charset_buf;
+    // fprintf(stderr, "INFO: default codeset is \"%s\"\n", default_charset); /* debug */
+#else
+    // fprintf(stderr, "INFO: all text will be interpreted as UTF-8\n"); /* debug */
+#endif /*HAVE_ICONV*/
+  } /*init_locale*/
+
+char * locale_decode
+  (
+    const char * localestr
+  )
+  /* allocates and returns a string containing the UTF-8 representation of
+    localestr interpreted according to the user's locale settings. */
+  {
+    char * result;
+#ifdef HAVE_ICONV
+    size_t inlen, outlen;
+    char * resultnext;
+    if (from_locale == ICONV_NULL)
+      {
+        from_locale = iconv_open("UTF-8", default_charset);
+        if (from_locale == ICONV_NULL)
+          {
+            fprintf(stderr, "ERR:  Cannot convert from charset \"%s\" to UTF-8\n", default_charset);
+            exit(1);
+          } /*if*/
+      } /*if*/
+    inlen = strlen(localestr);
+    outlen = inlen * 5; /* should be enough? */
+    result = malloc(outlen);
+    resultnext = result;
+    if (iconv(from_locale, (char **)&localestr, &inlen, &resultnext, &outlen) < 0)
+      {
+        fprintf
+          (
+            stderr,
+            "ERR:  Error %d -- %s decoding string \"%s\"\n",
+            errno, strerror(errno), localestr
+          );
+        exit(1);
+      } /*if*/
+    assert(outlen != 0); /* there will be room for ... */
+    *resultnext++ = 0; /* ... terminating null */
+    result = realloc(result, resultnext - result); /* free unneeded memory */
+#else
+    result = strdup(localestr);
+#endif /*HAVE_ICONV*/
+    return result;
+  } /*locale_decode*/
 
 unsigned int strtounsigned
   (
@@ -37,7 +108,6 @@ unsigned int strtounsigned
       } /*if*/
     return result;
   } /*strtounsigned*/
-
 
 #ifndef HAVE_STRNDUP
 char * strndup

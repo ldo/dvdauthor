@@ -219,7 +219,10 @@ void textsub_characterset(const char *v)
 {
 #ifdef HAVE_ICONV
     sub_cp = strdup(v); /* won't leak, because I won't be called more than once */
-#endif
+#else
+    fprintf(stderr, "ERR:  <textsub> characterset attribute cannot be interpreted without iconv\n");
+    exit(1);
+#endif /*HAVE_ICONV*/
 }
 
 void textsub_h_alignment(const char *v)

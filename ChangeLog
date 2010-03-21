@@ -1,4 +1,5 @@
 0.6.18+: ??
+    Reworked subtitle file reading so it can now deal with encodings like UTF-16
 
 0.6.18: 2010 March 18
     implement link-subset jumps

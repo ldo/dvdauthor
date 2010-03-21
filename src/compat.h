@@ -47,6 +47,10 @@
 #include <io.h>
 #endif
 
+#ifdef HAVE_ICONV
+#include <iconv.h>
+#endif
+
 // this doesn't really belong here, but it was easiest
 #ifdef HAVE_MAGICK
 #define BUILDSPEC_MAGICK " imagemagick"
@@ -86,6 +90,24 @@
 #endif
 
 #define BUILDSPEC BUILDSPEC_GETOPT BUILDSPEC_MAGICK BUILDSPEC_ICONV BUILDSPEC_FREETYPE BUILDSPEC_FRIBIDI
+
+#ifdef HAVE_ICONV
+
+#define ICONV_NULL ((iconv_t)-1)
+extern const char * default_charset;
+  /* the name of the default character set to use, depending on user's locale settings */
+
+#endif /*HAVE_ICONV*/
+
+void init_locale();
+  /* does locale initialization and initializes default_charset. */
+
+char * locale_decode
+  (
+    const char * localestr
+  );
+  /* allocates and returns a string containing the UTF-8 representation of
+    localestr interpreted according to the user's locale settings. */
 
 unsigned int strtounsigned
   (

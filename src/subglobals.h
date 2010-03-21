@@ -49,7 +49,6 @@ enum /* values for subtitle_autoscale */
 extern float sub_delay;
 extern float sub_fps;
 extern int suboverlap_enabled;
-extern int sub_utf8;
 extern float font_factor;
 extern char * textsub_font_name;
 extern int current_sub;
