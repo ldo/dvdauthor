@@ -45,7 +45,7 @@
 #define FALSE 0
 #define TRUE (!FALSE)
 
-#define CBUFSIZE 65536
+#define CBUFSIZE 65536 /* big enough for any MPEG packet */
 #define PSBUFSIZE 10
 
 static unsigned int add_offset;
@@ -61,60 +61,87 @@ static const char *base_name;
 static int have_bits;
 static FILE *fdo;
 
-typedef struct {
+typedef struct /* a colour-table entry */
+  {
     unsigned char r, g, b, t;
-} palt;
-static palt bpal[16];
+  } palt;
+static palt
+    current_palette[16]; /* current PGC colour table */
 
-struct spu {
-    unsigned char *img;
-    unsigned int x0, y0, xd, yd, pts[2], subno, force_display, nummap;
+struct spu /* data for one subpicture unit (SPU) */
+  {
+    unsigned char *img; /* image data */
+    unsigned int x0, y0, xd, yd; /* display bounds */
+    unsigned int pts[2]; /* start time, end time */
+    unsigned int subno; /* index used for generating unique filenames */
+    unsigned int force_display;
+    unsigned int nummap; /* length of map array */
     struct colormap *map;
-    struct spu *next;
-};
+      /* array where entry 0 is for colours as specified in SPU, other entries
+        are for button colours as specified in PGC, so if they overlap, the
+        last entry takes precedence */
+    struct spu *next; /* linked list */
+  };
 
-static struct spu *spus=0;
+static struct spu
+    *pending_spus = 0;
 
-struct button {
+struct button /* information about a button */
+  {
     char *name;
     int autoaction;
-    int x1,y1,x2,y2;
-    char *up,*down,*left,*right;
-    int grp;
-};
+    int x1, y1, x2, y2;
+    char *up, *down, *left, *right; /* names of neighbouring buttons */
+    int grp; /* which group button belongs to */
+  };
 
-struct dispdetails {
-    int pts[2];
-    int numpal;
-    uint32_t palette[16];
-    int numcoli;
-    uint32_t coli[6];
-    int numbuttons;
-    struct button *buttons;
-    struct dispdetails *next;
-};
+struct dispdetails /* information about button grouping */
+  {
+    int pts[2]; /* start time, end time */
+    int numpal; /* nr used entries in palette */
+    uint32_t palette[16]; /* RGB colours */
+    int numcoli; /* nr of SL_COLI entries present, not checked! */
+    uint32_t coli[6]; /* up to 3 8-byte SL_COLI entries */
+    int numbuttons; /* length of buttons array */
+    struct button *buttons; /* array */
+    struct dispdetails *next; /* linked list */
+  };
 
-static struct dispdetails *dd = 0;
+static struct dispdetails
+    *pending_buttons = 0;
 
-struct colormap {
-    uint16_t color;
-    uint16_t contrast;
-    int x1,y1,x2,y2;
-};
+struct colormap /* for determining which colours take precedence in overlapping areas */
+  {
+    uint16_t color; /* four 4-bit colour indexes */
+    uint16_t contrast; /* four 4-bit contrast (transparency) values */
+    int x1, y1, x2, y2; /* bounds of area over which entries are valid */
+  };
 
 static unsigned int read4(const unsigned char *p)
-{
-    return (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
-}
+  /* decodes 4 bytes as a big-endian integer starting at p. */
+  {
+    return
+            p[0] << 24
+        |
+            p[1] << 16
+        |
+            p[2] << 8
+        |
+            p[3];
+  } /*read4*/
 
 static unsigned int read2(const unsigned char *p)
-{
-    return (p[0] << 8) | p[1];
-}
+  /* decodes 2 bytes as a big-endian integer starting at p. */
+  {
+    return
+            p[0] << 8
+        |
+            p[1];
+  } /*read2*/
 
 static char *readpstr(const unsigned char *b, int *i)
-/* extracts a null-terminated string beginning at b[*i], advances *i past it and returns
-a copy of the string. */
+  /* extracts a null-terminated string beginning at b[*i], advances *i past it and returns
+    a copy of the string. */
   {
     char * const s = strdup((const char *)b + i[0]);
     i[0] += strlen(s) + 1;
@@ -135,6 +162,7 @@ static unsigned char get_next_bits()
   } /*get_next_bits*/
 
 static unsigned int getpts(const unsigned char *buf)
+  /* decodes a presentation time stamp (PTS) beginning at location buf. */
   {
     if
       (
@@ -148,7 +176,7 @@ static unsigned int getpts(const unsigned char *buf)
         ||
             (buf[7] & 1) != 1
       )
-        return -1;
+        return -1; /* doesn't look like a proper PTS */
     return
             (buf[7] >> 1)
         +
@@ -162,48 +190,54 @@ static unsigned int getpts(const unsigned char *buf)
   } /*getpts*/
 
 static void addspu(struct spu *s)
-  /* appends s onto spus. */
+  /* appends s onto pending_spus. */
   {
-    struct spu **f = &spus;
+    struct spu **f = &pending_spus;
     while (*f)
-        f = &(f[0]->next);
+        f = &f[0]->next;
     *f = s;
   } /*addspu*/
 
-static void adddd(struct dispdetails *d)
-  /* appends d onto dd. */
+static void add_pending_buttons(struct dispdetails *d)
+  /* appends d onto pending_buttons. */
   {
-    struct dispdetails **dp = &dd;
+    struct dispdetails **dp = &pending_buttons;
     while (*dp)
-        dp = &(dp[0]->next);
+        dp = &dp[0]->next;
     *dp = d;
-  } /*adddd*/
+  } /*add_pending_buttons*/
 
 static int dvddecode()
-  /* decodes DVD-Video subpicture data. */
+  /* decodes DVD-Video subpicture data from sub and appends a new entry containing
+    the results onto pending_spus. */
   {
     unsigned int io;
     uint16_t size, dsize, i, x, y, t;
     unsigned char c;
-    struct spu *s;
+    struct spu *newspu;
     size = read2(sub); /* size of SPU */
     dsize = read2(sub + 2); /* offset to SP_DCSQT */
     ofs = -1;
     if (debug > 1)
         fprintf(stderr, "packet: %d bytes, first block offset=%d\n", size, dsize);
-    s = malloc(sizeof(struct spu));
-    memset(s, 0, sizeof(struct spu));
-    s->subno = subno++;
-    s->pts[0] = s->pts[1] = -1;
-    s->nummap = 1;
-    s->map = malloc(sizeof(struct colormap));
-    memset(s->map, 0, sizeof(struct colormap));
-    s->map[0].x2 = 0x7fffffff;
-    s->map[0].y2 = 0x7fffffff;
+    newspu = malloc(sizeof(struct spu));
+    memset(newspu, 0, sizeof(struct spu));
+    newspu->subno = subno++;
+    newspu->pts[0] = newspu->pts[1] = -1;
+    newspu->nummap = 1;
+    newspu->map = malloc(sizeof(struct colormap));
+    memset(newspu->map, 0, sizeof(struct colormap));
+    newspu->map[0].x2 = 0x7fffffff;
+    newspu->map[0].y2 = 0x7fffffff;
     i = dsize + 4; /* start of commands */
     t = read2(sub + dsize); /* delay in 90kHz units / 1024 before executing commands */
     if (debug > 2)
-        fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", dsize, t, read2(sub + dsize + 2));
+        fprintf
+          (
+            stderr,
+            "\tBLK(%5d): time offset: %d; next: %d\n",
+            dsize, t, read2(sub + dsize + 2)
+          );
     while (i < size)
       {
         c = sub[i];
@@ -212,46 +246,48 @@ static int dvddecode()
         case SPU_FSTA_DSP:
             if (debug > 4)
                 fprintf(stderr, "\tcmd(%5d): force start display\n", i);
-            s->force_display = TRUE;
+            newspu->force_display = TRUE;
         // fall through
         case SPU_STA_DSP:
             if (debug > 4 && c == SPU_STA_DSP)
                 fprintf(stderr, "\tcmd(%5d): start display\n", i);
             i++;
-            s->pts[0] = t * 1024 + spts;
+            newspu->pts[0] = t * 1024 + spts;
         break;
 
         case SPU_STP_DSP:
             if (debug > 4)
                 fprintf(stderr, "\tcmd(%5d): end display\n", i);
-            s->pts[1] = t * 1024 + spts;
+            newspu->pts[1] = t * 1024 + spts;
             i++;
         break;
 
         case SPU_SET_COLOR:
             if (debug > 4)
                 fprintf(stderr, "\tcmd(%5d): palette=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
-            s->map[0].color = read2(sub + i + 1);
+            newspu->map[0].color = read2(sub + i + 1);
             i += 3;
         break;
 
         case SPU_SET_CONTR:
             if (debug > 4)
                 fprintf(stderr, "\tcmd(%5d): transparency=%02x%02x\n", i, sub[i + 1], sub[i + 2]);
-            s->map[0].contrast = read2(sub + i + 1);
+            newspu->map[0].contrast = read2(sub + i + 1);
             i += 3;
         break;
 
         case SPU_SET_DAREA:
-            s->x0 = ((((unsigned int)sub[i + 1]) << 4) + (sub[i + 2] >> 4));
-            s->xd = (((sub[i + 2] & 0x0f) << 8) + sub[i + 3]) - s->x0 + 1;
-
-            s->y0 = ((((unsigned int)sub[i + 4]) << 4) + (sub[i + 5] >> 4));
-            s->yd = (((sub[i + 5] & 0x0f) << 8) + sub[i + 6]) - s->y0 + 1;
-
+            newspu->x0 = ((((unsigned int)sub[i + 1]) << 4) + (sub[i + 2] >> 4));
+            newspu->xd = (((sub[i + 2] & 0x0f) << 8) + sub[i + 3]) - newspu->x0 + 1;
+            newspu->y0 = ((((unsigned int)sub[i + 4]) << 4) + (sub[i + 5] >> 4));
+            newspu->yd = (((sub[i + 5] & 0x0f) << 8) + sub[i + 6]) - newspu->y0 + 1;
             if (debug > 4)
-                fprintf(stderr, "\tcmd(%5d): image corner=%d,%d, size=%d,%d\n", i, s->x0,
-                    s->y0, s->xd, s->yd);
+                fprintf
+                  (
+                    stderr,
+                    "\tcmd(%5d): image corner=%d,%d, size=%d,%d\n",
+                    i, newspu->x0, newspu->y0, newspu->xd, newspu->yd
+                  );
             i += 7;
         break;
 
@@ -314,16 +350,15 @@ static int dvddecode()
     have_bits = FALSE;
     x = y = 0;
     io = 0;
-    s->img = malloc(s->xd*s->yd);
-
-    if (ofs < 0 && y < s->yd)
+    newspu->img = malloc(newspu->xd * newspu->yd);
+    if (ofs < 0 && y < newspu->yd)
       {
         fprintf(stderr,"WARN: No image data supplied for this subtitle\n");
       }
     else
       {
       /* decode image data */
-        while ((ofs < dsize) && (y < s->yd))
+        while ((ofs < dsize) && (y < newspu->yd))
           {
             i = get_next_bits();
             if (i < 4)
@@ -337,7 +372,7 @@ static int dvddecode()
                         i = (i << 4) + get_next_bits();
                         if (i < 4)
                           {
-                            i = i + (s->xd - x) * 4; /* run ends at end of line */
+                            i = i + (newspu->xd - x) * 4; /* run ends at end of line */
                           } /*if*/
                       } /*if*/
                   } /*if*/
@@ -346,34 +381,34 @@ static int dvddecode()
             i = i >> 2; /* count */
             while (i--)
               {
-                s->img[io++] = c;
-                if (++x == s->xd)
+                newspu->img[io++] = c;
+                if (++x == newspu->xd)
                   {
                   /* end of scanline */
                     y += 2;
                     x = 0;
-                    if (y >= s->yd && !(y & 1))
+                    if (y >= newspu->yd && !(y & 1))
                       {
-                      /* end of top field, now do bottom field */
+                      /* end of top (odd) field, now do bottom (even) field */
                         y = 1;
-                        io = s->xd;
+                        io = newspu->xd;
                         ofs = ofs1;
                       }
                     else
-                        io += s->xd;
+                        io += newspu->xd; /* next scanline */
                     have_bits = FALSE;
                   } /*if*/
               } /*while*/
           } /*while*/
       } /*if*/
-    if (s->pts[0] == -1)
-        return 0;
-    s->pts[0] += add_offset;
-    if( s->pts[1] != -1 )
-        s->pts[1] += add_offset;
-    addspu(s);
+    if (newspu->pts[0] == -1)
+        return 0; /* fixme: free newspu or report error? */
+    newspu->pts[0] += add_offset;
+    if (newspu->pts[1] != -1)
+        newspu->pts[1] += add_offset;
+    addspu(newspu);
     return 0;
-  } /*dvd_decode*/
+  } /*dvddecode*/
 
  /*
   * from Y -> R
@@ -392,318 +427,405 @@ static void ycrcb_to_rgb(int *Y, int *Cr, int *Cb)
     *Cb = B;
 }
 
-static void absorb_palette(struct dispdetails *d)
-{
+static void absorb_palette(const struct dispdetails *d)
+  /* extracts the colour palette from d and puts it in RGB format into current_palette. */
+  {
     int i;
-    for( i=0; i<d->numpal; i++ ) {
-        int Y,Cr,Cb;
+    for (i = 0; i < d->numpal; i++)
+      {
+        int Y, Cr, Cb;
+        Y = d->palette[i] >> 16 & 255;
+        Cr = d->palette[i] >> 8 & 255;
+        Cb = d->palette[i] & 255;
+        current_palette[i].r = YCrCb2R(Y, Cr, Cb);
+        current_palette[i].g = YCrCb2G(Y, Cr, Cb);
+        current_palette[i].b = YCrCb2B(Y, Cr, Cb);
+      } /*for*/
+  } /*absorb_palette*/
 
-        Y=(d->palette[i]>>16)&255;
-        Cr=(d->palette[i]>>8)&255;
-        Cb=(d->palette[i])&255;
-        bpal[i].r=YCrCb2R(Y,Cr,Cb);
-        bpal[i].g=YCrCb2G(Y,Cr,Cb);
-        bpal[i].b=YCrCb2B(Y,Cr,Cb);
-    }
-}
-
-static void pluck_dd()
-{
-    struct dispdetails *d=dd;
+static void pluck_pending_buttons()
+  /* removes the head of pending_buttons, copies its palette into current_palette,
+    and gets rid of it. */
+  {
+    struct dispdetails * const d = pending_buttons;
     int i;
-
-    dd=d->next;
+    pending_buttons = d->next;
     absorb_palette(d);
-    for( i=0; i<d->numbuttons; i++ ) {
+    for (i = 0; i < d->numbuttons; i++)
+      {
         free(d->buttons[i].name);
         free(d->buttons[i].up);
         free(d->buttons[i].down);
         free(d->buttons[i].left);
         free(d->buttons[i].right);
-    }
+      } /*for*/
     free(d->buttons);
     free(d);
-}
+  } /*pluck_pending_buttons*/
 
-static unsigned char cmap_find(int x,int y,struct colormap *map,int nummap,int ci)
-{
+static unsigned char cmap_find
+  (
+    int x,
+    int y,
+    const struct colormap *map, /* array */
+    int nummap, /* length of map array */
+    int ci /* pixel value */
+  )
+  /* returns the colour index (high nibble) and contrast (low nibble) of the
+    specified pixel, as determined from the highest-numbered entry of map that
+    covers its coordinates. Returns 0 if no entry is found. */
+  {
     int i;
-    unsigned char cix=0;
-
-    for( i=0; i<nummap; i++ )
-        if( x>=map[i].x1 &&
-            y>=map[i].y1 &&
-            x<=map[i].x2 &&
-            y<=map[i].y2 )
-            cix=(((map[i].contrast>>(ci*4))&15)<<4) |
-                (((map[i].color>>(ci*4))&15));
+    unsigned char cix = 0;
+    for (i = 0; i < nummap; i++)
+      /* fixme: why not just start from the other end and terminate when a match is found? */
+        if
+          (
+                x >= map[i].x1
+            &&
+                y >= map[i].y1
+            &&
+                x <= map[i].x2
+            &&
+                y <= map[i].y2
+          )
+            cix =
+                    (map[i].contrast >> ci * 4 & 15) << 4
+                |
+                    map[i].color >> ci * 4 & 15;
     return cix;
-}
+  } /*cmap_find*/
 
-static int write_png(char *file_name,struct spu *s,struct colormap *map,int nummap)
-{
+static int write_png
+  (
+    const char *file_name,
+    const struct spu *s,
+    const struct colormap *map, /* array of entries for assigning colours to overlapping areas */
+    int nummap /* length of map array */
+  )
+  /* outputs the contents of s as a PNG file, converting pixels to colours
+    according to map. */
+  {
     unsigned int a, x, y, nonzero;
     unsigned char *out_buf, *temp;
     FILE *fp;
     png_structp png_ptr;
     png_infop info_ptr;
-
     temp = out_buf = malloc(s->xd * s->yd * 4);
-    nonzero=0;
-    for (y = 0; y < s->yd; y++) {
-        for (x = 0; x < s->xd; x++) {
-            unsigned char cix=cmap_find(x+s->x0,y+s->y0,map,nummap,s->img[y * s->xd + x]);
-            *temp++ = bpal[cix&15].r;
-            *temp++ = bpal[cix&15].g;
-            *temp++ = bpal[cix&15].b;
-            *temp++ = (cix>>4)*17;
-            if( cix&0xf0 ) nonzero=1;
-        }
-    }
-    if( !nonzero ) {
+    nonzero = 0;
+    for (y = 0; y < s->yd; y++)
+      {
+        for (x = 0; x < s->xd; x++)
+          {
+            const unsigned char cix =
+                cmap_find(x + s->x0, y + s->y0, map, nummap, s->img[y * s->xd + x]);
+            *temp++ = current_palette[cix & 15].r;
+            *temp++ = current_palette[cix & 15].g;
+            *temp++ = current_palette[cix & 15].b;
+            *temp++ = (cix >> 4) * 17;
+            if (cix & 0xf0)
+                nonzero = 1;
+          } /*for*/
+      } /*for*/
+    if (!nonzero)
+      {
+      /* all transparent, don't bother writing any image */
         free(out_buf);
         return 1;
-    }
-
+      } /*if*/
     fp = fopen(file_name, "wb");
-    if (!fp) {
-    fprintf(stderr, "error, unable to open/create file: %s\n",
-        file_name);
-    return -1;
-    }
-
+    if (!fp)
+      {
+        fprintf(stderr, "ERR:  unable to open/create file: %s\n", file_name);
+        return -1;
+      } /*if*/
     png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-
     if (!png_ptr)
-    return -1;
-
+        return -1;
     info_ptr = png_create_info_struct(png_ptr);
-    if (!info_ptr) {
-    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-    return -1;
-    }
-
-    if (setjmp(png_ptr->jmpbuf)) {
-    png_destroy_write_struct(&png_ptr, &info_ptr);
-    fclose(fp);
-    return -1;
-    }
-
+    if (!info_ptr)
+      {
+        png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
+        return -1;
+      } /*if*/
+    if (setjmp(png_ptr->jmpbuf))
+      {
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        fclose(fp);
+        return -1;
+      } /*if*/
     png_init_io(png_ptr, fp);
-
-    /* turn on or off filtering, and/or choose specific filters */
+  /* turn on or off filtering, and/or choose specific filters */
     png_set_filter(png_ptr, 0, PNG_FILTER_NONE);
-
-    /* set the zlib compression level */
+  /* set the zlib compression level */
     png_set_compression_level(png_ptr, Z_BEST_COMPRESSION);
-
-    /* set other zlib parameters */
+  /* set other zlib parameters */
     png_set_compression_mem_level(png_ptr, 8);
     png_set_compression_strategy(png_ptr, Z_DEFAULT_STRATEGY);
     png_set_compression_window_bits(png_ptr, 15);
     png_set_compression_method(png_ptr, 8);
-
-    if (full_size) {
-    png_set_IHDR(png_ptr, info_ptr, 720, 576,
-             8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
-             PNG_COMPRESSION_TYPE_DEFAULT,
-             PNG_FILTER_TYPE_DEFAULT);
-    } else {
-    png_set_IHDR(png_ptr, info_ptr, s->xd, s->yd,
-             8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
-             PNG_COMPRESSION_TYPE_DEFAULT,
-             PNG_FILTER_TYPE_DEFAULT);
-    }
-
+    if (full_size)
+      {
+        png_set_IHDR
+          (
+            /*png_ptr =*/ png_ptr,
+            /*info_ptr =*/ info_ptr,
+            /*width =*/ 720,
+            /*height =*/ 576,
+            /*bit_depth =*/ 8,
+            /*color_type =*/ PNG_COLOR_TYPE_RGB_ALPHA,
+            /*interlace_method =*/ PNG_INTERLACE_NONE,
+            /*compression_method =*/ PNG_COMPRESSION_TYPE_DEFAULT,
+            /*filter_method =*/ PNG_FILTER_TYPE_DEFAULT
+          );
+      }
+    else
+      {
+        png_set_IHDR
+          (
+            /*png_ptr =*/ png_ptr,
+            /*info_ptr =*/ info_ptr,
+            /*width =*/ s->xd,
+            /*height =*/ s->yd,
+            /*bit_depth =*/ 8,
+            /*color_type =*/ PNG_COLOR_TYPE_RGB_ALPHA,
+            /*interlace_method =*/ PNG_INTERLACE_NONE,
+            /*compression_method =*/ PNG_COMPRESSION_TYPE_DEFAULT,
+            /*filter_method =*/ PNG_FILTER_TYPE_DEFAULT
+          );
+      } /*if*/
     png_write_info(png_ptr, info_ptr);
-
     png_set_packing(png_ptr);
-
-    if (out_buf != NULL) {
-    png_byte *row_pointers[576];
-
-    if (full_size) {
-        unsigned char *image;
-        temp = out_buf;
-        image = malloc(720 * 576 * 4);
-        memset(image, 0, 720 * 576 * 4);    // fill image full transparrent
-        // insert image on the correct position
-        for (y = s->y0; y < s->y0 + s->yd; y++) {
-        unsigned char *to = &image[y * 720 * 4 + s->x0 * 4];
-        for (x = 0; x < s->xd; x++) {
-            *to++ = *temp++;
-            *to++ = *temp++;
-            *to++ = *temp++;
-            *to++ = *temp++;
-        }
-        }
-
-            s->y0 = 0;
-            s->x0 = 0;
-        s->yd = 576;
-        s->xd = 720;
+    if (out_buf != NULL)
+      {
+        unsigned int x0 = s->x0, y0 = s->y0, xd = s->xd, yd = s->yd;
+        png_byte *row_pointers[576];
+        if (full_size)
+          {
+            unsigned char *image;
+            temp = out_buf;
+            image = malloc(720 * 576 * 4);
+            memset(image, 0, 720 * 576 * 4);    // fill image full transparrent
+            // insert image on the correct position
+            for (y = s->y0; y < s->y0 + s->yd; y++)
+              {
+                unsigned char *to = &image[y * 720 * 4 + s->x0 * 4];
+                for (x = 0; x < s->xd; x++)
+                  {
+                    *to++ = *temp++;
+                    *to++ = *temp++;
+                    *to++ = *temp++;
+                    *to++ = *temp++;
+                  } /*for*/
+              } /*for*/
+            y0 = 0;
+            x0 = 0;
+            yd = 576;
+            xd = 720;
+            free(out_buf);
+            out_buf = image;
+          } /*if*/
+        for (a = 0; a < yd; a++)
+          {
+            row_pointers[a] = out_buf + a * (xd * 4);
+          } /*for*/
+        png_write_image(png_ptr, row_pointers);
+        png_write_end(png_ptr, info_ptr);
         free(out_buf);
-        out_buf = image;
-    }
-
-
-    for (a = 0; a < s->yd; a++) {
-        row_pointers[a] = out_buf + a * (s->xd * 4);
-    }
-
-    png_write_image(png_ptr, row_pointers);
-
-    png_write_end(png_ptr, info_ptr);
-    free(out_buf);
-    }
-
+      } /*if*/
     png_destroy_write_struct(&png_ptr, &info_ptr);
     fclose(fp);
-
     return 0;
-}
+  } /*write_png*/
 
-static void write_pts(char *preamble,int pts)
-{
-    fprintf(fdo,
-            " %s=\"%02d:%02d:%02d.%02d\"",preamble,
-            (pts / (60 * 60 * 90000)) % 24,
-            (pts / (60 * 90000)) % 60,
-            (pts / 90000) % 60,
-            (pts / 900) % 100);
-}
+static void write_pts(const char *preamble, int pts)
+  /* outputs a formatted representation of a timestamp to fdo. */
+  {
+    fprintf
+      (
+        fdo,
+        " %s=\"%02d:%02d:%02d.%02d\"",
+        preamble,
+        (pts / (60 * 60 * 90000)) % 24,
+        (pts / (60 * 90000)) % 60,
+        (pts / 90000) % 60,
+        (pts / 900) % 100
+      );
+  } /*write_pts*/
 
 /*
   copy the content of buf to expbuf converting '&' '<' '>' '"'
   expbuf must be big enough to contain the expanded buffer
 */
-static void xml_buf(unsigned char *expbuf,unsigned char *buf)
-{
+static void xml_buf
+  (
+    unsigned char *expbuf,
+    const unsigned char *buf
+  )
+  {
     const unsigned char *p;
-
-    do {
-        switch (*buf) {
-            case '&':
-              p=(const unsigned char *)"&amp;";
-              break;
-            case '<':
-              p=(const unsigned char *)"&lt;";
-              break;
-            case '>':
-              p=(const unsigned char *)"&gt;";
-              break;
-            case '"':
-              p=(const unsigned char *)"&quot;";
-              break;
-            default:
-              p=NULL;
-              break;
-        }
-        if( p ) {
-            while ( (*expbuf++ = *p++) )
-                 ;
+    do
+      {
+        switch (*buf)
+          {
+        case '&':
+            p = (const unsigned char *)"&amp;";
+        break;
+        case '<':
+            p = (const unsigned char *)"&lt;";
+        break;
+        case '>':
+            p = (const unsigned char *)"&gt;";
+        break;
+        case '"':
+            p = (const unsigned char *)"&quot;";
+        break;
+        default:
+            p = NULL;
+        break;
+          } /*switch*/
+        if (p)
+          {
+            while ((*expbuf++ = *p++))
+               /* copy the representation */;
             --expbuf;
-        } else
-            *expbuf++ = *buf;
-    } while ( *buf++ ) ;
-}
+          }
+        else
+            *expbuf++ = *buf; /* copy as is */
+      }
+    while (*buf++);
+  } /*xml_buf*/
 
-static void write_menu_image(struct spu *s,struct dispdetails *d,char *type,int offset)
-{
+static void write_menu_image
+  (
+    const struct spu *s,
+    const struct dispdetails *d,
+    const char *type, /* name of attribute to fill in with name of generated file */
+    int offset /* 0 => highlighted, 1 => selected */
+  )
+  /* outputs the subpicture image with the buttons in the highlighted or selected state. */
+  {
     unsigned char nbuf[256];
-    unsigned char ebuf[256*6];
-    int nummap=d->numbuttons+1, i;
-    struct colormap *map=malloc(sizeof(struct colormap)*nummap);
-    memset(map,0,sizeof(struct colormap)); // set the first one blank
-    map[0].x2=0x7fffffff;
-    map[0].y2=0x7fffffff;
-    for( i=0; i<d->numbuttons; i++ ) {
-        uint32_t cc=d->coli[2*d->buttons[i].grp-2+offset];
-        map[i+1].x1=d->buttons[i].x1;
-        map[i+1].y1=d->buttons[i].y1;
-        map[i+1].x2=d->buttons[i].x2;
-        map[i+1].y2=d->buttons[i].y2;
-        map[i+1].color=cc>>16;
-        map[i+1].contrast=cc;
-    }
-    
+    int nummap = d->numbuttons + 1, i;
+    struct colormap *map = malloc(sizeof(struct colormap) * nummap);
+    memset(map, 0, sizeof(struct colormap)); // set the first one blank
+    map[0].x2 = 0x7fffffff;
+    map[0].y2 = 0x7fffffff;
+    for (i = 0; i < d->numbuttons; i++)
+      {
+        const uint32_t cc = d->coli[2 * d->buttons[i].grp - 2 + offset];
+        map[i + 1].x1 = d->buttons[i].x1;
+        map[i + 1].y1 = d->buttons[i].y1;
+        map[i + 1].x2 = d->buttons[i].x2;
+        map[i + 1].y2 = d->buttons[i].y2;
+        map[i + 1].color = cc >> 16;
+        map[i + 1].contrast = cc;
+      } /*for*/    
     sprintf((char *)nbuf, "%s%05d%c.png", base_name, s->subno, type[0]);
-    if( !write_png((char *)nbuf,s,map,nummap) ) {
-        xml_buf(ebuf,nbuf);
-        fprintf(fdo," %s=\"%s\"",type,ebuf);
-    }
+    if (!write_png((char *)nbuf, s, map, nummap))
+      {
+        unsigned char ebuf[sizeof nbuf * 6];
+        xml_buf(ebuf, nbuf);
+        fprintf(fdo," %s=\"%s\"", type, ebuf);
+      } /*if*/
     free(map);
-}
+  } /*write_menu_image*/
 
-static void write_spu(struct spu *s,struct dispdetails *d)
-{
+static void write_spu
+  (
+    const struct spu * curspu,
+    const struct dispdetails * buttons /* applicable button highlight info, if any */
+  )
+  /* writes out all information about a subpicture unit as an <spu> tag. */
+  {
     unsigned char nbuf[256];
-    unsigned char ebuf[256*6];
     int i;
-
-    if( d )
-        absorb_palette(d);
-    fprintf(fdo,"\t\t<spu");
-
-    sprintf((char *)nbuf, "%s%05d.png", base_name, s->subno);
-    if( !write_png((char *)nbuf,s,s->map,s->nummap) ) {
-        xml_buf(ebuf,nbuf);
-        fprintf(fdo," image=\"%s\"",ebuf);
-    }
-
-    if( d && d->numbuttons ) {
-        write_menu_image(s,d,"highlight",0);
-        write_menu_image(s,d,"select",1);
-    }
-
-    write_pts("start",s->pts[0]);
-    if( s->pts[1] != -1 )
-        write_pts("end",s->pts[1]);
-    if( s->x0 || s->y0 )
-        fprintf(fdo," xoffset=\"%d\" yoffset=\"%d\"",s->x0,s->y0);
-    if (s->force_display)
+    if (buttons)
+        absorb_palette(buttons);
+    fprintf(fdo, "\t\t<spu");
+    sprintf((char *)nbuf, "%s%05d.png", base_name, curspu->subno);
+    if (!write_png((char *)nbuf, curspu, curspu->map, curspu->nummap))
+      {
+        unsigned char ebuf[sizeof nbuf * 6];
+        xml_buf(ebuf, nbuf);
+        fprintf(fdo, " image=\"%s\"", ebuf);
+      } /*if*/
+    if (buttons && buttons->numbuttons)
+      {
+        write_menu_image(curspu, buttons, "highlight", 0);
+        write_menu_image(curspu, buttons, "select", 1);
+      } /*if*/
+    write_pts("start", curspu->pts[0]);
+    if (curspu->pts[1] != -1)
+        write_pts("end", curspu->pts[1]);
+    if (curspu->x0 || curspu->y0)
+        fprintf(fdo, " xoffset=\"%d\" yoffset=\"%d\"", curspu->x0, curspu->y0);
+    if (curspu->force_display)
         fprintf(fdo, " force=\"yes\"");
-    if( d && d->numbuttons ) {
-        fprintf(fdo,">\n");
-        for( i=0; i<d->numbuttons; i++ ) {
-            struct button *b=d->buttons+i;
-           fprintf(fdo,"\t\t\t<%s name=\"%s\" x0=\"%d\" y0=\"%d\" x1=\"%d\" y1=\"%d\" up=\"%s\" down=\"%s\" left=\"%s\" right=\"%s\" />\n",
-                   b->autoaction ? "action" : "button", b->name,
-                   b->x1,b->y1,b->x2,b->y2,
-                   b->up,b->down,b->left,b->right);
-        }
-        fprintf(fdo,"\t\t</spu>\n");
-    } else
+    if (buttons && buttons->numbuttons)
+      {
+        fprintf(fdo, ">\n");
+        for (i = 0; i < buttons->numbuttons; i++)
+          {
+            const struct button * const b = buttons->buttons + i;
+            fprintf
+              (
+                fdo,
+                "\t\t\t<%s name=\"%s\" x0=\"%d\" y0=\"%d\" x1=\"%d\" y1=\"%d\""
+                    " up=\"%s\" down=\"%s\" left=\"%s\" right=\"%s\" />\n",
+                b->autoaction ? "action" : "button", b->name,
+                b->x1, b->y1, b->x2, b->y2,
+                b->up, b->down, b->left, b->right
+              );
+          } /*for*/
+        fprintf(fdo, "\t\t</spu>\n");
+      }
+    else
         fprintf(fdo, " />\n");
-
-}
+  } /*write_spu*/
 
 static void flushspus(unsigned int lasttime)
-{
-    while(spus) {
-        struct spu *s=spus;
-        if( s->pts[0]>=lasttime )
-            return;
-        spus=spus->next;
-
-        while( dd && dd->pts[1]<s->pts[0] && dd->pts[1]!=-1 )
-            pluck_dd();
-
-        if( dd && (dd->pts[0]<s->pts[1] || s->pts[1]==-1) && 
-            (dd->pts[1]>s->pts[0] || dd->pts[1]==-1) )
-            write_spu(s,dd);
+  /* pops and outputs elements from pending_spus and pending_buttons that start
+    prior to lasttime. */
+  {
+    while (pending_spus)
+      {
+        const struct spu * const curspu = pending_spus;
+        if (curspu->pts[0] >= lasttime)
+            return; /* next entry not yet due */
+        pending_spus = pending_spus->next;
+        while
+          (
+                pending_buttons
+            &&
+                pending_buttons->pts[1] < curspu->pts[0]
+            &&
+                pending_buttons->pts[1] != -1
+          )
+          /* merge colours from expired entries into colour table, but otherwise ignore them */
+            pluck_pending_buttons();
+        if
+          (
+                pending_buttons
+            &&
+                (pending_buttons->pts[0] < curspu->pts[1] || curspu->pts[1] == -1)
+            &&
+                (pending_buttons->pts[1] > curspu->pts[0] || pending_buttons->pts[1] == -1)
+          )
+          /* head of pending_buttons overlaps duration of curspu */
+            write_spu(curspu, pending_buttons);
         else
-            write_spu(s,0);
-        if(s->img) free(s->img);
-        if(s->map) free(s->map);
-        free(s);
-    }
-}
+            write_spu(curspu, 0);
+        free(curspu->img);
+        free(curspu->map);
+        free((void *)curspu);
+      } /*while*/
+  } /*flushspus*/
 
-#define bps(n,R,G,B) do { bpal[n].r=R; bpal[n].g=G; bpal[n].b=B; } while (0)
+#define bps(n,R,G,B) do { current_palette[n].r = R; current_palette[n].g = G; current_palette[n].b = B; } while (0)
 
 static void usage(void)
-{
+  {
     fprintf(stderr,
         "\nUse: %s [options] [input file] [input file] ...\n\n",
         "spuunmux");
@@ -724,25 +846,24 @@ static void usage(void)
     fprintf(stderr, "-h          print this help\n");
     fprintf(stderr, "-V          print version number\n");
     fprintf(stderr, "\n");
-}
+  } /*usage*/
 
 int main(int argc, char **argv)
-{
-    struct vfile fd;
+  {
     int option, n;
-    int rgb;
-    char *temp;
-    int firstvideo=-1;
-    unsigned int c, next_word, stream_number, inc, Inc;
+    int firstvideo = -1;
+    unsigned int pid, next_word, stream_number, fileindex, nrinfiles;
     unsigned char cbuf[CBUFSIZE];
     unsigned char psbuf[PSBUFSIZE];
-    char nbuf[256], *palet_file, *iname[256];
+    char *palet_file;
+    char *iname[256]; /* names of input files -- fixme: no range checking */
+    unsigned int last_system_time = -1;
 
     fputs(PACKAGE_HEADER("spuunmux"), stderr);
     base_name = "sub";
     stream_number = 0;
     palet_file = 0;
-    Inc = inc = 0;
+    nrinfiles = 0;
     while ((option = getopt(argc, argv, "o:v:fs:p:Vh")) != -1)
       {
         switch (option)
@@ -774,10 +895,11 @@ int main(int argc, char **argv)
 
     if (optind < argc)
       {
+      /* remaining args are input filenames */
         int n, i;
         for (i = 0, n = optind; n < argc; n++, i++)
             iname[i] = argv[n];
-        Inc = i;
+        nrinfiles = i;
       }
     else
       {
@@ -785,7 +907,7 @@ int main(int argc, char **argv)
         return -1;
       } /*if*/
 
-  /* initialize bpal to default palette */
+  /* initialize current_palette to default palette */
     bps(0, 0, 0, 0);
     bps(1, 127, 0, 0);
     bps(2, 0, 127, 0);
@@ -803,10 +925,10 @@ int main(int argc, char **argv)
     bps(14, 0, 128, 128);
     bps(15, 128, 128, 128);
 
-    if( palet_file )
+    if (palet_file)
       {
-        rgb = FALSE;
-        temp = strrchr(palet_file, '.');
+        int rgb = FALSE;
+        char * const temp = strrchr(palet_file, '.');
         if (temp != NULL)
           {
             if (strcmp(temp, ".rgb") == 0)
@@ -821,11 +943,16 @@ int main(int argc, char **argv)
                 fscanf(fdo, "%02x%02x%02x", &r, &g, &b);
                 if (!rgb)
                     ycrcb_to_rgb(&r, &g, &b);
-                bpal[n].r = r;
-                bpal[n].g = g;
-                bpal[n].b = b;
+                current_palette[n].r = r;
+                current_palette[n].g = g;
+                current_palette[n].b = b;
                 if (debug > 3)
-                    fprintf(stderr, "pal: %d #%02x%02x%02x\n", n, bpal[n].r, bpal[n].g, bpal[n].b);
+                    fprintf
+                      (
+                        stderr,
+                        "pal: %d #%02x%02x%02x\n",
+                        n, current_palette[n].r, current_palette[n].g, current_palette[n].b
+                      );
               } /*for*/
             fclose(fdo);
           }
@@ -840,26 +967,29 @@ int main(int argc, char **argv)
             "error: max length of base for filename creation is 246 characters\n");
         return -1;
       } /*if*/
-    sprintf(nbuf, "%s.xml", base_name);
-    fdo = fopen(nbuf, "w+");
+      {
+        char nbuf[256];
+        sprintf(nbuf, "%s.xml", base_name);
+        fdo = fopen(nbuf, "w+");
+      }
     fprintf(fdo, "<subpictures>\n\t<stream>\n");
     pts = 0;
     subno = 0;
     subi = 0;
     add_offset = 450; // for rounding purposes
-    while (inc < Inc)
+    fileindex = 0;
+    while (fileindex < nrinfiles)
       {
-        fd = varied_open(iname[inc], O_RDONLY, "input file");
+        struct vfile fd = varied_open(iname[fileindex], O_RDONLY, "input file");
         if (debug > 0)
-            fprintf(stderr, "file: %s\n", iname[inc]);
-        inc++;
-        while (fread(&c, 1, 4, fd.h) == 4)
+            fprintf(stderr, "file: %s\n", iname[fileindex]);
+        fileindex++;
+        while (fread(&pid, 1, 4, fd.h) == 4)
           {
-            c = ntohl(c);
-            if (c == 0x00000100 + MPID_PACK)
+            pid = ntohl(pid);
+            if (pid == 0x00000100 + MPID_PACK)
               {  // start PS (Program stream)
-                static unsigned int old_system_time = -1;
-                unsigned int new_system_time;
+                unsigned int new_system_time, stuffcount;
 l_01ba:
                 if (debug > 5)
                     fprintf(stderr, "pack_start_code\n");
@@ -885,9 +1015,9 @@ l_01ba:
                         (psbuf[0] & 3) * 1024 * 1024 * 256
                     +
                         (psbuf[0] & 0x38) * 1024 * 1024 * 128;
-                if (new_system_time < old_system_time)
+                if (new_system_time < last_system_time)
                   {
-                    if (old_system_time != -1)
+                    if (last_system_time != -1)
                       {
                         if (debug > 0)
                             fprintf
@@ -896,26 +1026,26 @@ l_01ba:
                                 "Time changed in stream header, use old time as offset for"
                                     " timecode in subtitle stream\n"
                               );
-                        add_offset += old_system_time;
+                        add_offset += last_system_time;
                       } /*if*/
                   } /*if*/
-                old_system_time = new_system_time;
-                flushspus(old_system_time);
+                last_system_time = new_system_time;
+                flushspus(last_system_time);
                 if (debug > 5)
                   {
                     fprintf(stderr, "system time: %u\n", new_system_time);
                   } /*if*/
-                c = psbuf[9] & 7;
-                if (c)
+                stuffcount = psbuf[9] & 7;
+                if (stuffcount != 0)
                   {
-                    char s[7];
+                    char stuff[7];
                     if (debug > 5)
-                        fprintf(stderr, "found %d stuffing bytes\n", c);
-                    if (fread(s, 1, c, fd.h) < c)
+                        fprintf(stderr, "found %d stuffing bytes\n", stuffcount);
+                    if (fread(stuff, 1, stuffcount, fd.h) < stuffcount)
                         break;
                   } /*if*/
               }
-            else if (c == 0x100 + MPID_PROGRAM_END)
+            else if (pid == 0x100 + MPID_PROGRAM_END)
               {
                 if (debug > 5)
                     fprintf(stderr, "end packet\n");
@@ -927,35 +1057,40 @@ l_01ba:
                 package_length = ntohs(package_length);
                 if (package_length != 0)
                   {
-                    switch (c)
+                    switch (pid)
                       {
                     case 0x0100 + MPID_SYSTEM:
                         if (debug > 5)
                             fprintf(stderr, "system header\n");
                     break;
-                    case 0x0100 + MPID_PRIVATE2:
+                    case 0x0100 + MPID_PRIVATE2: /* PCI & DSI packets, not my problem */
                         if (debug > 5)
                             fprintf(stderr, "private stream 2\n");
                     break;
-                    case 0x0100 + MPID_PRIVATE1:
+                    case 0x0100 + MPID_PRIVATE1: /* subpicture or audio stream */
                         if (debug > 5)
-                            fprintf(stderr, "private stream\n");
+                            fprintf(stderr, "private stream 1\n");
                         fread(cbuf, 1, package_length, fd.h);
                         next_word = getpts(cbuf);
                         if (next_word != -1)
                           {
                             pts = next_word;
                           } /*if*/
-                        next_word = cbuf[2] + 3;
+                        next_word = cbuf[2] /* additional data length */ + 3 /* length of fixed part of MPEG-2 extension */;
                         if (debug > 5)
+                          {
+                          /* dump PES header + extension */
+                            int c;
                             for (c = 0; c < next_word; c++)
                                 fprintf(stderr, "0x%02x ", cbuf[c]);
+                          } /*if*/
                         if (debug > 5)
                             fprintf(stderr, "tid: %d\n", pts);
-                        if ( /*(debug > 1) && */ (cbuf[next_word] == 0x70))
+                        if ( /*(debug > 1) && */ cbuf[next_word] == 0x70)
                             fprintf(stderr, "substr: %d\n", cbuf[next_word + 1]);
                         if (cbuf[next_word] == stream_number + 32)
                           {
+                          /* this is the subpicture stream the user wants dumped */
                             if (debug < 6 && debug > 1)
                               {
                                 fprintf(stderr,
@@ -965,19 +1100,23 @@ l_01ba:
                               } /*if*/
                             if (!subi)
                               {
+                              /* starting a new SPU */
                                 subs =
                                         ((unsigned int)cbuf[next_word + 1] << 8)
                                     +
                                         cbuf[next_word + 2];
+                                  /* SPDSZ, size of total subpicture data */
                                 spts = pts;
                               } /*if*/
                             memcpy(sub + subi, cbuf + next_word + 1, package_length - next_word - 1);
+                              /* collect the subpicture data */
                             if (debug > 1)
                               {
                                 fprintf(stderr, "found %d bytes of data\n",
                                     package_length - next_word - 1);
                               } /*if*/
                             subi += package_length - next_word - 1;
+                              /* how much I just collected */
                             if (debug > 2)
                               {
                                 fprintf(stderr,
@@ -988,9 +1127,9 @@ l_01ba:
                               } /*if*/
                             if (subs == subi)
                               {
+                              /* got a complete SPU */
                                 subi = 0;
-                                next_word = dvddecode();
-                                if (next_word)
+                                if (dvddecode())
                                   {
                                     fprintf(stderr,
                                         "found unreadable subtitle at %.2fs, skipping\n",
@@ -998,7 +1137,7 @@ l_01ba:
                                     continue;
                                   } /*if*/
                               } /*if*/
-                          } /*if*/
+                          } /*if dump the stream*/
                         package_length = 0;
                     break;
                     case 0x0100 + MPID_VIDEO_FIRST:
@@ -1028,7 +1167,7 @@ l_01ba:
                     case 0x01ee:
                     case 0x01ef:
                         if (debug > 5)
-                            fprintf(stderr, "video stream %d\n",c - 0x100 - MPID_VIDEO_FIRST);
+                            fprintf(stderr, "video stream %d\n", pid - 0x100 - MPID_VIDEO_FIRST);
                     break;
                     case 0x0100 + MPID_PAD:
                         if (debug > 5)
@@ -1041,6 +1180,7 @@ l_01ba:
                             i = 0;
                             if (strcmp((const char *)cbuf + i, "dvdauthor-data"))
                                 break;
+                          /* pad packet contains DVDAuthor private data */
                             i = 15;
                             if (cbuf[i] != 2)
                                 break;
@@ -1049,48 +1189,48 @@ l_01ba:
                             case 1: // subtitle/menu color and button information
                               {
                                 // int st = cbuf[i + 2] & 31; // we ignore which subtitle stream for now
-                                struct dispdetails *d;
+                                struct dispdetails *buttons;
                                 i += 3;
-                                d = malloc(sizeof(struct dispdetails));
-                                memset(d, 0, sizeof(struct dispdetails));
-                                d->pts[0] = read4(cbuf + i);
-                                d->pts[1] = read4(cbuf + i + 4);
+                                buttons = malloc(sizeof(struct dispdetails));
+                                memset(buttons, 0, sizeof(struct dispdetails));
+                                buttons->pts[0] = read4(cbuf + i);
+                                buttons->pts[1] = read4(cbuf + i + 4);
                                 i += 8;
                                 while(cbuf[i] != 0xff)
                                   {
                                     switch(cbuf[i])
                                       {
-                                    case 1:
+                                    case 1: /* colour table */
                                       {
                                         int j;
-                                        d->numpal = 0;
+                                        buttons->numpal = 0;
                                         for (j = 0; j < cbuf[i + 1]; j++)
                                           {
-                                            int c = read4(cbuf + i + 1 + 3 * j) & 0xffffff;
-                                            d->palette[j] = c;
-                                            d->numpal++;
+                                            const int c = read4(cbuf + i + 1 + 3 * j) & 0xffffff;
+                                            buttons->palette[j] = c;
+                                            buttons->numpal++;
                                           } /*for*/
-                                        i += 2 + 3 * d->numpal;
+                                        i += 2 + 3 * buttons->numpal;
                                       }
                                     break;
-                                    case 2:
+                                    case 2: /* button groups */
                                       {
                                         int j;
-                                        d->numcoli = cbuf[i + 1];
-                                        for (j = 0; j < 2 * d->numcoli; j++)
-                                            d->coli[j] = read4(cbuf + i + 2 + j * 4);
-                                        i += 2 + 8 * d->numcoli;
+                                        buttons->numcoli = cbuf[i + 1];
+                                        for (j = 0; j < 2 * buttons->numcoli; j++)
+                                            buttons->coli[j] = read4(cbuf + i + 2 + j * 4);
+                                        i += 2 + 8 * buttons->numcoli;
                                       }
                                     break;
-                                    case 3:
+                                    case 3: /* button placement */
                                       {
                                         int j;
-                                        d->numbuttons = cbuf[i + 1];
-                                        d->buttons = malloc(d->numbuttons * sizeof(struct button));
+                                        buttons->numbuttons = cbuf[i + 1];
+                                        buttons->buttons = malloc(buttons->numbuttons * sizeof(struct button));
                                         i += 2;
-                                        for (j = 0; j < d->numbuttons; j++)
+                                        for (j = 0; j < buttons->numbuttons; j++)
                                           {
-                                            struct button *b = &d->buttons[j];
+                                            struct button *b = &buttons->buttons[j];
                                             b->name = readpstr(cbuf, &i);
                                             i += 2;
                                             b->autoaction = cbuf[i++];
@@ -1113,7 +1253,7 @@ l_01ba:
                                         exit(1);
                                       } /*switch*/
                                   } /*while*/
-                                adddd(d);
+                                add_pending_buttons(buttons);
                               } /*case 1*/
                             break;
                               } /*switch*/
@@ -1153,12 +1293,12 @@ l_01ba:
                     case 0x01de:
                     case 0x01df:
                         if (debug > 5)
-                            fprintf(stderr, "audio stream %d\n", c - 0x100 - MPID_AUDIO_FIRST);
+                            fprintf(stderr, "audio stream %d\n", pid - 0x100 - MPID_AUDIO_FIRST);
                     break;
                     default:
                         if (debug > 0)
-                            fprintf(stderr, "unknown header %x\n", c);
-                        next_word = (c << 16) | package_length;
+                            fprintf(stderr, "unknown header %x\n", pid);
+                        next_word = pid << 16 | package_length;
                         package_length = 2;
                         while (next_word != 0x100 + MPID_PACK)
                           {
@@ -1174,10 +1314,10 @@ l_01ba:
                     fread(cbuf, 1, package_length, fd.h);
                   } /*if*/
               } /*if*/
-        } /*while read 4*/
+          } /*while read next packet header*/
         varied_close(fd);
-      } /*while inc < Inc*/
-    flushspus(0x7fffffff);
+      } /*while fileindex < nrinfiles*/
+    flushspus(0x7fffffff); /* ensure all remaining spus elements are output */
     fprintf(fdo, "\t</stream>\n</subpictures>\n");
     fclose(fdo);
     return 0;
