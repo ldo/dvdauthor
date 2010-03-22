@@ -1,27 +1,28 @@
 0.6.18+: ??
-    Reworked subtitle file reading so it can now deal with encodings like UTF-16
-    Default encoding for subtitle files is no longer ISO-8859-1, but taken from
-        user's locale
+	Reworked subtitle file reading so it can now deal with encodings like UTF-16
+	Default encoding for subtitle files is no longer ISO-8859-1, but taken from
+		user's locale
+	Add fontconfig support following a patch by Nicolas George
 
 0.6.18: 2010 March 18
-    implement link-subset jumps
-    implement audio and subpicture content attributes
-    use dynamically-sized buffer for building IFO files
-    version jump to forestall fork confusion
+	implement link-subset jumps
+	implement audio and subpicture content attributes
+	use dynamically-sized buffer for building IFO files
+	version jump to forestall fork confusion
 
 0.6.15-ldo: 2010 March 4
-    consistently check for errors on all file opens and when creating output directories
-    fix remapping of colours for more than 8 subpicture streams
-    recover from SCR moving backwards as per suggestion from Philippe Sarazin
-    add patch from Wolfgang Wershofen to print out chapter timecodes
-    validate all XML integer arguments and attribute values
-    fix spurious error parsing video caption option
-    incorporate Fedora patch from Ville Skyttä to allow building with GraphicsMagick
-        instead of ImageMagick
-    incorporate FriBidi patches from Ville Skyttä
-    auto-action buttons have spatial extents too
-    fill in more details in man pages
-    include an adaptation of Martin Crossley's ivtv patch
+	consistently check for errors on all file opens and when creating output directories
+	fix remapping of colours for more than 8 subpicture streams
+	recover from SCR moving backwards as per suggestion from Philippe Sarazin
+	add patch from Wolfgang Wershofen to print out chapter timecodes
+	validate all XML integer arguments and attribute values
+	fix spurious error parsing video caption option
+	incorporate Fedora patch from Ville Skyttä to allow building with GraphicsMagick
+		instead of ImageMagick
+	incorporate FriBidi patches from Ville Skyttä
+	auto-action buttons have spatial extents too
+	fill in more details in man pages
+	include an adaptation of Martin Crossley's ivtv patch
 
 0.6.14: February 24, 2007
 	popen mode must be 'r' or 'w', not 'rb' or 'wb'
