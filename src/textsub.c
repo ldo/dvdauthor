@@ -46,7 +46,6 @@
 
 
 
-#include "subconfig.h"
 #include "subglobals.h"
 #include "subreader.h"
 #include "subrender.h"
@@ -100,7 +99,13 @@ int sub_left_margin=60;   /* Size of left horizontal non-display area in pixel u
 int sub_right_margin=60;  /* Size of right horizontal non-display area in pixel units */
 int sub_bottom_margin=30; /* Size of bottom horizontal non-display area in pixel units */
 int sub_top_margin=20;    /* Size of top horizontal non-display area in pixel units */
-char *sub_font="arial.ttf"; /* Name of true type font, windows OS apps will look in \windows\fonts others in home dir */
+char *sub_font = /* Name of true type font, windows OS apps will look in \windows\fonts others in home dir */
+#if HAVE_FONTCONFIG
+    "arial"
+#else
+    "arial.ttf"
+#endif
+;
 /*-----------------25-11-03 1:31--------------------
  * End of mimum set of variables that should be user configurable
  * --------------------------------------------------*/

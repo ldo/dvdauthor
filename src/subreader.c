@@ -39,7 +39,6 @@
 #include <errno.h>
 #include <assert.h>
 
-#include "subconfig.h"
 #include "subglobals.h"
 #include "subreader.h"
 

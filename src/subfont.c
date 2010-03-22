@@ -44,7 +44,6 @@
 
 #include <netinet/in.h>
 
-#include "subconfig.h"
 #include "subglobals.h"
 #include "subfont.h"
 
@@ -1075,7 +1074,7 @@ void free_font_desc(font_desc_t *desc)
     free(desc);
   } /*free_font_desc*/
 
-static int load_sub_face(const char *name, FT_Face *face)
+static void load_sub_face(const char *name, FT_Face *face)
   /* loads the font with the specified name and returns it in face. */
   {
     int err = -1;
@@ -1109,15 +1108,6 @@ static int load_sub_face(const char *name, FT_Face *face)
             free((void *)fontpath);
             if (err == 0)
                 break;
-#if 0
-              {
-                char *mp_sub_font;
-                sprintf(mp_sub_font, TEXTSUB_DATADIR "%s", name);
-                err = FT_New_Face(library, mp_sub_font, 0, face);
-                if (err == 0)
-                    break;
-              }
-#endif
           } /*if*/
 #if HAVE_FONTCONFIG
     /* adaptation of patch by Nicolas George: add support for fontconfig. */
@@ -1172,11 +1162,11 @@ static int load_sub_face(const char *name, FT_Face *face)
           (
             stderr,
             "ERR:  New_Face failed. Maybe the font path is wrong.\n"
-                "Please supply the text font file (%s).\n",
+                "ERR:  Please supply the text font file (%s).\n",
             name
           );
+        exit(1);
       } /*if*/
-    return err;
   } /*load_sub_face*/
 
 int kerning(font_desc_t *desc, int prevc, int c)
@@ -1253,12 +1243,7 @@ font_desc_t* read_font_desc_ft
         return NULL;
 //  t = GetTimer();
   /* generate the subtitle font */
-    err = load_sub_face(fname, &face);
-    if (err)
-      {
-        fprintf(stderr, "WARN: subtitle font: load_sub_face failed.\n");
-        goto skip_a_part;
-      } /*if*/
+    load_sub_face(fname, &face);
     desc->face_cnt++; /* will always be 1, since I just created desc */
     charset_size = prepare_charset_unicode(face, my_charset);
     if (charset_size < 0)
@@ -1285,7 +1270,6 @@ font_desc_t* read_font_desc_ft
         free_font_desc(desc);
         return NULL;
       } /*if*/
-skip_a_part:
     err = generate_tables(desc, subtitle_font_thickness, subtitle_font_radius);
     if (err)
       {

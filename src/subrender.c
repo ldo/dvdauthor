@@ -30,8 +30,6 @@
 
 #include "compat.h"
 
-#include "subconfig.h"
-
 #include "subglobals.h"
 #include "subrender.h"
 #include "subfont.h"
