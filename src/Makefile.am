@@ -7,7 +7,8 @@ endif
 
 nodist_bin_SCRIPTS = dvddirdel
 
-AM_CPPFLAGS   = -DSYSCONFDIR="\"$(sysconfdir)\"" @XML_CPPFLAGS@ @MAGICK_CPPFLAGS@ @FREETYPE_CPPFLAGS@ @FRIBIDI_CFLAGS@
+AM_CPPFLAGS = -DSYSCONFDIR="\"$(sysconfdir)\"" \
+    @XML_CPPFLAGS@ @MAGICK_CPPFLAGS@ @FREETYPE_CPPFLAGS@ @FRIBIDI_CFLAGS@ @FONTCONFIG_CFLAGS@
 AM_CFLAGS = -Wall
 
 dvdauthor_SOURCES = dvdauthor.c common.h dvdauthor.h da-internal.h \
@@ -26,7 +27,8 @@ spumux_SOURCES = subgen.c subgen.h rgb.h \
     subconfig.h subglobals.h \
     compat.c compat.h common.h \
     textsub.c textsub.h subrender.c subrender.h subreader.c subreader.h subfont.c subfont.h
-spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) $(FRIBIDI_LIBS) $(LIBICONV)
+spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) \
+    $(FRIBIDI_LIBS) $(FONTCONFIG_LIBS) $(LIBICONV)
 
 spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h common.h
 spuunmux_LDADD = -lpng -lz -lm

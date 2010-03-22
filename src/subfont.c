@@ -54,6 +54,10 @@
 #define HAVE_FREETYPE21
 #endif
 
+#if HAVE_FONTCONFIG
+#include <fontconfig/fontconfig.h>
+#endif /* HAVE_FONTCONFIG */
+
 static int vo_image_width = 0;
 static int vo_image_height = 0;
 static int using_freetype = 0;
@@ -114,7 +118,7 @@ static char *get_config_path(const char *filename)
               } /*if; for*/
         exedir[imax] = '\0'; /* terminate at rightmost path separator */
         homedir = exedir;
-  /*    fprintf(stderr, "Homedir %s",homedir); */
+  /*    fprintf(stderr, "Homedir %s", homedir); */
       } /*if*/
 #else
         return NULL;
@@ -1075,33 +1079,102 @@ static int load_sub_face(const char *name, FT_Face *face)
   /* loads the font with the specified name and returns it in face. */
   {
     int err = -1;
-    if (name)
-        err = FT_New_Face(library, name, 0, face);
-    if (err)
+#if HAVE_FONTCONFIG
+    FcPattern *searchpattern, *foundpattern;
+    FcResult result = FcResultMatch;
+    FcChar8 *foundfilename;
+#endif /* HAVE_FONTCONFIG */
+    if (name == NULL)
       {
-      /* fall back to sub_font */
-        const char * const fontpath = get_config_path(sub_font);
-        err = FT_New_Face(library, fontpath, 0, face);
-        free((void *)fontpath);
-        if (err)
+        name = sub_font;
+      } /*if*/
+#if HAVE_FONTCONFIG
+    searchpattern = NULL;
+    foundpattern = NULL;
+#endif /*HAVE_FONTCONFIG*/
+    do /*once*/
+      {
+      /* fixme: would be good to try interpreting relative path as relative to
+        XML control file */
+        err = FT_New_Face(library, name, 0, face);
+        if (err == 0 || strchr(name, '/') != NULL)
+            break;
+#if HAVE_FONTCONFIG
+        if (strchr(name, '.') != NULL) /* only try this if it looks like a file name */
+#endif /*HAVE_FONTCONFIG*/
           {
+          /* see if it can be found in config_path */
+            const char * const fontpath = get_config_path(name);
+            err = FT_New_Face(library, fontpath, 0, face);
+            free((void *)fontpath);
+            if (err == 0)
+                break;
 #if 0
-            char *mp_sub_font;
-            sprintf(mp_sub_font, TEXTSUB_DATADIR "%s", sub_font);
-            err = FT_New_Face(library, mp_sub_font, 0, face);
-            if (err)
-#endif
               {
-                fprintf
-                  (
-                    stderr,
-                    "ERR: New_Face failed. Maybe the font path is wrong.\n"
-                        "Please supply the text font file (%s).\n",
-                    sub_font
-                  );
-                return -1;
-              } /*if*/
+                char *mp_sub_font;
+                sprintf(mp_sub_font, TEXTSUB_DATADIR "%s", name);
+                err = FT_New_Face(library, mp_sub_font, 0, face);
+                if (err == 0)
+                    break;
+              }
+#endif
           } /*if*/
+#if HAVE_FONTCONFIG
+    /* adaptation of patch by Nicolas George: add support for fontconfig. */
+        if (!FcInit())
+          {
+            fprintf(stderr, "ERR:  cannot initialize fontconfig.\n");
+            break;
+          } /*if*/
+        searchpattern = FcNameParse((const FcChar8 *)name);
+        if (searchpattern == NULL)
+          {
+            fprintf(stderr, "ERR:  cannot parse font name.\n");
+            break;
+          } /*if*/
+        if (!FcConfigSubstitute(NULL, searchpattern, FcMatchPattern))
+          {
+            fprintf(stderr, "ERR:  cannot substitute font configuration.\n");
+            break;
+          } /*if*/
+        FcDefaultSubstitute(searchpattern);
+        foundpattern = FcFontMatch(NULL, searchpattern, &result);
+        if (foundpattern == NULL || result != FcResultMatch)
+          {
+            fprintf(stderr, "ERR:  cannot match font name.\n");
+            break;
+          } /*if*/
+        if (FcPatternGetString(foundpattern, FC_FILE, 0, &foundfilename) != FcResultMatch)
+          {
+            fprintf(stderr, "ERR:  cannot get the font name.\n");
+            break;
+          } /*if*/
+        fprintf(stderr, "INFO: found font file %s\n", foundfilename);
+        err = FT_New_Face(library, (const char *)foundfilename, 0, face);
+        if (err == 0)
+            break;
+#endif /*HAVE_FONTCONFIG*/
+      }
+    while (0);
+#if HAVE_FONTCONFIG
+    if (searchpattern != NULL)
+      {
+        FcPatternDestroy(searchpattern);
+      } /*if*/
+    if (foundpattern != NULL)
+      {
+        FcPatternDestroy(foundpattern);
+      } /*if*/
+#endif /*HAVE_FONTCONFIG*/
+    if (err != 0)
+      {
+        fprintf
+          (
+            stderr,
+            "ERR:  New_Face failed. Maybe the font path is wrong.\n"
+                "Please supply the text font file (%s).\n",
+            name
+          );
       } /*if*/
     return err;
   } /*load_sub_face*/
@@ -1143,11 +1216,9 @@ font_desc_t* read_font_desc_ft
     font_desc_t *desc;
     FT_Face face;
     FT_ULong my_charset[MAX_CHARSET_SIZE]; /* characters we want to render; Unicode */
-    const char * const charmap = "ucs-4";
     int err;
     int charset_size;
     int i, j;
-    int unicode;
     float movie_size;
     float subtitle_font_ppem;
     float osd_font_ppem;

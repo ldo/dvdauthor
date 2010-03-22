@@ -334,7 +334,7 @@ static int sub_getc()
                 nextout = ic_outbuf;
                 inleft = ic_end_in - ic_next_in; /* won't be zero */
                 outleft = sizeof ic_outbuf;
-                convok = iconv(icdsc, &nextin, &inleft, &nextout, &outleft) != (size_t)-1;
+                convok = iconv(icdsc, (char **)&nextin, &inleft, &nextout, &outleft) != (size_t)-1;
                 if (!convok)
                   {
                     if (!ic_eof && errno == EINVAL)

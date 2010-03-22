@@ -75,9 +75,12 @@ fi
 AC_SUBST(MAGICK_CPPFLAGS)
 AC_SUBST(MAGICK_LIBS)
 
-PKG_CHECK_MODULES([FRIBIDI], [fribidi], [AC_DEFINE(HAVE_FRIBIDI, 1, [Whether FriBiDi is available])])
-AC_CHECK_TYPE(FriBidiParType, [AC_DEFINE(HAVE_FRIBIDI2, 1, [Whether Fribidi is version 2])], [], [#include <fribidi/fribidi-bidi-types.h>])
+PKG_CHECK_MODULES([FONTCONFIG], [fontconfig], [AC_DEFINE(HAVE_FONTCONFIG, 1, [whether Fontconfig is available])], [:])
+AC_SUBST(FONTCONFIG_CFLAGS)
+AC_SUBST(FONTCONFIG_LIBS)
 
+PKG_CHECK_MODULES([FRIBIDI], [fribidi], [AC_DEFINE(HAVE_FRIBIDI, 1, [whether FriBidi is available])], [:])
+AC_CHECK_TYPE(FriBidiParType, [AC_DEFINE(HAVE_FRIBIDI2, 1, [Whether Fribidi is version 2])], [], [#include <fribidi/fribidi-bidi-types.h>])
 AC_SUBST(FRIBIDI_CFLAGS)
 AC_SUBST(FRIBIDI_LIBS)
 
