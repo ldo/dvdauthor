@@ -138,7 +138,7 @@ sub_data * textsub_init
     the text. */
   {
     const size_t image_buffer_size =
-        sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width * 3;
+        sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width;
     vo_sub = NULL;
     textsub_font_name = NULL; /* never set to any other value! */
     current_sub = -1;
@@ -214,7 +214,7 @@ void textsub_render(subtitle * sub)
   {
     vo_sub = sub;
     vo_osd_changed(OSDTYPE_SUBTITLE);
-    memset(textsub_image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width * 3);
+    memset(textsub_image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width);
     vo_update_osd(movie_width, movie_height);
 /*  draw_image(movie_width, movie_height, textsub_image_buffer, movie_width * 3); */
   } /*textsub_render*/
