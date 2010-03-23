@@ -71,88 +71,93 @@ typedef struct { /* a set of colours in a subpicture or button */
 // this function scans through a picture and looks for the color that
 // the user indicated should mean transparent
 // if the color is found, it is replaced by 0,0,0,0 meaning "transparent"
-static void scanpict(stinfo *s,pict *p)
-{
+static void scanpict(stinfo *s, pict *p)
+  {
     int i;
-
     // we won't replace the background color if there is already evidence
     // of alpha channel information
-    for( i=0; i<p->numpal; i++ )
-        if( p->pal[i].t!=255 )
+    for (i = 0; i < p->numpal; i++)
+        if (p->pal[i].t != 255)
             goto skip_transreplace;
-    for( i=0; i<p->numpal; i++ )
-        if( !memcmp(p->pal+i,&s->transparentc,sizeof(palt)) ) {
-            memset(&p->pal[i],0,sizeof(palt));
+    for (i = 0; i < p->numpal; i++)
+        if (!memcmp(p->pal + i, &s->transparentc, sizeof(palt)))
+          { /* found matching entry */
+            memset(&p->pal[i], 0, sizeof(palt)); /* zap the RGB components */
             break;
-        }
-
+          } /*if; for*/
  skip_transreplace:
-    for( i=0; i<p->numpal; i++ )
-        findmasterpal(s,p->pal+i);
-}
+    for (i = 0; i < p->numpal; i++)
+        (void)findmasterpal(s, p->pal + i);
+          /* just make sure all the colours are in the colour table */
+  } /*scanpict*/
 
-static void putpixel(pict *p,int x,palt *c)
+static void putpixel(pict *p, int x, const palt *c)
   /* stores another pixel into pict p at offset x with colour c. Adds a new
     entry into the colour table if not already present and there's room. */
-{
+  {
     int i;
-
-    if( !c->t ) {
+    palt ct;
+    if (!c->t && (c->r || c->g || c->b))
+      {
       /* all transparent pixels look alike to me */
-        c->r=0;
-        c->g=0;
-        c->b=0;
-    }
-    for( i=0; i<p->numpal; i++ )
-        if( !memcmp(&p->pal[i],c,sizeof(palt)) ) {
+        ct.t = 0;
+        ct.r = 0;
+        ct.g = 0;
+        ct.b = 0;
+        c = &ct;
+      } /*if*/
+    for (i = 0; i < p->numpal; i++)
+        if (!memcmp(&p->pal[i], c, sizeof(palt)))
+          {
           /* matches existing palette entry */
-            p->img[x]=i;
+            p->img[x] = i;
             return;
-        }
-    if( p->numpal==256 ) {
+          } /*if; for*/
+    if (p->numpal == 256)
+      {
       /* too many colours */
-        p->img[x]=0;
+        p->img[x] = 0;
         return;
-    }
+      } /*if*/
   /* allocate new palette entry */
-    p->img[x]=p->numpal;
-/*    fprintf(stderr,"CREATING COLOR %d,%d,%d %d\n",c->r,c->g,c->b,c->t); */
-    p->pal[p->numpal++]=*c;
-}
+    p->img[x] = p->numpal;
+/*  fprintf(stderr, "CREATING COLOR %d,%d,%d %d\n", c->r, c->g, c->b, c->t); */
+    p->pal[p->numpal++] = *c;
+  } /*putpixel*/
 
-static void createimage(pict *s,int w,int h)
+static void createimage(pict *s, int w, int h)
   /* allocates memory for pixels in s with dimensions w and h. */
-{
-    s->numpal=0;
+  {
+    s->numpal = 0;
   /* ensure allocated dimensions are even */
-    s->width=w+(w&1);
-    s->height=h+(h&1);
-    s->img=malloc(s->width*s->height);
-    if( w!=s->width ) {
+    s->width = w + (w & 1);
+    s->height = h + (h & 1);
+    s->img = malloc(s->width * s->height);
+    if (w != s->width)
+      {
       /* set padding pixels along side to transparent */
         int y;
         palt t;
-
-        t.r=0;
-        t.g=0;
-        t.b=0;
-        t.t=0;
-        for( y=0; y<h; y++ )
-            putpixel(s,w+y*s->width,&t);
-    }
-    if( h!=s->height ) {
+        t.r = 0;
+        t.g = 0;
+        t.b = 0;
+        t.t = 0;
+        for (y = 0; y < h; y++)
+            putpixel(s, w + y * s->width, &t);
+      } /*if*/
+    if (h != s->height)
+      {
       /* set padding pixels along bottom to transparent */
         int x;
         palt t;
-
-        t.r=0;
-        t.g=0;
-        t.b=0;
-        t.t=0;
-        for( x=0; x<s->width; x++ )
-            putpixel(s,x+h*s->width,&t);
-    }
-}
+        t.r = 0;
+        t.g = 0;
+        t.b = 0;
+        t.t = 0;
+        for (x = 0; x < s->width; x++)
+            putpixel(s, x + h * s->width, &t);
+      } /*if*/
+  } /*createimage*/
 
 #if defined(HAVE_MAGICK) || defined(HAVE_GMAGICK)
 static int read_magick(pict *s)
@@ -309,51 +314,49 @@ static int read_png(pict *s)
 
 static int read_frame(pict *s)
   /* fills in s from textsub_image_buffer. */
-{
-  int x,y;
-
-  createimage(s,movie_width,movie_height);
-  for( y=0; y<movie_height; y++ )
   {
-    unsigned char *d=textsub_image_buffer+(y*movie_width*3);
+    int x, y;
+    createimage(s, movie_width, movie_height);
+    for (y = 0; y < movie_height; y++)
+      {
+          const unsigned char * d = textsub_image_buffer + y * movie_width * 3;
+          for (x = 0; x < movie_width; x++)
+            {
+              palt p;
+              p.r = *d++;
+              p.g = *d++;
+              p.b = *d++;
+              p.t = 255;
+              putpixel(s, y * s->width + x, &p);
+            } /*for*/
+      } /*for*/
+    return 0;
+  } /*read_frame*/
 
-    for( x=0; x<movie_width; x++ )
-    {
-      palt p;
-      p.r=*d++;
-      p.g=*d++;
-      p.b=*d++;
-      p.t=255;
-      putpixel(s,y*s->width+x,&p);
-    }
-  }
-  return 0;
-}
-
-static int read_pic(stinfo *s,pict *p)
-{
-    int r=0;
-    if ( have_textsub)
-    {
-        textsub_render(s->sub_title);
+static int read_pic(stinfo *s, pict *p)
+  /* gets the image(s) specified by p into s. */
+  {
+    int r = 0;
+    if (have_textsub)
+      {
+        textsub_render(s->sub_title); /* will allocate and render into textsub_image_buffer */
         s->forced = s->sub_title->text_forced;
-        r=read_frame(p);
-    }
-    else
-    {
-        if( !p->fname )
+        r = read_frame(p);
+      }
+    else /* read image file */
+      {
+        if (!p->fname)
             return 0;
 #if defined(HAVE_MAGICK) || defined(HAVE_GMAGICK)
-        r=read_magick(p);
+        r = read_magick(p);
 #else
-        r=read_png(p);
+        r = read_png(p);
 #endif
-    }
-    if( !r )
-        scanpict(s,p);
+      } /*if*/
+    if (!r)
+        scanpict(s, p);
     return r;
-}
-
+  } /*read_pic*/
 
 static int checkcolor(palgroup *p,int c)
   /* tries to put colour c into palette p, returning true iff successful or already there. */
