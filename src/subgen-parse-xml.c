@@ -82,40 +82,39 @@ static unsigned int parsetime(const char *t)
         return rt * 90000 + 90000 * n / nd;
   } /*parsetime*/
 
-#if 0
-#endif
-
-static int had_stream=0; /* whether I've seen <stream> */
+static int
+    had_stream = 0, /* whether I've seen <stream> */
+    had_textsub = 0; /* whether I've seen <textsub> */
 static stinfo *st=0; /* current <spu> directive collected here */
 static button *curbutton=0;
 static char * filename = 0;
 
-void stream_begin()
-{
+static void stream_begin()
+  {
     if (had_stream)
       {
         fprintf(stderr,"ERR:  Only one stream is currently allowed.\n");
         exit(1);
       } /*if*/
     had_stream = 1;
-}
+  } /*stream_begin*/
 
-void spu_begin()
+static void spu_begin()
 {
     st = malloc(sizeof(stinfo));
     memset(st, 0, sizeof(stinfo));
 }
 
-void spu_image(const char *v)        { st->img.fname=utf8tolocal(v); }
-void spu_highlight(const char *v)    { st->hlt.fname=utf8tolocal(v); }
-void spu_select(const char *v)       { st->sel.fname=utf8tolocal(v); }
-void spu_start(const char *v)        { st->spts         = parsetime(v); }
-void spu_end(const char *v)          { st->sd           = parsetime(v); }
-void spu_outlinewidth(const char *v) { st->outlinewidth = strtounsigned(v, "spu outlinewidth");      }
-void spu_xoffset(const char *v)      { st->x0 = strtounsigned(v, "spu xoffset");                }
-void spu_yoffset(const char *v)      { st->y0 = strtounsigned(v, "spu yoffset");                }
+static void spu_image(const char *v)        { st->img.fname=utf8tolocal(v); }
+static void spu_highlight(const char *v)    { st->hlt.fname=utf8tolocal(v); }
+static void spu_select(const char *v)       { st->sel.fname=utf8tolocal(v); }
+static void spu_start(const char *v)        { st->spts         = parsetime(v); }
+static void spu_end(const char *v)          { st->sd           = parsetime(v); }
+static void spu_outlinewidth(const char *v) { st->outlinewidth = strtounsigned(v, "spu outlinewidth");      }
+static void spu_xoffset(const char *v)      { st->x0 = strtounsigned(v, "spu xoffset");                }
+static void spu_yoffset(const char *v)      { st->y0 = strtounsigned(v, "spu yoffset");                }
 
-void spu_force(const char *v)
+static void spu_force(const char *v)
 {
     st->forced = xml_ison(v);
     if (st->forced == -1)
@@ -125,7 +124,7 @@ void spu_force(const char *v)
       } /*if*/
 }
 
-void spu_transparent(const char *v)
+static void spu_transparent(const char *v)
 {
     int c = 0;
     sscanf(v, "%x", &c);
@@ -135,7 +134,7 @@ void spu_transparent(const char *v)
     st->transparentc.t = 255;
 }
 
-void spu_autooutline(const char *v)
+static void spu_autooutline(const char *v)
 {
     if (!strcmp(v,"infer"))
         st->autooutline = 1;
@@ -146,7 +145,7 @@ void spu_autooutline(const char *v)
       } /*if*/
 }
 
-void spu_autoorder(const char *v)
+static void spu_autoorder(const char *v)
 {
     if (!strcmp(v,"rows"))
         st->autoorder = 0;
@@ -159,7 +158,7 @@ void spu_autoorder(const char *v)
       } /*if*/
 }
 
-void spu_complete()
+static void spu_complete()
 {
     if (!st->sd) /* no end time specified */
         st->sd = -1; /* default to indefinite */
@@ -181,7 +180,7 @@ void spu_complete()
     st = 0;
 }
 
-void button_begin()
+static void button_begin()
 {
     st->buttons = realloc(st->buttons, (st->numbuttons + 1) * sizeof(button));
     curbutton = &st->buttons[st->numbuttons++];
@@ -192,30 +191,28 @@ void button_begin()
     curbutton->r.y1 = -1;
 }
 
-void action_begin()
+static void action_begin()
 {
     button_begin();
     curbutton->autoaction = 1;
 }
 
-void button_label(const char *v) { curbutton->name  = strdup(v); }
-void button_up(const char *v)    { curbutton->up    = strdup(v); }
-void button_down(const char *v)  { curbutton->down  = strdup(v); }
-void button_left(const char *v)  { curbutton->left  = strdup(v); }
-void button_right(const char *v) { curbutton->right = strdup(v); }
-void button_x0(const char *v)    { curbutton->r.x0  = strtounsigned(v, "button x0");   }
-void button_y0(const char *v)    { curbutton->r.y0  = strtounsigned(v, "button y0");   }
-void button_x1(const char *v)    { curbutton->r.x1  = strtounsigned(v, "button x1");   }
-void button_y1(const char *v)    { curbutton->r.y1  = strtounsigned(v, "button y1");   }
+static void button_label(const char *v) { curbutton->name  = strdup(v); }
+static void button_up(const char *v)    { curbutton->up    = strdup(v); }
+static void button_down(const char *v)  { curbutton->down  = strdup(v); }
+static void button_left(const char *v)  { curbutton->left  = strdup(v); }
+static void button_right(const char *v) { curbutton->right = strdup(v); }
+static void button_x0(const char *v)    { curbutton->r.x0  = strtounsigned(v, "button x0");   }
+static void button_y0(const char *v)    { curbutton->r.y0  = strtounsigned(v, "button y0");   }
+static void button_x1(const char *v)    { curbutton->r.x1  = strtounsigned(v, "button x1");   }
+static void button_y1(const char *v)    { curbutton->r.y1  = strtounsigned(v, "button y1");   }
 
-/* fixme: can there be more than one <textsub> tag? If not, then put in checks to block it */
-
-void textsub_filename(const char *v)
+static void textsub_filename(const char *v)
 {
     filename = utf8tolocal(v); /* won't leak, because I won't be called more than once */
 }
 
-void textsub_characterset(const char *v)
+static void textsub_characterset(const char *v)
 {
 #ifdef HAVE_ICONV
     sub_cp = strdup(v); /* won't leak, because I won't be called more than once */
@@ -257,7 +254,17 @@ void textsub_v_alignment(const char *v)
       } /*if*/
 }
 
-void textsub_complete()
+static void textsub_begin()
+  {
+    if (had_textsub)
+      {
+        fprintf(stderr,"ERR:  Only one textsub is currently allowed.\n");
+        exit(1);
+      } /*if*/
+    had_textsub = 1;
+  } /*textsub_begin*/
+
+static void textsub_complete()
   /* called on a </textsub> tag to load and parse the subtitles. */
   {
     unsigned long pts = 0;
@@ -321,18 +328,18 @@ void textsub_complete()
       } /*if*/
   } /*textsub_complete*/
 
-void textsub_l_margin(const char *v)     { sub_left_margin=strtounsigned(v, "textsub left-margin");        }
-void textsub_r_margin(const char *v)     { sub_right_margin=strtounsigned(v, "textsub right-margin");       }
-void textsub_b_margin(const char *v)     { sub_bottom_margin=strtounsigned(v, "textsub bottom-margin");      }
-void textsub_t_margin(const char *v)     { sub_top_margin=strtounsigned(v, "textsub top-margin");         }
-void textsub_font(const char *v)         { sub_font=strdup(v);             }
-void textsub_sub_fps(const char *v)      { sub_fps=atof(v);                }
-void textsub_movie_fps(const char *v)    { movie_fps=atof(v);              }
-void textsub_movie_width(const char* v)  { movie_width=strtounsigned(v, "textsub movie-width");            }
-void textsub_movie_height(const char* v) { movie_height=strtounsigned(v, "textsub movie-height");           }
-void textsub_fontsize(const char *v)     { text_font_scale_factor=atof(v); }
+static void textsub_l_margin(const char *v)     { sub_left_margin=strtounsigned(v, "textsub left-margin");        }
+static void textsub_r_margin(const char *v)     { sub_right_margin=strtounsigned(v, "textsub right-margin");       }
+static void textsub_b_margin(const char *v)     { sub_bottom_margin=strtounsigned(v, "textsub bottom-margin");      }
+static void textsub_t_margin(const char *v)     { sub_top_margin=strtounsigned(v, "textsub top-margin");         }
+static void textsub_font(const char *v)         { sub_font=strdup(v);             }
+static void textsub_sub_fps(const char *v)      { sub_fps=atof(v);                }
+static void textsub_movie_fps(const char *v)    { movie_fps=atof(v);              }
+static void textsub_movie_width(const char* v)  { movie_width=strtounsigned(v, "textsub movie-width");            }
+static void textsub_movie_height(const char* v) { movie_height=strtounsigned(v, "textsub movie-height");           }
+static void textsub_fontsize(const char *v)     { text_font_scale_factor=atof(v); }
 
-void textsub_force(const char *v)
+static void textsub_force(const char *v)
 {
     text_forceit = xml_ison(v);
     if (text_forceit == -1)
@@ -342,7 +349,7 @@ void textsub_force(const char *v)
       } /*if*/
 }
 
-void textsub_transparent(const char *v)
+static void textsub_transparent(const char *v)
 {
     sscanf(v, "%x", &transparent_color);
     have_transparent = 1;
@@ -362,7 +369,7 @@ static struct elemdesc spu_elems[]={
     {"spu",SPU_STREAM,SPU_SPU,spu_begin,spu_complete},
     {"button",SPU_SPU,SPU_NOSUB,button_begin,0},
     {"action",SPU_SPU,SPU_NOSUB,action_begin,0},
-    {"textsub",SPU_STREAM,SPU_NOSUB,0,textsub_complete},
+    {"textsub",SPU_STREAM,SPU_NOSUB,textsub_begin,textsub_complete},
     {0,0,0,0,0}
 };
 

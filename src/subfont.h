@@ -11,31 +11,29 @@
 #include FT_FREETYPE_H
 #endif
 
-typedef struct {
+typedef struct /* a bitmap for caching glyph images */
+  {
     unsigned char *bmp; /* 8-bit-per-pixel image bitmap accumulated here */
     unsigned char *pal; /* colour palette */
     int w, h, c;
 #ifdef HAVE_FREETYPE
-    int charwidth,charheight;
-    int pen,baseline,padding;
+    int charwidth, charheight;
+    int pen, baseline, padding;
     int current_count; /* multiplied by charwidth * charheight = used size of bmp */
     int current_alloc; /* multiplied by charwidth * charheight = allocated size of bmp */
 #endif
-} raw_file;
+  } raw_file;
 
-typedef struct {
+typedef struct
+  {
 #ifdef HAVE_FREETYPE
     int dynamic;
 #endif
-    char *name;
-    char *fpath;
     int spacewidth;
     int charspace; /* extra inter-character spacing, may be negative */
     int height;
-//    char *fname_a;
-//    char *fname_b;
-    raw_file* pic_a[16];
-    raw_file* pic_b[16];
+    raw_file* pic_a[16]; /* alpha for glyph images */
+    raw_file* pic_b[16]; /* luma for glyph images, 8 bits per pixel */
     short font[65536];
       /* index into faces array, which FT_Face to use for rendering this Unicode character */
     int start[65536];   // short is not enough for unicode fonts
@@ -44,16 +42,16 @@ typedef struct {
     int freetype;
 
 #ifdef HAVE_FREETYPE
-    int face_cnt; /* how many entries in faces are used */
-    FT_Face faces[16];
+    int face_cnt; /* how many entries in faces are used (actually always only 1) */
+    FT_Face faces[16]; /* I suppose this is to allow getting different ranges of characters from different fonts */
     FT_UInt glyph_index[65536]; /* glyph index indexed by Unicode character code */
 
     int max_width, max_height;
 
-    struct
+    struct /* parameters for anti-aliased/outlined rendering */
       {
-        int g_r;
-        int o_r;
+        int g_r; /* blur radius */
+        int o_r; /* outline radius */
         int g_w;
         int o_w;
         int o_size;
@@ -66,8 +64,7 @@ typedef struct {
         unsigned short *tmp;
       } tables;
 #endif
-
-} font_desc_t;
+  } font_desc_t;
 
 extern font_desc_t* vo_font;
 
@@ -91,4 +88,4 @@ static int kerning(font_desc_t *desc, int prevc, int c) { return 0; }
 
 #endif
 
-#endif /* ! __MPLAYER_FONT_LOAD_H */
+#endif /* !__SUBFONT_H */

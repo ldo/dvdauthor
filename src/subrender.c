@@ -54,7 +54,8 @@ static inline void vo_draw_alpha_rgb24
     int dststride
   )
   /* composites pixels from monochrome src onto full-colour 24-bit dstbase according to
-    transparency taken from srca. */
+    transparency taken from srca. Used to transfer a complete rendered line to
+    textsub_image_buffer. */
   {
     int y, i;
     for (y = 0; y < h; y++)
@@ -98,7 +99,6 @@ static inline void vo_draw_alpha_rgb24
       } /*for*/
   } /*vo_draw_alpha_rgb24*/
 
-// renders char to a big per-object buffer where alpha and bitmap are separated
 static void draw_alpha_buf
   (
     mp_osd_obj_t * obj,
@@ -110,15 +110,27 @@ static void draw_alpha_buf
     const unsigned char * srca, /* source alpha */
     int stride /* of source */
   )
+  /* used to assemble complete rendered screen lines in obj by copying individual
+    glyph images. */
   {
     int dststride = obj->stride;
     int dstskip = obj->stride - w;
     int srcskip = stride - w;
     int i, j;
-    unsigned char * b = obj->bitmap_buffer + (y0 - obj->bbox.y1) * dststride + (x0 - obj->bbox.x1);
-    unsigned char * a = obj->alpha_buffer + (y0 - obj->bbox.y1) * dststride + (x0 - obj->bbox.x1);
-    const unsigned char * bs = src;
-    const unsigned char * as = srca;
+    unsigned char * bdst =
+            obj->bitmap_buffer
+        +
+            (y0 - obj->bbox.y1) * dststride
+        +
+            (x0 - obj->bbox.x1);
+    unsigned char * adst =
+            obj->alpha_buffer
+        +
+            (y0 - obj->bbox.y1) * dststride
+        +
+            (x0 - obj->bbox.x1);
+    const unsigned char * bsrc = src;
+    const unsigned char * asrc = srca;
     int k = 0;
   /* fprintf(stderr, "***w:%d x0:%d bbx1:%d bbx2:%d dstsstride:%d y0:%d h:%d bby1:%d bby2:%d ofs:%d ***\n",w,x0,obj->bbox.x1,obj->bbox.x2,dststride,y0,h,obj->bbox.y1,obj->bbox.y2,(y0-obj->bbox.y1)*dststride + (x0-obj->bbox.x1));*/
     if (x0 < obj->bbox.x1 || x0 + w > obj->bbox.x2 || y0 < obj->bbox.y1 || y0 + h > obj->bbox.y2)
@@ -134,21 +146,21 @@ static void draw_alpha_buf
       } /*if*/
     for (i = 0; i < h; i++)
       {
-        for (j = 0; j < w; j++, b++, a++, bs++, as++)
+        for (j = 0; j < w; j++, bdst++, adst++, bsrc++, asrc++)
           {
-            if (*b < *bs) /* composite according to max operator */
-              *b = *bs;
-            if (*as) /* not fully transparent */
+            if (*bdst < *bsrc) /* composite according to max operator */
+                *bdst = *bsrc;
+            if (*asrc) /* not fully transparent */
               {
-                if (*a == 0 || *a > *as)
-                  *a = *as;
+                if (*adst == 0 || *adst > *asrc)
+                  *adst = *asrc;
               } /*if*/
           } /*for*/
         k += dstskip;
-        b += dstskip;
-        a += dstskip;
-        bs += srcskip;
-        as += srcskip;
+        bdst += dstskip;
+        adst += dstskip;
+        bsrc += srcskip;
+        asrc += srcskip;
       } /*for*/
   } /*draw_alpha_buf*/
 
@@ -184,6 +196,8 @@ inline static void vo_update_text_sub
     int dxs,
     int dys
   )
+  /* lays out and renders the subtitle text from vo_sub using the font settings from vo_font,
+    putting the results into obj. */
   {
     // Structures needed for the new splitting algorithm.
     // osd_text_word contains the single subtitle word.
@@ -194,12 +208,12 @@ inline static void vo_update_text_sub
         int osd_length;  //horizontal length inside the bbox
         int text_length; //number of characters
         int *text;       //characters
-        struct osd_text_word *prev, *next; /* doubly-linked list */
+        struct osd_text_word *prev, *next; /* doubly-linked list of all words on all lines */
       };
     struct osd_text_line
       {
         int linewidth;
-        struct osd_text_word *words; /* head of word list */
+        struct osd_text_word *words; /* where in word list this line starts */
         struct osd_text_line *prev, *next; /* doubly-linked list */
       };
     int linedone, linesleft, warn_overlong_word;
@@ -275,7 +289,7 @@ inline static void vo_update_text_sub
                       } /*if*/
                     if (!curch)
                         curch++; // avoid UCS 0
-                    render_one_glyph(vo_font, curch);
+                    render_one_glyph(vo_font, curch); /* ensure I have an image for it */
                   } /*if*/
                 if (chindex >= textlen || curch == ' ')
                   {
@@ -353,6 +367,8 @@ inline static void vo_update_text_sub
         // osl holds an ordered (as they appear in the lines) chain of the subtitle words
             if (osl != NULL) /* will always be true! */
               {
+              /* collect words of this line into one or more on-screen lines,
+                wrapping too-long lines */
                 int linewidth = 0, linewidth_variation = 0;
                 struct osd_text_line *lastnewelt;
                 struct osd_text_word *curword;
@@ -621,7 +637,7 @@ inline static void vo_update_text_sub
                         if (utblc > MAX_UCS)
                             break;
                         curch = this_word->text[chindex];
-                        render_one_glyph(vo_font, curch);
+                        render_one_glyph(vo_font, curch); /* fixme: didn't we already do this? */
                         obj->params.subtitle.utbl[utblc++] = curch;
                         sub_totallen++;
                         ++chindex;
@@ -762,7 +778,7 @@ inline static void vo_update_text_sub
                 prevch = -1;
                 while ((curch = obj->params.subtitle.utbl[j++]) != 0)
                   {
-                  /* render the characters of this subtitle display line */
+                  /* collect the rendered characters of this subtitle display line */
                     const int font = vo_font->font[curch];
                     x += kerning(vo_font, prevch, curch);
                     if (font >= 0)

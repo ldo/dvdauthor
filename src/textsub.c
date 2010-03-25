@@ -75,7 +75,6 @@ int sub_utf8 = 0;
   when initialized on 0) */
 float font_factor=0.75;
 int verbose=0;
-float osd_font_scale_factor = 6.0;
 float subtitle_font_radius = 0.0;     /*2.0*/
 float subtitle_font_thickness = 3.0;  /*2.0*/
 int subtitle_autoscale = AUTOSCALE_NONE;
@@ -175,17 +174,23 @@ sub_data * textsub_init
     memset(textsub_image_buffer, 128, image_buffer_size);
     textsub_subdata = sub_read_file(textsub_filename, textsub_movie_fps);
       /* fixme: sub_free never called! */
+  /* following doesn't seem to actually achieve anything: */
     vo_update_osd(textsub_movie_width, textsub_movie_height);
     vo_osd_changed(OSDTYPE_SUBTITLE);
     return textsub_subdata;
   } /*textsub_init*/
 
 void textsub_dump_file()
+  /* not used anywhere (except in obsolete code below). */
   {
     list_sub_file(textsub_subdata);
   } /*textsub_dump_file*/
 
 textsub_subtitle_type textsub_find_sub(unsigned long text_sub_pts)
+  /* looks for the subtitle entry covering the specified time, returning it
+    if it exists and is not the same as was returned for the previous call.
+    Kind of a roundabout way of finding durations of successive subtitles.
+    Oh, and it also sets the text_forced flag while it's at it. */
   {
     textsub_subtitle_type result;
     result.valid = 0;
@@ -211,6 +216,7 @@ textsub_subtitle_type textsub_find_sub(unsigned long text_sub_pts)
 /* extern char *draw_image(int p_w, int p_h, unsigned char* p_planes,unsigned int p_stride); */
 
 void textsub_render(subtitle * sub)
+  /* does the actual rendering of a previously-loaded subtitle. */
   {
     vo_sub = sub;
     vo_osd_changed(OSDTYPE_SUBTITLE);

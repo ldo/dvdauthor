@@ -64,7 +64,6 @@ static int using_freetype = 0;
 //// constants
 static unsigned int const nr_colors = 256;
 static unsigned int const maxcolor = 255;
-static unsigned const base = 256;
 static unsigned const first_char = 33; /* first non-printable, non-whitespace character */
 #define MAX_CHARSET_SIZE 60000 /* hope this is enough! */
 
@@ -150,7 +149,8 @@ static void paste_bitmap
     int height, /* height of area to copy */
     int bwidth /* width of area to copy */
   )
-  /* copies pixels out of bitmap into bbuffer. */
+  /* copies pixels out of bitmap into bbuffer. Used to save glyph images as rendered
+    by FreeType into my cache. */
   {
     int drow = x + y * width;
     int srow = 0;
@@ -185,7 +185,7 @@ static int check_font
   (
     font_desc_t *desc,
     float ppem,
-    int padding,
+    int padding, /* extra space to allow between characters */
     int pic_idx, /* which face to select from desc->faces */
     int charset_size, /* length of charset array */
     const FT_ULong *charset /* character codes to get glyphs for */
@@ -196,6 +196,7 @@ static int check_font
     const FT_Face face = desc->faces[pic_idx];
     int const load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
   /* int const load_flags = FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
+  /* fixme: should probably take out FT_LOAD_NO_HINTING and add FT_LOAD_TARGET_MONO */
     raw_file * const pic_b = desc->pic_b[pic_idx];
     int ymin = INT_MAX, ymax = INT_MIN;
     int space_advance = 20;
@@ -337,11 +338,11 @@ static void outline
     unsigned char *t,
     int width,
     int height,
-    int stride,
-    const unsigned char *m,
-    int r,
-    int mwidth,
-    int msize
+    int stride, /* of both s and t buffers */
+    const unsigned char *m, /* precomputed convolution multiplications */
+    int r, /* thickness */
+    int mwidth, /* convolution matrix dimension */
+    int msize /* nr matrix elements = mwidth * mwidth */
   )
   {
     int x, y;
@@ -359,13 +360,14 @@ static void outline
                 register unsigned char * dstp = t + (y1 + y - r) * stride + x - r;
                 //register int *mp = m + y1 * mwidth;
                 const register unsigned char * mp = m + msize * src + y1 * mwidth;
+                  /* point at precomputed convolution results for src pixel value */
                 int my;
                 for (my = y1; my < y2; my++)
                   {
                     register int mx;
                     for (mx = x1; mx < x2; mx++)
                       {
-                        if(dstp[mx] < mp[mx])
+                        if (dstp[mx] < mp[mx]) /* composite with max operator */
                             dstp[mx] = mp[mx];
                       } /*for*/
                     dstp += stride;
@@ -410,6 +412,7 @@ static void outline1
                         )
                     /
                         2
+                      /* because these are further away from centre--shouldn't division be by sqrt(2)? */
                 +
                     (
                         s[-1] /* left neighbour */
@@ -598,9 +601,9 @@ static void resample_alpha
     int stride, /* width in bytes of both buffers */
     float factor
   )
-  /* copies 8-bit pixels from bbuf to abuf, amplitudes scaled by factor. */
+  /* composites 8-bit pixels from bbuf to abuf, previous destination values scaled by factor. */
   {
-    int f = factor * 256.0f;
+    const int f = factor * 256.0f;
     int i, j;
     for (i = 0; i < height; i++)
       {
@@ -742,6 +745,7 @@ void render_one_glyph(font_desc_t *desc, int c)
     width = desc->width[c] = pen_xa;
     height = pic_b->charheight;
     stride = pic_b->w;
+  /* now generate corresponding anti-aliased/outlined mask into alpha buffer for the glyph I just rendered */
     if (desc->tables.o_r == 0)
       {
         outline0(bbuffer, abuffer, width, height, stride);
@@ -793,10 +797,10 @@ static int prepare_font
     int pic_idx, /* which entry in desc->faces to set up */
     int charset_size, /* length of charset array */
     const FT_ULong *charset, /* character codes to get glyphs for */
-    double thickness,
-    double radius
+    double thickness, /* only to compute inter-character padding */
+    double radius /* ditto */
   )
-  /* fills in parts of desc indexed by pic_idx  with face and related information. */
+  /* fills in parts of desc indexed by pic_idx with face and related information. */
   {
     int i, err;
     const int padding = ceil(radius) + ceil(thickness);
@@ -851,17 +855,17 @@ static int generate_tables
   /* generates the tables used for anti-aliased compositing.
     This is all a waste of time for DVD-Video subtitles. */
   {
+    const unsigned int base = 256;
     const int width = desc->max_height;
     const int height = desc->max_width;
     const double A = log(1.0 / base) / (radius * radius * 2);
     int mx, my, i;
-    double volume_diff, volume_factor = 0;
     unsigned char *omtp;
     desc->tables.g_r = ceil(radius);
     desc->tables.o_r = ceil(thickness);
-    desc->tables.g_w = 2 * desc->tables.g_r + 1;
-    desc->tables.o_w = 2 * desc->tables.o_r + 1;
-    desc->tables.o_size = desc->tables.o_w * desc->tables.o_w;
+    desc->tables.g_w = 2 * desc->tables.g_r + 1; /* diameter of blur convolution */
+    desc->tables.o_w = 2 * desc->tables.o_r + 1; /* diameter of outline convolution */
+    desc->tables.o_size = desc->tables.o_w * desc->tables.o_w; /* total nr entries in outline convolution */
 //  fprintf(stderr, "o_r = %d\n", desc->tables.o_r);
     if (desc->tables.g_r)
       {
@@ -872,7 +876,7 @@ static int generate_tables
             return -1;
           } /*if*/
       } /*if*/
-    desc->tables.om = (unsigned *)malloc(desc->tables.o_w * desc->tables.o_w * sizeof(unsigned));
+    desc->tables.om = (unsigned *)malloc(desc->tables.o_size * sizeof(unsigned));
     desc->tables.omt = malloc(desc->tables.o_size * 256);
     desc->tables.tmp = malloc((width + 1) * height * sizeof(short));
     if (desc->tables.om == NULL || desc->tables.omt == NULL || desc->tables.tmp == NULL)
@@ -882,9 +886,12 @@ static int generate_tables
     if (desc->tables.g_r)
       {
         // gaussian curve with volume = 256
+        double volume_diff, volume_factor = 0;
         for (volume_diff = 10000000; volume_diff > 0.0000001; volume_diff *= 0.5)
           {
-            volume_factor += volume_diff;
+          /* iterate computation of desc->tables.g elements until desc->tables.volume comes out right */
+          /* why not just scale all the values directly? */
+            volume_factor += volume_diff; /* try next increment */
             desc->tables.volume = 0;
             for (i = 0; i < desc->tables.g_w; ++i)
               {
@@ -899,8 +906,9 @@ static int generate_tables
                 desc->tables.volume += desc->tables.g[i];
               } /*for*/
             if (desc->tables.volume > 256)
-                volume_factor -= volume_diff;
+                volume_factor -= volume_diff; /* undo last increment */
           } /*for*/
+      /* and do it all again with the right volume_factor */
         desc->tables.volume = 0;
         for (i = 0; i < desc->tables.g_w; ++i)
           {
@@ -929,33 +937,36 @@ static int generate_tables
         for (mx = 0; mx < desc->tables.o_w; ++mx)
           {
           // antialiased circle would be perfect here, but this one is good enough
-            const double d =
+            const double d = /* [1.0 + thickness - ceil(thickness) .. thickness + 1.0] */
                     thickness
                 +
                     1
                 -
-                    sqrt
+                    sqrt /* radius from centre of convolution */
                       (
                             (mx - desc->tables.o_r) * (mx - desc->tables.o_r)
                         +
                             (my - desc->tables.o_r) * (my - desc->tables.o_r)
                       );
             desc->tables.om[mx + my * desc->tables.o_w] =
-                d >= 1 ?
+                d >= 1 ? /* within outline radius */
                     base
-                : d <= 0 ?
+                : d <= 0 ? /* outside outline radius */
                     0
                 :
-                    d * base + .5;
+                    d * base + .5; /* anti-aliased outline edges */
           } /*for*/
       } /*for*/
   // outline table:
     omtp = desc->tables.omt;
     for (i = 0; i < 256; i++)
       {
+       /* fill in omt with precomputed expansion of every om table multiplied by
+        every one of the possible 256 pixel values */
         for (mx = 0; mx < desc->tables.o_size; mx++)
             *omtp++ = (i * desc->tables.om[mx] + base / 2) / base;
       } /*for*/
+  /* desc->tables.om not needed from this point on! */
     return 0;
   } /*generate_tables*/
 
@@ -1018,8 +1029,6 @@ static font_desc_t* init_font_desc()
     memset(desc, 0, sizeof(font_desc_t));
     desc->dynamic = 1;
   /* setup sane defaults, mark all associated storage as unallocated */
-    desc->name = NULL;
-    desc->fpath = NULL;
     desc->face_cnt = 0;
     desc->charspace = 0;
     desc->spacewidth = 0;
@@ -1032,7 +1041,7 @@ static font_desc_t* init_font_desc()
     desc->tables.omt = NULL;
     desc->tables.tmp = NULL;
     for (i = 0; i < 65536; i++)
-        desc->start[i] = desc->width[i] = desc->font[i] = -1;
+        desc->start[i] = desc->width[i] = desc->font[i] = -1; /* indicate no glyph images cached */
     for (i = 0; i < 16; i++)
         desc->pic_a[i] = desc->pic_b[i] = NULL;
     return desc;
@@ -1045,8 +1054,6 @@ void free_font_desc(font_desc_t *desc)
     if (!desc)
         return; /* nothing to do */
 //  if (!desc->dynamic) return; // some vo_aa crap, better leaking than crashing
-    free(desc->name);
-    free(desc->fpath);
     for (i = 0; i < 16; i++)
       {
         if (desc->pic_a[i])
@@ -1211,7 +1218,6 @@ font_desc_t* read_font_desc_ft
     int i, j;
     float movie_size;
     float subtitle_font_ppem;
-    float osd_font_ppem;
     switch (subtitle_autoscale)
       {
     case AUTOSCALE_MOVIE_HEIGHT:
@@ -1229,15 +1235,10 @@ font_desc_t* read_font_desc_ft
     break;
       } /*switch*/
     subtitle_font_ppem = movie_size * text_font_scale_factor / 100.0;
-    osd_font_ppem = movie_size * osd_font_scale_factor / 100.0;
     if (subtitle_font_ppem < 5)
-        subtitle_font_ppem = 5;
-    if (osd_font_ppem < 5)
-        osd_font_ppem = 5;
+        subtitle_font_ppem = 5; /* try to ensure it stays legible */
     if (subtitle_font_ppem > 128)
-        subtitle_font_ppem = 128;
-    if (osd_font_ppem > 128)
-        osd_font_ppem = 128;
+        subtitle_font_ppem = 128; /* don't go overboard--why not? */
     desc = init_font_desc();
     if (!desc)
         return NULL;
