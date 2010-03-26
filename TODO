@@ -1,9 +1,5 @@
 DVDAUTHOR
 
-. deal with non-18 byte system headers
-
-. allow different subtitles for p&s, lb, etc
-
 . allow different buttons for p&s, lb, etc
 
 . moving buttons
@@ -28,8 +24,6 @@ SPUMUX
 . deal with 16 color subtitles
 
 . fix output of spumux (INFO:, ERR:, WARN:)
-
-. deal with multiple subtitle formats
 
 . librarify spumux
 
