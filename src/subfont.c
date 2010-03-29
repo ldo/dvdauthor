@@ -334,14 +334,14 @@ static int check_font
 // general outline
 static void outline
   (
-    const unsigned char *s,
-    unsigned char *t,
-    int width,
+    const unsigned char *s, /* source image */
+    unsigned char *t, /* where to compute outlined version */
+    int width, /* dimensions of s and t */
     int height,
     int stride, /* of both s and t buffers */
     const unsigned char *m, /* precomputed convolution multiplications */
     int r, /* thickness */
-    int mwidth, /* convolution matrix dimension */
+    int mwidth, /* convolution matrix dimension = 2 * r + 1 */
     int msize /* nr matrix elements = mwidth * mwidth */
   )
   {
@@ -353,6 +353,7 @@ static void outline
             const int src = s[x];
             if (src != 0)
               {
+              /* compute limits of convolution, truncated as appropriate at edges of image */
                 const int x1 = x < r ? r - x : 0;
                 const int y1 = y < r ? r - y : 0;
                 const int x2 = x + r >= width ? r + width - x : 2 * r + 1;
@@ -457,14 +458,16 @@ static void outline0
 // gaussian blur
 static void blur
   (
-    unsigned char *buffer,
-    unsigned short *tmp2,
-    int width,
+    unsigned char *buffer, /* pixels to be blurred */
+    unsigned short *tmp2, /* result computation area, (width + 1) * height elements */
+      /* fixme: I think that needs to be (width + r) * height elements
+        (and references to width + 1 below similarly corrected to width + r) */
+    int width, /* dimensions of buffer */
     int height,
-    int stride,
-    const unsigned int *m2,
-    int r,
-    int mwidth
+    int stride, /* of buffer */
+    const unsigned int *m2, /* precomputed convolution multiplications */
+    int r, /* blur radius */
+    int mwidth /* = 2 * r + 1 */
   )
   {
     int x, y;
@@ -594,14 +597,14 @@ static void blur
 
 static void resample_alpha
   (
-    unsigned char *abuf,
-    const unsigned char *bbuf,
+    unsigned char *abuf, /* image alpha to be transformed */
+    const unsigned char *bbuf, /* image luma */
     int width, /* dimensions of both buffers */
     int height,
     int stride, /* width in bytes of both buffers */
-    float factor
+    float factor /* scale factor to be applied to alpha */
   )
-  /* composites 8-bit pixels from bbuf to abuf, previous destination values scaled by factor. */
+  /* scales contents of abuf by factor and inverts them. */
   {
     const int f = factor * 256.0f;
     int i, j;
@@ -745,7 +748,8 @@ void render_one_glyph(font_desc_t *desc, int c)
     width = desc->width[c] = pen_xa;
     height = pic_b->charheight;
     stride = pic_b->w;
-  /* now generate corresponding anti-aliased/outlined mask into alpha buffer for the glyph I just rendered */
+  /* now generate corresponding anti-aliased/outlined mask into alpha buffer
+    for the glyph I just rendered */
     if (desc->tables.o_r == 0)
       {
         outline0(bbuffer, abuffer, width, height, stride);
@@ -859,6 +863,7 @@ static int generate_tables
     const int width = desc->max_height;
     const int height = desc->max_width;
     const double A = log(1.0 / base) / (radius * radius * 2);
+      /* larger A => narrower Gaussian */
     int mx, my, i;
     unsigned char *omtp;
     desc->tables.g_r = ceil(radius);
@@ -925,12 +930,15 @@ static int generate_tables
         // gauss table:
         for (mx = 0; mx < desc->tables.g_w; mx++)
           {
+           /* fill in gt2 with precomputed expansion of every g table entry multiplied by
+            every one of the possible 256 pixel values */
             for (i = 0; i < 256; i++)
               {
                 desc->tables.gt2[mx + i * desc->tables.g_w] = i * desc->tables.g[mx];
               } /*for*/
           } /*for*/
       } /*if*/
+  /* desc->tables.g not needed from this point on! */
   /* outline matrix */
     for (my = 0; my < desc->tables.o_w; ++my)
       {
@@ -961,7 +969,7 @@ static int generate_tables
     omtp = desc->tables.omt;
     for (i = 0; i < 256; i++)
       {
-       /* fill in omt with precomputed expansion of every om table multiplied by
+       /* fill in omt with precomputed expansion of every om table entry multiplied by
         every one of the possible 256 pixel values */
         for (mx = 0; mx < desc->tables.o_size; mx++)
             *omtp++ = (i * desc->tables.om[mx] + base / 2) / base;

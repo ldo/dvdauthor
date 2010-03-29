@@ -63,6 +63,7 @@ static int sub_match_fuzziness=0; // level of sub name matching fuzziness
 static int sub_format=SUB_INVALID;
 
 #define USE_SORTSUB 1
+  /* whether to ensure that subtitle entries are sorted into time order */
 #ifdef USE_SORTSUB
 /*
    Some subtitling formats, namely AQT and Subrip09, define the end of a
@@ -1839,11 +1840,11 @@ int sub_autodetect(int *uses_time)
 
 static void adjust_subs_time
   (
-    subtitle* sub,
-    float subtime,
+    subtitle * sub, /* array of subtitles */
+    float subtime, /* duration to truncate overlapping subtitle to--why? */
     float fps,
-    int block,
-    int sub_num,
+    int block, /* whether to check for overlapping subtitles (false if caller will fix them up) */
+    int sub_num, /* nr entries in sub array */
     int sub_uses_time
   )
   /* adjusts for overlapping subtitle durations, and also for sub_fps if specified. */
@@ -1852,6 +1853,7 @@ static void adjust_subs_time
     subtitle* nextsub;
     int i = sub_num;
     unsigned long const subfms = (sub_uses_time ? 100 : fps) * subtime;
+      /* subtime converted to subtitle duration units */
     unsigned long const short_overlap = (sub_uses_time ? 100 : fps) / 5; // 0.2s
     nradjusted = 0;
     if (i)
@@ -1926,8 +1928,11 @@ sub_data *sub_read_file(const char *filename, float fps)
     formats which specify fractional-second durations in frames. */
   {
     //filename is assumed to be malloc'ed, free() is used in sub_free()
-    int n_max, n_first, i, j, sub_first, sub_orig;
-    subtitle *first, *second, *sub, *return_sub;
+    int n_max;
+    subtitle *first, *second, *new_sub, *return_sub;
+#ifdef USE_SORTSUB
+    subtitle temp_sub;
+#endif
     sub_data *subt_data;
     int uses_time = 0, sub_num = 0, sub_errs = 0;
     struct subreader const sr[] =
@@ -1999,30 +2004,34 @@ sub_data *sub_read_file(const char *filename, float fps)
         return NULL;
       } /*if*/
 #ifdef USE_SORTSUB
-    sub = (subtitle *)malloc(sizeof(subtitle));
     //This is to deal with those formats (AQT & Subrip) which define the end of a subtitle
     //as the beginning of the following
     previous_sub_end = 0;
 #endif
     while(1)
       {
+      /* read subtitle entries from input file */
         if (sub_num == n_max) /* need more room in "first" array */
           {
             n_max += 16;
             first = realloc(first, n_max * sizeof(subtitle));
           } /*if*/
-#ifndef USE_SORTSUB
-        sub = &first[sub_num];
+#ifdef USE_SORTSUB
+        new_sub = &temp_sub;
+          /* temporary holding area before copying entry into right place in first array */
+#else
+        new_sub = &first[sub_num];
+          /* just put it directly on the end */
 #endif
-        memset(sub, '\0', sizeof(subtitle));
-        sub = srp->read(sub);
-        if (!sub)
+        memset(new_sub, '\0', sizeof(subtitle));
+        new_sub = srp->read(new_sub);
+        if (!new_sub)
             break;   // EOF
 #ifdef HAVE_FRIBIDI
-        if (sub != ERR)
-            sub = sub_fribidi(sub);
+        if (new_sub != ERR)
+            new_sub = sub_fribidi(new_sub);
 #endif
-        if (sub == ERR)
+        if (new_sub == ERR)
           {
 #ifdef HAVE_ICONV
             subcp_close();
@@ -2032,18 +2041,21 @@ sub_data *sub_read_file(const char *filename, float fps)
             return NULL;
            } /*if*/
         // Apply any post processing that needs recoding first
-        if (sub != ERR && !sub_no_text_pp && srp->post)
-            srp->post(sub);
+        if (new_sub != ERR && !sub_no_text_pp && srp->post)
+            srp->post(new_sub);
 #ifdef USE_SORTSUB
-        if (!sub_num || first[sub_num - 1].start <= sub->start)
+      /* fixme: this will all crash if new_sub == ERR */
+        if (!sub_num || first[sub_num - 1].start <= new_sub->start)
           {
-            first[sub_num].start = sub->start;
-            first[sub_num].end = sub->end;
-            first[sub_num].lines = sub->lines;
-            first[sub_num].alignment = sub->alignment;
-            for (i = 0; i < sub->lines; ++i)
+          /* append contents of new_sub to first */
+            int i;
+            first[sub_num].start = new_sub->start;
+            first[sub_num].end = new_sub->end;
+            first[sub_num].lines = new_sub->lines;
+            first[sub_num].alignment = new_sub->alignment;
+            for (i = 0; i < new_sub->lines; ++i)
               {
-                first[sub_num].text[i] = sub->text[i];
+                first[sub_num].text[i] = new_sub->text[i];
               }/*for*/
             if (previous_sub_end)
               {
@@ -2053,6 +2065,8 @@ sub_data *sub_read_file(const char *filename, float fps)
           }
         else
           {
+          /* insert new_sub into first to keep it sorted by start time */
+            int i, j;
             for (j = sub_num - 1; j >= 0; --j)
               {
                 first[j + 1].start = first[j].start;
@@ -2063,15 +2077,15 @@ sub_data *sub_read_file(const char *filename, float fps)
                   {
                     first[j + 1].text[i] = first[j].text[i];
                   } /*for*/
-                if (!j || first[j - 1].start <= sub->start)
+                if (!j || first[j - 1].start <= new_sub->start)
                   {
-                    first[j].start = sub->start;
-                    first[j].end = sub->end;
-                    first[j].lines = sub->lines;
-                    first[j].alignment = sub->alignment;
+                    first[j].start = new_sub->start;
+                    first[j].end = new_sub->end;
+                    first[j].lines = new_sub->lines;
+                    first[j].alignment = new_sub->alignment;
                     for (i = 0; i < SUB_MAX_TEXT; ++i)
                       {
-                        first[j].text[i] = sub->text[i];
+                        first[j].text[i] = new_sub->text[i];
                       } /*for*/
                     if (previous_sub_end)
                       {
@@ -2084,7 +2098,7 @@ sub_data *sub_read_file(const char *filename, float fps)
               } /*for*/
           } /*if*/
 #endif
-        if (sub == ERR)
+        if (new_sub == ERR)
             ++sub_errs;
         else
             ++sub_num; // Error vs. Valid
@@ -2116,8 +2130,9 @@ sub_data *sub_read_file(const char *filename, float fps)
                 (sub_format == SUB_JACOSUB || sub_format == SUB_SSA)
       )
       {
-        adjust_subs_time(first, 6.0, fps, 0, sub_num, uses_time); /*~6 secs AST*/
       // here we manage overlapping subtitles
+        int n_first, sub_first, sub_orig, i, j;
+        adjust_subs_time(first, 6.0, fps, 0, sub_num, uses_time); /*~6 secs AST*/
         sub_orig = sub_num;
         n_first = sub_num;
         sub_num = 0;
@@ -2126,10 +2141,20 @@ sub_data *sub_read_file(const char *filename, float fps)
         // bonded subtitles
         for (sub_first = 0; sub_first < n_first; ++sub_first)
           {
-            unsigned long global_start = first[sub_first].start,
-                global_end = first[sub_first].end, local_start, local_end;
-            int lines_to_add = first[sub_first].lines, sub_to_add = 0,
-                **placeholder = NULL, higher_line = 0, counter, start_block_sub = sub_num;
+            unsigned long
+                global_start = first[sub_first].start,
+                global_end = first[sub_first].end,
+                local_start,
+                local_end;
+            int
+                lines_to_add = first[sub_first].lines, /* total nr lines in block */
+                sub_to_add = 0,
+                **placeholder = NULL,
+                highest_line = 0,
+                nr_placeholder_entries,
+                subs_done;
+            const int
+                start_block_sub = sub_num;
             char real_block = 1;
             // here we find the number of subtitles inside the 'block'
             // and its span interval. this works well only with sorted
@@ -2141,8 +2166,10 @@ sub_data *sub_read_file(const char *filename, float fps)
                     first[sub_first + sub_to_add + 1].start < global_end
               )
               {
+              /* another subtitle overlapping sub_first--include in block */
                 ++sub_to_add;
                 lines_to_add += first[sub_first + sub_to_add].lines;
+              /* extend block duration to include this subtitle: */
                 if (first[sub_first + sub_to_add].start < global_start)
                   {
                     global_start = first[sub_first + sub_to_add].start;
@@ -2154,10 +2181,12 @@ sub_data *sub_read_file(const char *filename, float fps)
               } /*while*/
             // we need a structure to keep trace of the screen lines
             // used by the subs, a 'placeholder'
-            counter = 2 * sub_to_add + 1;
+            nr_placeholder_entries = 2 * sub_to_add + 1;
               // the maximum number of subs derived from a block of sub_to_add + 1 subs
-            placeholder = (int **)malloc(sizeof(int *) * counter);
-            for (i = 0; i < counter; ++i)
+              /* fixme: but only two entries are ever accessed in the following loop:
+                the previous one and the current one */
+            placeholder = (int **)malloc(sizeof(int *) * nr_placeholder_entries);
+            for (i = 0; i < nr_placeholder_entries; ++i)
               {
                 placeholder[i] = (int *)malloc(sizeof(int) * lines_to_add);
                 for (j = 0; j < lines_to_add; ++j)
@@ -2165,13 +2194,13 @@ sub_data *sub_read_file(const char *filename, float fps)
                     placeholder[i][j] = -1;
                   } /*for*/
               } /*for*/
-            counter = 0;
+            subs_done = 0;
             local_end = global_start - 1;
             do
               {
                 // here we find the beginning and the end of a new
                 // subtitle in the block
-                local_start = local_end + 1;
+                local_start = local_end + 1; /* start after previous duration done */
                 local_end = global_end;
                 for (j = 0; j <= sub_to_add; ++j)
                   {
@@ -2183,6 +2212,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                       )
                       {
                         local_end = first[sub_first + j].start - 1;
+                          /* local_end becomes earliest start if after local_start? */
                       }
                     else if
                       (
@@ -2192,6 +2222,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                       )
                       {
                         local_end = first[sub_first + j].end;
+                          /* local_end becomes earliest end if after local_start? */
                       } /*if*/
                   } /*for*/
                 // here we allocate the screen lines to subs we must
@@ -2207,71 +2238,86 @@ sub_data *sub_read_file(const char *filename, float fps)
                             first[sub_first + j].end > local_start
                       )
                       {
-                        unsigned long sub_lines = first[sub_first + j].lines,
+                      /* this one overlaps (local_start .. local_end] */
+                        const unsigned long sub_lines = first[sub_first + j].lines;
+                        unsigned long
                             fragment_length = lines_to_add + 1,
-                            tmp = 0;
-                        char boolean = 0;
+                            blank_lines_avail = 0;
+                        char wasinprev = 0;
                         int fragment_position = -1;
                         // if this is not the first new sub of the block
                         // we find if this sub was present in the previous
                         // new sub
-                        if (counter)
+                        if (subs_done)
                             for (i = 0; i < lines_to_add; ++i)
                               {
-                                if (placeholder[counter - 1][i] == sub_first + j)
+                                if (placeholder[subs_done - 1][i] == sub_first + j)
                                   {
-                                    placeholder[counter][i] = sub_first + j;
-                                    boolean = 1;
+                                    placeholder[subs_done][i] = sub_first + j;
+                                    wasinprev = 1;
                                   } /*if*/
                               } /*for; if*/
-                        if (boolean)
-                            continue;
+                        if (wasinprev)
+                            continue; /* already processed this subtitle */
                         // we are looking for the shortest among all groups of
                         // sequential blank lines whose length is greater than or
                         // equal to sub_lines. we store in fragment_position the
                         // position of the shortest group, in fragment_length its
-                        // length, and in tmp the length of the group currently
+                        // length, and in blank_lines_avail the length of the group currently
                         // examinated
                         for (i = 0; i < lines_to_add; ++i)
                           {
-                            if (placeholder[counter][i] == -1)
+                            if (placeholder[subs_done][i] == -1)
                               {
-                                // placeholder[counter][i] is part of the current group
+                                // placeholder[subs_done][i] is part of the current group
                                 // of blank lines
-                                ++tmp;
+                                ++blank_lines_avail;
                               }
-                            else
+                            else /* end of a run of empty lines */
                               {
-                                if (tmp == sub_lines)
+                                if (blank_lines_avail == sub_lines)
                                   {
                                     // current group's size fits exactly the one we
                                     // need, so we stop looking
-                                    fragment_position = i - tmp;
-                                    tmp = 0;
+                                    fragment_position = i - blank_lines_avail;
+                                      /* starting line position */
+                                    blank_lines_avail = 0;
                                     break;
                                   } /*if*/
-                                if (tmp && tmp > sub_lines && tmp < fragment_length)
+                                if
+                                  (
+                                        blank_lines_avail
+                                    &&
+                                        blank_lines_avail > sub_lines
+                                    &&
+                                        blank_lines_avail < fragment_length
+                                  )
                                   {
                                     // current group is the best we found till here,
                                     // but is still bigger than the one we are looking
                                     // for, so we keep on looking
-                                    fragment_length = tmp;
-                                    fragment_position = i - tmp;
-                                    tmp = 0;
+                                    fragment_length = blank_lines_avail;
+                                    fragment_position = i - blank_lines_avail;
+                                    blank_lines_avail = 0;
                                   }
                                 else
                                   {
                                     // current group doesn't fit at all, so we forget it
-                                    tmp = 0;
+                                    blank_lines_avail = 0;
                                   } /*if*/
                               } /*if*/
                           } /*for*/
-                        if (tmp)
+                        if (blank_lines_avail)
                           {
                             // last screen line is blank, a group ends with it
-                            if (tmp >= sub_lines && tmp < fragment_length)
+                            if
+                              (
+                                    blank_lines_avail >= sub_lines
+                                &&
+                                    blank_lines_avail < fragment_length
+                              )
                               {
-                                fragment_position = i - tmp;
+                                fragment_position = i - blank_lines_avail;
                               } /*if*/
                           } /*if*/
                         if (fragment_position == -1)
@@ -2284,30 +2330,35 @@ sub_data *sub_read_file(const char *filename, float fps)
                                 "WARN: We could not find a suitable position for an"
                                     " overlapping subtitle\n"
                               );
-                            higher_line = SUB_MAX_TEXT + 1;
+                            highest_line = SUB_MAX_TEXT + 1;
                             break;
                           }
-                        else
+                        else /* found a place to put it */
                           {
-                            for (tmp = 0; tmp < sub_lines; ++tmp)
+                            int k;
+                            for (k = 0; k < sub_lines; ++k)
                               {
-                                placeholder[counter][fragment_position + tmp] = sub_first + j;
+                                placeholder[subs_done][fragment_position + k] = sub_first + j;
                               } /*for*/
                           } /*if*/
                       } /*if*/
                   } /*for*/
-                for (j = higher_line + 1; j < lines_to_add; ++j)
+                for (j = highest_line + 1; j < lines_to_add; ++j)
                   {
-                    if (placeholder[counter][j] != -1)
-                        higher_line = j;
+                    if (placeholder[subs_done][j] != -1)
+                        highest_line = j; /* highest nonblank line within block */
                     else
                         break;
                   } /*for*/
-                if (higher_line >= SUB_MAX_TEXT)
+                if (highest_line >= SUB_MAX_TEXT)
                   {
                     // the 'block' has too much lines, so we don't overlap the
                     // subtitles
-                    second = (subtitle *)realloc(second, (sub_num + sub_to_add + 1) * sizeof(subtitle));
+                    second = (subtitle *)realloc
+                      (
+                        second,
+                        (sub_num + sub_to_add + 1) * sizeof(subtitle)
+                      );
                     for (j = 0; j <= sub_to_add; ++j)
                       {
                         int ls;
@@ -2326,8 +2377,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                     real_block = 0;
                     break;
                   } /*if*/
-                // we read the placeholder structure and create the new
-                // subs.
+                // we read the placeholder structure and create the new subs.
                 second = (subtitle *)realloc(second, (sub_num + 1) * sizeof(subtitle));
                 memset(&second[sub_num], '\0', sizeof(subtitle));
                 second[sub_num].start = local_start;
@@ -2336,36 +2386,38 @@ sub_data *sub_read_file(const char *filename, float fps)
                 n_max = (lines_to_add < SUB_MAX_TEXT) ? lines_to_add : SUB_MAX_TEXT;
                 for (i = 0, j = 0; j < n_max; ++j)
                   {
-                    if (placeholder[counter][j] != -1)
+                    if (placeholder[subs_done][j] != -1)
                       {
-                        int lines = first[placeholder[counter][j]].lines;
+                      /* copy all the lines from first[placeholder[subs_done][j]] into
+                        i and following positions in second */
+                        const int lines = first[placeholder[subs_done][j]].lines;
                         int ls;
                         for (ls = 0; ls < lines; ++ls)
                           {
                             second[sub_num].text[i++] =
-                                strdup(first[placeholder[counter][j]].text[ls]);
+                                strdup(first[placeholder[subs_done][j]].text[ls]);
                           } /*for*/
-                        j += lines - 1;
+                        j += lines - 1; /* skip over lines just copied */
                       }
                     else
                       {
+                      /* no subtitle goes here -- put in blank line */
                         second[sub_num].text[i++] = strdup(" ");
                       } /*if*/
                   } /*for*/
                 ++sub_num;
-                ++counter;
+                ++subs_done;
               }
             while (local_end < global_end);
             if (real_block)
-                for (i = 0; i < counter; ++i)
-                    second[start_block_sub + i].lines = higher_line + 1;
-            counter = 2 * sub_to_add + 1;
-            for (i = 0; i < counter; ++i)
+                for (i = 0; i < subs_done; ++i)
+                    second[start_block_sub + i].lines = highest_line + 1;
+            for (i = 0; i < nr_placeholder_entries; ++i)
               {
                 free(placeholder[i]);
               } /*for*/
             free(placeholder);
-            sub_first += sub_to_add;
+            sub_first += sub_to_add; /* skip over the ones I just added */
           } /*for*/
         for (j = sub_orig - 1; j >= 0; --j)
           {
@@ -2377,7 +2429,7 @@ sub_data *sub_read_file(const char *filename, float fps)
         free(first);
         return_sub = second;
       }
-    else //if(suboverlap_enabled)
+    else /* not suboverlap_enabled */
       {
         adjust_subs_time(first, 6.0, fps, 1, sub_num, uses_time);/*~6 secs AST*/
         return_sub = first;

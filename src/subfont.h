@@ -14,7 +14,7 @@
 typedef struct /* a bitmap for caching glyph images */
   {
     unsigned char *bmp; /* 8-bit-per-pixel image bitmap accumulated here */
-    unsigned char *pal; /* colour palette */
+    unsigned char *pal; /* colour palette--not actually needed */
     int w, h, c;
 #ifdef HAVE_FREETYPE
     int charwidth, charheight;
@@ -52,16 +52,16 @@ typedef struct
       {
         int g_r; /* blur radius */
         int o_r; /* outline radius */
-        int g_w;
-        int o_w;
-        int o_size;
-        unsigned volume;
+        int g_w; /* = 2 * g_r + 1 */
+        int o_w; /* = 2 * o_r + 1 */
+        int o_size; /* = o_w * o_w */
+        unsigned volume; /* scale factor only needed during computation of following tables */
 
-        unsigned *g;
-        unsigned *gt2;
-        unsigned *om;
-        unsigned char *omt;
-        unsigned short *tmp;
+        unsigned *g; /* array [g_w] of blur convolution coefficients */
+        unsigned *gt2; /* array [256][g_w] of precomputed blur convolutions for all 256 pixel values */
+        unsigned *om; /* array [o_size] of outline convolution coefficients */
+        unsigned char *omt; /* array [256][o_size] of precomputed outline convolutions for all 256 pixel values */
+        unsigned short *tmp; /* work area for computing blur result, (image_width + 1) * image_height elements */
       } tables;
 #endif
   } font_desc_t;

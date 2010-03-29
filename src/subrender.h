@@ -41,8 +41,8 @@ typedef struct mp_osd_obj_s /* for holding and maintaining a rendered subtitle i
         struct /* only one used by spumux */
           {
             void* sub;          // value of vo_sub at last update
-            int utbl[MAX_UCS + 1];    // subtitle text
-            int xtbl[MAX_UCSLINES]; // x positions
+            int utbl[MAX_UCS + 1]; /* all display lines concatenated, each terminated by a null */
+            int xtbl[MAX_UCSLINES]; /* x-positions of lines for centre alignment */
             int lines;          // no. of lines
           } subtitle;
       /* struct

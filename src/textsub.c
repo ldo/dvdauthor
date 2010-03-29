@@ -221,6 +221,7 @@ void textsub_render(subtitle * sub)
     vo_sub = sub;
     vo_osd_changed(OSDTYPE_SUBTITLE);
     memset(textsub_image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width);
+      /* fill with default transparent colour */
     vo_update_osd(movie_width, movie_height);
 /*  draw_image(movie_width, movie_height, textsub_image_buffer, movie_width * 3); */
   } /*textsub_render*/

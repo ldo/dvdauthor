@@ -314,6 +314,9 @@ static void textsub_complete()
                 st->sub_title = vo_sub;
                 if (have_transparent)
                   {
+                  /* Is there any point to this? If this doesn't match the default
+                    transparent colour, then the subpicture layer will completely
+                    hide the video. */
                     st->transparentc.r = transparent_color >> 16;
                     st->transparentc.g = transparent_color >> 8;
                     st->transparentc.b = transparent_color;

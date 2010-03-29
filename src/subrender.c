@@ -49,9 +49,9 @@ static inline void vo_draw_alpha_rgb24
     int h,
     const unsigned char * src, /* source luma */
     const unsigned char * srca, /* source alpha */
-    int srcstride,
-    unsigned char * dstbase,
-    int dststride
+    int srcstride, /* for both src and srca */
+    unsigned char * dstbase, /* where to copy to */
+    int dststride /* for dstbase */
   )
   /* composites pixels from monochrome src onto full-colour 24-bit dstbase according to
     transparency taken from srca. Used to transfer a complete rendered line to
@@ -217,13 +217,13 @@ inline static void vo_update_text_sub
         struct osd_text_line *prev, *next; /* doubly-linked list */
       };
     int linedone, linesleft, warn_overlong_word;
-    int textlen, sub_totallen, xsize;
-  /* const int xlimit = dxs * sub_width_p / 100; */
-    const int xlimit = dxs - sub_right_margin - sub_left_margin;
+    int textlen, sub_totallen;
+  /* const int widthlimit = dxs * sub_width_p / 100; */
+    const int widthlimit = dxs - sub_right_margin - sub_left_margin;
       /* maximum width of display lines after deducting space for margins
         and starting point */
-    int xmin = xlimit, xmax = 0;
-    int max_height;
+    int xmin = widthlimit, xmax = 0;
+    int max_line_height;
     int xtblc, utblc;
 
     obj->flags |= OSDFLAG_CHANGED | OSDFLAG_VISIBLE;
@@ -237,7 +237,8 @@ inline static void vo_update_text_sub
 
     // too long lines divide into a smaller ones
     linedone = sub_totallen = 0;
-    max_height = vo_font->height;
+    max_line_height = vo_font->height;
+      /* actually a waste of time computing this when I don't allow mixing fonts */
     linesleft = vo_sub->lines;
       {
         struct osd_text_line
@@ -252,7 +253,7 @@ inline static void vo_update_text_sub
                 *osl_tail; /* last element of list */
             int chindex, prevch, wordlen;
             const unsigned char *text;
-            xsize = -vo_font->charspace;
+            int xsize = -vo_font->charspace;
               /* cancels out extra space left before first word of first line */
             linesleft--;
             text = (const unsigned char *)vo_sub->text[linedone++];
@@ -335,7 +336,7 @@ inline static void vo_update_text_sub
                         +
                             kerning(vo_font, prevch, curch);
                       /* width which will be added to word by this character */
-                    if (xsize + delta_xsize <= xlimit)
+                    if (xsize + delta_xsize <= widthlimit)
                       {
                       /* word still fits in available width */
                         if (!warn_overlong_word)
@@ -345,10 +346,11 @@ inline static void vo_update_text_sub
                         xsize += delta_xsize;
                         if (!suboverlap_enabled)
                           {
+                          /* keep track of line heights to ensure no overlap */
                             const int font = vo_font->font[curch];
-                            if (font >= 0 && vo_font->pic_a[font]->h > max_height)
+                            if (font >= 0 && vo_font->pic_a[font]->h > max_line_height)
                               {
-                                max_height = vo_font->pic_a[font]->h;
+                                max_line_height = vo_font->pic_a[font]->h;
                               } /*if*/
                           } /*if*/
                       }
@@ -383,7 +385,7 @@ inline static void vo_update_text_sub
                       (
                             curword != NULL
                         &&
-                            linewidth + curword->osd_kerning + curword->osd_length <= xlimit
+                            linewidth + curword->osd_kerning + curword->osd_length <= widthlimit
                       )
                       {
                       /* include another word on this line */
@@ -470,7 +472,7 @@ inline static void vo_update_text_sub
                                     +
                                         next_display_line->words->osd_kerning
                                 <=
-                                    xlimit
+                                    widthlimit
                               )
                               {
                               /* prev_word can be moved from this_display_line line onto
@@ -585,11 +587,13 @@ inline static void vo_update_text_sub
           } // while (linesleft)
         free(wordbuf);
         // write lines into utbl
-        xtblc = 0;
-        utblc = 0;
+        xtblc = 0; /* count of display lines */
+        utblc = 0; /* total count of characters in all display lines */
         obj->y = dys - sub_bottom_margin;
         obj->params.subtitle.lines = 0;
           {
+          /* collect display line text into obj->params.subtitle.utbl and x-positions
+            into obj->params.subtitle.xtbl */
             struct osd_text_line *this_display_line;
             for
               (
@@ -599,27 +603,32 @@ inline static void vo_update_text_sub
               )
               {
                 struct osd_text_word *this_word, *next_line_words;
+                int xsize;
                 if (obj->params.subtitle.lines++ >= MAX_UCSLINES)
                   {
                     fprintf(stderr, "WARN: max_ucs_lines\n");
                     break;
                   } /*if*/
-                if (max_height + sub_top_margin > obj->y)    // out of the screen so end parsing
+                if (max_line_height + sub_top_margin > obj->y) // out of the screen so end parsing
                   {
-                    obj->y += vo_font->height;  // correct the y position
+                    obj->y += vo_font->height; /* undo inclusion of last line */
                     fprintf(stderr, "WARN: Out of screen at Y: %d\n", obj->y);
                     obj->params.subtitle.lines -= 1;
                       /* discard overlong line */
                     break;
                   } /*if*/
                 xsize = this_display_line->linewidth;
-                obj->params.subtitle.xtbl[xtblc++] = (xlimit - xsize) / 2 + sub_left_margin;
-                if (xmin > (xlimit - xsize) / 2 + sub_left_margin)
-                    xmin = (xlimit - xsize) / 2 + sub_left_margin;
-                if (xmax < (xlimit + xsize) / 2 + sub_left_margin)
-                    xmax = (xlimit + xsize) / 2 + sub_left_margin;
+                obj->params.subtitle.xtbl[xtblc++] = (widthlimit - xsize) / 2 + sub_left_margin;
+                if (xmin > (widthlimit - xsize) / 2 + sub_left_margin)
+                    xmin = (widthlimit - xsize) / 2 + sub_left_margin;
+                if (xmax < (widthlimit + xsize) / 2 + sub_left_margin)
+                    xmax = (widthlimit + xsize) / 2 + sub_left_margin;
              /* fprintf(stderr, "lm %d rm: %d xm:%d xs:%d\n", sub_left_margin, sub_right_margin, xmax, xsize); */
-                next_line_words = this_display_line->next == NULL ? NULL : this_display_line->next->words;
+                next_line_words =
+                    this_display_line->next == NULL ?
+                        NULL
+                    :
+                        this_display_line->next->words;
                 for
                   (
                     this_word = this_display_line->words;
@@ -646,7 +655,9 @@ inline static void vo_update_text_sub
                   } /*for*/
                 obj->params.subtitle.utbl[utblc - 1] = 0;
                   /* overwrite last space with string terminator */
-                obj->y -= vo_font->height;
+                obj->y -= vo_font->height; /* adjust top to leave room for another line */
+                  /* fixme: shouldn't that be max_line_height? same is true some other places
+                    vo_font->height is mentioned */
               } /*for*/
           }
         if (sub_max_lines < obj->params.subtitle.lines)
@@ -682,7 +693,7 @@ inline static void vo_update_text_sub
           } /*if*/
       }
       {
-      /* work out positioning of subtitle */
+      /* work out vertical alignment and final positioning of subtitle */
         const int subs_height =
                 (obj->params.subtitle.lines - 1) * vo_font->height
             +
@@ -741,20 +752,23 @@ inline static void vo_update_text_sub
     break;
       } /*switch*/
       {
-        int i, j, prev_j;
-        j = prev_j = 0;
+      /* now to actually render the subtitle */
+        int i, chindex, prev_line_end;
+        chindex = prev_line_end = 0;
         linesleft = obj->params.subtitle.lines;
         if (linesleft != 0)
           {
             int xtbl_min, x;
             int y = obj->y;
-            for (xtbl_min = xlimit; linedone < linesleft; ++linedone)
+            for (xtbl_min = widthlimit; linedone < linesleft; ++linedone)
+              /* can't see how this loop would ever execute */
                 if (obj->params.subtitle.xtbl[linedone] < xtbl_min)
                     xtbl_min = obj->params.subtitle.xtbl[linedone];
             for (i = 0; i < linesleft; ++i)
               {
                 int prevch, curch;
                 switch (obj->alignment & 0x3) /* determine start position for rendering line */
+                  /* fixme: why not just use vo_sub->alignment and dispense with obj->alignment altogether? */
                   {
                 case H_SUB_ALIGNMENT_LEFT:
                     if (sub_justify)
@@ -776,7 +790,7 @@ inline static void vo_update_text_sub
                 break;
                   } /*switch*/
                 prevch = -1;
-                while ((curch = obj->params.subtitle.utbl[j++]) != 0)
+                while ((curch = obj->params.subtitle.utbl[chindex++]) != 0)
                   {
                   /* collect the rendered characters of this subtitle display line */
                     const int font = vo_font->font[curch];
@@ -803,9 +817,9 @@ inline static void vo_update_text_sub
                     x += vo_font->width[curch] + vo_font->charspace;
                     prevch = curch;
                   } /*while*/
-                if (sub_max_chars < j - prev_j)
-                    sub_max_chars = j - prev_j;
-                prev_j = j;
+                if (sub_max_chars < chindex - prev_line_end)
+                    sub_max_chars = chindex - prev_line_end;
+                prev_line_end = chindex;
                 y += vo_font->height;
               } /*for*/
             /* Here you could retreive the buffers*/
