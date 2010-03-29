@@ -6,19 +6,20 @@
 
 // subtitle formats
 #define SUB_INVALID   -1
-#define SUB_MICRODVD  0
-#define SUB_SUBRIP    1
-#define SUB_SUBVIEWER 2
-#define SUB_SAMI      3
+#define SUB_MICRODVD  0 /* see <http://en.wikipedia.org/wiki/MicroDVD> */
+#define SUB_SUBRIP    1 /* see <http://wiki.multimedia.cx/index.php?title=SubRip> */
+#define SUB_SUBVIEWER 2 /* see <http://en.wikipedia.org/wiki/SubViewer>, sample <http://wiki.videolan.org/SubViewer> */
+#define SUB_SAMI      3 /* see <http://en.wikipedia.org/wiki/SAMI>, sample <http://www.titlefactory.com/TitleFactoryDocs/sami_format.htm> */
 #define SUB_VPLAYER   4
 #define SUB_RT        5
-#define SUB_SSA       6
-#define SUB_DUNNOWHAT 7     // FIXME what format is it ?
+#define SUB_SSA       6 /* spec is at <http://moodub.free.fr/video/ass-specs.doc>, or see <http://www.matroska.org/technical/specs/subtitles/ssa.html> */
+#define SUB_PJS       7 /* Phoenix Japanimation Society */
 #define SUB_MPSUB     8
 #define SUB_AQTITLE   9
-#define SUB_SUBVIEWER2 10
+#define SUB_SUBVIEWER2 10 /* see <http://en.wikipedia.org/wiki/SubViewer>, sample <http://wiki.videolan.org/SubViewer> */
 #define SUB_SUBRIP09 11
-#define SUB_JACOSUB  12
+#define SUB_JACOSUB  12  /* spec is at <http://unicorn.us.com/jacosub/jscripts.html>. */
+
 
 // One of the SUB_* constant above
 

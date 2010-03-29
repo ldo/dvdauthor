@@ -26,7 +26,7 @@
  *
  * Written by laaz
  * Some code cleanup & realloc() by A'rpi/ESP-team
- * dunnowhat sub format by szabi
+ * pjs sub format by szabi
  *
  */
 
@@ -1245,7 +1245,7 @@ void sub_pp_ssa(subtitle *sub)
       } /*while*/
   } /*sub_pp_ssa*/
 
-subtitle *sub_read_line_dunnowhat(subtitle *current)
+subtitle *sub_read_line_pjs(subtitle *current)
   {
     char line[LINE_LEN + 1];
     char text[LINE_LEN + 1];
@@ -1256,7 +1256,7 @@ subtitle *sub_read_line_dunnowhat(subtitle *current)
     current->text[0] = strdup(text);
     current->lines = 1;
     return current;
-  } /*sub_read_line_dunnowhat*/
+  } /*sub_read_line_pjs*/
 
 subtitle *sub_read_line_mpsub(subtitle *current)
   {
@@ -1808,7 +1808,7 @@ int sub_autodetect(int *uses_time)
         if (sscanf(line, "%d,%d,\"%c", &i, &i, (char *)&i) == 3)
           {
             *uses_time = 0;
-            return SUB_DUNNOWHAT;
+            return SUB_PJS;
           } /*if*/
         if (sscanf(line, "FORMAT=%d", &i) == 1)
           {
@@ -1945,7 +1945,7 @@ sub_data *sub_read_file(const char *filename, float fps)
         {sub_read_line_vplayer, NULL, "vplayer"},
         {sub_read_line_rt, NULL, "rt"},
         {sub_read_line_ssa, sub_pp_ssa, "ssa"},
-        {sub_read_line_dunnowhat, NULL, "dunnowhat"},
+        {sub_read_line_pjs, NULL, "pjs"},
         {sub_read_line_mpsub, NULL, "mpsub"},
         {sub_read_line_aqt, NULL, "aqt"},
         {sub_read_line_subviewer2, NULL, "subviewer 2.0"},
