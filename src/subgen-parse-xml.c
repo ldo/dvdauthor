@@ -312,16 +312,6 @@ static void textsub_complete()
                     st->sd = (textsub_subtitle.end - textsub_subtitle.start) * 900;
                   } /*if*/
                 st->sub_title = vo_sub;
-                if (have_transparent)
-                  {
-                  /* Is there any point to this? If this doesn't match the default
-                    transparent colour, then the subpicture layer will completely
-                    hide the video. */
-                    st->transparentc.r = transparent_color >> 16;
-                    st->transparentc.g = transparent_color >> 8;
-                    st->transparentc.b = transparent_color;
-                    st->transparentc.t = 255;
-                  } /*if*/
                 spus = realloc(spus, (numspus + 1) * sizeof(stinfo *));
                 spus[numspus++] = st;
               } /*if*/
@@ -350,12 +340,6 @@ static void textsub_force(const char *v)
         fprintf(stderr,"ERR:  Cannot parse 'force' value '%s'\n",v);
         exit(1);
       } /*if*/
-}
-
-static void textsub_transparent(const char *v)
-{
-    sscanf(v, "%x", &transparent_color);
-    have_transparent = 1;
 }
 
 enum { /* parse states */
@@ -421,7 +405,6 @@ static struct elemattr spu_attrs[]={
     {"textsub","movie-fps",textsub_movie_fps},
     {"textsub","movie-width",textsub_movie_width},
     {"textsub","movie-height",textsub_movie_height},
-    {"textsub","transparent",textsub_transparent},
     {"textsub","force",textsub_force},
     {0,0,0}
 };
