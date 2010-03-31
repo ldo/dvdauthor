@@ -9,7 +9,7 @@
 typedef void *dvdvm_buffer_state;
 #endif
 
-extern int allowallreg;
+extern bool allowallreg;
 
 extern void dvdvmerror(const char *s);
 extern int dvdvmlex(void);

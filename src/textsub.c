@@ -91,7 +91,7 @@ char* sub_cp = NULL;
   /* sub_cp (char) contains "from character-set" for ICONV like ISO8859-1 and UTF-8, */
   /* "to character-set" is set to UTF-8. If not specified, then defaults to locale */
 float text_font_scale_factor = 28.0; /* font size in font units */
-int text_forceit = 0;     /* Forcing of the subtitles */
+bool text_forceit = false;     /* Forcing of the subtitles */
 int h_sub_alignment = H_SUB_ALIGNMENT_LEFT;  /* Horizontal alignment 0=center, 1=left, 2=right, 4=subtitle default */
 int v_sub_alignment = V_SUB_ALIGNMENT_BOTTOM;      /* Vertical alignment 0=top, 1=center, 2=bottom */
 int sub_left_margin=60;   /* Size of left horizontal non-display area in pixel units */

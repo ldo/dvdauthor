@@ -156,7 +156,7 @@ struct vob { /* one entry created for each source in each pgc */
 
 struct buttoninfo { /* describes a button within a single subpicture stream */
     int substreamid; /* substream ID as specified to spumux */
-    int autoaction; /* true for auto-action button */
+    bool autoaction; /* true for auto-action button */
     int x1,y1,x2,y2; /* button bounds */
     char *up,*down,*left,*right; /* names of neighbouring buttons */
     int grp;
@@ -220,7 +220,7 @@ struct vobgroup { /* contents of a menuset or titleset (<menus> or <titles>) */
 };
 
 struct vtsdef { /* describes a VTS */
-    int hasmenu;
+    bool hasmenu;
     int numtitles; /* length of numchapters array */
     int *numchapters; /* number of chapters in each title */
     int numsectors;
@@ -245,7 +245,7 @@ struct workset {
 /* following implemented in dvdauthor.c */
 
 extern const char * const entries[]; /* PGC menu entry types */
-extern int
+extern bool
     jumppad, /* reserve registers and set up code to allow convenient jumping between titlesets */
     allowallreg; /* don't reserve any registers for convenience purposes */
 extern const char * const pstypes[]; /* names of PGC types, indexed by vtypes values */

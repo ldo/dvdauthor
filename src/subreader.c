@@ -210,16 +210,16 @@ static void strcpy_get_ext(char *d, const char *s)
       } /*if*/
   } /*strcpy_get_ext*/
 
-static int whiteonly(const char *s)
+static bool whiteonly(const char *s)
   /* does s consist entirely of whitespace. */
   {
     while (*s)
       {
         if (isalnum(*s))
-            return 0;
+            return false;
         s++;
     } /*while*/
-    return 1;
+    return true;
   } /*whiteonly*/
 
 /*
@@ -261,8 +261,8 @@ void subcp_open(void)
         ic_end_in = 0;
         ic_next_out = 0;
         ic_end_out = 0;
-        ic_needmore = 0;
-        ic_eof = 0;
+        ic_needmore = false;
+        ic_eof = false;
       }
     else
       {
@@ -318,10 +318,10 @@ static int sub_getc()
                 in_charno += bytesread;
                 if (ic_end_in < sizeof ic_inbuf)
                   {
-                    ic_eof = 1;
+                    ic_eof = true;
                   } /*if*/
                 ic_next_in = 0;
-                ic_needmore = 0;
+                ic_needmore = false;
               } /*if*/
             if (ic_next_in < ic_end_in)
               {
@@ -340,7 +340,7 @@ static int sub_getc()
                     if (!ic_eof && errno == EINVAL)
                       {
                         errno = 0;
-                        ic_needmore = 1; /* can't decode what's left in ic_inbuf without reading more */
+                        ic_needmore = true; /* can't decode what's left in ic_inbuf without reading more */
                       }
                     else /* E2BIG (shouldn't occur), EILSEQ, EINVAL at end of file */
                       {
@@ -402,8 +402,8 @@ static void sub_rewind()
     ic_end_in = 0;
     ic_next_out = 0;
     ic_end_out = 0;
-    ic_needmore = 0;
-    ic_eof = 0;
+    ic_needmore = false;
+    ic_eof = false;
 #endif /*HAVE_ICONV*/
   } /*sub_rewind*/
 
@@ -417,7 +417,7 @@ static char * sub_fgets
   {
     const char * dstend = dst + dstsize - 1;
     char * dstnext = dst;
-    int warned_truncated = 0;
+    bool warned_truncated = false;
     for (;;)
       {
         const int nextch = sub_getc();
@@ -437,7 +437,7 @@ static char * sub_fgets
         else if (!warned_truncated)
           {
             fprintf(stderr, "WARN: input subtitle line too long on line %d\n", in_lineno);
-            warned_truncated = 1;
+            warned_truncated = true;
           /* and continue gobbling rest of line */
           } /*if*/
         if (nextch == '\n')
@@ -827,7 +827,8 @@ subtitle *sub_read_line_subviewer(subtitle *current)
               /* find end of line */;
             if (len) /* nonempty line */
               {
-                int j = 0, skip = 0;
+                int j = 0;
+                bool skip = false;
                 char *curptr = current->text[i] = (char *)malloc(len + 1);
                 if (!current->text[i])
                     return ERR;
@@ -840,12 +841,12 @@ subtitle *sub_read_line_subviewer(subtitle *current)
                     using HTML-style "&"-escapes? */
                     if (line[j] == '>')
                       {
-                        skip = 0;
+                        skip = false;
                         continue;
                       } /*if*/
                     if (line[j] == '<')
                       {
-                        skip = 1;
+                        skip = true;
                         continue;
                       } /*if*/
                     if (skip)
@@ -1715,7 +1716,7 @@ subtitle *sub_read_line_jacosub(subtitle * current)
     return current;
   } /*sub_read_line_jacosub*/
 
-int sub_autodetect(int *uses_time)
+static int sub_autodetect(bool * uses_time)
   /* scans the first few lines of the file to try to determine what format it is. */
   {
     char line[LINE_LEN + 1];
@@ -1728,17 +1729,17 @@ int sub_autodetect(int *uses_time)
             return SUB_INVALID;
         if (sscanf(line, "{%d}{%d}", &i, &i) == 2)
           {
-            *uses_time = 0;
+            *uses_time = false;
             return SUB_MICRODVD;
           } /*if*/
         if (sscanf(line, "{%d}{}", &i) == 1)
           {
-            *uses_time = 0;
+            *uses_time = false;
             return SUB_MICRODVD;
           } /*if*/
         if (sscanf(line, "%d:%d:%d.%d,%d:%d:%d.%d", &i, &i, &i, &i, &i, &i, &i, &i) == 8)
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_SUBRIP;
           } /*if*/
         if
@@ -1753,37 +1754,37 @@ int sub_autodetect(int *uses_time)
                 10
           )
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_SUBVIEWER;
           } /*if*/
         if (sscanf(line, "{T %d:%d:%d:%d", &i, &i, &i, &i))
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_SUBVIEWER2;
           } /*if*/
         if (strstr(line, "<SAMI>"))
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_SAMI;
           } /*if*/
         if (sscanf(line, "%d:%d:%d.%d %d:%d:%d.%d", &i, &i, &i, &i, &i, &i, &i, &i) == 8)
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_JACOSUB;
           } /*if*/
         if (sscanf(line, "@%d @%d", &i, &i) == 2)
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_JACOSUB;
           } /*if*/
         if (sscanf(line, "%d:%d:%d:", &i, &i, &i ) == 3)
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_VPLAYER;
           } /*if*/
         if (sscanf(line, "%d:%d:%d ", &i, &i, &i ) == 3)
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_VPLAYER;
           } /*if*/
         //TODO: just checking if first line of sub starts with "<" is WAY
@@ -1792,42 +1793,42 @@ int sub_autodetect(int *uses_time)
         // It may conflict with other sub formats in the future (actually it doesn't)
         if (*line == '<')
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_RT;
           } /*if*/
         if (!memcmp(line, "Dialogue: Marked", 16))
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_SSA;
           } /*if*/
         if (!memcmp(line, "Dialogue: ", 10))
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_SSA;
           } /*if*/
         if (sscanf(line, "%d,%d,\"%c", &i, &i, (char *)&i) == 3)
           {
-            *uses_time = 0;
+            *uses_time = false;
             return SUB_PJS;
           } /*if*/
         if (sscanf(line, "FORMAT=%d", &i) == 1)
           {
-            *uses_time = 0;
+            *uses_time = false;
             return SUB_MPSUB;
           } /*if*/
         if (sscanf(line, "FORMAT=TIM%c", &p) == 1 && p == 'E')
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_MPSUB;
           } /*if*/
         if (strstr(line, "-->>"))
           {
-            *uses_time = 0;
+            *uses_time = false;
             return SUB_AQTITLE;
           } /*if*/
         if (sscanf(line, "[%d:%d:%d]", &i, &i, &i) == 3)
           {
-            *uses_time = 1;
+            *uses_time = true;
             return SUB_SUBRIP09;
           } /*if*/
       } /*while*/
@@ -1845,7 +1846,7 @@ static void adjust_subs_time
     float fps,
     int block, /* whether to check for overlapping subtitles (false if caller will fix them up) */
     int sub_num, /* nr entries in sub array */
-    int sub_uses_time
+    bool sub_uses_time
   )
   /* adjusts for overlapping subtitle durations, and also for sub_fps if specified. */
   {
@@ -1934,7 +1935,8 @@ sub_data *sub_read_file(const char *filename, float fps)
     subtitle temp_sub;
 #endif
     sub_data *subt_data;
-    int uses_time = 0, sub_num = 0, sub_errs = 0;
+    bool uses_time = false;
+    int sub_num = 0, sub_errs = 0;
     struct subreader const sr[] =
       /* all the subtitle formats I know about, indexed by the codes defined in subreader.h */
       {
@@ -2155,7 +2157,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                 subs_done;
             const int
                 start_block_sub = sub_num;
-            char real_block = 1;
+            bool real_block = true;
             // here we find the number of subtitles inside the 'block'
             // and its span interval. this works well only with sorted
             // subtitles
@@ -2243,7 +2245,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                         unsigned long
                             fragment_length = lines_to_add + 1,
                             blank_lines_avail = 0;
-                        char wasinprev = 0;
+                        bool wasinprev = false;
                         int fragment_position = -1;
                         // if this is not the first new sub of the block
                         // we find if this sub was present in the previous
@@ -2254,7 +2256,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                                 if (placeholder[subs_done - 1][i] == sub_first + j)
                                   {
                                     placeholder[subs_done][i] = sub_first + j;
-                                    wasinprev = 1;
+                                    wasinprev = true;
                                   } /*if*/
                               } /*for; if*/
                         if (wasinprev)
@@ -2374,7 +2376,7 @@ sub_data *sub_read_file(const char *filename, float fps)
                       } /*for*/
                     sub_num += sub_to_add + 1;
                     sub_first += sub_to_add;
-                    real_block = 0;
+                    real_block = false;
                     break;
                   } /*if*/
                 // we read the placeholder structure and create the new subs.
@@ -2679,7 +2681,7 @@ char ** sub_filenames
         for (;;)
           {
             struct dirent * de;
-            int foundext;
+            bool foundext;
             int prio;
             de = readdir(d);
             if (de == 0)
@@ -2689,7 +2691,7 @@ char ** sub_filenames
             strcpy_get_ext(tmp_fname_ext, de->d_name);
             strcpy_trim(tmp_fname_trim, tmp_fname_noext);
             // does it end with a subtitle extension?
-            foundext = 0;
+            foundext = false;
 #ifdef HAVE_ICONV
             for (extindex = (sub_cp ? 3 : 0); sub_exts[extindex]; extindex++)
 #else
@@ -2698,7 +2700,7 @@ char ** sub_filenames
               {
                 if (strcmp(sub_exts[extindex], tmp_fname_ext) == 0)
                   {
-                    foundext = 1;
+                    foundext = true;
                     break;
                   } /*if*/
               }

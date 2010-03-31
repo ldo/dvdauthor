@@ -29,15 +29,15 @@ int readxml
   );
   /* opens and reads an XML file according to the given element and attribute definitions. */
 
-int xml_ison(const char *v);
-  /* interprets v as a value indicating yes/no/on/off, returning 1 for yes/on or 0 for no/off. */
+bool xml_ison(const char * v, const char * attrname);
+  /* interprets v as a value indicating yes/no/on/off, returning true for yes/on or false for no/off. */
 
 char *utf8tolocal(const char *in);
   /* converts a UTF-8-encoded character string to the current locale encoding,
     suitable for use for file names. */
 
-extern int parser_err; /* can be set nonzero by a callback action to abort the parse */
-extern int parser_acceptbody;
+extern bool parser_err; /* can be set true by a callback action to abort the parse */
+extern bool parser_acceptbody;
   /* whether tag is allowed to be nonempty. Initially false; can be
     set true by a tag-start action */
 extern char *parser_body;

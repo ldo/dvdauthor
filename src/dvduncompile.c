@@ -37,9 +37,10 @@ static const char
     *outputbase=0;
       /* prepended to every line for indentation purposes relative to caller's output */
 static int
-    indent=0, /* current internal indentation level */
-    isnewline=0, /* am I starting a new line */
+    indent = 0, /* current internal indentation level */
     curline; /* for labelling branch targets */
+static bool
+    isnewline = false; /* am I starting a new line */
 
 typedef struct /* for holding command instruction currently being decoded */
 {
@@ -139,7 +140,7 @@ static void node_printf(const char *format,...)
         xmlAddChildList(output,xmlNewText((const xmlChar *)outputbase));
         for( i=0; i<indent; i++ )
             xmlAddChildList(output,xmlNewText((const xmlChar *)"  "));
-        isnewline=0;
+        isnewline = false;
     }
 
     va_start(ap,format);
@@ -167,7 +168,7 @@ static void node_commentf(const char *format,...)
 static void node_newline(void)
 /* starts a new line in the output. */
 {
-    isnewline=1;
+    isnewline = true;
 }
 
 static void node_indent(void)
@@ -702,7 +703,8 @@ static void print_command(cmd_t *cmd)
 static void vm_add_mnemonic(const vm_cmd_t *command)
   /* disassembles a single command. */
  {
-    int i, extra_bits;
+    int i;
+    bool extra_bits;
     cmd_t cmd;
     for (i = 0; i < 8; i++)
       {
@@ -711,11 +713,11 @@ static void vm_add_mnemonic(const vm_cmd_t *command)
       } /*for*/
     print_command(&cmd);
     // Check if there still are bits set that were not examined
-    extra_bits = 0;
+    extra_bits = false;
     for (i = 0; i < 8; i++)
         if (cmd.bits[i] & ~ cmd.examined[i])
           {
-            extra_bits = 1;
+            extra_bits = true;
             break;
           } /*if; for*/
     if (extra_bits)
@@ -740,7 +742,7 @@ void vm_add_mnemonics
     output = node; /* for easy reference by other routines */
     outputbase = base;
     indent = 1;
-    isnewline = 1;
+    isnewline = true;
     for (i = 0; i < ncmd; i++)
       {
         curline = i + 1;

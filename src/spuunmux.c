@@ -42,9 +42,6 @@
 #include "rgb.h"
 #include "common.h"
 
-#define FALSE 0
-#define TRUE (!FALSE)
-
 #define CBUFSIZE 65536 /* big enough for any MPEG packet */
 #define PSBUFSIZE 10
 
@@ -52,13 +49,13 @@ static unsigned int add_offset;
 
 static int debug = 0;
 
-static int full_size = FALSE;
+static bool full_size = false;
 static unsigned int pts, spts, subi, subs, subno;
 static int ofs, ofs1;
 static unsigned char sub[65536];
 static unsigned char next_bits;
 static const char *base_name;
-static int have_bits;
+static bool have_bits;
 static FILE *fdo;
 
 typedef struct /* a colour-table entry */
@@ -89,7 +86,7 @@ static struct spu
 struct button /* information about a button */
   {
     char *name;
-    int autoaction;
+    bool autoaction;
     int x1, y1, x2, y2;
     char *up, *down, *left, *right; /* names of neighbouring buttons */
     int grp; /* which group button belongs to */
@@ -154,10 +151,10 @@ static unsigned char get_next_bits()
     if (!have_bits)
       {
         next_bits = sub[ofs++];
-        have_bits = TRUE;
+        have_bits = true;
         return next_bits >> 4;
       } /*if*/
-    have_bits = FALSE;
+    have_bits = false;
     return next_bits & 15;
   } /*get_next_bits*/
 
@@ -246,7 +243,7 @@ static int dvddecode()
         case SPU_FSTA_DSP:
             if (debug > 4)
                 fprintf(stderr, "\tcmd(%5d): force start display\n", i);
-            newspu->force_display = TRUE;
+            newspu->force_display = true;
         // fall through
         case SPU_STA_DSP:
             if (debug > 4 && c == SPU_STA_DSP)
@@ -347,7 +344,7 @@ static int dvddecode()
           } /*switch*/
       } /*while*/
 
-    have_bits = FALSE;
+    have_bits = false;
     x = y = 0;
     io = 0;
     newspu->img = malloc(newspu->xd * newspu->yd);
@@ -396,7 +393,7 @@ static int dvddecode()
                       }
                     else
                         io += newspu->xd; /* next scanline */
-                    have_bits = FALSE;
+                    have_bits = false;
                   } /*if*/
               } /*while*/
           } /*while*/
@@ -875,7 +872,7 @@ int main(int argc, char **argv)
             debug = strtounsigned(optarg, "verbosity");
         break;
         case 'f':
-            full_size = TRUE;
+            full_size = true;
         break;
         case 's':
             stream_number = strtounsigned(optarg, "stream number");
@@ -927,12 +924,12 @@ int main(int argc, char **argv)
 
     if (palet_file)
       {
-        int rgb = FALSE;
+        bool rgb = false;
         char * const temp = strrchr(palet_file, '.');
         if (temp != NULL)
           {
             if (strcmp(temp, ".rgb") == 0)
-                rgb = TRUE;
+                rgb = true;
           } /*if*/        
         fdo = fopen(palet_file, "r");
         if (fdo != NULL)
@@ -1233,7 +1230,7 @@ l_01ba:
                                             struct button *b = &buttons->buttons[j];
                                             b->name = readpstr(cbuf, &i);
                                             i += 2;
-                                            b->autoaction = cbuf[i++];
+                                            b->autoaction = cbuf[i++] != 0;
                                             b->grp = cbuf[i];
                                             b->x1 = read2(cbuf + i + 1);
                                             b->y1 = read2(cbuf + i + 3);

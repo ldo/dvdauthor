@@ -59,7 +59,8 @@
 
 static unsigned char *cbuf;
 
-static unsigned int spuindex, progr;
+static unsigned int spuindex;
+static bool progr;
 static int tofs;
 static int svcd;
 
@@ -67,8 +68,8 @@ static uint64_t lps;
 
 stinfo **spus=0;
 int numspus=0;
-int have_textsub=0;
-int have_transparent=1;
+bool have_textsub = false;
+bool have_transparent = true;
 int transparent_color=0x808080;
 
 int skip;
@@ -556,7 +557,7 @@ static void mux(int eoinput)
         if (sub_size > max_sub_size)
           {
             max_sub_size = sub_size;
-            if (have_textsub == 0)
+            if (!have_textsub)
                 fprintf(stderr, "INFO: Max_sub_size=%d\n", max_sub_size);
           } /*if*/
         seq = 0;
@@ -651,7 +652,7 @@ static void mux(int eoinput)
                     char nm1[10], nm2[10];
                     wdstr(b->name);
                     wdshort(0);
-                    wdbyte(b->autoaction);
+                    wdbyte(b->autoaction ? 1 : 0);
                     wdbyte(b->grp);
                     wdshort(b->r.x0);
                     wdshort(b->r.y0);
@@ -815,7 +816,7 @@ int main(int argc,char **argv)
     gts = 0;
     nextgts = 0;
     tofs = -1;
-    progr = 0;
+    progr = false;
     debug = 0;
     ncnt = 0;
     substr = 0;
@@ -853,7 +854,7 @@ int main(int argc,char **argv)
             debug = strtounsigned(optarg, "verbosity");
         break;
         case 'P':
-            progr = 1;
+            progr = true;
         break;
         case 'h':
             usage();
@@ -893,8 +894,8 @@ int main(int argc,char **argv)
         fprintf(stderr, "WARN: Only one argument expected\n");
         usage();
       } /*if*/
-    fdi = 0;
-    fdo = 1;
+    fdi = 0; /* stdin */
+    fdo = 1; /* stdout */
     win32_setmode(fdi,O_BINARY);
     win32_setmode(fdo,O_BINARY);
     if (spumux_parse(argv[optind]))

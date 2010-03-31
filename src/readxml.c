@@ -39,7 +39,9 @@
 #endif
 
 
-int parser_err=0, parser_acceptbody=0;
+bool
+    parser_err = false,
+    parser_acceptbody = false;
 char *parser_body=0;
 
 static int xml_varied_read(void *context,char *buffer,int len)
@@ -162,8 +164,8 @@ int readxml
           /* Note I don't handle sub-tags mixed with content! */
             if( parser_body )
                 free(parser_body);
-            parser_body=0;
-            parser_acceptbody=0;
+            parser_body = 0;
+            parser_acceptbody = false;
             if( !curstate )
                 goto done_parsing;
             break;
@@ -211,14 +213,16 @@ int readxml
     return 0;
 }
 
-int xml_ison(const char *s)
+bool xml_ison(const char * s, const char * attrname)
   /* interprets v as a value indicating yes/no/on/off, returning 1 for yes/on or 0 for no/off. */
 {
-    if( !strcmp(s,"1") || !strcasecmp(s,"on") || !strcasecmp(s,"yes") )
+    if (!strcmp(s,"1") || !strcasecmp(s,"on") || !strcasecmp(s,"yes"))
         return 1;
-    if( !strcmp(s,"0") || !strcasecmp(s,"off") || !strcasecmp(s,"no") )
+    if (!strcmp(s,"0") || !strcasecmp(s,"off") || !strcasecmp(s,"no"))
         return 0;
-    return -1;
+   fprintf(stderr, "ERR:  Cannot parse boolean value \"%s\" for attribute \"%s\"\n", s, attrname);
+ /* parser_err = true; */
+   exit(1);
 }
 
 #if defined(HAVE_ICONV) && defined(HAVE_LANGINFO_CODESET)

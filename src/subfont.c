@@ -201,13 +201,13 @@ static int check_font
     int ymin = INT_MAX, ymax = INT_MIN;
     int space_advance = 20;
     int width, height;
-    int i, uni_charmap = 1;
+    int i;
     error = FT_Select_Charmap(face, FT_ENCODING_UNICODE);
 //  fprintf(stderr, "select unicode charmap: %d\n", error);
     if (face->charmap == NULL || face->charmap->encoding != FT_ENCODING_UNICODE)
       {
         WARNING("Unicode charmap not available for this font. Very bad!");
-        uni_charmap = 0; /* fallback to whatever encoding is available */
+      /* fallback to whatever encoding is available */
         error = FT_Set_Charmap(face, face->charmaps[0]);
         if (error)
             WARNING("No charmaps! Strange.");
@@ -1035,7 +1035,7 @@ static font_desc_t* init_font_desc()
     if (!desc)
         return NULL;
     memset(desc, 0, sizeof(font_desc_t));
-    desc->dynamic = 1;
+    desc->dynamic = true;
   /* setup sane defaults, mark all associated storage as unallocated */
     desc->face_cnt = 0;
     desc->charspace = 0;

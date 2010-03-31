@@ -59,16 +59,19 @@ struct ofd {
     int fd;
     char *fname;
     struct fdbuf *firstbuf,**lastbufptr;
-    int len,isvalid;
+    int len;
+    bool isvalid;
 } outputfds[256];
 
-int ofdlist[256],numofd;
+static int ofdlist[256],numofd;
 
-int firstpts[256];
+static int firstpts[256];
 
-int closing=0, outputmplex=0;
+static bool
+    closing = false,
+    outputmplex = false;
 
-fd_set rfd,wfd;
+static fd_set rfd,wfd;
 
 
 int64_t readpts(unsigned char *buf)
@@ -84,7 +87,7 @@ int64_t readpts(unsigned char *buf)
     return pts;
 }
 
-int hasbecomevalid(int stream,struct ofd *o)
+bool hasbecomevalid(int stream,struct ofd *o)
 {
     unsigned char quad[4];
     struct fdbuf *f1=o->firstbuf,*f2;
@@ -106,10 +109,10 @@ int hasbecomevalid(int stream,struct ofd *o)
         (quad[2]<<8)|
         quad[3];
     if( stream>=0xC0 && stream<0xE0 && (realquad&0xFFE00000)==0xFFE00000 )
-        return 1;
+        return true;
     if( stream>=0xE0 && realquad==0x1B3 )
-        return 1;
-    return 0;
+        return true;
+    return false;
 }
 
 int dowork(int checkin)
@@ -180,7 +183,7 @@ int dowork(int checkin)
             if( o->fd >= 0 && FD_ISSET( o->fd, &wfd ) ) {
                 struct fdbuf *f=o->firstbuf;
                 if( !o->isvalid && hasbecomevalid(ofdlist[i],o) )
-                    o->isvalid=1;
+                    o->isvalid = true;
 
                 if( o->isvalid )
                     n=write(o->fd,f->buf+f->pos,f->len-f->pos);
@@ -215,7 +218,7 @@ int forceread(void *ptr,int len,FILE *h)
     while(!dowork(1));
     if( fread(ptr,1,len,h) != len ) {
         fprintf(stderr,"Could not read\n");
-        closing=1;
+        closing = true;
         while( queuedlen )
             dowork(0);
         exit(1);
@@ -230,7 +233,7 @@ int forceread1(void *ptr,FILE *h)
 
     if( v<0 ) {
         fprintf(stderr,"Could not read\n");
-        closing=1;
+        closing = true;
         while( queuedlen )
             dowork(0);
         exit(1);
@@ -276,9 +279,11 @@ void writetostream(int stream,unsigned char *buf,int len)
 
 int main(int argc,char **argv)
 {
-    unsigned int hdr=0, mpeg2=1;
+    unsigned int hdr=0;
+    bool mpeg2 = true;
     unsigned char c,buf[200];
-    int outputenglish=1,outputstream=0,oc, i,skiptohdr=0,audiodrop=0,nounknown=0;
+    bool outputenglish = true, skiptohdr = false, nounknown = false;
+    int outputstream = 0, oc, i,audiodrop=0;
 
     for( oc=0; oc<256; oc++ )
         outputfds[oc].fd=-1;
@@ -299,11 +304,11 @@ int main(int argc,char **argv)
             break;
 
         case 'm':
-            outputmplex=1;
+            outputmplex = true;
             break;
 
         case 's':
-            skiptohdr=1;
+            skiptohdr = true;
             break;
 
         case 'o':
@@ -317,7 +322,7 @@ int main(int argc,char **argv)
             break;
 
         case 'u':
-            nounknown=1;
+            nounknown = true;
             break;
 
             // case 'h':
@@ -336,7 +341,7 @@ int main(int argc,char **argv)
         }
     }
     if( outputstream ) {
-        outputenglish=0;
+        outputenglish = false;
         outputfds[outputstream].fd=STDOUT_FILENO;
     }
     if( outputmplex ) {
@@ -344,7 +349,7 @@ int main(int argc,char **argv)
             fprintf(stderr,"Cannot output a stream and the mplex offset at the same time\n");
             exit(1);
         }
-        outputenglish=0;
+        outputenglish = false;
     }
     numofd=0;
     for( oc=0; oc<256; oc++ )
@@ -353,7 +358,7 @@ int main(int argc,char **argv)
             outputfds[oc].firstbuf=0;
             outputfds[oc].lastbufptr=&outputfds[oc].firstbuf;
             outputfds[oc].len=0;
-            outputfds[oc].isvalid=!skiptohdr;
+            outputfds[oc].isvalid = !skiptohdr;
         }
     FD_ZERO(&rfd);
     FD_ZERO(&wfd);    
@@ -479,9 +484,9 @@ int main(int argc,char **argv)
                 fulltime=((int64_t)scrhi)<<32|((int64_t)scr);
                 fulltime*=300;
                 fulltime+=scrext;
-                mpeg2 = 1;
+                mpeg2 = true;
         } else if((buf[0] & 0xF0) == 0x20) {
-                mpeg2 = 0;
+                mpeg2 = false;
         fulltime=readpts(buf);
                 fulltime*=300;
         } else {
@@ -633,14 +638,14 @@ int main(int argc,char **argv)
             int hdr=0, has_pts, has_dts, has_std=0, std=0, std_scale=0;
             
             if((buf[0] & 0xC0) == 0x80) {
-                mpeg2 = 1;
+                mpeg2 = true;
             hdr = buf[2]+3;
             eptr = 3;
             has_pts = buf[1] & 128;
             has_dts = buf[1] & 64;
                     }
                     else {
-                mpeg2 = 0;
+                mpeg2 = false;
             while((buf[hdr] == 0xff) && (hdr<sizeof(buf)))
                 hdr++;
                         if((buf[hdr] & 0xC0) == 0x40) {
@@ -727,7 +732,7 @@ int main(int argc,char **argv)
                     printf("%d\n",firstpts[0xE0]-firstpts[0xC0]);
                     fflush(stdout);
                     close(1);
-                    outputmplex=0;
+                    outputmplex = false;
                     if( !numofd )
                         exit(0);
                 }

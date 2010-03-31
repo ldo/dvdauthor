@@ -38,7 +38,7 @@ typedef struct {
 
 typedef struct { /* representation of a menu button */
     char *name;
-    int autoaction;
+    bool autoaction;
     rectangle r; /* bounds of button */
     char *up,*down,*left,*right; /* pointers to other buttons in corresponding directions, if any */
     int grp; /* which group button belongs to */
@@ -51,7 +51,8 @@ typedef struct { /* representation of a subpicture and associated buttons */
     int forced;
     int numbuttons; /* nr entries in buttons */
     int numpal; /* nr entries used in masterpal */
-    int autooutline,outlinewidth,autoorder;
+    bool autooutline,autoorder;
+    int outlinewidth;
     pict img; /* button image in "normal" state */
     pict hlt; /* button image in "highlighted" state (user has moved to button with remote) */
     pict sel; /* button image in "selected" state (user has hit OK key with button highlighted) */
@@ -70,8 +71,8 @@ typedef struct { /* representation of a subpicture and associated buttons */
 
 extern unsigned char *sub;
 extern int debug;
-extern int have_textsub; /* whether a <textsub> tag has been seen */
-extern int have_transparent;
+extern bool have_textsub; /* whether a <textsub> tag has been seen */
+extern bool have_transparent;
 extern int transparent_color;
 
 extern stinfo **spus;
@@ -99,6 +100,6 @@ int cvd_encode(stinfo *s);
 
 // subgen-image
 
-int process_subtitle(stinfo *s);
+bool process_subtitle(stinfo *s);
 void image_init();
 void image_shutdown();

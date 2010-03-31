@@ -1268,7 +1268,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                                   } /*if*/
                                 bi->substreamid = substreamid;
                                 i += 2; // skip modifier
-                                bi->autoaction = buf[i++];
+                                bi->autoaction = buf[i++] != 0;
                                 bi->grp = buf[i];
                                 bi->x1 = read2(buf + i + 1);
                                 bi->y1 = read2(buf + i + 3);

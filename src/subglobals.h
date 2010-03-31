@@ -12,7 +12,7 @@ typedef struct { /* holds subtitle info to be displayed over a particular interv
 typedef struct { /* holds text and related information read from a subtitle file */
     subtitle *subtitles; /* array [sub_num] */ /* succession of subtitles to be displayed */
     const char *filename;
-    int sub_uses_time; /* true => start and end are in hundredths of a second; false => they are frame numbers */
+    bool sub_uses_time; /* true => start and end are in hundredths of a second; false => they are frame numbers */
     int sub_num;          // number of subtitle structs
     int sub_errs;
 } sub_data;
@@ -57,7 +57,7 @@ extern float movie_fps;
 extern int movie_width;
 extern int movie_height;
 extern float text_font_scale_factor;
-extern int text_forceit;
+extern bool text_forceit;
 extern float subtitle_font_radius;
 extern float subtitle_font_thickness;
 extern int subtitle_autoscale; /* fixme: not user-settable */

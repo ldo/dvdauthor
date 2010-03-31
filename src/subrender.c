@@ -41,7 +41,7 @@ static int sub_pos=100;
 static int vo_osd_changed_status = 0;
 static mp_osd_obj_t* vo_osd_list=NULL;
 
-static int force_load_font;
+static bool force_load_font;
 
 static inline void vo_draw_alpha_rgb24
   (
@@ -216,7 +216,8 @@ inline static void vo_update_text_sub
         struct osd_text_word *words; /* where in word list this line starts */
         struct osd_text_line *prev, *next; /* doubly-linked list */
       };
-    int linedone, linesleft, warn_overlong_word;
+    int linedone, linesleft;
+    bool warn_overlong_word;
     int textlen, sub_totallen;
   /* const int widthlimit = dxs * sub_width_p / 100; */
     const int widthlimit = dxs - sub_right_margin - sub_left_margin;
@@ -263,7 +264,7 @@ inline static void vo_update_text_sub
             prevch = -1;
             osl = NULL;
             osl_tail = NULL;
-            warn_overlong_word = 1;
+            warn_overlong_word = true;
             // reading the subtitle words from vo_sub->text[]
             chindex = 0;
             for (;;) /* split line into words */
@@ -340,7 +341,7 @@ inline static void vo_update_text_sub
                       {
                       /* word still fits in available width */
                         if (!warn_overlong_word)
-                            warn_overlong_word = 1;
+                            warn_overlong_word = true;
                         prevch = curch;
                         wordbuf[wordlen++] = curch;
                         xsize += delta_xsize;
@@ -360,7 +361,7 @@ inline static void vo_update_text_sub
                         if (warn_overlong_word)
                           {
                             fprintf(stderr, "WARN: Subtitle word '%s' too long!\n", text);
-                            warn_overlong_word = 0; /* only warn once per line */
+                            warn_overlong_word = false; /* only warn once per line */
                           } /*if*/
                       } /*if*/
                   } /*if*/
@@ -442,7 +443,7 @@ inline static void vo_update_text_sub
                         a single subtitle line */
                       {
                         struct osd_text_line *this_display_line;
-                        int exit1 = 1; /* initial assumption */
+                        bool exit1 = true; /* initial assumption */
                         struct osd_text_line *rebalance_line = NULL;
                           /* if non-null, then word at end of this line should be moved to
                             following line */
@@ -521,7 +522,7 @@ inline static void vo_update_text_sub
                                   /* implement this new layout unless I find something better */
                                     linewidth_variation = new_variation;
                                     rebalance_line = this_display_line;
-                                    exit1 = 0;
+                                    exit1 = false;
                                   } /*if*/
                               /* undo the temporary line width changes */
                                 this_display_line->linewidth = prev_line_width;
@@ -851,7 +852,7 @@ int vo_update_osd(int dxs, int dys)
     // here is the right place to get screen dimensions
     if (!vo_font || force_load_font)
       {
-        force_load_font = 0;
+        force_load_font = false;
         load_font_ft(dxs, dys);
       } /*if*/
 #endif
@@ -911,7 +912,7 @@ void vo_init_osd()
     vo_finish_osd(); /* if previously allocated */
     new_osd_obj(OSDTYPE_SUBTITLE);
 #ifdef HAVE_FREETYPE
-    force_load_font = 1;
+    force_load_font = true;
 #endif
   } /*vo_init_osd*/
 

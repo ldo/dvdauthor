@@ -77,8 +77,9 @@ static enum
   }
     hadchapter = chapters_neither; /* info about last VOB in current PGC */
 static int
-    pauselen=0,
-    writeoutput=1;
+    pauselen=0;
+static bool
+    writeoutput = true;
 static char
     *chapters=0;
 
@@ -437,7 +438,7 @@ int main(int argc,char **argv)
             return readdvdauthorxml(optarg,fbase);
 
         case 'n':
-            writeoutput=0;
+            writeoutput = false;
         break;
 
         case 'j':
@@ -586,7 +587,7 @@ int main(int argc,char **argv)
     }
     FLUSHPGC;
     if( !va[0] ) {
-        va[0]=pgcgroup_new(istoc+1);
+        va[0]=pgcgroup_new(istoc ? VTYPE_VMGM : VTYPE_VTSM);
         mg=menugroup_new();
         menugroup_add_pgcgroup(mg,"en",va[0]);
     } else
@@ -650,8 +651,10 @@ static const char
     *buttonname=0; /* name of button currently being defined */
 static vtypes
     ismenuf = VTYPE_VTS;
+static bool
+    istoc = false, /* true for vmgm, false for titleset */
+    hadtoc = false; /* set to true when vmgm seen */
 static int
-    istoc=0, /* 1 for vmgm, 0 for titleset */
     setvideo=0, /* to keep count of <video> tags */
     setaudio=0, /* to keep count of <audio> tags */
     setsubpicture=0, /* to keep count of <subpicture> tags */
@@ -661,7 +664,6 @@ static int
         DA_PGC -- inside a <pgc> tag (no "lang" attribute allowed)
         DA_PGCGROUP -- inside a <menus> or <titles> tag, must come before the <pgc> tags
       */
-    hadtoc=0, /* set to 1 when vmgm seen */
     subpstreamid=-1; /* id attribute of current <stream> saved here */
 static char *subpstreammode=0; /* mode attribute of current <stream> saved here */
 static enum
@@ -726,24 +728,14 @@ static void dvdauthor_workdir(const char *s)
 
 static void dvdauthor_jumppad(const char *s)
 {
-    int i=xml_ison(s);
-    if( i==1 )
+    if(xml_ison(s, "jumppad"))
         dvdauthor_enable_jumppad();
-    else if( i==-1 ) {
-        fprintf(stderr,"ERR:  Unknown jumppad cmd '%s'\n",s);
-        exit(1);
-    }
 }
 
 static void dvdauthor_allgprm(const char *s)
 {
-    int i=xml_ison(s);
-    if( i==1 )
+    if (xml_ison(s, "allgprm"))
         dvdauthor_enable_allgprm();
-    else if( i==-1 ) {
-        fprintf(stderr,"ERR:  Unknown allgprm cmd '%s'\n",s);
-        exit(1);
-    }
 }
 
 static void getfbase()
@@ -754,7 +746,7 @@ static void getfbase()
         fbase=readconfentry("WORKDIR");
         if( !fbase ) {
             fprintf(stderr,"ERR:  Must specify working directory\n");
-            parser_err=1;
+            parser_err = true;
         }
     }
 }
@@ -778,7 +770,7 @@ static void dvdauthor_end()
 static void titleset_start()
 {
     mg=menugroup_new();
-    istoc=0;
+    istoc = false;
 }
 
 static void titleset_end()
@@ -800,12 +792,12 @@ static void vmgm_start()
 {
     if (hadtoc) {
         fprintf(stderr,"ERR:  Can only define one VMGM\n");
-        parser_err=1;
+        parser_err = true;
         return;
     }
     mg=menugroup_new();
-    istoc=1;
-    hadtoc=1;
+    istoc = true;
+    hadtoc = true;
 }
 
 static void vmgm_end()
@@ -820,12 +812,12 @@ static void fpc_start()
 {
     if( !istoc ) {
         fprintf(stderr,"ERR:  Can only specify <fpc> under <vmgm>\n");
-        parser_err=1;
+        parser_err = true;
         return;
     }
     if( fpc ) {
         fprintf(stderr,"ERR:  Already defined <fpc>\n");
-        parser_err=1;
+        parser_err = true;
         return;
     }
     fpc=pgc_new();
@@ -852,12 +844,12 @@ static void titles_start()
     if (titles)
       {
         fprintf(stderr, "ERR:  Titles already defined\n");
-        parser_err = 1;
+        parser_err = true;
       }
     else if (istoc)
       {
         fprintf(stderr, "ERR:  Cannot have titles in a VMGM\n");
-        parser_err = 1;
+        parser_err = true;
       }
     else
       {
@@ -898,7 +890,7 @@ static void video_start()
       {
         fprintf(stderr, "ERR:  Already defined video characteristics for this PGC group\n");
           /* only one video stream allowed */
-        parser_err = 1;
+        parser_err = true;
       }
     else
         setvideo = 1;
@@ -936,7 +928,7 @@ static void audio_start()
     if (setaudio >= 8)
       {
         fprintf(stderr, "ERR:  Attempting to define too many audio streams for this PGC group\n");
-        parser_err = 1;
+        parser_err = true;
       } /*if*/
   }
 
@@ -990,14 +982,14 @@ static void subattr_group_start()
     if (subpmode != DA_PGCGROUP)
       {
         fprintf(stderr, "ERR:  Define all the subpictures before defining PGCs\n");
-        parser_err = 1;
+        parser_err = true;
         return;
       } /*if*/
     setsubpicture++;
     if (setsubpicture >= 32)
       {
         fprintf(stderr, "ERR:  Attempting to define too many subpicture streams for this PGC group\n");
-        parser_err = 1;
+        parser_err = true;
       } /*if*/
   } /*subattr_group_start*/
 
@@ -1008,7 +1000,7 @@ static void subattr_pgc_start()
     if (setsubpicture >= 32)
       {
         fprintf(stderr, "ERR:  Attempting to define too many subpicture streams for this PGC group\n");
-        parser_err = 1;
+        parser_err = true;
       } /*if*/
   } /*subattr_pgc_start*/
 
@@ -1023,7 +1015,7 @@ static void subattr_lang(const char *c)
             stderr,
             "ERR:  Cannot set subpicture language within a pgc; do it within titles or menus\n"
           );
-        parser_err = 1;
+        parser_err = true;
       } /*if*/
   } /*subattr_lang*/
 
@@ -1040,7 +1032,7 @@ static void subattr_content(const char * c)
             stderr,
             "ERR:  Cannot set subpicture content type within a pgc; do it within titles or menus\n"
           );
-        parser_err = 1;
+        parser_err = true;
       } /*if*/
   } /*subattr_content*/
 
@@ -1058,7 +1050,7 @@ static void substream_id(const char *c)
     if (subpstreamid < 0 || subpstreamid >= 32)
       {
         fprintf(stderr, "ERR:  Subpicture stream id must be 0-31: '%s'.\n", c);
-        parser_err = 1;
+        parser_err = true;
       } /*if*/
   } /*substream_id*/
 
@@ -1073,7 +1065,7 @@ static void stream_end()
     if (subpstreamid == -1 || !subpstreammode)
       {
         fprintf(stderr, "ERR:  Must define the mode and id for the stream.\n");
-        parser_err = 1;
+        parser_err = true;
       }
     else if (subpmode == DA_PGCGROUP)
       {
@@ -1218,25 +1210,13 @@ static void cell_parseend(const char *f)
 
 static void cell_parsechapter(const char *f)
   {
-    const int i = xml_ison(f);
-    if (i == -1)
-      {
-        fprintf(stderr, "ERR:  Unknown chapter cmd '%s'\n", f);
-        exit(1);
-      }
-    else if (i)
+    if (xml_ison(f, "chapter"))
         cell_chapter = CELL_CHAPTER_PROGRAM;
   }
 
 static void cell_parseprogram(const char *f)
   {
-    const int i = xml_ison(f);
-    if (i == -1)
-      {
-        fprintf(stderr, "ERR:  Unknown program cmd '%s'\n", f);
-        exit(1);
-      }
-    else if (i && cell_chapter != CELL_CHAPTER_PROGRAM)
+    if (xml_ison(f, "program") && cell_chapter != CELL_CHAPTER_PROGRAM)
         cell_chapter = CELL_PROGRAM;
   }
 

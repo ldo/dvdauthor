@@ -62,7 +62,7 @@ static int swapcompare(int compareop)
         return compareop ^ 3; /* GE <=> LT, GT <=> LE */
   } /*swapcompare*/
 
-static int compile_usesreg(const struct vm_statement *cs, int target)
+static bool compile_usesreg(const struct vm_statement *cs, int target)
   /* does cs reference the specified register. */
   {
     while (cs)
@@ -70,10 +70,10 @@ static int compile_usesreg(const struct vm_statement *cs, int target)
         if (cs->op == VM_VAL)
             return cs->i1 == target - 256;
         if (compile_usesreg(cs->param, target))
-            return 1;
+            return true;
         cs = cs->next;
       } /*while*/
-    return 0;
+    return false;
   } /*compile_usesreg*/
 
 static int nexttarget(int t)
@@ -407,11 +407,11 @@ static unsigned char *compilecs
   /* compiles a parse tree into naive VM instructions: no optimization of conditionals,
     and no fixup of gotos; these tasks are left to caller. */
   {
-    int lastif = 0;
+    bool lastif = false;
     while (cs)
       {
         if (cs->op != VM_NOP)
-            lastif = 0; /* no need for dummy target for last branch, I'll be providing a real one */
+            lastif = false; /* no need for dummy target for last branch, I'll be providing a real one */
           /* actually check for VM_NOP is unnecessary so long as no construct will
             generate one */
         switch (cs->op)
@@ -570,7 +570,7 @@ static unsigned char *compilecs
                 end = e;
               } /*while*/
             buf = end;
-            lastif = 1; // make sure reference statement is generated
+            lastif = true; // make sure reference statement is generated
           }
         break;
 
@@ -591,7 +591,7 @@ static unsigned char *compilecs
             labels[numlabels].lname = cs->s1;
             labels[numlabels].code = buf; /* where label points to */
             numlabels++;
-            lastif = 1; // make sure reference statement is generated
+            lastif = true; // make sure reference statement is generated
           }
         break;
             
@@ -1194,7 +1194,7 @@ static void applyif(unsigned char *b,unsigned int ifs)
       } /*switch*/
   } /*applyif*/
 
-static int ifcombinable(unsigned char b0, unsigned char b1, unsigned char b8)
+static bool ifcombinable(unsigned char b0, unsigned char b1, unsigned char b8)
   /* can the instruction whose first two bytes are b0 and b1 have its condition
     combined with the one whose first byte is b8. */
   {
@@ -1214,7 +1214,7 @@ static int ifcombinable(unsigned char b0, unsigned char b1, unsigned char b8)
         iftype = 0;
     break;
     default:
-        return 0;
+        return false;
       } /*switch*/
     switch (b8 >> 4)
       {
@@ -1223,13 +1223,13 @@ static int ifcombinable(unsigned char b0, unsigned char b1, unsigned char b8)
     case 2:
     case 6:
     case 7:
-        return 1;
+        return true;
     case 3:
     case 4:
     case 5:
         return iftype == 0;
     default:
-        return 0;
+        return false;
       } /*switch*/
   } /*ifcombinable*/
 

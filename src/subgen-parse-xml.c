@@ -44,7 +44,7 @@ static void printtime(char *b,int t)
 static unsigned int parsetime(const char *t)
   /* parses a time as [[hh:]mm:]ss[.cc], returning the value in 90kHz clock units. */
   {
-    int tf = 1; /* haven't seen decimal point yet */
+    bool tf = true; /* haven't seen decimal point yet */
     int rt = 0; /* accumulation of all componetns except last */
     int n = 0; /* value of last copmonent accumulated here */
     int nd = 0; /* multiplier for next digit of n */
@@ -72,7 +72,7 @@ static unsigned int parsetime(const char *t)
             rt = rt * 60 + n;
             n = 0;
             nd = 1;
-            tf = 0;
+            tf = false;
           } /*if*/
         t++;
       } /*while*/
@@ -82,9 +82,9 @@ static unsigned int parsetime(const char *t)
         return rt * 90000 + 90000 * n / nd;
   } /*parsetime*/
 
-static int
-    had_stream = 0, /* whether I've seen <stream> */
-    had_textsub = 0; /* whether I've seen <textsub> */
+static bool
+    had_stream = false, /* whether I've seen <stream> */
+    had_textsub = false; /* whether I've seen <textsub> */
 static stinfo *st=0; /* current <spu> directive collected here */
 static button *curbutton=0;
 static char * filename = 0;
@@ -96,7 +96,7 @@ static void stream_begin()
         fprintf(stderr,"ERR:  Only one stream is currently allowed.\n");
         exit(1);
       } /*if*/
-    had_stream = 1;
+    had_stream = true;
   } /*stream_begin*/
 
 static void spu_begin()
@@ -116,12 +116,7 @@ static void spu_yoffset(const char *v)      { st->y0 = strtounsigned(v, "spu yof
 
 static void spu_force(const char *v)
 {
-    st->forced = xml_ison(v);
-    if (st->forced == -1)
-      {
-        fprintf(stderr, "ERR:  Cannot parse 'force' value '%s'\n", v);
-        exit(1);
-      } /*if*/
+    st->forced = xml_ison(v, "spu force");
 }
 
 static void spu_transparent(const char *v)
@@ -137,7 +132,7 @@ static void spu_transparent(const char *v)
 static void spu_autooutline(const char *v)
 {
     if (!strcmp(v,"infer"))
-        st->autooutline = 1;
+        st->autooutline = true;
     else
       {
         fprintf(stderr, "ERR:  Unknown autooutline type %s\n", v);
@@ -148,9 +143,9 @@ static void spu_autooutline(const char *v)
 static void spu_autoorder(const char *v)
 {
     if (!strcmp(v,"rows"))
-        st->autoorder = 0;
+        st->autoorder = false;
     else if (!strcmp(v,"columns"))
-        st->autoorder = 1;
+        st->autoorder = true;
     else
       {
         fprintf(stderr, "ERR:  Unknown autoorder type %s\n", v);
@@ -194,7 +189,7 @@ static void button_begin()
 static void action_begin()
 {
     button_begin();
-    curbutton->autoaction = 1;
+    curbutton->autoaction = true;
 }
 
 static void button_label(const char *v) { curbutton->name  = strdup(v); }
@@ -261,7 +256,7 @@ static void textsub_begin()
         fprintf(stderr,"ERR:  Only one textsub is currently allowed.\n");
         exit(1);
       } /*if*/
-    had_textsub = 1;
+    had_textsub = true;
   } /*textsub_begin*/
 
 static void textsub_complete()
@@ -283,7 +278,7 @@ static void textsub_complete()
             exit(1);
           } /*if*/
         filename = NULL; /* belongs to textsub_subdata now */
-        have_textsub = 1;
+        have_textsub = true;
         subtitle_end = textsub_subdata->subtitles[textsub_subdata->sub_num - 1].end;
         for (pts = 0; pts < subtitle_end; pts++)
           {
@@ -334,12 +329,7 @@ static void textsub_fontsize(const char *v)     { text_font_scale_factor=atof(v)
 
 static void textsub_force(const char *v)
 {
-    text_forceit = xml_ison(v);
-    if (text_forceit == -1)
-      {
-        fprintf(stderr,"ERR:  Cannot parse 'force' value '%s'\n",v);
-        exit(1);
-      } /*if*/
+    text_forceit = xml_ison(v, "textsub force");
 }
 
 enum { /* parse states */

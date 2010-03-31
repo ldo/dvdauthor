@@ -19,6 +19,7 @@
  * USA
  */
 
+#include "compat.h" /* needed for bool */
 #include "dvdvm.h"
 #include "dvdvmy.h"
 

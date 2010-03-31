@@ -180,15 +180,16 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
       } /*for*/
     for (i = 0; i < va->numsubpicturetracks; i++)
       {
-        int m, e;
-        e = 0;
+        int m;
+        bool e;
+        e = false;
         for (m = 0; m < 4; m++)
             if (thispgc->subpmap[i][m] & 128)
               {
                 buf[28 + i * 4 + m] = thispgc->subpmap[i][m] & 127;
                   /* PGC_SPST_CTL, subpicture stream control: actual stream IDs corresponding
                     to each stream described in IFO */
-                e = 1;
+                e = true;
               } /*if; for*/
         if (e)
             buf[28 + i * 4] |= 0x80; /* set stream-available flag */
@@ -323,7 +324,8 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
     if (thispgc->numsources)
       {
       /* fill in program map, cell playback info table and cell position info table */
-        int cellline, notseamless;
+        int cellline;
+        bool notseamless;
         write2(buf + 230, d); /* offset to program map */
         j = 1;
         for (i = 0; i < thispgc->numsources; i++)
@@ -344,7 +346,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
         write2(buf + 232, d); /* offset to cell playback information table */
         j = -1;
         cellline = 1;
-        notseamless = 1; /* first cell never seamless, otherwise a/v sync problems will occur */
+        notseamless = true; /* first cell never seamless, otherwise a/v sync problems will occur */
         for (i = 0; i < thispgc->numsources; i++)
           { /* generate the cell playback information table */
             int k, l, m, firsttime;
@@ -363,13 +365,13 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                             &&
                                 calcaudiogap(va, j, id, getaudch(va, m))
                           )
-                            notseamless = 1;
+                            notseamless = true;
                     buf[d] =
                             (notseamless ? 0 : 8 /* seamless multiplex */)
                         |
                             (j + 1 != id ? 2 /* SCR discontinuity */ : 0);
                               // if this is the first cell of the source, then set 'STC_discontinuity', otherwise set 'seamless presentation'
-                    notseamless = 0; /* initial assumption for next cell */
+                    notseamless = false; /* initial assumption for next cell */
                     j = id;
 
                     vi = findcellvobu(thissource->vob, l);
@@ -383,12 +385,12 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                         if (thissource->cells[k].pauselen > 0)
                           {
                             buf[2 + d] = thissource->cells[k].pauselen; /* cell still time */
-                            notseamless = 1; // cells with stilltime are not seamless
+                            notseamless = true; // cells with stilltime are not seamless
                           } /*if*/
                         if (thissource->cells[k].commands)
                           {
                             buf[3 + d] = cellline++; /* cell command nr */
-                            notseamless = 1; // cells with commands are not seamless
+                            notseamless = true; // cells with commands are not seamless
                           } /*if*/
                       } /*if*/
                     write4(buf + 4 + d, buildtimeeven(va, thissource->vob->vobu[vi]. sectpts[1] - firsttime));
@@ -488,9 +490,10 @@ static int createpgcgroup(const struct workset *ws,vtypes ismenu,const struct pg
 int CreatePGC(FILE *h, const struct workset *ws, vtypes ismenu)
   {
     unsigned char *buf;
-    int len,ph,i,in_it;
+    int len,ph,i;
+    bool in_it;
 
-    in_it = !bigwritebuflen; /* don't do first allocation if already got a buffer from last time */
+    in_it = bigwritebuflen == 0; /* don't do first allocation if already got a buffer from last time */
  retry: /* come back here if buffer wasn't big enough to generate a PGC group */
     if (in_it)
       {
@@ -502,7 +505,7 @@ int CreatePGC(FILE *h, const struct workset *ws, vtypes ismenu)
             free(bigwritebuf);
         bigwritebuf = malloc(bigwritebuflen);
       } /*if*/
-    in_it = 1;
+    in_it = true;
     buf = bigwritebuf;
     memset(buf, 0, bigwritebuflen);
     ph = 0;

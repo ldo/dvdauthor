@@ -27,7 +27,7 @@ typedef struct /* a bitmap for caching glyph images */
 typedef struct
   {
 #ifdef HAVE_FREETYPE
-    int dynamic;
+    bool dynamic;
 #endif
     int spacewidth;
     int charspace; /* extra inter-character spacing, may be negative */

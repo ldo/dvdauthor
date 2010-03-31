@@ -358,18 +358,17 @@ static int read_pic(stinfo *s, pict *p)
     return r;
   } /*read_pic*/
 
-static int checkcolor(palgroup *p,int c)
+static bool checkcolor(palgroup *p,int c)
   /* tries to put colour c into palette p, returning true iff successful or already there. */
 {
     int i;
-
     for( i=0; i<p->numpal; i++ )
         if( p->pal[i]==c )
-            return 1;
+            return true;
     if( p->numpal==4 )
-        return 0;
+        return false;
     p->pal[p->numpal++]=c;
-    return 1;
+    return true;
 }
 
 static int gettricolor(stinfo *s,int p,int useimg)
@@ -384,7 +383,7 @@ static int gettricolor(stinfo *s,int p,int useimg)
             s->sel.img[p];
   } /*gettricolor*/
 
-static int pickbuttongroups(stinfo *s, int ng, int useimg)
+static bool pickbuttongroups(stinfo *s, int ng, int useimg)
   /* tries to assign the buttons in s to ng unique groups. useimg indicates
     whether to look at the pixels in s->img in addition to s->hlt and s->sel. */
   {
@@ -589,7 +588,7 @@ ui_found:
 
         fprintf(stderr, "INFO: Pickbuttongroups, success with %d groups, useimg=%d\n", ng, useimg);
         s->numgroups = ng;
-        return 1;
+        return true;
 trynext:
         continue; // 'deprecated use of label at end of compound statement'
       } /*for i*/
@@ -597,7 +596,7 @@ trynext:
 impossible:
     free(bpgs);
     free(gs);
-    return 0;
+    return false;
   } /*pickbuttongroups*/
 
 static void fixnames(stinfo *s)
@@ -642,10 +641,10 @@ static void brphelp(int a0, int a1, int b0, int b1, int d, int *angle, int *dist
     *dist = sqrt(d1 * d1+d * d);
   } /*brphelp*/
 
-static int buttonrelpos(const rectangle *a, const rectangle *b, int *angle, int *dist)
+static bool buttonrelpos(const rectangle *a, const rectangle *b, int *angle, int *dist)
   /* computes an angle and distance from the position of rectangle a to that of rectangle b,
-    if I can figure one out. Returns 1 if the case is sufficiently simple for me to handle,
-    0 otherwise. */
+    if I can figure one out. Returns true if the case is sufficiently simple for me to handle,
+    false otherwise. */
   {
     // from b to a
     if (a->y1 <= b->y0)
@@ -653,7 +652,7 @@ static int buttonrelpos(const rectangle *a, const rectangle *b, int *angle, int 
       /* a lies above b with no vertical overlap */
         brphelp(a->x0, a->x1, b->x0, b->x1, b->y0 - a->y1, angle, dist);
         // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d is angle %d, dist %d\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1,*angle,*dist);
-        return 1;
+        return true;
       } /*if*/
     if (a->y0 >= b->y1)
       {
@@ -661,7 +660,7 @@ static int buttonrelpos(const rectangle *a, const rectangle *b, int *angle, int 
         brphelp(a->x0, a->x1, b->x0, b->x1, a->y0 - b->y1, angle, dist);
         *angle = 180 - *angle;
         // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d is angle %d, dist %d\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1,*angle,*dist);
-        return 1;
+        return true;
       } /*if*/
     if (a->x1 <= b->x0)
       {
@@ -669,7 +668,7 @@ static int buttonrelpos(const rectangle *a, const rectangle *b, int *angle, int 
         brphelp(a->y0, a->y1, b->y0, b->y1, b->x0 - a->x1, angle, dist);
         *angle = 270 - *angle;
         // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d is angle %d, dist %d\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1,*angle,*dist);
-        return 1;
+        return true;
       } /*if*/
     if (a->x0 >= b->x1)
       {
@@ -677,11 +676,11 @@ static int buttonrelpos(const rectangle *a, const rectangle *b, int *angle, int 
         brphelp(a->y0, a->y1, b->y0, b->y1, a->x0 - b->x1, angle, dist);
         *angle = 90 + *angle;
         // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d is angle %d, dist %d\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1,*angle,*dist);
-        return 1;
+        return true;
       } /*if*/
   /* none of the above */
     // fprintf(stderr,"from %dx%d-%dx%d to %dx%d-%dx%d -- no easy comparison\n",b->x0,b->y0,b->x1,b->y1,a->x0,a->y0,a->x1,a->y1);
-    return 0;
+    return false;
   } /*buttonrelpos*/
 
 static void findbestbindir(stinfo *s, const button *b, char **dest, int a)
@@ -734,34 +733,34 @@ static void detectdirections(stinfo *s)
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
-static int scanvline(stinfo *s,unsigned char *v,rectangle *r,int x,int d)
+static bool scanvline(stinfo *s,unsigned char *v,rectangle *r,int x,int d)
 {
     int i,j;
 
     for( j=1; j<=s->outlinewidth; j++ ) {
         x+=d;
         if( x<0 || x>=s->xd )
-            return 0;
+            return false;
         for( i=MAX(r->y0-j,0); i<MIN(r->y1+j,s->yd); i++ )
             if( v[i*s->xd+x] )
-                return 1;
+                return true;
     }
-    return 0;
+    return false;
 }
 
-static int scanhline(stinfo *s,unsigned char *v,rectangle *r,int y,int d)
+static bool scanhline(stinfo *s,unsigned char *v,rectangle *r,int y,int d)
 {
     int i,j;
 
     for( j=1; j<=s->outlinewidth; j++ ) {
         y+=d;
         if( y<0 || y>=s->yd )
-            return 0;
+            return false;
         for( i=MAX(r->x0-j,0); i<MIN(r->x1+j,s->xd); i++ )
             if( v[y*s->xd+i] )
-                return 1;
+                return true;
     }
-    return 0;
+    return false;
 }
 
 static void detectbuttons(stinfo *s)
@@ -780,7 +779,7 @@ static void detectbuttons(stinfo *s)
         for( x=0; x<s->xd; x++ )
             if( visitmask[y*s->xd+x] ) {
                 rectangle r;
-                int didwork;
+                bool didwork;
 
                 r.x0=x;
                 r.y0=y;
@@ -788,22 +787,22 @@ static void detectbuttons(stinfo *s)
                 r.y1=y+1;
 
                 do {
-                    didwork=0;
+                    didwork = false;
                     while( scanvline(s,visitmask,&r,r.x0,-1) ) {
                         r.x0--;
-                        didwork=1;
+                        didwork = true;
                     }
                     while( scanvline(s,visitmask,&r,r.x1-1,1) ) {
                         r.x1++;
-                        didwork=1;
+                        didwork = true;
                     }
                     while( scanhline(s,visitmask,&r,r.y0,-1) ) {
                         r.y0--;
-                        didwork=1;
+                        didwork = true;
                     }
                     while( scanhline(s,visitmask,&r,r.y1-1,1) ) {
                         r.y1++;
-                        didwork=1;
+                        didwork = true;
                     }
                 } while(didwork);
 
@@ -862,7 +861,7 @@ static void detectbuttons(stinfo *s)
     }
 }
 
-static int imgfix(stinfo *s)
+static bool imgfix(stinfo *s)
   /* fills in the subpicture/button details. */
 {
     int i, useimg, w, h, x, y, x0, y0;
@@ -901,7 +900,7 @@ static int imgfix(stinfo *s)
         if (useimg < 0)
           {
             fprintf(stderr, "ERR: Cannot pick button masks\n");
-            return 0;
+            return false;
           } /*if*/
 
         for (i = 0; i < s->numbuttons; i++)
@@ -929,7 +928,7 @@ static int imgfix(stinfo *s)
                     if (s->fimg[p] != dc && s->fimg[p] != 255)
                       { /* pixel already occupied by another button */
                         fprintf(stderr, "ERR: Overlapping buttons\n");
-                        return 0;
+                        return false;
                       } /*if*/
                     s->fimg[p] = dc;
                   } /*for; for*/
@@ -963,7 +962,7 @@ static int imgfix(stinfo *s)
                   } /*if*/
           /* no room in s->pal */
             fprintf(stderr, "ERR: Too many colors in base picture\n");
-            return 0;
+            return false;
 if_found:
             s->fimg[i] = j;
           } /*if; for*/
@@ -1000,7 +999,7 @@ if_found:
       { // empty image?
         s->xd = w;
         s->yd = h;
-        return 1;
+        return true;
       } /*if*/
     x0 &= -2;
     y0 &= -2;
@@ -1018,20 +1017,20 @@ if_found:
       } /*for*/
     s->x0 += x0;
     s->y0 += y0;
-    return 1;
+    return true;
   } /*imgfix*/
 
-int process_subtitle(stinfo *s)
+bool process_subtitle(stinfo *s)
   /* loads the specified image files and builds the subpicture in memory. */
 {
     int w=0,h=0;
     int iline=0;
 
-    if( !s ) return 0;
+    if( !s ) return false;
     if( read_pic(s,&s->img) ) {
         if(debug > -1)
             fprintf(stderr, "WARN: Bad image,  skipping line %d\n", iline - 1);
-        return 0;
+        return false;
     }
     if( s->img.img && !w ) {
         w=s->img.width;
@@ -1040,7 +1039,7 @@ int process_subtitle(stinfo *s)
     if( read_pic(s,&s->hlt) ) {
         if(debug > -1)
             fprintf(stderr, "WARN: Bad image,  skipping line %d\n", iline - 1);
-        return 0;
+        return false;
     }
     if( s->hlt.img && !w ) {
         w=s->hlt.width;
@@ -1049,7 +1048,7 @@ int process_subtitle(stinfo *s)
     if( read_pic(s,&s->sel) ) {
         if(debug > -1)
             fprintf(stderr, "WARN: Bad image,  skipping line %d\n", iline - 1);
-        return 0;
+        return false;
     }
     if( s->sel.img && !w ) {
         w=s->sel.width;
@@ -1058,7 +1057,7 @@ int process_subtitle(stinfo *s)
 
     if( !w ) {
         fprintf(stderr,"WARN: No picture, skipping line %d\n",iline-1);
-        return 0;
+        return false;
     }
   /* check consistent dimensions, fill in missing images with blanks */
     if( !s->img.img ) {
@@ -1066,21 +1065,21 @@ int process_subtitle(stinfo *s)
         fprintf(stderr,"INFO: Constructing blank img\n");
     } else if( s->img.width!=w || s->img.height!=h ) {
         fprintf(stderr,"WARN: Inconsistent picture widths, skipping line %d\n",iline-1);
-        return 0;
+        return false;
     }
     if( !s->hlt.img ) {
         constructblankpic(&s->hlt,w,h);
         fprintf(stderr,"INFO: Constructing blank hlt\n");
     } else if( s->hlt.width!=w || s->hlt.height!=h ) {
         fprintf(stderr,"WARN: Inconsistent picture widths, skipping line %d\n",iline-1);
-        return 0;
+        return false;
     }
     if( !s->sel.img ) {
         constructblankpic(&s->sel,w,h);
         fprintf(stderr,"INFO: Constructing blank sel\n");
     } else if( s->sel.width!=w || s->sel.height!=h ) {
         fprintf(stderr,"WARN: Inconsistent picture widths, skipping line %d\n",iline-1);
-        return 0;
+        return false;
     }
 
     if( !imgfix(s) ) /* data in img to fimg */
@@ -1089,10 +1088,10 @@ int process_subtitle(stinfo *s)
         {
             fprintf(stderr, "ERR: Blank image, skipping line %d\n", iline - 1);
         }
-        return 0;
+        return false;
     }
 
-    return 1;
+    return true;
 }
 
 void image_init()

@@ -9,6 +9,8 @@ AC_PROG_INSTALL
 
 AC_SYS_LARGEFILE
 
+AC_HEADER_STDBOOL
+
 have_dvdread=false
 AC_CHECK_LIB(dvdread, DVDOpenFile, have_dvdread=true)
 AM_CONDITIONAL(HAVE_DVDREAD, $have_dvdread)

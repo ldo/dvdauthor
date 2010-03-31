@@ -534,13 +534,13 @@ static int Create_TT_SRPT
       } /*for*/
   } /*BuildAVInfo*/
 
-static int needmenus(const struct menugroup *mg)
+static bool needmenus(const struct menugroup *mg)
 /* do I actually have any menu definitions in mg. */
 {
-    if (!mg ) return 0;
-    if( !mg->numgroups ) return 0;
-    if( !mg->groups[0].pg->numpgcs ) return 0;
-    return 1;
+    if (!mg ) return false;
+    if( !mg->numgroups ) return false;
+    if( !mg->groups[0].pg->numpgcs ) return false;
+    return true;
 }
 
 static void WriteIFO(FILE *h, const struct workset *ws)
@@ -548,7 +548,7 @@ static void WriteIFO(FILE *h, const struct workset *ws)
   {
     static unsigned char buf[2048];
     int nextsector;
-    const int forcemenus = needmenus(ws->menus);
+    const bool forcemenus = needmenus(ws->menus);
 
     // sect 0: VTS toplevel
     memset(buf, 0, 2048);
@@ -655,7 +655,7 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
   {
     static unsigned char buf[2048];
     int nextsector, offset, i, j, vtsstart;
-    const int forcemenus = needmenus(ws->menus);
+    const bool forcemenus = needmenus(ws->menus);
     FILE *h;
 
     h = fopen(fname, "wb");

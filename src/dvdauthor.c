@@ -38,11 +38,11 @@
 
 // with this enabled, extra PGC commands will be generated to allow
 // jumping/calling to a wider number of destinations
-int jumppad=0;
+bool jumppad = false;
 
 // with this enabled, all 16 general purpose registers can be used, but
 // prohibits certain convenience features, like multiple commands on a button
-int allowallreg=0;
+bool allowallreg = false;
 
 /* video/audio/subpicture attribute keywords -- note they are all unique to allow
   xxx_ANY attribute setting to work */
@@ -652,17 +652,18 @@ static void setattr
         const int id = (i >> 2) + 1;
         const int afmt = (i & 3) + 1; // note this does not follow the normal stream order
           /* afmt = 1 => AC3, 2 => MPEG audio, 3 => PCM, 4 => DTS, in order of preference */
-        int j, fnd;
+        int j;
+        bool fnd;
         struct audchannel *fad = 0;
         int matchidx, bestmatchcount;
 
-        fnd = 0;
+        fnd = false;
         for (j = 0; j < va->numvobs; j++)
           {
             fad = &va->vobs[j]->audch[id - 1 + (afmt - 1) * 8];
             if (fad->numaudpts) /* audio track actually present */
               {
-                fnd = 1;
+                fnd = true;
                 break;
               } /*if*/
           } /*for*/
@@ -670,11 +671,11 @@ static void setattr
             continue;
 
         // do we already know about this stream?
-        fnd = 0;
+        fnd = false;
         for (j = 0; j < va->numaudiotracks; j++)
             if (va->ad[j].aformat == afmt && va->ad[j].aid == id)
               {
-                fnd = 1;
+                fnd = true;
                 break;
               } /*if; for*/
         if (fnd)
@@ -706,7 +707,7 @@ static void setattr
                     bestmatchcount = thismatchcount;
                     matchidx = j;
                   } /*if*/
-                fnd = 1;
+                fnd = true;
               } /*if; for*/
         if (!fnd)
           {
@@ -767,7 +768,8 @@ static void setattr
 
     for (i = 0; i < va->numallpgcs; i++)
       {
-        int j, k, l, m, used, mask;
+        int j, k, l, m, mask;
+        bool used;
         struct pgc * const pgc = va->allpgcs[i];
 
         mask = getsubpmask(&va->vd);
@@ -795,13 +797,13 @@ static void setattr
                         if (pgc->subpmap[l][m] == 128 + k)
                             goto handled;
                 // Is this subpicture id defined by the vobgroup?
-                used = 0;
+                used = false;
                 for (l = 0; l < va->numsubpicturetracks; l++)
                     for (m = 0; m < 4; m++)
                         if (va->sp[l].idmap[m] == 128 + k && pgc->subpmap[l][m] == 0)
                           {
                             pgc->subpmap[l][m] = 128 + k;
-                            used = 1; // keep looping in case it's referenced multiple times
+                            used = true; // keep looping in case it's referenced multiple times
                           } /*if; for; for*/
                 if (used)
                     continue;
@@ -891,12 +893,13 @@ noinfer:
 
     for (i = 0; i < 32; i++)
       {
-        int j, k, fnd;
-        fnd = 0;
+        int j, k;
+        bool fnd;
+        fnd = false;
         for (j = 0; j < va->numallpgcs; j++) 
             for (k = 0; k < 4; k++)
                 if (va->allpgcs[j]->subpmap[i][k])
-                    fnd = 1;
+                    fnd = true;
         if (!fnd)
             continue;
         // guess we need to add this stream
@@ -1062,9 +1065,9 @@ static void ScanIfo(struct toc_summary *ts, const char *ifo)
     fread(buf, 1, 2048, h);
     vd = &ts->vts[ts->numvts]; /* where to put new entry */
     if (read4(buf + 0xc0) != 0) /* start sector of menu VOB */
-        vd->hasmenu = 1;
+        vd->hasmenu = true;
     else
-        vd->hasmenu = 0;
+        vd->hasmenu = false;
     vd->numsectors = read4(buf + 0xc) + 1; /* last sector of title set (last sector of BUP) */
     memcpy(vd->vtscat, buf + 0x22, 4); /* VTS category */
     memcpy(vd->vtssummary, buf + 0x100, 0x300); /* attributes of streams in VTS and VTSM */
@@ -1275,7 +1278,8 @@ static void pgcgroup_createvobs(struct pgcgroup *p,struct vobgroup *v)
 static void validatesummary(struct pgcgroup *va)
 /* merges the info for all pgcs and validates the collected settings for a pgcgroup. */
 {
-    int i,err=0,allowedentries;
+    int i,allowedentries;
+    bool err = false;
 
     switch (va->pstype)
       {
@@ -1304,7 +1308,7 @@ static void validatesummary(struct pgcgroup *va)
             for( j=0; j<8; j++ )
                 if( va->allentries & p->entries & (1<<j) )
                     fprintf(stderr,"ERR:  Multiple definitions for entry %s, 2nd occurance in PGC #%d\n",entries[j],i);
-            err=1;
+            err = true;
         }
         if( p->entries & ~allowedentries ) {
           /* disallowed entry menu types present--report them */
@@ -1313,13 +1317,13 @@ static void validatesummary(struct pgcgroup *va)
             for( j=0; j<8; j++ )
                 if( p->entries & (~allowedentries) & (1<<j) )
                     fprintf(stderr,"ERR:  Entry %s is not allowed for menu type %s\n",entries[j],pstypes[va->pstype]);
-            err=1;
+            err = true;
         }
         va->allentries|=p->entries;
         if( p->numsources ) {
-            int j,first;
-
-            first=1;
+            int j;
+            bool first;
+            first = true;
             for( j=0; j<p->numsources; j++ ) {
                 if( !p->sources[j]->numcells )
                     fprintf(stderr,"WARN: Source has no cells (%s) in PGC %d\n",p->sources[j]->fname,i);
@@ -1328,7 +1332,7 @@ static void validatesummary(struct pgcgroup *va)
                         fprintf(stderr,"WARN: First cell is not marked as a chapter in PGC %d, setting chapter flag\n",i);
                         p->sources[j]->cells[0].ischapter=CELL_CHAPTER_PROGRAM;
                     }
-                    first=0;
+                    first = false;
                 }
             }
         }
@@ -1655,7 +1659,7 @@ void dvdauthor_enable_jumppad()
         fprintf(stderr,"ERR:  Cannot enable both allgprm and jumppad\n");
         exit(1);
     }
-    jumppad=1;
+    jumppad = true;
 }
 
 void dvdauthor_enable_allgprm()
@@ -1664,7 +1668,7 @@ void dvdauthor_enable_allgprm()
         fprintf(stderr,"ERR:  Cannot enable both allgprm and jumppad\n");
         exit(1);
     }
-    allowallreg=1;
+    allowallreg = true;
 }
 
 void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fbase)

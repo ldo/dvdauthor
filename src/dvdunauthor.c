@@ -105,14 +105,14 @@ static void addbutton(int v,int c, const hli_t *h)
     numvb++;
   } /*addbutton*/
 
-static int vobexists(const cell_adr_t *cells, int numcells, int vobid)
+static bool vobexists(const cell_adr_t *cells, int numcells, int vobid)
   /* do I already know about a vob with this id. */
   {
     int i;
     for (i = 0; i < numcells; i++)
         if (cells[i].vob_id == vobid)
-            return 1;
-    return 0;
+            return true;
+    return false;
   } /*vobexists*/
 
 static int getpts(int v, int c)
