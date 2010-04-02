@@ -754,7 +754,7 @@ subtitle *sub_read_line_subrip(subtitle *current)
     int a1, a2, a3, a4, b1, b2, b3, b4;
     const char *p = NULL, *q = NULL;
     int len;
-    while (1)
+    while (true)
       {
         if (!sub_fgets(line, LINE_LEN))
             return NULL;
@@ -1321,7 +1321,7 @@ subtitle *sub_read_line_aqt(subtitle *current)
     char line[LINE_LEN + 1];
     const char *next;
     int i;
-    while (1)
+    while (true)
       {
       // try to locate next subtitle
         if (!sub_fgets(line, LINE_LEN))
@@ -1382,7 +1382,7 @@ subtitle *sub_read_line_subrip09(subtitle *current)
     int a1, a2, a3;
     const char * next = NULL;
     int i, len;
-    while (1)
+    while (true)
       {
       // try to locate next subtitle
         if (!sub_fgets(line, LINE_LEN))
@@ -2010,7 +2010,7 @@ sub_data *sub_read_file(const char *filename, float fps)
     //as the beginning of the following
     previous_sub_end = 0;
 #endif
-    while(1)
+    while (true)
       {
       /* read subtitle entries from input file */
         if (sub_num == n_max) /* need more room in "first" array */

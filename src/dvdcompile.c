@@ -352,7 +352,7 @@ static unsigned char *compilebool
             as appropriate */
             unsigned char * n = buf + 8;
               /* where to continue chain--assume it'll compile to one instruction to begin with */
-            while (1) /* should loop no more than twice */
+            while (true) /* should loop no more than twice */
               {
                 unsigned char * const nn = compilebool
                   (
@@ -540,7 +540,7 @@ static unsigned char *compilecs
             unsigned char * iftrue = buf + 8; /* initially try putting true branch here */
             const unsigned char * iffalse = buf + 16; /* initially try putting false branch here */
             unsigned char * end = buf + 16; /* initially assuming code will end here */
-            while(1) /* should loop no more than twice */
+            while (true) /* should loop no more than twice */
               {
                 unsigned char *lp, *ib, *e;
                 lp = compilecs(obuf, iftrue, ws, curgroup, curpgc, cs->param->next->param, ismenu);

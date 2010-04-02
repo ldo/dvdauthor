@@ -819,7 +819,7 @@ static void flushspus(unsigned int lasttime)
       } /*while*/
   } /*flushspus*/
 
-#define bps(n,R,G,B) do { current_palette[n].r = R; current_palette[n].g = G; current_palette[n].b = B; } while (0)
+#define bps(n,R,G,B) do { current_palette[n].r = R; current_palette[n].g = G; current_palette[n].b = B; } while (false)
 
 static void usage(void)
   {

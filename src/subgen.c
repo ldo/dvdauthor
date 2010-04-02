@@ -411,7 +411,7 @@ static void swrite(int h, const void *b, int l)
 static stinfo *getnextsub(void)
   /* processes and returns the next subtitle definition, if there is one. */
   {
-    while(1)
+    while (true)
       {
         stinfo *s;
         if (spuindex >= numspus) /* no more to return */
@@ -448,7 +448,7 @@ static void usage()
     exit(-1);
 }
 
-static void mux(int eoinput)
+static void mux(bool eoinput)
   {
     if (gts == 0 || tofs == -1 || (lps % secsize && !eoinput))
         return;
@@ -918,9 +918,9 @@ int main(int argc,char **argv)
     lps = 0;
     gts = 0;
     subno = -1;
-    while (1)
+    while (true)
       {
-        mux(0);
+        mux(false);
         if (sread(fdi, &c, 4) != 4)
             goto eoi;
         ch = ntohl(c); /* header ID */
@@ -939,7 +939,7 @@ l_01ba:
             gts = getgts(psbuf);
             if (gts != -1)
               {
-                mux(0);
+                mux(false);
                 fixgts(&gts, &nextgts);
                 muxrate = getmuxr(psbuf);
               }
@@ -1007,7 +1007,7 @@ l_01ba:
       } /*while*/
 
  eoi:
-    mux(1); // end of input
+    mux(true); // end of input
 /*    fprintf(stderr, "max_sub_size=%d\n", max_sub_size); */
     if (subno != 0xffff)
       {

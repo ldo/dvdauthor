@@ -74,7 +74,7 @@ int readxml
         return 1;
     }
 
-    while(1) {
+    while (true) {
         int r=xmlTextReaderRead(f);
         int i;
 

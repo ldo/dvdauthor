@@ -420,7 +420,7 @@ int main(int argc,char **argv)
     }
     memset(va,0,sizeof(struct pgcgroup *)*2);
 
-    while(1) {
+    while (true) {
         struct pgcgroup *vc=va[curva];
         int c=GETOPTFUNC(argc,argv,"f:o:v:a:s:hc:Cp:Pmtb:Ti:e:x:jgn");
         if( c == -1 )
@@ -821,7 +821,7 @@ static void fpc_start()
         return;
     }
     fpc=pgc_new();
-    parser_acceptbody=1;
+    parser_acceptbody = true;
 }
 
 static void fpc_end()
@@ -1110,7 +1110,7 @@ static void pgc_end()
 
 static void pre_start()
 {
-    parser_acceptbody=1;
+    parser_acceptbody = true;
 }
 
 static void pre_end()
@@ -1120,7 +1120,7 @@ static void pre_end()
 
 static void post_start()
 {
-    parser_acceptbody=1;
+    parser_acceptbody = true;
 }
 
 static void post_end()
@@ -1187,7 +1187,7 @@ static void vob_end()
 
 static void cell_start()
   {
-    parser_acceptbody = 1; /* collect cell commands */
+    parser_acceptbody = true; /* collect cell commands */
     assert(vobbasic != vob_has_chapters_pause);
       /* no "chapters" or "pause" attribute on containing <vob> allowed */
     vobbasic = vob_has_cells;
@@ -1234,7 +1234,7 @@ static void cell_end()
 
 static void button_start()
 {
-    parser_acceptbody=1;
+    parser_acceptbody = true;
     buttonname=0;
 }
 

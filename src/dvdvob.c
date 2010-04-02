@@ -679,7 +679,7 @@ static void scanvideoptr
               {
                 vsi->firstgop = 0; /* no need to find any more GOPs */
               } /*if*/
-            if (0)
+            if (false)
               {
                 int hr, mi, se, fr;
                 hr = (buf[4] >> 2) & 31;
@@ -988,7 +988,7 @@ static void procremap
               } /*if*/
         break;
         default: /* shouldn't occur */
-            assert(0);
+            assert(false);
           } /*switch*/
         cr->curoffs++;
         b++;
@@ -1127,7 +1127,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
         fprintf(stderr, "\nSTAT: Processing %s...\n", thisvob->fname);
         vf = varied_open(thisvob->fname, O_RDONLY, "input video file");
         memset(mp2hdr, 0, 8 * sizeof(struct mp2info));
-        while(1)
+        while (true)
           {
             if (fsect == 524272)
               {

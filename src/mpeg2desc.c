@@ -115,7 +115,7 @@ bool hasbecomevalid(int stream,struct ofd *o)
     return false;
 }
 
-int dowork(int checkin)
+bool dowork(bool checkin)
 {
     int i,n=-1;
     struct timeval tv;
@@ -128,7 +128,7 @@ int dowork(int checkin)
     } else {
         FD_CLR(STDIN_FILENO,&rfd);
     }
-    while(1) {
+    while (true) {
         int minq=-1;
         for( i=0; i<numofd; i++ ) {
             struct ofd *o=&outputfds[ofdlist[i]];
@@ -215,12 +215,12 @@ int dowork(int checkin)
 
 int forceread(void *ptr,int len,FILE *h)
 {
-    while(!dowork(1));
+    while(!dowork(true));
     if( fread(ptr,1,len,h) != len ) {
         fprintf(stderr,"Could not read\n");
         closing = true;
         while( queuedlen )
-            dowork(0);
+            dowork(false);
         exit(1);
     }
     pos+=len;
@@ -235,7 +235,7 @@ int forceread1(void *ptr,FILE *h)
         fprintf(stderr,"Could not read\n");
         closing = true;
         while( queuedlen )
-            dowork(0);
+            dowork(false);
         exit(1);
     }
     ((unsigned char *)ptr)[0]=v;
@@ -368,7 +368,7 @@ int main(int argc,char **argv)
     }
 
     forceread(&hdr,4,stdin);
-    while(1) {
+    while (true) {
         int disppos=pos-4;
         switch( ntohl(hdr) ) {
             // start codes:

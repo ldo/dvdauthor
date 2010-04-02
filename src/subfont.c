@@ -1160,7 +1160,7 @@ static void load_sub_face(const char *name, FT_Face *face)
             break;
 #endif /*HAVE_FONTCONFIG*/
       }
-    while (0);
+    while (false);
 #if HAVE_FONTCONFIG
     if (searchpattern != NULL)
       {
