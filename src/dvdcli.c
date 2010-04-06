@@ -81,7 +81,7 @@ static int
 static bool
     writeoutput = true;
 static char
-    *chapters=0;
+    *cur_chapters = 0;
 
 static void parsevideoopts(struct pgcgroup *va,const char *o)
 {
@@ -553,7 +553,7 @@ int main(int argc,char **argv)
                     /*pause =*/ 0,
                     /*cmd =*/ 0
                   );
-                  /* default to single chapter for entire source file */
+                  /* default to single chapter/cell for entire source file */
             pgc_add_source(curpgc,curvob);
             curvob=0;
         break;
@@ -650,7 +650,7 @@ static const char
     *fbase=0, /* output directory name */
     *buttonname=0; /* name of button currently being defined */
 static vtypes
-    ismenuf = VTYPE_VTS;
+    ismenuf = VTYPE_VTS; /* type of current pgcgroup structure being parsed */
 static bool
     istoc = false, /* true for vmgm, false for titleset */
     hadtoc = false; /* set to true when vmgm seen */
@@ -1148,7 +1148,7 @@ static void vob_chapters(const char *c)
   {
     vobbasic = vob_has_chapters_pause;
     hadchapter = chapters_chapters;
-    chapters = strdup(c); /* fixme: leaks! */
+    cur_chapters = strdup(c); /* won't leak, because I won't be called more than once per <vob> */
   }
 
 static void vob_pause(const char *c)
@@ -1163,25 +1163,30 @@ static void vob_end()
       {
         if (hadchapter == chapters_chapters) /* vob has chapters attribute */
           {
-          /* fixme: hadchapter could still be set to this value from previous vob,
-            in which case I wrongly apply same chapter definitions to this vob! */
-            parsechapters(chapters, curvob, pauselen);
+            parsechapters(cur_chapters, curvob, pauselen);
             hadchapter = chapters_cells;
+              /* subsequent <vob>s in this PGC shall be only cells, unless
+                they have their own "chapter" attribute */
           }
         else /* hadchapter = chapters_neither or chapters_cells */
-          /* I think this should only ever be chapters_neither */
             source_add_cell
               (
                 /*source =*/ curvob,
                 /*starttime =*/ 0,
                 /*endtime =*/ -1,
-                /*chap =*/ hadchapter == chapters_neither ? CELL_CHAPTER_PROGRAM : CELL_NEITHER,
+                /*chap =*/ hadchapter ==
+                    chapters_neither ?
+                        CELL_CHAPTER_PROGRAM /* first <vob> in <pgc> */
+                    :
+                        CELL_NEITHER, /* subsequent <vob>s in <pgc> */
                 /*pause =*/ pauselen,
                 /*cmd =*/ 0
               );
-              /* default to single chapter for entire source file */
+              /* default to single chapter/cell for entire source file */
       } /*if*/
     pgc_add_source(curpgc, curvob);
+    free(cur_chapters);
+    cur_chapters = 0;
     curvob = 0;
   } /*vob_end*/
 

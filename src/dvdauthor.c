@@ -564,7 +564,8 @@ static void inferattr(int *a,int def)
 }
 
 int getsubpmask(const struct videodesc *vd)
-/* returns a 4-bit mask with meaning as follows:
+/* returns a 4-bit mask specifying the default usage of a subpicture stream, with
+  meaning as follows:
     3  2  1  0
     |  |  |  \ narrowscreen footage
     |  |  \widescreen footage, crop on narrowscreen display
@@ -789,7 +790,7 @@ static void setattr
             for (k = 0; k < 32; k++)
               {
                 // Does this subpicture stream exist in the VOB?  if not, skip
-                if (!vob->audch[k+32].numaudpts)
+                if (!vob->audch[k + 32].numaudpts)
                     continue;
                 // Is this subpicture stream already referenced by the subpicture table?  if so, skip
                 for (l = 0; l < 32; l++)
