@@ -101,6 +101,18 @@ fi
 AC_SUBST(FREETYPE_CPPFLAGS)
 AC_SUBST(FREETYPE_LIBS)
 
+AC_ARG_ENABLE([default-video-format],
+AS_HELP_STRING([--enable-default-video-format=format], [specify a default video format, either NTSC or PAL, to be used if no configuration or input setting is given]),
+[
+if test "$enable_default_video_format" == "PAL" -o "$enable_default_video_format" == "pal"; then
+    AC_DEFINE(DEFAULT_VIDEO_FORMAT, 2, [Default video format, 1 => NTSC, 2 => PAL])
+elif test "$enable_default_video_format" == "NTSC" -o "$enable_default_video_format" == "ntsc"; then
+    AC_DEFINE(DEFAULT_VIDEO_FORMAT, 1, [Default video format, 1 => NTSC, 2 => PAL])
+else
+    AC_MSG_ERROR([specify either --enable-default-video-format=pal or --enable-default-video-format=ntsc])
+fi
+])
+
 AM_LANGINFO_CODESET
 
 AM_ICONV

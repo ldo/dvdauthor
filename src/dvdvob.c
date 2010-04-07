@@ -2525,7 +2525,7 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
       /* fixme: should do an fsync or fdatasync and check for write errors */
         close(outvob);
     if (totvob > 0)
-        fprintf(stderr, "STAT: fixed %d VOBUS                         ", totvob);
+        fprintf(stderr, "STAT: fixed %d VOBUs                         ", totvob);
     fprintf(stderr, "\n");
   } /*FixVobus*/
 

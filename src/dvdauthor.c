@@ -134,8 +134,26 @@ static int getratecode(const struct vobgroup *va)
 {
     if (va->vd.vframerate)
         return va->vd.vframerate;
+    else if (va->vd.vformat)
+      {
+      /* fudge it for calls from menu PGC-generation routines with no video present */
+        return va->vd.vformat == VF_PAL ? VR_PAL : VR_NTSC;
+      }
     else
-        return VR_NTSC; /* fixme: should be a user-configurable setting */
+      {
+#if defined(DEFAULT_VIDEO_FORMAT)
+#    if DEFAULT_VIDEO_FORMAT == 1
+        fprintf(stderr, "WARN: defaulting frame rate to NTSC\n");
+        return VR_NTSC;
+#    elif DEFAULT_VIDEO_FORMAT == 2
+        fprintf(stderr, "WARN: defaulting frame rate to PAL\n");
+        return VR_PAL;
+#    endif
+#else
+        fprintf(stderr, "ERR:  cannot determine default frame rate--no video format specified\n");
+        exit(1);
+#endif
+      } /*if*/
 } /*getratecode*/
 
 int getratedenom(const struct vobgroup *va)
@@ -594,6 +612,27 @@ int getsubpmask(const struct videodesc *vd)
         mask;
   } /*getsubpmask*/
 
+static void set_video_format_attr
+  (
+    struct vobgroup * va,
+    vtypes pstype
+  )
+  {
+#if defined(DEFAULT_VIDEO_FORMAT)
+#    if DEFAULT_VIDEO_FORMAT == 1
+        inferattr(&va->vd.vformat, VF_NTSC);
+#    elif DEFAULT_VIDEO_FORMAT == 2
+        inferattr(&va->vd.vformat, VF_PAL);
+#    endif
+#else
+    if (va->vd.vformat == 0)
+      {
+        fprintf(stderr, "ERR:  no video format specified for %s\n", pstypes[pstype]);
+        exit(1);
+      } /*if*/
+#endif
+  } /*set_video_format_attr*/
+
 static void setattr
   (
     struct vobgroup * va,
@@ -616,7 +655,7 @@ static void setattr
   /* default the undetermined settings */
     inferattr(&va->vd.vmpeg, VM_MPEG2);
     inferattr(&va->vd.vres,  VS_720H);
-    inferattr(&va->vd.vformat, VF_NTSC); /* fixme: should be a user-configurable setting */
+    set_video_format_attr(va, pstype);
     inferattr(&va->vd.vaspect, VA_4x3);
   /* check for incompatible combinations of aspect/widescreen settings */
     if (va->vd.vaspect == VA_4x3)
@@ -1762,6 +1801,10 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
         setattr(menus->vg, VTYPE_VMGM);
         fprintf(stderr, "\n");
         FixVobus(fbuf, menus->vg, &ws, VTYPE_VMGM);
+      }
+    else
+      {
+        set_video_format_attr(menus->vg, VTYPE_VMGM); /* for the sake of buildtimeeven */
       } /*if*/
   /* (re)generate VMG IFO */
     sprintf(fbuf, "%s/VIDEO_TS.IFO", vtsdir);
@@ -1812,6 +1855,10 @@ void dvdauthor_vts_gen(struct menugroup *menus, struct pgcgroup *titles, const c
         FindVobus(fbase, menus->vg, VTYPE_VTSM);
         MarkChapters(menus->vg);
         setattr(menus->vg, VTYPE_VTSM);
+      }
+    else
+      {
+        set_video_format_attr(menus->vg, VTYPE_VTSM); /* for the sake of buildtimeeven */
       } /*if*/
     FindVobus(fbase, titles->vg, VTYPE_VTS);
     MarkChapters(titles->vg);

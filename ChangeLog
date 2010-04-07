@@ -3,6 +3,9 @@
 	Default encoding for subtitle files is no longer ISO-8859-1, but taken from
 		user's locale
 	Add fontconfig support following a patch by Nicolas George
+	Video format no longer defaults to NTSC, unless you invoke configure with
+		--enable-default-video-format=NTSC. You can also configure with
+		--enable-default-video-format=PAL to default to PAL.
 
 0.6.18: 2010 March 18
 	implement link-subset jumps
