@@ -93,7 +93,9 @@ systems by avoiding extra filesystem accesses.</para>
 <variablelist>
 
 <varlistentry><term><literal>-o <replaceable>output-dir</replaceable></literal></term>
-<listitem><para>The destination directory to store the DVD-Video file structure in.</para></listitem></varlistentry>
+<listitem><para>The destination directory to store the DVD-Video file structure in. This can
+also be specified as the value of the OUTPUTDIR environment variable; if both are specified,
+then the command-line option takes precedence.</para></listitem></varlistentry>
 
 <varlistentry><term><literal>-j</literal></term><term><literal>--jumppad</literal></term>
 <listitem><para>Enables the creation of jumppads, which allow greater flexibility in choosing jump/call desinations.</para></listitem></varlistentry>
@@ -264,7 +266,7 @@ A breakdown of the control file:
 
 <varlistentry><term><literal>&lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"]&gt;</literal></term>
 <listitem><para>
-Initiates dvdauthor.  <literal>dest</literal> denotes the directory where <command>dvdauthor</command> will write the files.  It overrides the <literal>-o</literal> option.  Contains up to one <literal>&lt;vmgm&gt;</literal> tag and any number of <literal>&lt;titleset&gt;</literal>'s.
+Initiates dvdauthor.  <literal>dest</literal> denotes the directory where <command>dvdauthor</command> will write the files.  This is overridden by the <literal>-o</literal> option, or the OUTPUTDIR environment variable.  Contains up to one <literal>&lt;vmgm&gt;</literal> tag and any number of <literal>&lt;titleset&gt;</literal>'s.
 </para></listitem></varlistentry>
 
 <varlistentry><term><literal>&lt;vmgm&gt;</literal></term><term><literal>&lt;titleset&gt;</literal></term>

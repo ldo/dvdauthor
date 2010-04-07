@@ -376,15 +376,15 @@ static void usage()
                 curpgc=0;                                            \
             }
 
-int main(int argc,char **argv)
-{
+int main(int argc, char **argv)
+  {
     struct pgcgroup *va[2];
     struct menugroup *mg;
-    char *fbase=0; /* output directory name */
-    int curva=1,istoc=0,l,
-        usedtocflag=0; // whether the 'istoc' value has been used or not
-    struct pgc *curpgc=0,*fpc=0;
-    struct source *curvob=0;
+    char *fbase = 0; /* output directory name */
+    int curva = 1,istoc = 0, l,
+        usedtocflag = 0; // whether the 'istoc' value has been used or not
+    struct pgc *curpgc = 0,* fpc = 0;
+    struct source *curvob = 0;
 #ifdef HAVE_GETOPT_LONG
     static struct option longopts[]={
         {"video",1,0,'v'},
@@ -412,12 +412,13 @@ int main(int argc,char **argv)
 #define GETOPTFUNC(x,y,z) getopt(x,y,z)
 #endif
 
-    fputs(PACKAGE_HEADER("dvdauthor"),stderr);
+    fputs(PACKAGE_HEADER("dvdauthor"), stderr);
 
-    if( argc<1 ) {
-        fprintf(stderr,"ERR:  No arguments!\n");
+    if (argc < 1)
+      {
+        fprintf(stderr, "ERR:  No arguments!\n");
         return 1;
-    }
+      } /*if*/
     memset(va,0,sizeof(struct pgcgroup *)*2);
 
     while (true) {
@@ -431,11 +432,16 @@ int main(int argc,char **argv)
         break;
 
         case 'x':
-            if( usedtocflag ) {
-                fprintf(stderr,"ERR:  Cannot specify XML config file after using command line options\n");
+            if (usedtocflag)
+              {
+                fprintf
+                  (
+                    stderr,
+                    "ERR:  Cannot specify XML config file after using command line options\n"
+                  );
                 return 1;
-            }
-            return readdvdauthorxml(optarg,fbase);
+              } /*if*/
+            return readdvdauthorxml(optarg, fbase);
 
         case 'n':
             writeoutput = false;
@@ -459,7 +465,7 @@ int main(int argc,char **argv)
         break;
 
         case 'o': 
-            fbase=optarg;
+            fbase = optarg;
         break;
 
         case 'm':
@@ -595,25 +601,27 @@ int main(int argc,char **argv)
     if( !va[1] && !istoc )
         va[1]=pgcgroup_new(VTYPE_VTS);
 
-    if( !fbase && writeoutput ) {
-        fbase=readconfentry("WORKDIR");
-        if( !fbase )
+    if (!fbase && writeoutput)
+      {
+        fbase = get_outputdir();
+        if (!fbase)
             usage();
-    }
+      } /*if*/
     if( optind != argc ) {
         fprintf(stderr,"ERR:  bad version of getopt; please precede all sources with '-f'\n");
         return 1;
     }
-    if( fbase ) {
-        l=strlen(fbase);
-        if( l && fbase[l-1]=='/' )
-            fbase[l-1]=0;
-    }
+    if (fbase)
+      {
+        l = strlen(fbase);
+        if (l && fbase[l - 1] == '/')
+            fbase[l - 1] = 0;
+      } /*if*/
 
-    if( istoc )
-        dvdauthor_vmgm_gen(fpc,mg,fbase);
+    if (istoc)
+        dvdauthor_vmgm_gen(fpc, mg, fbase);
     else
-        dvdauthor_vts_gen(mg,va[1],fbase);
+        dvdauthor_vts_gen(mg, va[1], fbase);
 
     if( fpc )
         pgc_free(fpc);
@@ -623,7 +631,7 @@ int main(int argc,char **argv)
         pgcgroup_free(va[1]);
 
     return 0;
-}
+  } /*main*/
 
 /* authoring via XML file */
 
@@ -647,8 +655,8 @@ static struct menugroup
 static struct pgc *curpgc=0,*fpc=0;
 static struct source *curvob=0;
 static const char
-    *fbase=0, /* output directory name */
-    *buttonname=0; /* name of button currently being defined */
+    *fbase = 0, /* output directory name */
+    *buttonname = 0; /* name of button currently being defined */
 static vtypes
     ismenuf = VTYPE_VTS; /* type of current pgcgroup structure being parsed */
 static bool
@@ -721,10 +729,13 @@ static int parse_pause(const char *f)
         return strtounsigned(f, "pause time"); /* should check it's in [0 .. 254] */
 }
 
-static void dvdauthor_workdir(const char *s)
-{
-    fbase=utf8tolocal(s);
-}
+static void dvdauthor_outputdir(const char *s)
+  {
+    if (!fbase)
+      {
+        fbase = utf8tolocal(s);
+      } /*if*/
+  }
 
 static void dvdauthor_jumppad(const char *s)
 {
@@ -739,33 +750,30 @@ static void dvdauthor_allgprm(const char *s)
 }
 
 static void getfbase()
-{
-    if( !writeoutput )
-        fbase=0;
-    else if( !fbase ) {
-        fbase=readconfentry("WORKDIR");
-        if( !fbase ) {
-            fprintf(stderr,"ERR:  Must specify working directory\n");
-            parser_err = true;
-        }
-    }
-}
+  {
+    if (!writeoutput)
+        fbase = 0;
+    else if (!fbase)
+      {
+        fprintf(stderr, "ERR:  Must specify working directory\n");
+        parser_err = true;
+      } /*if*/
+  } /*getfbase*/
 
 static void dvdauthor_end()
 /* called on </dvdauthor> end tag, generates the VMGM if specified.
   This needs to be done after all the titles, so it can include
   information about them. */
-{
-    if( hadtoc ) {
-        dvdauthor_vmgm_gen(fpc,vmgmmenus,fbase);
-        if( fpc )
-            pgc_free(fpc);
-        if( vmgmmenus )
-            menugroup_free(vmgmmenus);
-        fpc=0;
-        vmgmmenus=0;
-    }
-}
+  {
+    if (hadtoc)
+      {
+        dvdauthor_vmgm_gen(fpc, vmgmmenus, fbase);
+        pgc_free(fpc);
+        menugroup_free(vmgmmenus);
+        fpc = 0;
+        vmgmmenus = 0;
+      } /*if*/
+  } /*dvdauthor_end*/
 
 static void titleset_start()
 {
@@ -774,19 +782,19 @@ static void titleset_start()
 }
 
 static void titleset_end()
-{ /* called on </titles> end tag, generates the output titleset. */
+  { /* called on </titles> end tag, generates the output titleset. */
     getfbase();
-    if( !parser_err ) {
+    if (!parser_err)
+      {
         if (!titles)
-            titles=pgcgroup_new(VTYPE_VTS);
-        dvdauthor_vts_gen(mg,titles,fbase);
-        if (mg)
-            menugroup_free(mg);
+            titles = pgcgroup_new(VTYPE_VTS);
+        dvdauthor_vts_gen(mg, titles, fbase);
+        menugroup_free(mg);
         pgcgroup_free(titles);
-        mg=0;
-        titles=0;
-    }
-}
+        mg = 0;
+        titles = 0;
+      } /*if*/
+  } /*titleset_end*/
 
 static void vmgm_start()
 {
@@ -1276,7 +1284,7 @@ static struct elemdesc elems[]={
 };
 
 static struct elemattr attrs[]={
-    {"dvdauthor","dest",dvdauthor_workdir},
+    {"dvdauthor","dest",dvdauthor_outputdir},
     {"dvdauthor","jumppad",dvdauthor_jumppad},
     {"dvdauthor","allgprm",dvdauthor_allgprm},
 
@@ -1319,8 +1327,12 @@ static struct elemattr attrs[]={
     {0,0,0}
 };
 
-static int readdvdauthorxml(const char *xmlfile,const char *fb)
+static int readdvdauthorxml(const char *xmlfile, const char *fb)
 {
-    fbase=fb;
-    return readxml(xmlfile,elems,attrs);
+    fbase = fb;
+    if (!fbase)
+      {
+        fbase = get_outputdir();
+      } /*if*/
+    return readxml(xmlfile, elems, attrs);
 }

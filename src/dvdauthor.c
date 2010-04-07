@@ -1205,11 +1205,14 @@ static struct colorinfo *colorinfo_new()
 }
 
 static void colorinfo_free(struct colorinfo *ci)
-{
-    ci->refcount--;
-    if( !ci->refcount )
-        free(ci);
-}
+  {
+    if (ci)
+      {
+        ci->refcount--;
+        if (!ci->refcount)
+            free(ci);
+      } /*if*/
+  } /*colorinfo_free*/
 
 static struct vob *vob_new(const char *fname,struct pgc *progchain)
 {
@@ -1221,18 +1224,17 @@ static struct vob *vob_new(const char *fname,struct pgc *progchain)
 }
 
 static void vob_free(struct vob *v)
-{
-    int i;
-
-    if( v->fname )
+  {
+    if (v)
+      {
+        int i;
         free(v->fname);
-    if( v->vobu )
         free(v->vobu);
-    for( i=0; i<64; i++ )
-        if( v->audch[i].audpts )
+        for (i = 0; i < 64; i++)
             free(v->audch[i].audpts);
-    free(v);
-}
+        free(v);
+      } /*if*/
+  } /*vob_free*/
 
 static struct vobgroup *vobgroup_new()
 {
@@ -1242,18 +1244,20 @@ static struct vobgroup *vobgroup_new()
 }
 
 static void vobgroup_free(struct vobgroup *vg)
-{
-    int i;
-
-    if( vg->allpgcs )
+  {
+    if (vg)
+      {
+        int i;
         free(vg->allpgcs);
-    if( vg->vobs ) {
-        for( i=0; i<vg->numvobs; i++ )
-            vob_free(vg->vobs[i]);
-        free(vg->vobs);
-    }
-    free(vg);
-}
+        if (vg->vobs)
+          {
+            for (i = 0; i < vg->numvobs; i++)
+                vob_free(vg->vobs[i]);
+            free(vg->vobs);
+          } /*if*/
+        free(vg);
+      } /*if*/
+  } /*vobgroup_free*/
 
 static void vobgroup_addvob(struct vobgroup *pg,struct pgc *p,struct source *s)
 {
@@ -1385,15 +1389,18 @@ static void validatesummary(struct pgcgroup *va)
 }
 
 static void statement_free(struct vm_statement *s)
-{
-    if( s->s1 ) free(s->s1);
-    if( s->s2 ) free(s->s2);
-    if( s->s3 ) free(s->s3);
-    if( s->s4 ) free(s->s4);
-    if( s->param ) statement_free(s->param);
-    if( s->next ) statement_free(s->next);
-    free(s);
-}
+  {
+    if (s)
+      {
+        free(s->s1);
+        free(s->s2);
+        free(s->s3);
+        free(s->s4);
+        statement_free(s->param);
+        statement_free(s->next);
+        free(s);
+      } /*if*/
+  } /*statement_free*/
 
 struct source *source_new()
 {
@@ -1403,20 +1410,21 @@ struct source *source_new()
 }
 
 static void source_free(struct source *s)
-{
-    int i;
-
-    if( s->fname )
+  {
+    if (s)
+      {
+        int i;
         free(s->fname);
-    if( s->cells ) {
-        for( i=0; i<s->numcells; i++ )
-            if( s->cells[i].commands )
+        if (s->cells)
+          {
+            for (i = 0; i < s->numcells; i++)
                 statement_free(s->cells[i].commands);
-        free(s->cells);
-    }
-    // vob is a reference created by vobgroup_addvob
-    free(s);
-}
+            free(s->cells);
+          } /*if*/
+        // vob is a reference created by vobgroup_addvob
+        free(s);
+      } /*if*/
+  } /*source_free*/
 
 int source_add_cell(struct source *v,double starttime,double endtime,cell_chapter_types chap,int pause,const char *cmd)
 {
@@ -1442,20 +1450,21 @@ void source_set_filename(struct source *v,const char *s)
 }
 
 static void button_freecontents(struct button *b)
-{
-    int i;
-
-    if( b->name )
+  {
+    if (b)
+      {
+        int i;
         free(b->name);
-    if( b->commands )
         statement_free(b->commands);
-    for( i=0; i<b->numstream; i++ ) {
-        if( b->stream[i].up    ) free(b->stream[i].up);
-        if( b->stream[i].down  ) free(b->stream[i].down);
-        if( b->stream[i].left  ) free(b->stream[i].left);
-        if( b->stream[i].right ) free(b->stream[i].right);
-    }
-}
+        for (i = 0; i < b->numstream; i++)
+          {
+            free(b->stream[i].up);
+            free(b->stream[i].down);
+            free(b->stream[i].left);
+            free(b->stream[i].right);
+          } /*for*/
+      } /*if*/
+  } /*button_freecontents*/
 
 struct pgc *pgc_new()
 {
@@ -1465,28 +1474,29 @@ struct pgc *pgc_new()
 }
 
 void pgc_free(struct pgc *p)
-{
-    int i;
-
-    if( p->sources ) {
-        for( i=0; i<p->numsources; i++ )
-            source_free(p->sources[i]);
-        free(p->sources);
-    }
-    if( p->buttons ) {
-        for( i=0; i<p->numbuttons; i++ )
-            button_freecontents(p->buttons+i);
-        free(p->buttons);
-    }
-    if( p->prei )
+  {
+    if (p)
+      {
+        int i;
+        if (p->sources)
+          {
+            for (i = 0; i < p->numsources; i++)
+                source_free(p->sources[i]);
+            free(p->sources);
+          } /*if*/
+        if (p->buttons)
+          {
+            for (i = 0; i < p->numbuttons; i++)
+                button_freecontents(p->buttons + i);
+            free(p->buttons);
+          } /*if*/
         statement_free(p->prei);
-    if( p->posti )
         statement_free(p->posti);
-    if( p->colors )
         colorinfo_free(p->colors);
-    // don't free the pgcgroup; it's an upward reference
-    free(p);
-}
+        // don't free the pgcgroup; it's an upward reference
+        free(p);
+      } /*if*/
+  } /*pgc_free*/
 
 void pgc_set_pre(struct pgc *p,const char *cmd)
 {
@@ -1594,18 +1604,20 @@ struct pgcgroup *pgcgroup_new(vtypes type)
   }
 
 void pgcgroup_free(struct pgcgroup *pg)
-{
-    int i;
-
-    if( pg->pgcs ) {
-        for( i=0; i<pg->numpgcs; i++ )
-            pgc_free(pg->pgcs[i]);
-        free(pg->pgcs);
-    }
-    if( pg->vg )
+  {
+    if (pg)
+      {
+        int i;
+        if (pg->pgcs)
+          {
+            for (i = 0; i < pg->numpgcs; i++)
+                pgc_free(pg->pgcs[i]);
+            free(pg->pgcs);
+          } /*if*/
         vobgroup_free(pg->vg);
-    free(pg);
-}
+        free(pg);
+      } /*if*/
+  } /*pgcgroup_free*/
 
 void pgcgroup_add_pgc(struct pgcgroup *ps,struct pgc *p)
   /* adds a new PGC to the specified pgcgroup. */
@@ -1645,17 +1657,20 @@ struct menugroup *menugroup_new()
 }
 
 void menugroup_free(struct menugroup *mg)
-{
-    int i;
-
-    if( mg->groups ) {
-        for( i=0; i<mg->numgroups; i++ )
-            pgcgroup_free(mg->groups[i].pg);
-        free(mg->groups);
-    }
-    vobgroup_free(mg->vg);
-    free(mg);
-}
+  {
+    if (mg)
+      {
+        int i;
+        if (mg->groups)
+          {
+            for (i = 0; i < mg->numgroups; i++)
+                pgcgroup_free(mg->groups[i].pg);
+            free(mg->groups);
+          } /*if*/
+        vobgroup_free(mg->vg);
+        free(mg);
+      } /*if*/
+  } /*menugroup_free*/
 
 void menugroup_add_pgcgroup(struct menugroup *mg, const char *lang, struct pgcgroup *pg)
   {

@@ -1,4 +1,8 @@
 /*
+    Accessing user configuration settings
+*/
+
+/*
  * Copyright (C) 2002 Scott Smith (trckjunky@users.sourceforge.net)
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,6 +26,21 @@
 #include "compat.h"
 
 #include "conffile.h"
+
+
+char * get_outputdir(void)
+  /* allocates and returns a string containing the user-specified output
+    directory path, or NULL if not specified. */
+ {
+    char * outputdir = getenv("OUTPUTDIR");
+    if (outputdir != 0)
+      {
+        outputdir = strdup(outputdir);
+      } /*if*/
+    return outputdir;
+ } /*get_outputdir*/
+
+/* following no longer used */
 
 static char *readconfentryfromfile(const char *s,const char *fname)
 {

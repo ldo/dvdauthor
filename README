@@ -48,19 +48,6 @@ work! You can now write this out to your DVD, mini-DVD (CD), or just
 play it from your HDD. To generate the UDF image to burn to DVD, use
 mkisofs and pass it the -dvd-video option.
 
-BTW, if you have an old HDD that you use for generating DVD-Video images,
-you can create /usr/local/etc/dvdauthor.conf or ~/.dvdauthorrc and add
-the line:
-
-        WORKDIR=foo
-
-Then you won't need to specify -o to dvddirgen or dvdauthor.
-Alternatively, you could just set
-
-        WORKDIR=mydvd
-
-to always have it create a DVD in the current working directory.
-
 
 important links:
 
