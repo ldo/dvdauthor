@@ -322,11 +322,11 @@ static int CreateCellAddressTable(FILE *h, const struct vobgroup *va)
         const struct vob * const thisvob = va->vobs[k];
         for (i = 0; i < thisvob->numvobus; i++)
           {
-            if (!i || thisvob->vobu[i].vobcellid != thisvob->vobu[i-1].vobcellid)
+            if (!i || thisvob->vobu[i].vobcellid != thisvob->vobu[i - 1].vobcellid)
               { /* starting a new cell */
                 if (i)
                   {
-                    buf_write4(p + 8, thisvob->vobu[i-1].lastsector);
+                    buf_write4(p + 8, thisvob->vobu[i - 1].lastsector);
                       /* ending sector within VOB in previous entry */
                     p += 12;
                   } /*if*/
@@ -335,7 +335,7 @@ static int CreateCellAddressTable(FILE *h, const struct vobgroup *va)
                 buf_write4(p + 4, thisvob->vobu[i].sector); /* starting sector within VOB */
               } /*if*/
           } /*for*/
-        buf_write4(p + 8, thisvob->vobu[i-1].lastsector);
+        buf_write4(p + 8, thisvob->vobu[i - 1].lastsector);
           /* ending sector within VOB in last entry */
         p += 12;
       } /*for*/
@@ -561,12 +561,12 @@ static void WriteIFO(FILE *h, const struct workset *ws)
     nextsector += Create_PTT_SRPT(0, ws->titles);
 
     write4(buf + 0xCC, nextsector); // VTS_PGCI
-    nextsector += CreatePGC(0, ws, 0);
+    nextsector += CreatePGC(0, ws, VTYPE_VTS);
 
     if (jumppad || forcemenus)
       {
         write4(buf + 0xD0,nextsector); // VTSM_PGCI
-        nextsector += CreatePGC(0, ws, 1);
+        nextsector += CreatePGC(0, ws, VTYPE_VTSM);
       } /*if*/
 
     write4(buf + 0xD4, nextsector); // VTS_TMAPT
@@ -608,10 +608,10 @@ static void WriteIFO(FILE *h, const struct workset *ws)
     Create_PTT_SRPT(h, ws->titles);
    
     // sect 2: VTS_PGCI
-    CreatePGC(h, ws, 0);
+    CreatePGC(h, ws, VTYPE_VTS);
 
     if( jumppad || forcemenus )
-        CreatePGC(h, ws, 1);
+        CreatePGC(h, ws, VTYPE_VTSM);
 
     // sect 3: ??? VTS_TMAPT
     CreateTMAPT(h, ws->titles);
@@ -678,7 +678,7 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
     if (jumppad || forcemenus)
       {
         write4(buf + 0xc8, nextsector); /* sector pointer to VMGM_PGCI_UT (menu PGC table) */
-        nextsector += CreatePGC(0, ws, 2);
+        nextsector += CreatePGC(0, ws, VTYPE_VMGM);
       } /*if*/
 
     write4(buf + 0xd0, nextsector);
@@ -784,7 +784,7 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
 
     // PGC
     if (jumppad || forcemenus)
-        CreatePGC(h, ws, 2);
+        CreatePGC(h, ws, VTYPE_VMGM);
 
   /* VMG_VTS_ATRT contains copies of menu and title attributes from all titlesets */
   /* output immediately following IFO header, as promised above */

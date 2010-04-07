@@ -548,22 +548,22 @@ static void scanvideoptr
             framerate = buf[7] & 0xf;
 
             vobgroup_set_video_framerate(va, framerate);
-            switch(framerate)
+            switch (framerate)
               {
-            case 1: // 24000/1001
-            case 4: // 30000/1001
-            case 7: // 60000/1001
+            case VR_NTSCFILM: // 24000/1001
+            case VR_NTSC: // 30000/1001
+            case VR_NTSCFIELD: // 60000/1001
                 vobgroup_set_video_attr(va, VIDEO_FORMAT, "ntsc");
             break;
 
-            case 3: // 25
-            case 6: // 50
+            case VR_PAL: // 25
+            case VR_PALFIELD: // 50
                 vobgroup_set_video_attr(va, VIDEO_FORMAT, "pal");
             break;
 
-            case 2: // 24
-            case 5: // 30
-            case 8: // 60
+            case VR_FILM: // 24
+            case VR_30: // 30
+            case VR_60: // 60
                // these are nonstandard, but at least we know what they are
             break;
 

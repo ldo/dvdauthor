@@ -19,59 +19,59 @@ AC_CHECK_LIB(gnugetopt, getopt_long)
 
 dnl AC_CHECK_HEADERS initializes CPP, so must appear outside of any conditionals
 AC_CHECK_HEADERS( \
-	getopt.h \
-	io.h \
+    getopt.h \
+    io.h \
 )
 
 AC_CHECK_FUNCS( \
-	strndup \
-	getopt_long \
-	setmode \
+    strndup \
+    getopt_long \
+    setmode \
 )
 
 usemagick=0
 
 AC_CHECK_PROGS(MAGICKCONFIG, [Magick-config])
 if test -n "$MAGICKCONFIG"; then
-   ac_save_CPPFLAGS="$CPPFLAGS"
-   ac_save_LIBS="$LIBS"
-   MAGICK_CPPFLAGS="`$MAGICKCONFIG --cppflags`"
-   MAGICK_LIBS="`$MAGICKCONFIG --ldflags` `$MAGICKCONFIG --libs`"
-   CPPFLAGS="$CPPFLAGS $MAGICK_CPPFLAGS"
-   LIBS="$MAGICK_LIBS $LIBS"
-   AC_CHECK_FUNC(ExportImagePixels, usemagick=1, AC_MSG_NOTICE([ImageMagick does not support the function
-        ExportImagePixels.  Please upgrade to ImageMagick 5.5.7 or newer]))
-   CPPFLAGS="$ac_save_CPPFLAGS"
-   LIBS="$ac_save_LIBS"
-   if test "$usemagick" = 1; then
-      AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available])
-   fi
+    ac_save_CPPFLAGS="$CPPFLAGS"
+    ac_save_LIBS="$LIBS"
+    MAGICK_CPPFLAGS="`$MAGICKCONFIG --cppflags`"
+    MAGICK_LIBS="`$MAGICKCONFIG --ldflags` `$MAGICKCONFIG --libs`"
+    CPPFLAGS="$CPPFLAGS $MAGICK_CPPFLAGS"
+    LIBS="$MAGICK_LIBS $LIBS"
+    AC_CHECK_FUNC(ExportImagePixels, usemagick=1, AC_MSG_NOTICE([ImageMagick does not support the function
+         ExportImagePixels.  Please upgrade to ImageMagick 5.5.7 or newer]))
+    CPPFLAGS="$ac_save_CPPFLAGS"
+    LIBS="$ac_save_LIBS"
+    if test "$usemagick" = 1; then
+        AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available])
+    fi
 fi
 
 if test "$usemagick" != 1; then
-   AC_CHECK_PROGS(GMAGICKCONFIG, [GraphicsMagick-config])
-   if test -n "$GMAGICKCONFIG"; then
-      ac_save_CPPFLAGS="$CPPFLAGS"
-      ac_save_LIBS="$LIBS"
-      MAGICK_CPPFLAGS="`$GMAGICKCONFIG --cppflags`"
-      MAGICK_LIBS="`$GMAGICKCONFIG --ldflags` `$GMAGICKCONFIG --libs`"
-      CPPFLAGS="$CPPFLAGS $MAGICK_CPPFLAGS"
-      LIBS="$MAGICK_LIBS $LIBS"
-      AC_CHECK_FUNC(DispatchImage, usemagick=1)
-      CPPFLAGS="$ac_save_CPPFLAGS"
-      LIBS="$ac_save_LIBS"
-      if test "$usemagick" = 1; then
-         AC_DEFINE(HAVE_GMAGICK, 1, [Whether the GraphicsMagick libraries are available])
-      fi
-   fi
+    AC_CHECK_PROGS(GMAGICKCONFIG, [GraphicsMagick-config])
+    if test -n "$GMAGICKCONFIG"; then
+        ac_save_CPPFLAGS="$CPPFLAGS"
+        ac_save_LIBS="$LIBS"
+        MAGICK_CPPFLAGS="`$GMAGICKCONFIG --cppflags`"
+        MAGICK_LIBS="`$GMAGICKCONFIG --ldflags` `$GMAGICKCONFIG --libs`"
+        CPPFLAGS="$CPPFLAGS $MAGICK_CPPFLAGS"
+        LIBS="$MAGICK_LIBS $LIBS"
+        AC_CHECK_FUNC(DispatchImage, usemagick=1)
+        CPPFLAGS="$ac_save_CPPFLAGS"
+        LIBS="$ac_save_LIBS"
+        if test "$usemagick" = 1; then
+            AC_DEFINE(HAVE_GMAGICK, 1, [Whether the GraphicsMagick libraries are available])
+        fi
+    fi
 fi
 
 if test "$usemagick" != 1; then
-   AC_CHECK_LIB(z, zlibVersion, test, AC_MSG_ERROR([You must have libz(-devel) installed]))
+    AC_CHECK_LIB(z, zlibVersion, test, AC_MSG_ERROR([You must have libz(-devel) installed]))
 
-   AC_CHECK_LIB(png, png_sig_cmp, test, AC_MSG_ERROR([You must have libpng(-devel) installed]), -lz -lm)
-   MAGICK_CPPFLAGS=
-   MAGICK_LIBS="-lpng -lz -lm"
+    AC_CHECK_LIB(png, png_sig_cmp, test, AC_MSG_ERROR([You must have libpng(-devel) installed]), -lz -lm)
+    MAGICK_CPPFLAGS=
+    MAGICK_LIBS="-lpng -lz -lm"
 fi
 
 AC_SUBST(MAGICK_CPPFLAGS)
@@ -88,14 +88,14 @@ AC_SUBST(FRIBIDI_LIBS)
 
 AC_CHECK_PROGS(FREETYPECONFIG, [freetype-config])
 if test -n "$FREETYPECONFIG"; then
-   FREETYPE_CPPFLAGS="`$FREETYPECONFIG --cflags`"
-   FREETYPE_LIBS="`$FREETYPECONFIG --libs`"
-   AC_DEFINE(HAVE_FREETYPE, 1, [Whether FreeType is available])
+    FREETYPE_CPPFLAGS="`$FREETYPECONFIG --cflags`"
+    FREETYPE_LIBS="`$FREETYPECONFIG --libs`"
+    AC_DEFINE(HAVE_FREETYPE, 1, [Whether FreeType is available])
 
-   ac_save_CPPFLAGS="$CPPFLAGS"
-   CPPFLAGS="$CPPFLAGS $FREETYPE_CPPFLAGS"
-   AC_CHECK_HEADERS(ft2build.h)
-   CPPFLAGS="$ac_save_CPPFLAGS"
+    ac_save_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$CPPFLAGS $FREETYPE_CPPFLAGS"
+    AC_CHECK_HEADERS(ft2build.h)
+    CPPFLAGS="$ac_save_CPPFLAGS"
 fi
 
 AC_SUBST(FREETYPE_CPPFLAGS)

@@ -132,7 +132,7 @@ static const int evenrate[9]={0,    24,   24,   25,   30,   30,   50,   60,   60
 static int getratecode(const struct vobgroup *va)
   /* returns the frame rate code if specified, else the default. */
 {
-    if( va->vd.vframerate )
+    if (va->vd.vframerate)
         return va->vd.vframerate;
     else
         return VR_NTSC; /* fixme: should be a user-configurable setting */
@@ -1750,18 +1750,18 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
           } /*if; for*/
     if (!ts.numvts)
       {
-        fprintf(stderr,"ERR:  No .IFO files to process\n");
+        fprintf(stderr, "ERR:  No .IFO files to process\n");
         exit(1);
       } /*if*/
     if (menus->vg->numvobs)
       {
         fprintf(stderr, "INFO: Creating menu for TOC\n");
         sprintf(fbuf, "%s/VIDEO_TS.VOB", vtsdir);
-        FindVobus(fbuf, menus->vg, 2);
+        FindVobus(fbuf, menus->vg, VTYPE_VMGM);
         MarkChapters(menus->vg);
-        setattr(menus->vg, 2);
+        setattr(menus->vg, VTYPE_VMGM);
         fprintf(stderr, "\n");
-        FixVobus(fbuf, menus->vg, &ws, 2);
+        FixVobus(fbuf, menus->vg, &ws, VTYPE_VMGM);
       } /*if*/
   /* (re)generate VMG IFO */
     sprintf(fbuf, "%s/VIDEO_TS.IFO", vtsdir);
@@ -1809,13 +1809,13 @@ void dvdauthor_vts_gen(struct menugroup *menus, struct pgcgroup *titles, const c
       } /*if*/
     if (menus->vg->numvobs)
       {
-        FindVobus(fbase, menus->vg, 1);
+        FindVobus(fbase, menus->vg, VTYPE_VTSM);
         MarkChapters(menus->vg);
-        setattr(menus->vg, 1);
+        setattr(menus->vg, VTYPE_VTSM);
       } /*if*/
-    FindVobus(fbase, titles->vg, 0);
+    FindVobus(fbase, titles->vg, VTYPE_VTS);
     MarkChapters(titles->vg);
-    setattr(titles->vg, 0);
+    setattr(titles->vg, VTYPE_VTS);
     if (!menus->vg->numvobs) // for undefined menus, we'll just copy the video type of the title
       {
         menus->vg->vd = titles->vg->vd;
@@ -1823,6 +1823,6 @@ void dvdauthor_vts_gen(struct menugroup *menus, struct pgcgroup *titles, const c
     fprintf(stderr, "\n");
     WriteIFOs(fbase, &ws);
     if (menus->vg->numvobs)
-        FixVobus(fbase, menus->vg, &ws, 1);
-    FixVobus(fbase, titles->vg, &ws, 0);
+        FixVobus(fbase, menus->vg, &ws, VTYPE_VTSM);
+    FixVobus(fbase, titles->vg, &ws, VTYPE_VTS);
   } /*dvdauthor_vts_gen*/
