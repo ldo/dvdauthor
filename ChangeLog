@@ -6,6 +6,8 @@
 	Video format no longer defaults to NTSC, unless you invoke configure with
 		--enable-default-video-format=NTSC. You can also configure with
 		--enable-default-video-format=PAL to default to PAL.
+	Replace dvdauthor config files with OUTPUTDIR environment variable and change precedence
+	    of destination specifications so command line > env var > XML dest attribute.
 
 0.6.18: 2010 March 18
 	implement link-subset jumps
