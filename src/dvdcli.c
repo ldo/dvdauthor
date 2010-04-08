@@ -347,42 +347,59 @@ static void usage()
 }
 
 /* bits for authoring via command line */
-#define MAINDEF                                                      \
-            if( !usedtocflag ) {                                     \
-                fprintf(stderr,"ERR:  Must first specify -t, -m, or -x.\n"); \
-                return 1;                                            \
-            }                                                        \
-            if( istoc && curva ) {                                   \
-                fprintf(stderr,"ERR:  TOC cannot have titles\n");    \
-                return 1;                                            \
-            }                                                        \
-            if( !vc ) {                                              \
-                va[curva]=vc=pgcgroup_new(istoc+1-curva);            \
-            }
+#define NOXML                                                                          \
+    if (xmlfile)                                                                       \
+      {                                                                                \
+        fprintf                                                                        \
+          (                                                                            \
+            stderr,                                                                    \
+            "ERR:  Cannot use command line options after specifying XML config file\n" \
+          );                                                                           \
+        return 1;                                                                      \
+      } /*if*/
+#define MAINDEF                                                               \
+            if (!usedtocflag)                                                 \
+              {                                                               \
+                fprintf(stderr, "ERR:  Must first specify -t, -m, or -x.\n"); \
+                return 1;                                                     \
+              } /*if*/                                                        \
+            if (istoc && curva)                                               \
+              {                                                               \
+                fprintf(stderr, "ERR:  TOC cannot have titles\n");            \
+                return 1;                                                     \
+              } /*if*/                                                        \
+            if (!vc)                                                          \
+              {                                                               \
+                va[curva] = vc = pgcgroup_new((int)istoc + 1 - curva);        \
+              } /*if*/
 
 #define MAINDEFPGC                                                   \
-            MAINDEF;                                                 \
-            if( !curpgc )                                            \
-                curpgc=pgc_new();
+            MAINDEF                                                  \
+            if (!curpgc)                                             \
+                curpgc = pgc_new();
 
 #define MAINDEFVOB                                                   \
-            MAINDEFPGC;                                              \
-            if( !curvob )                                            \
-                curvob=source_new();
+            MAINDEFPGC                                               \
+            if (!curvob)                                             \
+                curvob = source_new();
 
 #define FLUSHPGC                                                     \
-            if( curpgc ) {                                           \
-                pgcgroup_add_pgc(va[curva],curpgc);                   \
-                curpgc=0;                                            \
-            }
+            if (curpgc)                                              \
+              {                                                      \
+                pgcgroup_add_pgc(va[curva], curpgc);                 \
+                curpgc = 0;                                          \
+              } /*if*/
 
 int main(int argc, char **argv)
   {
-    struct pgcgroup *va[2];
+    struct pgcgroup *va[2]; /* element 0 for doing menus, 1 for doing titles */
     struct menugroup *mg;
     char *fbase = 0; /* output directory name */
-    int curva = 1,istoc = 0, l,
-        usedtocflag = 0; // whether the 'istoc' value has been used or not
+    char * xmlfile = 0; /* name of XML control file, if any */
+    int curva = 1; /* index into va */
+    bool istoc = false, /* true if doing VMG, false if doing titleset */
+        usedtocflag = false; /* indicates that istoc can no longer be changed */
+    int l;
     struct pgc *curpgc = 0,* fpc = 0;
     struct source *curvob = 0;
 #ifdef HAVE_GETOPT_LONG
@@ -419,14 +436,16 @@ int main(int argc, char **argv)
         fprintf(stderr, "ERR:  No arguments!\n");
         return 1;
       } /*if*/
-    memset(va,0,sizeof(struct pgcgroup *)*2);
+    memset(va, 0, sizeof(struct pgcgroup *) * 2);
 
-    while (true) {
-        struct pgcgroup *vc=va[curva];
-        int c=GETOPTFUNC(argc,argv,"f:o:v:a:s:hc:Cp:Pmtb:Ti:e:x:jgn");
-        if( c == -1 )
+    while (true)
+      {
+        struct pgcgroup *vc = va[curva];
+        int c = GETOPTFUNC(argc, argv, "f:o:v:a:s:hc:Cp:Pmtb:Ti:e:x:jgn");
+        if (c == -1)
             break;
-        switch(c) {
+        switch (c)
+          {
         case 'h':
             usage();
         break;
@@ -441,7 +460,13 @@ int main(int argc, char **argv)
                   );
                 return 1;
               } /*if*/
-            return readdvdauthorxml(optarg, fbase);
+            if (xmlfile)
+              {
+                fprintf(stderr, "ERR:  only one XML file allowed\n");
+                return 1;
+              } /*if*/
+            xmlfile = optarg;
+        break;
 
         case 'n':
             writeoutput = false;
@@ -456,12 +481,18 @@ int main(int argc, char **argv)
         break;
 
         case 'T':
-            if( usedtocflag ) {
-                fprintf(stderr,"ERR:  TOC (-T) option must come first because I am a lazy programmer.\n");
+            NOXML
+            if (usedtocflag)
+              {
+                fprintf
+                  (
+                    stderr,
+                    "ERR:  TOC (-T) option must come first because I am a lazy programmer.\n"
+                  );
                 return 1;
-            }
-            istoc=1;
-            usedtocflag=1; // just for completeness (also see -x FOO)
+              } /*if*/
+            istoc = true;
+            usedtocflag = true; // just for completeness (also see -x FOO)
         break;
 
         case 'o': 
@@ -469,168 +500,194 @@ int main(int argc, char **argv)
         break;
 
         case 'm':
-            FLUSHPGC;
-            usedtocflag=1; // force -T to occur before -m
-            hadchapter=chapters_neither; /* reset for new menu */
-            curva=0;
+            NOXML
+            FLUSHPGC
+            usedtocflag = true; // force -T to occur before -m
+            hadchapter = chapters_neither; /* reset for new menu */
+            curva = 0;
         break;
 
         case 't':
-            if( istoc ) {
-                fprintf(stderr,"ERR:  TOC cannot have titles\n");
+            NOXML
+            if (istoc)
+              {
+                fprintf(stderr, "ERR:  TOC cannot have titles\n");
                 return 1;
-            }
-            FLUSHPGC;
-            usedtocflag=1;
-            hadchapter=chapters_neither; /* reset for new title */
-            curva=1;
+              } /*if*/
+            FLUSHPGC
+            usedtocflag = true;
+            hadchapter = chapters_neither; /* reset for new title */
+            curva = 1;
         break;
             
         case 'a':
-            MAINDEF;
-            parseaudioopts(vc,optarg);
+            NOXML
+            MAINDEF
+            parseaudioopts(vc, optarg);
         break;
         
         case 'v':
-            MAINDEF;
-            parsevideoopts(vc,optarg);
+            NOXML
+            MAINDEF
+            parsevideoopts(vc, optarg);
         break;
 
         case 's':
-            MAINDEF;
-            parsesubpictureopts(vc,optarg);
+            NOXML
+            MAINDEF
+            parsesubpictureopts(vc, optarg);
         break;
 
         case 'b':
-            MAINDEFPGC;
-            parsebutton(curpgc,optarg);
+            NOXML
+            MAINDEFPGC
+            parsebutton(curpgc, optarg);
         break;
 
         case 'i':
-            MAINDEFPGC;
-            parseinstructions(curpgc,optarg);
+            NOXML
+            MAINDEFPGC
+            parseinstructions(curpgc, optarg);
         break;
 
         case 'F':
-            if( !istoc ) {
-                fprintf(stderr,"ERR:  You may only specify FPC commands on the VMGM\n");
+            NOXML
+            if (!istoc)
+              {
+                fprintf(stderr, "ERR:  You may only specify FPC commands on the VMGM\n");
                 return 1;
-            }
-            usedtocflag=1;
-            if( fpc ) {
+              } /*if*/
+            usedtocflag = true;
+            if (fpc)
+              {
                 fprintf(stderr,"ERR:  FPC commands already specified\n");
                 return 1;
-            }
-            fpc=pgc_new();
-            pgc_set_pre(fpc,optarg);
+              } /*if*/
+            fpc = pgc_new();
+            pgc_set_pre(fpc, optarg);
         break;
 
         case 'e':
-            MAINDEFPGC;
-            if( curva ) {
-                fprintf(stderr,"ERR:  Cannot specify an entry for a title.\n");
+            NOXML
+            MAINDEFPGC
+            if (curva)
+              {
+                fprintf(stderr, "ERR:  Cannot specify an entry for a title.\n");
                 return 1;
-            }
-            parseentries(curpgc,optarg);
+              } /*if*/
+            parseentries(curpgc, optarg);
         break;
 
         case 'P':
-            optarg=0;
+          /* NOXML */
+            optarg = 0; /* use default palette name */
       /* fallthru */
         case 'p':
-            MAINDEFPGC;
-            readpalette(curpgc,optarg?optarg:"xste-palette.dat");
+            NOXML
+            MAINDEFPGC
+            readpalette(curpgc, optarg ? optarg : "xste-palette.dat");
         break;
 
         case 1:
         case 'f':
-            MAINDEFVOB;
-            
-            source_set_filename(curvob,optarg);
-            if( hadchapter==chapters_chapters )
-                hadchapter=chapters_cells; /* chapters already specified */
+            NOXML
+            MAINDEFVOB
+            source_set_filename(curvob, optarg);
+            if (hadchapter == chapters_chapters )
+                hadchapter = chapters_cells; /* chapters already specified */
             else
                 source_add_cell
                   (
                     /*source =*/ curvob,
                     /*starttime =*/ 0,
                     /*endtime =*/ -1,
-                    /*chap =*/ hadchapter == chapters_neither ? CELL_CHAPTER_PROGRAM : CELL_NEITHER,
+                    /*chap =*/
+                        hadchapter == chapters_neither ?
+                            CELL_CHAPTER_PROGRAM /* first vob in pgc */
+                        :
+                            CELL_NEITHER, /* subsequent vobs in pgc */
                     /*pause =*/ 0,
                     /*cmd =*/ 0
                   );
                   /* default to single chapter/cell for entire source file */
-            pgc_add_source(curpgc,curvob);
-            curvob=0;
+            pgc_add_source(curpgc, curvob);
+            curvob = 0;
         break;
 
         case 'C':
-            optarg=0;
+          /* NOXML */
+            optarg = 0;
       /* fallthru */
         case 'c':
-            if( curvob ) {
-                fprintf(stderr,"ERR:  cannot list -c twice for one file.\n");
+            NOXML
+            if (curvob)
+              {
+                fprintf(stderr, "ERR:  cannot list -c twice for one file.\n");
                 return 1;
-            }
+              } /*if*/
             MAINDEFVOB;
-
-            hadchapter=chapters_chapters;
-            if( optarg )
-                parsechapters(optarg,curvob,0);
+            hadchapter = chapters_chapters;
+            if (optarg)
+                parsechapters(optarg, curvob, 0);
             else
                 source_add_cell(curvob, 0, -1, CELL_CHAPTER_PROGRAM, 0, 0);
                   /* default to single chapter for entire source file */
         break;
 
         default:
-            fprintf(stderr,"ERR:  getopt returned bad code %d\n",c);
+            fprintf(stderr, "ERR:  getopt returned bad code %d\n", c);
             return 1;
-        }
-    }
-    if( curvob ) {
-        fprintf(stderr,"ERR:  Chapters defined without a file source.\n");
-        return 1;
-    }
-    FLUSHPGC;
-    if( !va[0] ) {
-        va[0]=pgcgroup_new(istoc ? VTYPE_VMGM : VTYPE_VTSM);
-        mg=menugroup_new();
-        menugroup_add_pgcgroup(mg,"en",va[0]);
-    } else
-        mg=0;
-    if( !va[1] && !istoc )
-        va[1]=pgcgroup_new(VTYPE_VTS);
-
-    if (!fbase && writeoutput)
+          } /*switch*/
+      } /*while*/
+    if (xmlfile)
       {
-        fbase = get_outputdir();
-        if (!fbase)
-            usage();
-      } /*if*/
-    if( optind != argc ) {
-        fprintf(stderr,"ERR:  bad version of getopt; please precede all sources with '-f'\n");
-        return 1;
-    }
-    if (fbase)
-      {
-        l = strlen(fbase);
-        if (l && fbase[l - 1] == '/')
-            fbase[l - 1] = 0;
-      } /*if*/
-
-    if (istoc)
-        dvdauthor_vmgm_gen(fpc, mg, fbase);
+        return readdvdauthorxml(xmlfile, fbase);
+      }
     else
-        dvdauthor_vts_gen(mg, va[1], fbase);
-
-    if( fpc )
+      {
+        if (curvob)
+          {
+            fprintf(stderr, "ERR:  Chapters defined without a file source.\n");
+            return 1;
+          } /*if*/
+        FLUSHPGC;
+        if (!va[0])
+          {
+            va[0] = pgcgroup_new(istoc ? VTYPE_VMGM : VTYPE_VTSM);
+            mg = menugroup_new();
+            menugroup_add_pgcgroup(mg, "en", va[0]);
+              /* fixme: would be nice to make language a preference setting, perhaps default to locale? */
+          }
+        else
+            mg = 0;
+        if (!va[1] && !istoc)
+            va[1] = pgcgroup_new(VTYPE_VTS);
+        if (!fbase && writeoutput)
+          {
+            fbase = get_outputdir();
+            if (!fbase)
+                usage();
+          } /*if*/
+        if (optind != argc)
+          {
+            fprintf(stderr, "ERR:  bad version of getopt; please precede all sources with '-f'\n");
+            return 1;
+          } /*if*/
+        if (fbase)
+          {
+            l = strlen(fbase);
+            if (l && fbase[l - 1] == '/')
+                fbase[l - 1] = 0;
+          } /*if*/
+        if (istoc)
+            dvdauthor_vmgm_gen(fpc, mg, fbase);
+        else
+            dvdauthor_vts_gen(mg, va[1], fbase);
         pgc_free(fpc);
-    if( mg )
         menugroup_free(mg);
-    if( va[1] )
         pgcgroup_free(va[1]);
-
-    return 0;
+        return 0;
+      } /*if*/
   } /*main*/
 
 /* authoring via XML file */
@@ -1182,8 +1239,8 @@ static void vob_end()
                 /*source =*/ curvob,
                 /*starttime =*/ 0,
                 /*endtime =*/ -1,
-                /*chap =*/ hadchapter ==
-                    chapters_neither ?
+                /*chap =*/
+                    hadchapter == chapters_neither ?
                         CELL_CHAPTER_PROGRAM /* first <vob> in <pgc> */
                     :
                         CELL_NEITHER, /* subsequent <vob>s in <pgc> */
