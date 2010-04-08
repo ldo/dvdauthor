@@ -433,6 +433,27 @@ int main(int argc, char **argv)
 #endif
 
     fputs(PACKAGE_HEADER("dvdauthor"), stderr);
+    if (default_video_format != VF_NONE)
+      {
+        fprintf
+          (
+            stderr,
+            "INFO: default video format is %s\n",
+            default_video_format == VF_PAL ? "PAL" : "NTSC"
+          );
+      }
+    else
+      {
+#if defined(DEFAULT_VIDEO_FORMAT)
+#    if DEFAULT_VIDEO_FORMAT == 1
+        fprintf(stderr, "INFO: default video format is NTSC\n");
+#    elif DEFAULT_VIDEO_FORMAT == 2
+        fprintf(stderr, "INFO: default video format is PAL\n");
+#    endif
+#else
+        fprintf(stderr, "INFO: no default video format, must explicitly specify NTSC or PAL\n");
+#endif
+      } /*if*/
 
     if (argc < 1)
       {
