@@ -32,12 +32,16 @@ char * get_outputdir(void)
   /* allocates and returns a string containing the user-specified output
     directory path, or NULL if not specified. */
  {
+#if 0 /* don't do this any more */
     char * outputdir = getenv("OUTPUTDIR");
     if (outputdir != 0)
       {
         outputdir = strdup(outputdir);
       } /*if*/
     return outputdir;
+#else
+    return 0;
+#endif
  } /*get_outputdir*/
 
 /* following no longer used */
