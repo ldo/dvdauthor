@@ -3,11 +3,13 @@
 	Default encoding for subtitle files is no longer ISO-8859-1, but taken from
 		user's locale
 	Add fontconfig support following a patch by Nicolas George
-	Video format no longer defaults to NTSC, unless you invoke configure with
-		--enable-default-video-format=NTSC. You can also configure with
-		--enable-default-video-format=PAL to default to PAL.
 	Remove dvdauthor config files and make command line -o option take precedence over
 		XML dest attribute.
+	Video format no longer has hard-coded default to NTSC, unless you invoke configure
+		with --enable-default-video-format=NTSC. You can also configure with
+		--enable-default-video-format=PAL to default to PAL.
+	Implement configuration of default video format as per the proposal at
+		<http://create.freedesktop.org/wiki/Video_Format_Pref>.
 
 0.6.18: 2010 March 18
 	implement link-subset jumps

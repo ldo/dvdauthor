@@ -119,7 +119,7 @@ may not specify any titles.</para></listitem>
 will try to infer any unspecified options.  pal, ntsc, 4:3, 16:9,
 720xfull, 720x576, 720x480, 704xfull, 704x576, 704x480, 352xfull,
 352x576, 352x480, 352xhalf, 352x288, 352x240, nopanscan, noletterbox, crop.
-Default is ntsc, 4:3, 720xfull</para></listitem></varlistentry>
+Default is 4:3, 720xfull</para></listitem></varlistentry>
 
 <varlistentry><term><literal>-a <replaceable>audio-opts</replaceable></literal></term><term><literal>--audio=<replaceable>audio-opts</replaceable></literal></term>
 <listitem><para>A plus (+) separated list of options for an audio

@@ -34,6 +34,8 @@
 #include "readxml.h"
 #include "rgb.h"
 
+int default_video_format = VF_NONE;
+
 static char * str_extract_until
   (
     const char ** src,
@@ -423,6 +425,7 @@ int main(int argc, char **argv)
         {0,0,0,0}
     };
 
+    default_video_format = get_video_format();
     init_locale();
 #define GETOPTFUNC(x,y,z) getopt_long(x,y,"-" z,longopts,NULL)
 #else

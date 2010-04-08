@@ -134,10 +134,10 @@ static int getratecode(const struct vobgroup *va)
 {
     if (va->vd.vframerate)
         return va->vd.vframerate;
-    else if (va->vd.vformat)
+    else if (va->vd.vformat || default_video_format)
       {
       /* fudge it for calls from menu PGC-generation routines with no video present */
-        return va->vd.vformat == VF_PAL ? VR_PAL : VR_NTSC;
+        return (va->vd.vformat || default_video_format) == VF_PAL ? VR_PAL : VR_NTSC;
       }
     else
       {
@@ -620,11 +620,12 @@ static void set_video_format_attr
   {
 #if defined(DEFAULT_VIDEO_FORMAT)
 #    if DEFAULT_VIDEO_FORMAT == 1
-        inferattr(&va->vd.vformat, VF_NTSC);
+        inferattr(&va->vd.vformat, default_video_format || VF_NTSC);
 #    elif DEFAULT_VIDEO_FORMAT == 2
-        inferattr(&va->vd.vformat, VF_PAL);
+        inferattr(&va->vd.vformat, default_video_format || VF_PAL);
 #    endif
 #else
+    inferattr(&va->vd.vformat, default_video_format);
     if (va->vd.vformat == 0)
       {
         fprintf(stderr, "ERR:  no video format specified for %s\n", pstypes[pstype]);

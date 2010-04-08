@@ -27,7 +27,6 @@
 
 enum {VM_NONE=0,VM_MPEG1=1,VM_MPEG2=2}; /* values for videodesc.vmpeg */
 enum {VS_NONE=0,VS_720H=1,VS_704H=2,VS_352H=3,VS_352L=4}; /* values for videodesc.vres */
-enum {VF_NONE=0,VF_NTSC=1,VF_PAL=2}; /* values for videodesc.vformat */
 enum {VA_NONE=0,VA_4x3=1,VA_16x9=2}; /* values for videodesc.vaspect */
 enum {VW_NONE=0,VW_NOLETTERBOX=1,VW_NOPANSCAN=2,VW_CROP=3}; /* values for videodesc.vwidescreen */
 enum {VR_NONE=0,VR_NTSCFILM=1,VR_FILM=2,VR_PAL=3,VR_NTSC=4,VR_30=5,VR_PALFIELD=6,VR_NTSCFIELD=7,VR_60=8}; /* values for videodesc.vframerate */

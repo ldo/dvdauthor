@@ -164,6 +164,8 @@ char * strndup
 #define FT_GLYPH_H <freetype/ftglyph.h>
 #endif
 
+enum {VF_NONE=0,VF_NTSC=1,VF_PAL=2}; /* values for videodesc.vformat in da-internal.h as well as other uses */
+
 /* values for vfile.ftype */
 #define VFTYPE_FILE 0 /* an actual file I opened */
 #define VFTYPE_PIPE 1 /* an actual pipe I opened to/from a child process */

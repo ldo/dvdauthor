@@ -29,6 +29,8 @@ extern "C" {
 
 #include "common.h"
 
+extern int default_video_format; /* defined in dvdcli.c */
+
 typedef enum /* type of menu/title */
   { /* note assigned values cannot be changed */
     VTYPE_VTS = 0, /* title in titleset */
