@@ -27,165 +27,165 @@
 #include "conffile.h"
 
 /*
-	Implementation of relevant parts of the XDG Base Directory specification
-	<http://standards.freedesktop.org/basedir-spec/latest/>.
+    Implementation of relevant parts of the XDG Base Directory specification
+    <http://standards.freedesktop.org/basedir-spec/latest/>.
 */
 
 static char * xdg_make_home_relative
   (
-	const char * path
+    const char * path
   )
   /* prepends the value of $HOME onto path (assumed not to begin with a slash), or
-	NULL on error (out of memory, $HOME not defined or not absolute). Caller must dispose
-	of the result pointer. */
+    NULL on error (out of memory, $HOME not defined or not absolute). Caller must dispose
+    of the result pointer. */
   {
-	const char * const home = getenv("HOME");
-	char * result = 0;
-	size_t result_len;
-	do /*once*/
-	  {
-		if (home == 0 || home[0] != '/')
-		  {
-			errno = ENOENT;
-			break;
-		  } /*if*/
-	  /* assert strlen(home) > 0 */
-		result_len = strlen(home) + 1 + strlen(path) + 1; /* worst case */
-		result = malloc(result_len);
-		if (result == 0)
-			break;
-		strncpy(result, home, result_len);
-		if (result[strlen(result) - 1] != '/')
-		  {
-			strncat(result, "/", result_len);
-		  } /*if*/
-		strncat(result, path, result_len);
-	  }
-	while (false);
-	return
-		result;
+    const char * const home = getenv("HOME");
+    char * result = 0;
+    size_t result_len;
+    do /*once*/
+      {
+        if (home == 0 || home[0] != '/')
+          {
+            errno = ENOENT;
+            break;
+          } /*if*/
+      /* assert strlen(home) > 0 */
+        result_len = strlen(home) + 1 + strlen(path) + 1; /* worst case */
+        result = malloc(result_len);
+        if (result == 0)
+            break;
+        strncpy(result, home, result_len);
+        if (result[strlen(result) - 1] != '/')
+          {
+            strncat(result, "/", result_len);
+          } /*if*/
+        strncat(result, path, result_len);
+      }
+    while (false);
+    return
+        result;
   } /*xdg_make_home_relative*/
 
 static char * xdg_get_config_home(void)
   /* returns the directory for holding user-specific config files, or NULL on
-	error. Caller must dispose of the result pointer. */
+    error. Caller must dispose of the result pointer. */
   {
-	char * result;
-	void * to_dispose = 0;
-	result = getenv("XDG_CONFIG_HOME");
-	if (result == 0)
-	  {
-		to_dispose = xdg_make_home_relative(".config");
-		result = to_dispose;
-	  } /*if*/
-	if (result != 0 && to_dispose == 0)
-	  {
-		result = strdup(result);
-	  } /*if*/
-	return
-		result;
+    char * result;
+    void * to_dispose = 0;
+    result = getenv("XDG_CONFIG_HOME");
+    if (result == 0)
+      {
+        to_dispose = xdg_make_home_relative(".config");
+        result = to_dispose;
+      } /*if*/
+    if (result != 0 && to_dispose == 0)
+      {
+        result = strdup(result);
+      } /*if*/
+    return
+        result;
   } /*xdg_get_config_home*/
 
 static char * xdg_config_search_path(void)
   /* returns a string containing the colon-separated list of config directories to search
-	(apart from the user area). Caller must dispose of the result pointer. */
+    (apart from the user area). Caller must dispose of the result pointer. */
   {
-	char * result = getenv("XDG_CONFIG_DIRS");
-	if (result == 0)
-	  {
-		result = "/etc";
-		  /* note spec actually says default should be /etc/xdg, but /etc is the
-			conventional location for system config files. */
-	  } /*if*/
-	return strdup(result);
+    char * result = getenv("XDG_CONFIG_DIRS");
+    if (result == 0)
+      {
+        result = "/etc";
+          /* note spec actually says default should be /etc/xdg, but /etc is the
+            conventional location for system config files. */
+      } /*if*/
+    return strdup(result);
   } /*xdg_config_search_path*/
 
 typedef int (*xdg_path_component_action)
   (
-	const unsigned char * path, /* storage belongs to me, make a copy if you want to keep it */
-	size_t path_len, /* length of path string */
-	void * arg /* meaning is up to you */
+    const unsigned char * path, /* storage belongs to me, make a copy if you want to keep it */
+    size_t path_len, /* length of path string */
+    void * arg /* meaning is up to you */
   );
   /* return nonzero to abort the scan */
 
 static int xdg_for_each_path_component
   (
-	const unsigned char * path,
-	size_t path_len,
-	xdg_path_component_action action,
-	void * actionarg,
-	bool forwards /* false to do in reverse */
+    const unsigned char * path,
+    size_t path_len,
+    xdg_path_component_action action,
+    void * actionarg,
+    bool forwards /* false to do in reverse */
   )
   /* splits the string path with len path_len at any colon separators, calling
-	action for each component found, in forward or reverse order as specified.
-	Returns nonzero on error, or if action returned nonzero. */
+    action for each component found, in forward or reverse order as specified.
+    Returns nonzero on error, or if action returned nonzero. */
   {
-	int status;
-	const unsigned char * const path_end = path + path_len;
-	const unsigned char * path_prev;
-	const unsigned char * path_next;
-	if (forwards)
-	  {
-		path_prev = path;
-		for (;;)
-		  {
-			path_next = path_prev;
-			for (;;)
-			  {
-				if (path_next == path_end)
-					break;
-				if (*path_next == ':')
-					break;
-				++path_next;
-			  } /*for*/
-			status = action(path_prev, path_next - path_prev, actionarg);
-			if (status != 0)
-				break;
-			if (path_next == path_end)
-				break;
-			path_prev = path_next + 1;
-		  } /*for*/
-	  }
-	else /* backwards */
-	  {
-		path_next = path_end;
-		for (;;)
-		  {
-			path_prev = path_next;
-			for (;;)
-			  {
-				if (path_prev == path)
-					break;
-				--path_prev;
-				if (*path_prev == ':')
-				  {
-					++path_prev;
-					break;
-				  } /*if*/
-			  } /*for*/
-			status = action(path_prev, path_next - path_prev, actionarg);
-			if (status != 0)
-				break;
-			if (path_prev == path)
-				break;
-			path_next = path_prev - 1;
-		  } /*for*/
-	  } /*if*/
-	return status;
+    int status;
+    const unsigned char * const path_end = path + path_len;
+    const unsigned char * path_prev;
+    const unsigned char * path_next;
+    if (forwards)
+      {
+        path_prev = path;
+        for (;;)
+          {
+            path_next = path_prev;
+            for (;;)
+              {
+                if (path_next == path_end)
+                    break;
+                if (*path_next == ':')
+                    break;
+                ++path_next;
+              } /*for*/
+            status = action(path_prev, path_next - path_prev, actionarg);
+            if (status != 0)
+                break;
+            if (path_next == path_end)
+                break;
+            path_prev = path_next + 1;
+          } /*for*/
+      }
+    else /* backwards */
+      {
+        path_next = path_end;
+        for (;;)
+          {
+            path_prev = path_next;
+            for (;;)
+              {
+                if (path_prev == path)
+                    break;
+                --path_prev;
+                if (*path_prev == ':')
+                  {
+                    ++path_prev;
+                    break;
+                  } /*if*/
+              } /*for*/
+            status = action(path_prev, path_next - path_prev, actionarg);
+            if (status != 0)
+                break;
+            if (path_prev == path)
+                break;
+            path_next = path_prev - 1;
+          } /*for*/
+      } /*if*/
+    return status;
   } /*xdg_for_each_path_component*/
 
 typedef int (*xdg_item_path_action)
   (
-	const char * path, /* a complete expanded pathname */
-	void * arg /* meaning is up to you */
+    const char * path, /* a complete expanded pathname */
+    void * arg /* meaning is up to you */
   );
   /* return nonzero to abort the scan */
 
 typedef struct
   {
-	const char * itempath;
-	xdg_item_path_action action;
-	void * actionarg;
+    const char * itempath;
+    xdg_item_path_action action;
+    void * actionarg;
   } xdg_for_each_config_found_context;
 
 static int xdg_for_each_config_found_try_component
@@ -233,64 +233,64 @@ static int xdg_for_each_config_found_try_component
 
 static int xdg_for_each_config_found
   (
-	const char * itempath, /* relative path of item to look for in each directory */
-	xdg_item_path_action action,
-	void * actionarg,
-	bool forwards /* false to do in reverse */
+    const char * itempath, /* relative path of item to look for in each directory */
+    xdg_item_path_action action,
+    void * actionarg,
+    bool forwards /* false to do in reverse */
   )
   {
     xdg_for_each_config_found_context context;
-	int status = 0;
-	const char * const home_path = xdg_get_config_home();
-	const char * const search_path = xdg_config_search_path();
+    int status = 0;
+    const char * const home_path = xdg_get_config_home();
+    const char * const search_path = xdg_config_search_path();
     context.itempath = itempath;
     context.action = action;
     context.actionarg = actionarg;
-	do /*once*/
-	  {
-		if (forwards)
-		  {
-			status = xdg_for_each_config_found_try_component
+    do /*once*/
+      {
+        if (forwards)
+          {
+            status = xdg_for_each_config_found_try_component
               (
                 (const unsigned char *)home_path,
                 strlen(home_path),
                 &context
               );
-			if (status != 0)
-				break;
-		  } /*if*/
-		status = xdg_for_each_path_component
-		  (
-			/*path =*/ (const unsigned char *)search_path,
-			/*path_len =*/ strlen(search_path),
-			/*action =*/ (xdg_path_component_action)xdg_for_each_config_found_try_component,
-			/*actionarg =*/ (void *)&context,
-			/*forwards =*/ forwards
-		  );
-		if (status != 0)
-			break;
-		if (!forwards)
-		  {
-			status = xdg_for_each_config_found_try_component
+            if (status != 0)
+                break;
+          } /*if*/
+        status = xdg_for_each_path_component
+          (
+            /*path =*/ (const unsigned char *)search_path,
+            /*path_len =*/ strlen(search_path),
+            /*action =*/ (xdg_path_component_action)xdg_for_each_config_found_try_component,
+            /*actionarg =*/ (void *)&context,
+            /*forwards =*/ forwards
+          );
+        if (status != 0)
+            break;
+        if (!forwards)
+          {
+            status = xdg_for_each_config_found_try_component
               (
                 (const unsigned char *)home_path,
                 strlen(home_path),
                 &context
               );
-			if (status != 0)
-				break;
-		  } /*if*/
-	  }
-	while (false);
-	free((void *)home_path);
-	free((void *)search_path);
-	return
-		status;
+            if (status != 0)
+                break;
+          } /*if*/
+      }
+    while (false);
+    free((void *)home_path);
+    free((void *)search_path);
+    return
+        status;
   } /*xdg_for_each_config_found*/
 
 typedef struct
   {
-	char * result;
+    char * result;
   } xdg_find_first_config_path_context;
 
 static int xdg_find_first_config_path_save_item
@@ -306,28 +306,28 @@ static int xdg_find_first_config_path_save_item
 
 static char * xdg_find_first_config_path
   (
-	const char * itempath
+    const char * itempath
   )
   /* searches for itempath in all the config directory locations in order of decreasing
-	priority, returning the expansion where it is first found, or NULL if not found.
-	Caller must dispose of the result pointer. */
+    priority, returning the expansion where it is first found, or NULL if not found.
+    Caller must dispose of the result pointer. */
   {
     xdg_find_first_config_path_context context;
     context.result = 0;
-	errno = 0;
-	(void)xdg_for_each_config_found
-	  (
-		/*itempath =*/ itempath,
-		/*action =*/ (xdg_item_path_action)xdg_find_first_config_path_save_item,
-		/*actionarg =*/ (void *)&context,
-		/*forwards =*/ true
-	  );
-	if (context.result == 0 && errno == 0)
-	  {
-		errno = ENOENT;
-	  } /*if*/
-	return
-		context.result;
+    errno = 0;
+    (void)xdg_for_each_config_found
+      (
+        /*itempath =*/ itempath,
+        /*action =*/ (xdg_item_path_action)xdg_find_first_config_path_save_item,
+        /*actionarg =*/ (void *)&context,
+        /*forwards =*/ true
+      );
+    if (context.result == 0 && errno == 0)
+      {
+        errno = ENOENT;
+      } /*if*/
+    return
+        context.result;
   } /*xdg_find_first_config_path*/
 
 /*
@@ -360,7 +360,7 @@ int get_video_format(void)
     char * format;
     char * conffilename = 0;
     FILE * conffile = 0;
-	char * eol;
+    char * eol;
     char line[40]; /* should be plenty */
     do /*once*/
       {
@@ -374,11 +374,11 @@ int get_video_format(void)
         if (!conffile)
             break;
         format = fgets(line, sizeof line, conffile);
-		eol = strchr(format, '\n');
-		if (eol)
-		  {
-			*eol = 0;
-		  } /*if*/
+        eol = strchr(format, '\n');
+        if (eol)
+          {
+            *eol = 0;
+          } /*if*/
         break;
       }
     while (false);
