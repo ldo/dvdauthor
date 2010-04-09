@@ -10,6 +10,8 @@
 		--enable-default-video-format=PAL to default to PAL.
 	Implement configuration of default video format as per the proposal at
 		<http://create.freedesktop.org/wiki/Video_Format_Pref>.
+	File names are no longer converted to locale encoding, unless you invoke configure
+		with --enable-localize-filenames.
 
 0.6.18: 2010 March 18
 	implement link-subset jumps

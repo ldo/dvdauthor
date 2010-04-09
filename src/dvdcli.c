@@ -814,7 +814,7 @@ static void dvdauthor_outputdir(const char *s)
   {
     if (!fbase)
       {
-        fbase = utf8tolocal(s);
+        fbase = localize_filename(s);
       } /*if*/
   }
 
@@ -1229,7 +1229,7 @@ static void vob_start()
 
 static void vob_file(const char *f)
 {
-    f = utf8tolocal(f);
+    f = localize_filename(f);
     source_set_filename(curvob, f);
 }
 

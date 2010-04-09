@@ -6,7 +6,7 @@ typedef void (*parserfunc)(void);
 typedef void (*attrfunc)(const char *);
 
 struct elemdesc { /* defines a valid XML tag */
-    char *elemname; /* element name */
+    const char *elemname; /* element name */
     int parentstate; /* state in which element is expected (initial state is 0) */
     int newstate;
       /* state to push on state stack on entering element.
@@ -16,8 +16,8 @@ struct elemdesc { /* defines a valid XML tag */
 };
 
 struct elemattr { /* defines a valid attribute for an XML tag */
-    char *elem; /* element name */
-    char *attr; /* attribute name */
+    const char *elem; /* element name */
+    const char *attr; /* attribute name */
     attrfunc f; /* action to invoke with attribute value */
 };
 
@@ -31,10 +31,6 @@ int readxml
 
 bool xml_ison(const char * v, const char * attrname);
   /* interprets v as a value indicating yes/no/on/off, returning true for yes/on or false for no/off. */
-
-char *utf8tolocal(const char *in);
-  /* converts a UTF-8-encoded character string to the current locale encoding,
-    suitable for use for file names. */
 
 extern bool parser_err; /* can be set true by a callback action to abort the parse */
 extern bool parser_acceptbody;

@@ -105,9 +105,9 @@ static void spu_begin()
     memset(st, 0, sizeof(stinfo));
 }
 
-static void spu_image(const char *v)        { st->img.fname=utf8tolocal(v); }
-static void spu_highlight(const char *v)    { st->hlt.fname=utf8tolocal(v); }
-static void spu_select(const char *v)       { st->sel.fname=utf8tolocal(v); }
+static void spu_image(const char *v)        { st->img.fname=localize_filename(v); }
+static void spu_highlight(const char *v)    { st->hlt.fname=localize_filename(v); }
+static void spu_select(const char *v)       { st->sel.fname=localize_filename(v); }
 static void spu_start(const char *v)        { st->spts         = parsetime(v); }
 static void spu_end(const char *v)          { st->sd           = parsetime(v); }
 static void spu_outlinewidth(const char *v) { st->outlinewidth = strtounsigned(v, "spu outlinewidth");      }
@@ -204,7 +204,7 @@ static void button_y1(const char *v)    { curbutton->r.y1  = strtounsigned(v, "b
 
 static void textsub_filename(const char *v)
 {
-    filename = utf8tolocal(v); /* won't leak, because I won't be called more than once */
+    filename = localize_filename(v); /* won't leak, because I won't be called more than once */
 }
 
 static void textsub_characterset(const char *v)

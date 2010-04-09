@@ -33,27 +33,22 @@
 
 #include "readxml.h"
 
-#ifdef HAVE_LANGINFO_CODESET
-#include <langinfo.h>
-#include <locale.h>
-#endif
-
-
 bool
     parser_err = false,
     parser_acceptbody = false;
-char *parser_body=0;
+char
+    *parser_body = 0;
 
-static int xml_varied_read(void *context,char *buffer,int len)
-{
+static int xml_varied_read(void *context, char *buffer, int len)
+  {
     return fread(buffer,1,len,((struct vfile *)context)->h);
-}
+  } /*xml_varied_read*/
 
 static int xml_varied_close(void *context)
-{
+  {
     varied_close(*((struct vfile *)context));
     return 0;
-}
+  } /*xml_varied_close*/
 
 int readxml
   (
@@ -62,227 +57,215 @@ int readxml
     const struct elemattr *attrs /* array terminated by entry with null elem field */
   )
   /* opens and reads an XML file according to the given element and attribute definitions. */
-{
-    int curstate=0,statehistory[10];
+  {
+    enum
+      {
+        maxdepth = 10, /* should be enough */
+      };
+    int curstate = 0, statehistory[maxdepth];
     xmlTextReaderPtr f;
     struct vfile fd;
 
-    fd=varied_open(xmlfile, O_RDONLY, "XML file");
-    f=xmlReaderForIO(xml_varied_read,xml_varied_close,&fd,xmlfile,NULL,0);
-    if(!f) {
-        fprintf(stderr,"ERR:  Unable to open XML file %s\n",xmlfile);
+    fd = varied_open(xmlfile, O_RDONLY, "XML file");
+    f = xmlReaderForIO(xml_varied_read, xml_varied_close, &fd, xmlfile, NULL, 0);
+    if (!f)
+      {
+        fprintf(stderr, "ERR:  Unable to open XML file %s\n", xmlfile);
         return 1;
-    }
-
-    while (true) {
-        int r=xmlTextReaderRead(f);
-        int i;
-
-        if( !r ) {
-            fprintf(stderr,"ERR:  Read premature EOF\n");
+      } /*if*/
+    while (true)
+      {
+        int r = xmlTextReaderRead(f);
+        if (!r)
+          {
+            fprintf(stderr, "ERR:  Read premature EOF\n");
             return 1;
-        }
-        if( r!=1 ) {
-            fprintf(stderr,"ERR:  Error in parsing XML\n");
+          } /*if*/
+        if (r != 1)
+          {
+            fprintf(stderr, "ERR:  Error in parsing XML\n");
             return 1;
-        }
-        switch(xmlTextReaderNodeType(f)) {
+          } /*if*/
+        switch (xmlTextReaderNodeType(f))
+          {
         case XML_READER_TYPE_SIGNIFICANT_WHITESPACE:
         case XML_READER_TYPE_WHITESPACE:
         case XML_READER_TYPE_COMMENT:
-            break;
-
-        case XML_READER_TYPE_ELEMENT: {
+          /* ignore */
+        break;
+        case XML_READER_TYPE_ELEMENT:
+          {
             const char * const elemname = (const char *)xmlTextReaderName(f);
+            int tagindex;
             assert(!parser_body);
-            for( i=0; elems[i].elemname; i++ )
-                if( curstate==elems[i].parentstate &&
-                    !strcmp(elemname,elems[i].elemname) ) {
+            for (tagindex = 0; elems[tagindex].elemname; tagindex++)
+                if
+                  (
+                        curstate == elems[tagindex].parentstate
+                    &&
+                        !strcmp(elemname, elems[tagindex].elemname)
+                  )
+                  {
                     // reading the attributes causes these values to change
                     // so if you want to use them later, save them now
-                    int empty=xmlTextReaderIsEmptyElement(f),
-                        depth=xmlTextReaderDepth(f);
-                    if( elems[i].start ) {
-                        elems[i].start();
-                        if( parser_err )
+                    const bool empty = xmlTextReaderIsEmptyElement(f);
+                    const int depth = xmlTextReaderDepth(f);
+                    if (depth >= maxdepth)
+                      {
+                        fprintf
+                          (
+                            stderr,
+                            "ERR:  max XML parsing depth of %d exceeded\n",
+                            maxdepth - 1
+                          );
+                        exit(1);
+                      } /*if*/
+                    if (elems[tagindex].start)
+                      {
+                        elems[tagindex].start();
+                        if (parser_err)
                             return 1;
-                    }
-                    while(xmlTextReaderMoveToNextAttribute(f)) {
+                      } /*if*/
+                    while (xmlTextReaderMoveToNextAttribute(f))
+                      {
                         const char * const nm = (const char *)xmlTextReaderName(f);
                         const char * const v = (const char *)xmlTextReaderValue(f);
-                        int j;
-
-                        for( j=0; attrs[j].elem; j++ )
-                            if( !strcmp(attrs[j].elem,elems[i].elemname) &&
-                                !strcmp(attrs[j].attr,nm )) {
-                                attrs[j].f(v);
-                                if( parser_err )
+                        int attrindex;
+                        for (attrindex = 0; attrs[attrindex].elem; attrindex++)
+                            if
+                              (
+                                    !strcmp(attrs[attrindex].elem, elems[tagindex].elemname)
+                                &&
+                                    !strcmp(attrs[attrindex].attr, nm)
+                              )
+                              {
+                                attrs[attrindex].f(v);
+                                if (parser_err)
                                     return 1;
                                 break;
-                            }
-                        if( !attrs[j].elem ) {
-                            fprintf(stderr,"ERR:  Cannot match attribute '%s' in tag '%s'.  Valid attributes are:\n",nm,elems[i].elemname);
-                            for( j=0; attrs[j].elem; j++ )
-                                if( !strcmp(attrs[j].elem,elems[i].elemname) )
-                                    fprintf(stderr,"ERR:      %s\n",attrs[j].attr);
+                              } /*if*/
+                        if (!attrs[attrindex].elem)
+                          {
+                            fprintf
+                              (
+                                stderr,
+                                "ERR:  Cannot match attribute '%s' in tag '%s'."
+                                    "  Valid attributes are:\n",
+                                nm,
+                                elems[tagindex].elemname
+                              );
+                            for (attrindex = 0; attrs[attrindex].elem; attrindex++)
+                                if (!strcmp(attrs[attrindex].elem, elems[tagindex].elemname))
+                                    fprintf(stderr, "ERR:      %s\n", attrs[attrindex]. attr);
                             return 1;
-                        }
+                          } /*if*/
                         xmlFree((xmlChar *)nm);
                         xmlFree((xmlChar *)v);
-                    }
-                    if( empty ) {
-                        if( elems[i].end ) {
-                            elems[i].end();
-                            if( parser_err )
+                      } /*while*/
+                    if (empty)
+                      {
+                      /* tag ends immediately */
+                        if (elems[tagindex].end)
+                          {
+                            elems[tagindex].end();
+                            if (parser_err)
                                 return 1;
-                        }
-                    } else {
-                        statehistory[depth]=i;
-                        curstate=elems[i].newstate;
-                    }
+                          } /*if*/
+                      }
+                    else
+                      {
+                        statehistory[depth] = tagindex;
+                        curstate = elems[tagindex].newstate;
+                      } /*if*/
                     break;
-                }
-            if( !elems[i].elemname ) {
-                fprintf(stderr,"ERR:  Cannot match start tag '%s'.  Valid tags are:\n",elemname);
-                for( i=0; elems[i].elemname; i++ )
-                    if( curstate==elems[i].parentstate )
-                        fprintf(stderr,"ERR:      %s\n",elems[i].elemname);
+                  } /*if; for*/
+            if (!elems[tagindex].elemname)
+              {
+                fprintf(stderr, "ERR:  Cannot match start tag '%s'.  Valid tags are:\n", elemname);
+                for (tagindex = 0; elems[tagindex].elemname; tagindex++)
+                    if (curstate == elems[tagindex].parentstate)
+                        fprintf(stderr, "ERR:      %s\n", elems[tagindex].elemname);
                 return 1;
-            }
+              } /*if*/
             xmlFree((xmlChar *)elemname);
-            break;
-        }
-
+          }
+        break;
         case XML_READER_TYPE_END_ELEMENT:
-            i=statehistory[xmlTextReaderDepth(f)];
-            if( elems[i].end ) {
-                elems[i].end();
-                if( parser_err )
+          {
+            const int tagindex = statehistory[xmlTextReaderDepth(f)];
+            if (elems[tagindex].end)
+              {
+                elems[tagindex].end();
+                if (parser_err)
                     return 1;
-            }
-            curstate=elems[i].parentstate;
+              } /*if*/
+            curstate = elems[tagindex].parentstate;
           /* Note I don't handle sub-tags mixed with content! */
-            if( parser_body )
-                free(parser_body);
+            free(parser_body);
             parser_body = 0;
             parser_acceptbody = false;
-            if( !curstate )
+            if (!curstate)
                 goto done_parsing;
-            break;
-
-        case XML_READER_TYPE_TEXT: {
+          }
+        break;
+        case XML_READER_TYPE_TEXT:
+          {
             const char * const v = (const char *)xmlTextReaderValue(f);
-
-            if( !parser_body ) {
+            if (!parser_body)
+              {
                 // stupid buggy libxml2 2.5.4 that ships with RedHat 9.0!
                 // we must manually check if this is just whitespace
-                for( i=0; v[i]; i++ )
-                    if( v[i]!='\r' &&
-                        v[i]!='\n' &&
-                        v[i]!=' '  &&
-                        v[i]!='\t' )
+                int i;
+                for (i = 0; v[i]; i++)
+                    if
+                      (
+                            v[i] != '\r'
+                        &&
+                            v[i] != '\n'
+                        &&
+                            v[i] != ' '
+                        &&
+                            v[i] != '\t'
+                      )
                         goto has_nonws_body;
                 xmlFree((xmlChar *)v);
                 break;
-            }
-        has_nonws_body:
-            if( !parser_acceptbody ) {
-                fprintf(stderr,"ERR:  text not allowed here\n");
+              } /*if*/
+has_nonws_body:
+            if (!parser_acceptbody)
+              {
+                fprintf(stderr, "ERR:  text not allowed here\n");
                 return 1;
-            }
-
-            if( !parser_body )
-                parser_body=strdup(v); /* first lot of tag content */
-            else {
+              } /*if*/
+            if (!parser_body)
+                parser_body = strdup(v); /* first lot of tag content */
+            else
+              {
               /* append to previous tag content */
-                parser_body=realloc(parser_body,strlen(parser_body)+strlen(v)+1);
-                strcat(parser_body,v);
-            }
+                parser_body = realloc(parser_body, strlen(parser_body) + strlen(v) + 1);
+                strcat(parser_body, v);
+              } /*if*/
             xmlFree((xmlChar *)v);
-            break;
-        }
-
+          }
+        break;
         default:
-            fprintf(stderr,"ERR:  Unknown XML node type %d\n",xmlTextReaderNodeType(f));
-            return 1;
-        }
-    }
+            fprintf(stderr, "ERR:  Unknown XML node type %d\n", xmlTextReaderNodeType(f));
+            exit(1);
+          } /*switch*/
+      } /*while*/
  done_parsing:
     xmlFreeTextReader(f);
-
     return 0;
-}
+  } /*readxml*/
 
 bool xml_ison(const char * s, const char * attrname)
-  /* interprets v as a value indicating yes/no/on/off, returning 1 for yes/on or 0 for no/off. */
-{
-    if (!strcmp(s,"1") || !strcasecmp(s,"on") || !strcasecmp(s,"yes"))
+  /* interprets v as a value indicating yes/no/on/off, returning true for yes/on or false for no/off. */
+  {
+    if (!strcmp(s, "1") || !strcasecmp(s, "on") || !strcasecmp(s, "yes"))
         return 1;
-    if (!strcmp(s,"0") || !strcasecmp(s,"off") || !strcasecmp(s,"no"))
+    if (!strcmp(s, "0") || !strcasecmp(s, "off") || !strcasecmp(s, "no"))
         return 0;
    fprintf(stderr, "ERR:  Cannot parse boolean value \"%s\" for attribute \"%s\"\n", s, attrname);
  /* parser_err = true; */
-   exit(1);
-}
-
-#if defined(HAVE_ICONV) && defined(HAVE_LANGINFO_CODESET)
-
-static iconv_t get_conv()
-  /* returns a reusable iconv_t object (allocated on the first call)
-    for converting strings from UTF-8 to the current locale encoding. */
-{
-    static iconv_t ic=ICONV_NULL; /* initially unallocated */
-
-    if( ic==ICONV_NULL ) {
-      /* first call */
-        char *enc;
-
-        errno=0;
-        enc=setlocale(LC_ALL,"");
-        if( enc ) {
-            fprintf(stderr,"INFO: Locale=%s\n",enc);
-            if( !setlocale(LC_NUMERIC,"C") ) {
-                fprintf(stderr,"ERR:  Cannot set numeric locale to C!\n");
-                exit(1);
-            }
-        } else
-            fprintf(stderr,"WARN: Error reading locale (%m), assuming C\n");
-        enc=nl_langinfo(CODESET);
-        fprintf(stderr,"INFO: Converting filenames to %s\n",enc);
-        ic=iconv_open(enc,"UTF-8");
-        if( ic==ICONV_NULL ) {
-            fprintf(stderr,"ERR:  Cannot generate charset conversion from UTF8 to %s\n",enc);
-            exit(1);
-        }
-    }
-    return ic;
-}
-
-char *utf8tolocal(const char *in)
-  /* converts a UTF-8-encoded character string to the current locale encoding,
-    suitable for use for file names. */
-{
-    iconv_t c=get_conv();
-    size_t inlen=strlen(in);
-    size_t outlen=inlen*5; /* hopefully this is enough */
-    char *r=malloc(outlen+1);
-    char *out=r;
-    size_t v;
-
-    v=iconv(c, (char **)&in,&inlen,&out,&outlen);
-    if(v==-1) {
-        fprintf(stderr,"ERR:  Cannot convert UTF8 string '%s': %s\n",in,strerror(errno));
-        exit(1);
-    }
-    *out=0;
-
-    r=realloc(r,strlen(r)+1); // reduce memory requirements
-    
-    return r;
-}
-#else
-char *utf8tolocal(const char *in)
-{
-    return strdup(in);
-}
-#endif
+    exit(1);
+  } /*xml_ison*/

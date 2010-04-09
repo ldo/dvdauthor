@@ -166,6 +166,15 @@ char * strndup
 
 enum {VF_NONE=0,VF_NTSC=1,VF_PAL=2}; /* values for videodesc.vformat in da-internal.h as well as other uses */
 
+#if HAVE_ICONV && LOCALIZE_FILENAMES
+
+char * localize_filename(const char * pathname);
+  /* converts a filename from UTF-8 to localized encoding. */
+
+#else
+#    define localize_filename(pathname) (strdup(pathname))
+#endif
+
 /* values for vfile.ftype */
 #define VFTYPE_FILE 0 /* an actual file I opened */
 #define VFTYPE_PIPE 1 /* an actual pipe I opened to/from a child process */

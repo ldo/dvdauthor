@@ -41,6 +41,7 @@ char * locale_decode
   )
   /* allocates and returns a string containing the UTF-8 representation of
     localestr interpreted according to the user's locale settings. */
+  /* not actually used anywhere */
   {
     char * result;
 #ifdef HAVE_ICONV
@@ -129,6 +130,49 @@ char * strndup
         result;
   } /*strndup*/
 #endif /*HAVE_STRNDUP*/
+
+#if HAVE_ICONV && LOCALIZE_FILENAMES
+
+static iconv_t
+    to_locale = ICONV_NULL;
+
+char * localize_filename(const char * pathname)
+  /* converts a filename from UTF-8 to localized encoding. */
+  {
+    char * result;
+    size_t inlen, outlen;
+    char * resultnext;
+    if (to_locale == ICONV_NULL)
+      {
+        fprintf(stderr, "INFO: Converting filenames to %s\n", default_charset);
+        to_locale = iconv_open(default_charset, "UTF-8");
+        if (to_locale == ICONV_NULL)
+          {
+            fprintf(stderr, "ERR:  Cannot convert from UTF-8 to charset \"%s\"\n", default_charset);
+            exit(1);
+          } /*if*/
+      } /*if*/
+    inlen = strlen(pathname);
+    outlen = inlen * 5; /* should be enough? */
+    result = malloc(outlen);
+    resultnext = result;
+    if (iconv(to_locale, (char **)&pathname, &inlen, &resultnext, &outlen) < 0)
+      {
+        fprintf
+          (
+            stderr,
+            "ERR:  Error %d -- %s encoding pathname \"%s\"\n",
+            errno, strerror(errno), pathname
+          );
+        exit(1);
+      } /*if*/
+    assert(outlen != 0); /* there will be room for ... */
+    *resultnext++ = 0; /* ... terminating null */
+    result = realloc(result, resultnext - result); /* free unneeded memory */
+    return result;
+  } /*localize_filename*/
+
+#endif
 
 struct vfile varied_open
   (

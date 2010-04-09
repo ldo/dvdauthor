@@ -113,7 +113,13 @@ else
 fi
 ])
 
-AM_LANGINFO_CODESET
+AC_ARG_ENABLE([localize-filenames],
+AS_HELP_STRING([--enable-localize-filenames], [specifies that filenames are to be interpreted in the locale encoding. If omitted, they are always interpreted as UTF-8]),
+[
+AC_DEFINE(LOCALIZE_FILENAMES, 1, [Whether to localize filenames])
+])
+
+dnl AM_LANGINFO_CODESET
 
 AM_ICONV
 
