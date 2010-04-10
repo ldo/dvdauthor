@@ -48,19 +48,37 @@
 #include <fribidi/fribidi.h>
 #endif
 
+// subtitle formats
+#define SUB_INVALID   -1
+#define SUB_MICRODVD  0 /* see <http://en.wikipedia.org/wiki/MicroDVD> */
+#define SUB_SUBRIP    1 /* see <http://wiki.multimedia.cx/index.php?title=SubRip> */
+#define SUB_SUBVIEWER 2 /* see <http://en.wikipedia.org/wiki/SubViewer>, sample <http://wiki.videolan.org/SubViewer> */
+#define SUB_SAMI      3 /* see <http://en.wikipedia.org/wiki/SAMI>, sample <http://www.titlefactory.com/TitleFactoryDocs/sami_format.htm> */
+#define SUB_VPLAYER   4
+#define SUB_RT        5
+#define SUB_SSA       6 /* spec is at <http://moodub.free.fr/video/ass-specs.doc>, or see <http://www.matroska.org/technical/specs/subtitles/ssa.html> */
+#define SUB_PJS       7 /* Phoenix Japanimation Society */
+#define SUB_MPSUB     8
+#define SUB_AQTITLE   9
+#define SUB_SUBVIEWER2 10 /* see <http://en.wikipedia.org/wiki/SubViewer>, sample <http://wiki.videolan.org/SubViewer> */
+#define SUB_SUBRIP09 11
+#define SUB_JACOSUB  12  /* spec is at <http://unicorn.us.com/jacosub/jscripts.html>. */
+
 /* Maximal length of line of a subtitle */
 #define LINE_LEN 1000
-static float mpsub_position=0;
-static float mpsub_multiplier=1.;
-static int sub_slacktime = 20000; //20 sec
+
+static float
+  /* global state for mpsub subtitle format */
+    mpsub_position = 0.0,
+      /* for determining next start time, because file format only gives incremental durations */
+    mpsub_multiplier = 1.0; /* for scaling times */
+static int
+  /* global state for sami subtitle format */
+    sami_sub_slacktime = 20000; //20 sec
 
 static int sub_no_text_pp=0;   // 1 => do not apply text post-processing
                         // like {\...} elimination in SSA format.
-
-static int sub_match_fuzziness=0; // level of sub name matching fuzziness
-
-/* Use the SUB_* constant defined in the header file */
-static int sub_format=SUB_INVALID;
+  /* never set to any other value */
 
 #define USE_SORTSUB 1
   /* whether to ensure that subtitle entries are sorted into time order */
@@ -119,109 +137,6 @@ static const char *stristr(const char *haystack, const char *needle)
     return NULL;
   } /*stristr*/
 
-#if 0
-char * strreplace(char * in, char * what, char * whereof)
-  {
-     int i;
-     char * tmp;
-     if
-       (
-            in == NULL
-        ||
-            what == NULL
-        ||
-            whereof == NULL
-        ||
-            (tmp = strstr(in, what)) == NULL
-      )
-        return NULL;
-     for (i = 0; i < strlen(whereof); i++)
-        tmp[i] = whereof[i];
-     if (strlen(what) > strlen(whereof))
-        tmp[i] = 0;
-     return in;
-  } /*strreplace*/
-#endif
-
-static void strcpy_trim(char *d, const char *s)
-  /* copies s to d, leaving out leading and trailing whitespace. */
-  {
-    // skip leading whitespace
-    while (*s && !isalnum(*s))
-      {
-        s++;
-      } /*while*/
-    for (;;)
-      {
-        // copy word
-        while (*s && isalnum(*s))
-          {
-            *d = tolower(*s);
-            s++; d++;
-          } /*while*/
-        if (*s == 0)
-            break;
-        // trim excess whitespace
-        while (*s && !isalnum(*s))
-          {
-            s++;
-          } /*while*/
-        if (*s == 0)
-            break;
-        *d++ = ' ';
-      } /*for*/
-    *d = 0;
-  } /*strcpy_trim*/
-
-static void strcpy_strip_ext(char *d, const char *s)
-  /* copies s to d, leaving out any filename extension and lowercasing the rest
-    if there was an extension. */
-  {
-    const char * const tmp = strrchr(s,'.');
-    if (!tmp)
-      {
-        strcpy(d, s); /* no extension, copy whole thing--not lowercased? */
-        return;
-      }
-    else
-      {
-        strncpy(d, s, tmp - s);
-        d[tmp - s] = 0;
-      } /*if*/
-    while (*d)
-      {
-        *d = tolower(*d);
-        d++;
-      } /*while*/
-  } /*strcpy_strip_ext*/
-
-static void strcpy_get_ext(char *d, const char *s)
-  /* extracts the part of s after the last dot into d. */
-  {
-    const char * const tmp = strrchr(s,'.');
-    if (!tmp)
-      {
-        strcpy(d, "");
-        return;
-      }
-    else
-      {
-        strcpy(d, tmp + 1);
-      } /*if*/
-  } /*strcpy_get_ext*/
-
-static bool whiteonly(const char *s)
-  /* does s consist entirely of whitespace. */
-  {
-    while (*s)
-      {
-        if (isalnum(*s))
-            return false;
-        s++;
-    } /*while*/
-    return true;
-  } /*whiteonly*/
-
 /*
     Input-file reading
 */
@@ -248,7 +163,7 @@ static int
     ic_needmore,
     ic_eof;
 
-void subcp_open(void)
+static void subcp_open(void)
   /* opens an iconv context for converting subtitles from sub_cp to UTF-8 if appropriate. */
   {
     const char * const fromcp = sub_cp != NULL ? sub_cp : default_charset;
@@ -276,7 +191,7 @@ void subcp_open(void)
       } /*if*/
   } /*subcp_open*/
 
-void subcp_close(void)
+static void subcp_close(void)
   /* closes the previously-opened iconv context, if any. */
   {
     if (icdsc != ICONV_NULL)
@@ -554,7 +469,7 @@ subtitle *sub_read_line_sami(subtitle *current)
           {
             const char * const slacktime_s = stristr(s, "Slacktime:");
             if (slacktime_s)
-                sub_slacktime = strtol(slacktime_s + 10, NULL, 0) / 10;
+                sami_sub_slacktime = strtol(slacktime_s + 10, NULL, 0) / 10;
             s = stristr(s, "Start=");
             if (s)
               {
@@ -670,7 +585,7 @@ subtitle *sub_read_line_sami(subtitle *current)
     // For the last subtitle
     if (current->end <= 0)
       {
-        current->end = current->start + sub_slacktime;
+        current->end = current->start + sami_sub_slacktime;
         *p = '\0';
         trail_space(text);
         if (text[0] != '\0')
@@ -1262,7 +1177,7 @@ subtitle *sub_read_line_pjs(subtitle *current)
 subtitle *sub_read_line_mpsub(subtitle *current)
   {
     char line[LINE_LEN + 1];
-    float a,b;
+    float startdelay, duration;
     int num = 0;
     char *p, *q;
     do /* look for valid timing line */
@@ -1270,10 +1185,10 @@ subtitle *sub_read_line_mpsub(subtitle *current)
         if (!sub_fgets(line, LINE_LEN))
             return NULL;
       }
-    while (sscanf(line, "%f %f", &a, &b) != 2);
-    mpsub_position += a * mpsub_multiplier;
+    while (sscanf(line, "%f %f", &startdelay, &duration) != 2);
+    mpsub_position += startdelay * mpsub_multiplier;
     current->start = (int)mpsub_position;
-    mpsub_position += b * mpsub_multiplier;
+    mpsub_position += duration * mpsub_multiplier;
     current->end = (int)mpsub_position;
     while (num < SUB_MAX_TEXT)
       {
@@ -1813,12 +1728,12 @@ static int sub_autodetect(bool * uses_time)
           } /*if*/
         if (sscanf(line, "FORMAT=%d", &i) == 1)
           {
-            *uses_time = false;
+            *uses_time = false; /* actually means that durations are in seconds */
             return SUB_MPSUB;
           } /*if*/
         if (sscanf(line, "FORMAT=TIM%c", &p) == 1 && p == 'E')
           {
-            *uses_time = true;
+            *uses_time = true; /* actually means that durations are in hundredths of a second */
             return SUB_MPSUB;
           } /*if*/
         if (strstr(line, "-->>"))
@@ -1929,6 +1844,7 @@ sub_data *sub_read_file(const char *filename, float fps)
     formats which specify fractional-second durations in frames. */
   {
     //filename is assumed to be malloc'ed, free() is used in sub_free()
+    int sub_format;
     int n_max;
     subtitle *first, *second, *new_sub, *return_sub;
 #ifdef USE_SORTSUB
@@ -2609,240 +2525,3 @@ void list_sub_file(const sub_data * subd)
     fprintf(stdout, "Subtitle format %s time.\n", subd->sub_uses_time ? "uses" : "doesn't use");
     fprintf(stdout, "Read %i subtitles, %i errors.\n", subd->sub_num, subd->sub_errs);
   } /*list_sub_file*/
-
-void dump_srt(sub_data* subd, float fps){
-    int i,j;
-    int h,m,s,ms;
-    FILE * fd;
-    subtitle * onesub;
-    unsigned long temp;
-    subtitle *subs = subd->subtitles;
-
-    if (!subd->sub_uses_time && sub_fps == 0)
-    sub_fps = fps;
-    fd=fopen("dumpsub.srt","w");
-    if(!fd)
-    {
-    perror("dump_srt: fopen");
-    return;
-    }
-    for(i=0; i < subd->sub_num; i++)
-    {
-        onesub=subs+i;    //=&subs[i];
-    fprintf(fd,"%d\n",i+1);//line number
-
-    temp=onesub->start;
-    if (!subd->sub_uses_time)
-        temp = temp * 100 / sub_fps;
-    temp -= sub_delay * 100;
-    h=temp/360000;temp%=360000; //h =1*100*60*60
-    m=temp/6000;  temp%=6000;   //m =1*100*60
-    s=temp/100;   temp%=100;    //s =1*100
-    ms=temp*10;         //ms=1*10
-    fprintf(fd,"%02d:%02d:%02d,%03d --> ",h,m,s,ms);
-
-    temp=onesub->end;
-    if (!subd->sub_uses_time)
-        temp = temp * 100 / sub_fps;
-    temp -= sub_delay * 100;
-    h=temp/360000;temp%=360000;
-    m=temp/6000;  temp%=6000;
-    s=temp/100;   temp%=100;
-    ms=temp*10;
-    fprintf(fd,"%02d:%02d:%02d,%03d\n",h,m,s,ms);
-
-    for(j=0;j<onesub->lines;j++)
-        fprintf(fd,"%s\n",onesub->text[j]);
-
-    fprintf(fd,"\n");
-    }
-    fclose(fd);
-    fprintf(stderr,"INFO: Subtitles dumped in \'dumpsub.srt\'.\n");
-}
-
-void dump_mpsub(sub_data* subd, float fps){
-    int i,j;
-    FILE *fd;
-    float a,b;
-        subtitle *subs = subd->subtitles;
-
-    mpsub_position = subd->sub_uses_time? (sub_delay*100) : (sub_delay*fps);
-    if (sub_fps==0) sub_fps=fps;
-
-    fd=fopen ("dump.mpsub", "w");
-    if (!fd) {
-        perror ("dump_mpsub: fopen");
-        return;
-    }
-
-
-    if (subd->sub_uses_time) fprintf (fd,"FORMAT=TIME\n\n");
-    else fprintf (fd, "FORMAT=%5.2f\n\n", fps);
-
-    for(j=0; j < subd->sub_num; j++){
-        subtitle* egysub=&subs[j];
-        if (subd->sub_uses_time) {
-            a=((egysub->start-mpsub_position)/100.0);
-            b=((egysub->end-egysub->start)/100.0);
-            if ( (float)((int)a) == a)
-            fprintf (fd, "%.0f",a);
-            else
-            fprintf (fd, "%.2f",a);
-
-            if ( (float)((int)b) == b)
-            fprintf (fd, " %.0f\n",b);
-            else
-            fprintf (fd, " %.2f\n",b);
-        } else {
-            fprintf (fd, "%ld %ld\n", (long)((egysub->start*(fps/sub_fps))-((mpsub_position*(fps/sub_fps)))),
-                    (long)(((egysub->end)-(egysub->start))*(fps/sub_fps)));
-        }
-
-        mpsub_position = egysub->end;
-        for (i=0; i<egysub->lines; i++) {
-            fprintf (fd, "%s\n",egysub->text[i]);
-        }
-        fprintf (fd, "\n");
-    }
-    fclose (fd);
-    fprintf(stderr,"INFO: Subtitles dumped in \'dump.mpsub\'.\n");
-}
-
-void dump_microdvd(sub_data* subd, float fps) {
-    int i, delay;
-    FILE *fd;
-    subtitle *subs = subd->subtitles;
-    if (sub_fps == 0)
-    sub_fps = fps;
-    fd = fopen("dumpsub.txt", "w");
-    if (!fd) {
-    perror("dumpsub.txt: fopen");
-    return;
-    }
-    delay = sub_delay * sub_fps;
-    for (i = 0; i < subd->sub_num; ++i) {
-    int j, start, end;
-    start = subs[i].start;
-    end = subs[i].end;
-    if (subd->sub_uses_time) {
-        start = start * sub_fps / 100 ;
-        end = end * sub_fps / 100;
-    }
-    else {
-        start = start * sub_fps / fps;
-        end = end * sub_fps / fps;
-    }
-    start -= delay;
-    end -= delay;
-    fprintf(fd, "{%d}{%d}", start, end);
-    for (j = 0; j < subs[i].lines; ++j)
-        fprintf(fd, "%s%s", j ? "|" : "", subs[i].text[j]);
-    fprintf(fd, "\n");
-    }
-    fclose(fd);
-    fprintf(stderr,"INFO: Subtitles dumped in \'dumpsub.txt\'.\n");
-}
-
-void dump_jacosub(sub_data* subd, float fps) {
-    int i,j;
-    int h,m,s,cs;
-    FILE * fd;
-    subtitle * onesub;
-    unsigned long temp;
-    subtitle *subs = subd->subtitles;
-
-    if (!subd->sub_uses_time && sub_fps == 0)
-    sub_fps = fps;
-    fd=fopen("dumpsub.jss","w");
-    if(!fd)
-    {
-    perror("dump_jacosub: fopen");
-    return;
-    }
-    fprintf(fd, "#TIMERES %d\n", (subd->sub_uses_time) ? 100 : (int)sub_fps);
-    for(i=0; i < subd->sub_num; i++)
-    {
-        onesub=subs+i;    //=&subs[i];
-
-    temp=onesub->start;
-    if (!subd->sub_uses_time)
-        temp = temp * 100 / sub_fps;
-    temp -= sub_delay * 100;
-    h=temp/360000;temp%=360000; //h =1*100*60*60
-    m=temp/6000;  temp%=6000;   //m =1*100*60
-    s=temp/100;   temp%=100;    //s =1*100
-    cs=temp;            //cs=1*10
-    fprintf(fd,"%02d:%02d:%02d.%02d ",h,m,s,cs);
-
-    temp=onesub->end;
-    if (!subd->sub_uses_time)
-        temp = temp * 100 / sub_fps;
-    temp -= sub_delay * 100;
-    h=temp/360000;temp%=360000;
-    m=temp/6000;  temp%=6000;
-    s=temp/100;   temp%=100;
-    cs=temp;
-    fprintf(fd,"%02d:%02d:%02d.%02d {~} ",h,m,s,cs);
-
-    for(j=0;j<onesub->lines;j++)
-        fprintf(fd,"%s%s",j ? "\\n" : "", onesub->text[j]);
-
-    fprintf(fd,"\n");
-    }
-    fclose(fd);
-    fprintf(stderr,"INFO: Subtitles dumped in \'dumpsub.js\'.\n");
-}
-
-void dump_sami(sub_data* subd, float fps) {
-    int i,j;
-    FILE * fd;
-    subtitle * onesub;
-    unsigned long temp;
-    subtitle *subs = subd->subtitles;
-
-    if (!subd->sub_uses_time && sub_fps == 0)
-    sub_fps = fps;
-    fd=fopen("dumpsub.smi","w");
-    if(!fd)
-    {
-    perror("dump_sami: fopen");
-    return;
-    }
-    fprintf(fd, "<SAMI>\n"
-        "<HEAD>\n"
-        "   <STYLE TYPE=\"Text/css\">\n"
-        "   <!--\n"
-        "     P {margin-left: 29pt; margin-right: 29pt; font-size: 24pt; text-align: center; font-family: Tahoma; font-weight: bold; color: #FCDD03; background-color: #000000;}\n"
-        "     .SUBTTL {Name: 'Subtitles'; Lang: en-US; SAMIType: CC;}\n"
-        "   -->\n"
-        "   </STYLE>\n"
-        "</HEAD>\n"
-        "<BODY>\n");
-    for(i=0; i < subd->sub_num; i++)
-    {
-        onesub=subs+i;    //=&subs[i];
-
-    temp=onesub->start;
-    if (!subd->sub_uses_time)
-        temp = temp * 100 / sub_fps;
-    temp -= sub_delay * 100;
-    fprintf(fd,"\t<SYNC Start=%lu>\n"
-            "\t  <P>", temp * 10);
-
-    for(j=0;j<onesub->lines;j++)
-        fprintf(fd,"%s%s",j ? "<br>" : "", onesub->text[j]);
-
-    fprintf(fd,"\n");
-
-    temp=onesub->end;
-    if (!subd->sub_uses_time)
-        temp = temp * 100 / sub_fps;
-    temp -= sub_delay * 100;
-    fprintf(fd,"\t<SYNC Start=%lu>\n"
-            "\t  <P>&nbsp;\n", temp * 10);
-    }
-    fprintf(fd, "</BODY>\n"
-        "</SAMI>\n");
-    fclose(fd);
-    fprintf(stderr,"INFO: Subtitles dumped in \'dumpsub.smi\'.\n");
-}
