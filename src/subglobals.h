@@ -48,7 +48,6 @@ extern float sub_delay;
 extern float sub_fps;
 extern int suboverlap_enabled;
 extern float font_factor;
-extern char * textsub_font_name;
 extern int current_sub;
 extern unsigned char * textsub_image_buffer; /* where text subtitles are rendered */
 extern float movie_fps;

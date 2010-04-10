@@ -57,9 +57,9 @@
 #include <fontconfig/fontconfig.h>
 #endif /* HAVE_FONTCONFIG */
 
-static int vo_image_width = 0;
-static int vo_image_height = 0;
-static int using_freetype = 0;
+font_desc_t* vo_font = NULL;
+
+static bool freetype_inited = false;
 
 //// constants
 static unsigned int const nr_colors = 256;
@@ -506,8 +506,6 @@ void render_one_glyph(font_desc_t *desc, int c)
     raw_file * const pic_b = desc->pic_b[font];
     int error;
 //  fprintf(stderr, "render_one_glyph %d\n", c);
-    if (!desc->dynamic)
-        return;
     if (desc->width[c] != -1) /* already rendered */
         return;
     if (desc->font[c] == -1) /* can't render without a font face */
@@ -811,7 +809,6 @@ static font_desc_t* init_font_desc()
     if (!desc)
         return NULL;
     memset(desc, 0, sizeof(font_desc_t));
-    desc->dynamic = true;
   /* setup sane defaults, mark all associated storage as unallocated */
     desc->face_cnt = 0;
     desc->charspace = 0;
@@ -834,7 +831,6 @@ void free_font_desc(font_desc_t *desc)
     int i;
     if (!desc)
         return; /* nothing to do */
-//  if (!desc->dynamic) return; // some vo_aa crap, better leaking than crashing
     for (i = 0; i < 16; i++)
       {
         if (desc->pic_a[i])
@@ -868,10 +864,6 @@ static void load_sub_face(const char *name, FT_Face *face)
     FcResult result = FcResultMatch;
     FcChar8 *foundfilename;
 #endif /* HAVE_FONTCONFIG */
-    if (name == NULL)
-      {
-        name = sub_font;
-      } /*if*/
 #if HAVE_FONTCONFIG
     searchpattern = NULL;
     foundpattern = NULL;
@@ -958,8 +950,6 @@ int kerning(font_desc_t *desc, int prevc, int c)
   /* returns the amount of kerning to apply between character c and previous character prevc. */
   {
     FT_Vector kern;
-    if (!vo_font->dynamic)
-        return 0;
     if (prevc < 0 || c < 0) /* need 2 characters to kern */
         return 0;
     if (desc->font[prevc] != desc->font[c]) /* font change => don't kern */
@@ -1080,15 +1070,18 @@ int init_freetype()
  /* initializes the FreeType library. */
   {
     int err;
-  /* initialize freetype */
-    err = FT_Init_FreeType(&library);
-    if (err)
+    if (!freetype_inited)
       {
-        fprintf(stderr, "ERR:  Init_FreeType failed.\n");
-        return -1;
+      /* initialize freetype */
+        err = FT_Init_FreeType(&library);
+        if (err)
+          {
+            fprintf(stderr, "ERR:  Init_FreeType failed.\n");
+            return -1;
+          } /*if*/
+    /*  fprintf(stderr, "INFO: init_freetype\n"); */
+        freetype_inited = true;
       } /*if*/
-/*  fprintf(stderr, "INFO: init_freetype\n"); */
-    using_freetype = 1;
     return 0;
   } /*init_freetype*/
 
@@ -1096,8 +1089,11 @@ int done_freetype()
   /* called when finished with the FreeType library. */
   {
     int err;
-    if (!using_freetype)
+    if (!freetype_inited)
         return 0;
+    freetype_inited = false;
+    free_font_desc(vo_font);
+    vo_font = NULL;
     err = FT_Done_FreeType(library);
     if (err)
       {
@@ -1108,17 +1104,11 @@ int done_freetype()
   } /*done_freetype*/
 
 void load_font_ft(int width, int height)
-  /* sets up vo_font for rendering glyphs with the font loaded from the file
-    textsub_font_name to make subtitles for a movie with the specified width
-    and height. */
+  /* sets up vo_font for rendering glyphs with the font named sub_font to
+    make subtitles for a movie with the specified width and height. */
   {
-    vo_image_width = width;
-    vo_image_height = height;
-    // protection against vo_aa font hacks
-    if (vo_font && !vo_font->dynamic)
-        return;
     free_font_desc(vo_font);
-    vo_font = read_font_desc_ft(textsub_font_name, width, height);
+    vo_font = read_font_desc_ft(sub_font, width, height);
   } /*load_font_ft*/
 
 #endif /* HAVE_FREETYPE */

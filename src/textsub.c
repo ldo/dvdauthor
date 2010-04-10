@@ -112,9 +112,7 @@ int movie_height=574;
 sub_data *textsub_subdata;
 subtitle *vo_sub;
 unsigned char *textsub_image_buffer;
-char *textsub_font_name;
 int current_sub;
-font_desc_t* vo_font;
 int sub_max_chars;
 int sub_max_lines;
 int sub_max_font_height;
@@ -136,9 +134,7 @@ bool textsub_init
     const size_t image_buffer_size =
         sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width;
     vo_sub = NULL;
-    textsub_font_name = NULL; /* never set to any other value! */
     current_sub = -1;
-    vo_font = NULL;
     sub_last = 1;
     sub_max_chars = 0;
     sub_max_lines = 0;
@@ -149,8 +145,7 @@ bool textsub_init
     movie_width = textsub_movie_width;
     movie_height = textsub_movie_height;
 #ifdef HAVE_FREETYPE
-    if (!vo_font)
-        init_freetype();
+    init_freetype();
 #endif
     vo_init_osd();
 #ifdef ICONV
@@ -170,7 +165,7 @@ bool textsub_init
       /* fixme: sub_free never called! */
   /* following doesn't seem to actually achieve anything: */
     vo_update_osd(textsub_movie_width, textsub_movie_height);
-    vo_osd_changed(OSDTYPE_SUBTITLE);
+    vo_osd_changed();
     return textsub_subdata != NULL;
   } /*textsub_init*/
 
@@ -213,7 +208,7 @@ void textsub_render(subtitle * sub)
   /* does the actual rendering of a previously-loaded subtitle. */
   {
     vo_sub = sub;
-    vo_osd_changed(OSDTYPE_SUBTITLE);
+    vo_osd_changed();
     memset(textsub_image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width);
       /* fill with default transparent colour */
     vo_update_osd(movie_width, movie_height);
@@ -236,8 +231,6 @@ void textsub_finish()
     vo_finish_osd();
     free(textsub_image_buffer);
 #ifdef HAVE_FREETYPE
-    free_font_desc(vo_font);
-    vo_font = NULL;
     done_freetype();
 #endif
   } /*textsub_finish*/

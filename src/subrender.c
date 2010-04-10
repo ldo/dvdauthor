@@ -36,12 +36,51 @@
 
 #define NEW_SPLITTING
 
+typedef struct mp_osd_bbox_s
+  {
+    int x1,y1; /* top left */
+    int x2,y2; /* bottom right */
+  } mp_osd_bbox_t;
+
+#define MAX_UCS 1600
+#define MAX_UCSLINES 16
+
+typedef struct mp_osd_obj_s /* for holding and maintaining a rendered subtitle image */
+  {
+    struct mp_osd_obj_s* next; /* linked list */
+    unsigned char alignment; // 2 bits: x;y percentages, 2 bits: x;y relative to parent; 2 bits: alignment left/right/center
+    unsigned short flags;
+  /* int x; */
+    int y;
+    int dxs, dys;
+    mp_osd_bbox_t bbox; // bounding box
+  /* mp_osd_bbox_t old_bbox; */ // the renderer will save bbox here
+    union
+      {
+        struct /* only one used by spumux */
+          {
+            void* sub;          // value of vo_sub at last update
+            int utbl[MAX_UCS + 1]; /* all display lines concatenated, each terminated by a null */
+            int xtbl[MAX_UCSLINES]; /* x-positions of lines for centre alignment */
+            int lines;          // no. of lines
+          } subtitle;
+      /* struct
+          {
+            int elems;
+          } progbar; */
+      } params;
+    int stride; /* bytes per row of both alpha and bitmap buffers */
+    int allocated; /* size in bytes of each buffer */
+    unsigned char *alpha_buffer; /* alpha channel, one byte per pixel */
+    unsigned char *bitmap_buffer; /* one byte per pixel */
+  } mp_osd_obj_t;
+
+/* masks for mp_osd_obj_s.flags, only the ones used by spumux */
+#define OSDFLAG_FORCE_UPDATE 16 /* indicates osd obj needs to be redrawn, but we could do without this flag */
+
 static int sub_pos=100;
 /* static int sub_width_p=100; */
-static int vo_osd_changed_status = 0;
 static mp_osd_obj_t* vo_osd_list=NULL;
-
-static bool force_load_font;
 
 static inline void vo_draw_alpha_rgb24
   (
@@ -227,10 +266,8 @@ inline static void vo_update_text_sub
     int max_line_height;
     int xtblc, utblc;
 
-    obj->flags |= OSDFLAG_CHANGED | OSDFLAG_VISIBLE;
     if (!vo_sub || !vo_font)
       {
-        obj->flags &= ~OSDFLAG_VISIBLE;
         return;
       } /*if*/
     obj->bbox.y2 = obj->y = dys - sub_bottom_margin;
@@ -735,7 +772,6 @@ inline static void vo_update_text_sub
            } */
         obj->bbox.y1 = obj->y - 3;
     //  obj->bbox.y2 = obj->y + obj->params.subtitle.lines * vo_font->height;
-        obj->flags |= OSDFLAG_BBOX;
         alloc_buf(obj);
       /* fprintf(stderr,"^2 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height); */
       }
@@ -828,7 +864,7 @@ inline static void vo_update_text_sub
       }
   } /*vo_update_text_sub*/
 
-static mp_osd_obj_t * new_osd_obj(int type)
+static mp_osd_obj_t * new_osd_obj(void)
   /* creates a new mp_osd_obj_t object with initially no buffers allocated,
     pushes it on the head of vo_osd_list, and returns it. */
   {
@@ -836,23 +872,20 @@ static mp_osd_obj_t * new_osd_obj(int type)
     memset(osd, 0, sizeof(mp_osd_obj_t));
     osd->next = vo_osd_list;
     vo_osd_list = osd;
-    osd->type = type;
     osd->alpha_buffer = NULL;
     osd->bitmap_buffer = NULL;
     osd->allocated = -1;
     return osd;
   } /*new_osd_obj*/
 
-int vo_update_osd(int dxs, int dys)
+void vo_update_osd(int dxs, int dys)
   {
     mp_osd_obj_t * obj = vo_osd_list;
-    int chg = 0; /* bitmask of which osd object types have changed */
 
 #ifdef HAVE_FREETYPE
     // here is the right place to get screen dimensions
-    if (!vo_font || force_load_font)
+    if (!vo_font)
       {
-        force_load_font = false;
         load_font_ft(dxs, dys);
       } /*if*/
 #endif
@@ -861,74 +894,51 @@ int vo_update_osd(int dxs, int dys)
       {
         if (dxs != obj->dxs || dys != obj->dys || obj->flags & OSDFLAG_FORCE_UPDATE)
           {
-            obj->flags |= OSDFLAG_VISIBLE;
-            obj->flags &= ~OSDFLAG_BBOX;
-            switch (obj->type)
+            if (vo_sub)
               {
-            case OSDTYPE_SUBTITLE:
-                if (vo_sub)
-                  {
-                    obj->dxs = dxs;
-                    obj->dys = dys;
-                    vo_update_text_sub(obj, dxs ,dys);
-                  /* obj->dxs = dxs; obj->dys = dys;
-                    fprintf(stderr, "x1:%d x2:%d y1:%d y2:%d\n", obj->bbox.x1, obj->bbox.x2, obj->bbox.y1, obj->bbox.y2); */
-                    vo_draw_alpha_rgb24
-                      (
-                        /*w =*/ obj->bbox.x2 - obj->bbox.x1,
-                        /*h =*/ obj->bbox.y2 - obj->bbox.y1,
-                        /*src =*/ obj->bitmap_buffer,
-                        /*srca =*/ obj->alpha_buffer,
-                        /*srcstride =*/ obj->stride,
-                        /*dstbase =*/
-                                textsub_image_buffer
-                            +
-                                3 * obj->bbox.x1
-                            +
-                                3 * obj->bbox.y1 * movie_width,
-                        /*dststride =*/ movie_width * 3
-                      );
-                  } /*if*/
-            break;
-              } /*switch*/
-            // check if visibility changed:
-            if ((obj->flags & OSDFLAG_VISIBLE) == 0)
-                obj->flags |= OSDFLAG_CHANGED;
+                obj->dxs = dxs;
+                obj->dys = dys;
+                vo_update_text_sub(obj, dxs ,dys);
+              /* obj->dxs = dxs; obj->dys = dys;
+                fprintf(stderr, "x1:%d x2:%d y1:%d y2:%d\n", obj->bbox.x1, obj->bbox.x2, obj->bbox.y1, obj->bbox.y2); */
+                vo_draw_alpha_rgb24
+                  (
+                    /*w =*/ obj->bbox.x2 - obj->bbox.x1,
+                    /*h =*/ obj->bbox.y2 - obj->bbox.y1,
+                    /*src =*/ obj->bitmap_buffer,
+                    /*srca =*/ obj->alpha_buffer,
+                    /*srcstride =*/ obj->stride,
+                    /*dstbase =*/
+                            textsub_image_buffer
+                        +
+                            3 * obj->bbox.x1
+                        +
+                            3 * obj->bbox.y1 * movie_width,
+                    /*dststride =*/ movie_width * 3
+                  );
+              } /*if*/
             // remove the cause of automatic update:
             obj->flags &= ~OSDFLAG_FORCE_UPDATE;
           } /*if*/
-        if (obj->flags & OSDFLAG_CHANGED)
-          {
-            chg |= 1 << obj->type;
-          /* fprintf(stderr, "DEBUG:OSD chg: %d  V: %s  \n", obj->type, (obj->flags & OSDFLAG_VISIBLE) ? "yes" : "no"); */
-          } /*if*/
         obj = obj->next;
       } /*while*/
-    return chg; /* caller doesn't actually check returned value */
   } /*vo_update_osd*/
 
 void vo_init_osd()
   {
     vo_finish_osd(); /* if previously allocated */
-    new_osd_obj(OSDTYPE_SUBTITLE);
-#ifdef HAVE_FREETYPE
-    force_load_font = true;
-#endif
+    new_osd_obj();
   } /*vo_init_osd*/
 
-int vo_osd_changed(int new_value)
+void vo_osd_changed()
   /* marks all entries in vo_osd_list with the specified type as requiring updates. */
   {
     mp_osd_obj_t * obj = vo_osd_list;
-    const int previous_value = vo_osd_changed_status;
-    vo_osd_changed_status = new_value;
     while (obj)
       {
-        if (obj->type == new_value)
-            obj->flags |= OSDFLAG_FORCE_UPDATE;
+        obj->flags |= OSDFLAG_FORCE_UPDATE;
         obj = obj->next;
       } /*while*/
-    return previous_value;
   } /*vo_osd_changed*/
 
 void vo_finish_osd()
