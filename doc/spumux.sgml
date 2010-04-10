@@ -148,7 +148,7 @@ effort to ensure that will be transparent but there is no guarantee.
 
 </para>
 </refsect1>
-<refsect1><title>Handling text based subtitles</title>
+<refsect1><title>Handling text-based subtitles</title>
 <para>
 
 Spumux is also able to handle text subtitles, which will be rendered to
@@ -159,7 +159,7 @@ Spumux will try to determine the format automatically.
 </para>
 <para>
 
-If processing textbased subtitles no other streams can be defined, buttons 
+If processing text-based subtitles no other streams can be defined, buttons 
 or others need to be processed in another pass with spumux, using another 
 xml file.
 
@@ -175,7 +175,7 @@ is not specified.
 &lt;subpictures&gt;
    &lt;stream&gt;
       &lt;textsub filename="demo1.srt" characterset="ISO8859-1" 
-         fontsize="28.0" font="arial.ttf" horizontal-alignment="left" 
+         fontsize="28.0" font="arial" horizontal-alignment="left" 
          vertical-alignment="bottom" left-margin="60" right-margin="60" 
          top-margin="20" bottom-margin="30" subtitle-fps="25" 
          movie-fps="25" movie-width="720" movie-height="574"
@@ -204,10 +204,10 @@ charactersets can be found at http://www.gnu.org/software/libiconv.
 <para>
 
 The fontsize attribute defines the size of the font in font units.
-The font attribute defines the font used. Spumux will look into the home 
-directory in subdirectory .spumux for fonts on linux systems and will 
-look into the windows/fonts and subdirectory spumux of the cygwin/mingw 
-home directory and into the exucution directory for windows based 
+The font attribute defines the font used. Spumux will match the font name
+using Fontconfig if available, else it will use it as a filename on linux
+systems and will look into the windows/fonts and subdirectory spumux of
+the cygwin/mingw home directory and into the execution directory for windows-based 
 execution for the specified font. Looking for free fonts? One listing is 
 here http://www.microsoft.com/typography/links/links.asp?type=free&amp;part=1 
 (this is only about fonts, not about operating systems).
@@ -243,7 +243,7 @@ spumux to recalculate the subtitle timing if these are not the same.
 
 The movie-width and movie-height attributes define the maximum size of 
 the subtitle page, these shouldn't be larger than the fram-size of the 
-movie frame, normally they are the same. Some DVD-players more like 
+movie frame, normally they are the same. Some DVD players prefer
 subtitle frames that are 2 or 4 pixels smaller in height.
 
 </para>
