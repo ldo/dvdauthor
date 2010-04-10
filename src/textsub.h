@@ -7,7 +7,7 @@ typedef struct /* return result from textsub_find_sub */
 
 extern sub_data *textsub_subdata;
 
-extern sub_data * textsub_init
+bool textsub_init
   (
     const char *textsub_filename,
     float textsub_movie_fps,

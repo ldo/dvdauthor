@@ -272,7 +272,7 @@ static void textsub_complete()
       }
     else
       {
-        if (textsub_init(filename, movie_fps, movie_width, movie_height) == NULL)
+        if (!textsub_init(filename, movie_fps, movie_width, movie_height))
           {
             fprintf(stderr, "ERR:  Couldn't load file %s.\n", filename);
             exit(1);

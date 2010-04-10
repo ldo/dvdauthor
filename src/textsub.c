@@ -54,8 +54,6 @@
 
 
 
-char* dvdsub_lang="";
-/* dvdsub_lang (char) indicates subtitle language (user parameter) */
 float sub_delay=0.0;
 /* sub_delay (float) contains delay for subtitles in 10 msec intervals (optional user parameter, 0.0 for no delay)*/
 float sub_fps=0.0;
@@ -125,7 +123,7 @@ int sub_max_bottom_font_height;
 static int sub_last;
 static int sub_num_of_subtitles;
 
-sub_data * textsub_init
+bool textsub_init
   (
     const char *textsub_filename,
     float textsub_movie_fps,
@@ -160,9 +158,6 @@ sub_data * textsub_init
         if (!strcmp(sub_cp, ""))
             sub_cp = NULL;
 #endif
-    if (dvdsub_lang)
-        if (!strcmp(dvdsub_lang, ""))
-            dvdsub_lang = NULL;
     textsub_image_buffer = malloc(image_buffer_size);
       /* fixme: not freed from previous call! */
     if (textsub_image_buffer == NULL)
@@ -176,7 +171,7 @@ sub_data * textsub_init
   /* following doesn't seem to actually achieve anything: */
     vo_update_osd(textsub_movie_width, textsub_movie_height);
     vo_osd_changed(OSDTYPE_SUBTITLE);
-    return textsub_subdata;
+    return textsub_subdata != NULL;
   } /*textsub_init*/
 
 void textsub_dump_file()
@@ -446,7 +441,7 @@ int main(int argc, char **argv)
   {
     exit(1);
   }
-  if(textsub_init(filename,movie_fps,movie_width,movie_height)==NULL)
+  if(!textsub_init(filename,movie_fps,movie_width,movie_height))
   {
     fprintf(stderr,"ERR:  Couldn't load file %s.\n",filename);
     exit(1);

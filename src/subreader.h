@@ -28,7 +28,6 @@
 sub_data* sub_read_file (const char *filename, float pts);
 void subcp_open (void); /* for demux_ogg.c */
 void subcp_close (void); /* for demux_ogg.c */
-char ** sub_filenames(const char *path, const char *fname);
 void list_sub_file(const sub_data * subd);
 void dump_srt(sub_data* subd, float fps);
 void dump_mpsub(sub_data* subd, float fps);

@@ -17,8 +17,6 @@ typedef struct { /* holds text and related information read from a subtitle file
     int sub_errs;
 } sub_data;
 
-extern char* dvdsub_lang;
-
 #ifdef HAVE_ICONV
 extern char *sub_cp; /* code page for interpreting subtitles */
 #endif
