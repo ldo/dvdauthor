@@ -1179,19 +1179,19 @@ static void initdir(const char * fbase)
       {
         if (mkdir(fbase, 0777) && errno != EEXIST)
           {
-            fprintf(stderr, "ERR: cannot create dir %s: %s\n", fbase, strerror(errno));
+            fprintf(stderr, "ERR:  cannot create dir %s: %s\n", fbase, strerror(errno));
             exit(1);
           } /*if*/
         sprintf(realfbase,"%s/VIDEO_TS",fbase);
         if (mkdir(realfbase, 0777) && errno != EEXIST)
           {
-            fprintf(stderr, "ERR: cannot create dir %s: %s\n", realfbase, strerror(errno));
+            fprintf(stderr, "ERR:  cannot create dir %s: %s\n", realfbase, strerror(errno));
             exit(1);
           } /*if*/
         sprintf(realfbase,"%s/AUDIO_TS",fbase);
         if (mkdir(realfbase, 0777) && errno != EEXIST)
           {
-            fprintf(stderr, "ERR: cannot create dir %s: %s\n", realfbase, strerror(errno));
+            fprintf(stderr, "ERR:  cannot create dir %s: %s\n", realfbase, strerror(errno));
             exit(1);
           } /*if*/
       } /*if*/

@@ -521,7 +521,7 @@ static void mux(bool eoinput)
                 if (debug > -1)
                   {
                     fprintf(stderr,\
-                            "ERR: Sub with too short or negative duration on line %d, skipping\n",\
+                            "ERR:  Sub with too short or negative duration on line %d, skipping\n",\
                             spuindex - 1);
                   } /*if*/
                 exit(1);
@@ -802,13 +802,13 @@ int main(int argc,char **argv)
     sub = malloc(SUB_BUFFER_MAX + SUB_BUFFER_HEADROOM);
     if (!sub)
       {
-        fprintf(stderr, "ERR: Could not allocate space for sub, aborting.\n");
+        fprintf(stderr, "ERR:  Could not allocate space for sub, aborting.\n");
         exit(1);
       } /*if*/
 //fprintf(stderr, "malloc sub=%p\n", sub);
     if (!(cbuf = malloc(65536)))
       {
-        fprintf(stderr, "ERR: Could not allocate space for sub buffer, aborting.\n");
+        fprintf(stderr, "ERR:  Could not allocate space for sub buffer, aborting.\n");
         exit(1);
       } /*if*/
     image_init();
@@ -843,7 +843,7 @@ int main(int argc,char **argv)
             break;
 
             default:
-                fprintf(stderr,"ERR: Mode must be one of dvd, svcd, or cvd\n");
+                fprintf(stderr,"ERR:  Mode must be one of dvd, svcd, or cvd\n");
                 usage();
               } /*switch*/
         break;
@@ -906,7 +906,7 @@ int main(int argc,char **argv)
     skip = 0;
     if (!(sector = malloc(secsize)))
       {
-        fprintf(stderr, "ERR: Could not allocate space for sector buffer, aborting.\n");
+        fprintf(stderr, "ERR:  Could not allocate space for sector buffer, aborting.\n");
         exit(1);
       } /*if*/
 
@@ -1019,8 +1019,11 @@ l_01ba:
       {
         fprintf(stderr, "WARN: no subtitles added\n");
       } /*if*/
-    textsub_statistics();
-    textsub_finish();
+    if (have_textsub)
+      {
+        textsub_statistics();
+        textsub_finish();
+      } /*if*/
     image_shutdown();
     return 0;
 } /* end function main */

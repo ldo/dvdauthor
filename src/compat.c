@@ -104,7 +104,7 @@ unsigned int strtounsigned
       } /*if*/
     if (errno != 0)
       {
-        fprintf(stderr, "ERR: %d converting %s \"%s\" -- %s\n", errno, what, s, strerror(errno));
+        fprintf(stderr, "ERR:  %d converting %s \"%s\" -- %s\n", errno, what, s, strerror(errno));
         exit(1);
       } /*if*/
     return result;
@@ -212,7 +212,7 @@ struct vfile varied_open
       } /*if*/
     if (vf.h == NULL)
       {
-        fprintf(stderr, "ERR: %d opening %s \"%s\" -- %s\n", errno, what, fname, strerror(errno));
+        fprintf(stderr, "ERR:  %d opening %s \"%s\" -- %s\n", errno, what, fname, strerror(errno));
         exit(1);
       } /*if*/
     vf.mode = mode;
@@ -226,7 +226,7 @@ void varied_close(struct vfile vf)
       /* check for errors on final write before closing */
         if (fflush(vf.h) != 0)
           {
-            fprintf(stderr, "ERR: %d on fflush -- %s\n", errno, strerror(errno));
+            fprintf(stderr, "ERR:  %d on fflush -- %s\n", errno, strerror(errno));
             exit(1);
           } /*if*/
       } /*if*/

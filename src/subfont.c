@@ -301,18 +301,18 @@ static int check_font
     pic_b->charwidth = width;
     if (width <= 0)
       {
-        fprintf(stderr, "ERR: Wrong bounding box, width <= 0 !\n");
+        fprintf(stderr, "ERR:  Wrong bounding box, width <= 0 !\n");
         return -1;
       } /*if*/
     if (ymax <= ymin)
       {
-        fprintf(stderr, "ERR: Something went wrong. Use the source!\n");
+        fprintf(stderr, "ERR:  Something went wrong. Use the source!\n");
         return -1;
       } /*if*/
     height = ymax - ymin + 2 * padding;
     if (height <= 0)
       {
-        fprintf(stderr, "ERR: Wrong bounding box, height <= 0 !\n");
+        fprintf(stderr, "ERR:  Wrong bounding box, height <= 0 !\n");
         return -1;
       } /*if*/
     if (desc->max_height < height)
@@ -1257,7 +1257,7 @@ font_desc_t* read_font_desc_ft
     charset_size = prepare_charset_unicode(face, my_charset);
     if (charset_size < 0)
       {
-        fprintf(stderr, "ERR: subtitle font: prepare_charset_unicode failed.\n");
+        fprintf(stderr, "ERR:  subtitle font: prepare_charset_unicode failed.\n");
         free_font_desc(desc);
         return NULL;
       } /*if*/
@@ -1275,14 +1275,14 @@ font_desc_t* read_font_desc_ft
       );
     if (err)
       {
-        fprintf(stderr, "ERR: Cannot prepare subtitle font.\n");
+        fprintf(stderr, "ERR:  Cannot prepare subtitle font.\n");
         free_font_desc(desc);
         return NULL;
       } /*if*/
     err = generate_tables(desc, subtitle_font_thickness, subtitle_font_radius);
     if (err)
       {
-        fprintf(stderr, "ERR: Cannot generate tables.\n");
+        fprintf(stderr, "ERR:  Cannot generate tables.\n");
         free_font_desc(desc);
         return NULL;
       } /*if*/
@@ -1315,7 +1315,7 @@ int init_freetype()
     err = FT_Init_FreeType(&library);
     if (err)
       {
-        fprintf(stderr, "ERR: Init_FreeType failed.\n");
+        fprintf(stderr, "ERR:  Init_FreeType failed.\n");
         return -1;
       } /*if*/
 /*  fprintf(stderr, "INFO: init_freetype\n"); */
@@ -1332,7 +1332,7 @@ int done_freetype()
     err = FT_Done_FreeType(library);
     if (err)
       {
-        fprintf(stderr, "ERR: FT_Done_FreeType failed.\n");
+        fprintf(stderr, "ERR:  FT_Done_FreeType failed.\n");
         return -1;
       } /*if*/
     return 0;

@@ -168,7 +168,7 @@ sub_data * textsub_init
       /* fixme: not freed from previous call! */
     if (textsub_image_buffer == NULL)
      {
-        fprintf(stderr, "ERR: Failed to allocate memory\n");
+        fprintf(stderr, "ERR:  Failed to allocate memory\n");
         exit(1);
       } /*if*/
     memset(textsub_image_buffer, 128, image_buffer_size);
@@ -284,13 +284,13 @@ static struct pngdata create_png
     png.info_ptr = png_create_info_struct(png.png_ptr);
     if (!png.png_ptr) {
         if(verbose > 1)
-            fprintf(stderr,"ERR: PNG Failed to init png pointer\n");
+            fprintf(stderr,"ERR:  PNG Failed to init png pointer\n");
         png.status = ERROR;
         return png;
     }
     if (!png.info_ptr) {
         if(verbose > 1)
-            fprintf(stderr,"ERR: PNG Failed to init png infopointer\n");
+            fprintf(stderr,"ERR:  PNG Failed to init png infopointer\n");
         png_destroy_write_struct
           (
             /*png_ptr_ptr =*/ &png.png_ptr,
@@ -301,7 +301,7 @@ static struct pngdata create_png
     }
     if (setjmp(png.png_ptr->jmpbuf)) {
         if(verbose > 1)
-            fprintf(stderr,"ERR: PNG Internal error!\n");
+            fprintf(stderr,"ERR:  PNG Internal error!\n");
         png_destroy_write_struct(&png.png_ptr, &png.info_ptr);
         fclose(png.fp);
         png.status = ERROR;
@@ -310,7 +310,7 @@ static struct pngdata create_png
 
     png.fp = fopen(fname, "wb");
     if (png.fp == NULL) {
-        fprintf(stderr,"ERR: PNG Error opening %s for writing!\n", strerror(errno));
+        fprintf(stderr,"ERR:  PNG Error opening %s for writing!\n", strerror(errno));
         png.status = ERROR;
         return png;
     }
@@ -375,7 +375,7 @@ char *draw_image(int p_w, int p_h, unsigned char* p_planes,unsigned int p_stride
     png = create_png(buf, p_w, p_h, 0);
 
     if(png.status){
-        fprintf(stderr,"ERR: PNG Error in create_png\n");
+        fprintf(stderr,"ERR:  PNG Error in create_png\n");
         return NULL;
     }
 
@@ -449,7 +449,7 @@ int main(int argc, char **argv)
   }
   if(textsub_init(filename,movie_fps,movie_width,movie_height)==NULL)
   {
-    fprintf(stderr,"ERR: Couldn't load file %s.\n",filename);
+    fprintf(stderr,"ERR:  Couldn't load file %s.\n",filename);
     exit(1);
   }
   if (argc==3)

@@ -835,7 +835,7 @@ static int remapcolor(struct colorremap *cr, int idx)
             return
                 i;
           } /*if; for */
-    fprintf(stderr, "ERR: color map full, unable to allocate new colors.\n");
+    fprintf(stderr, "ERR:  color map full, unable to allocate new colors.\n");
     exit(1);
   } /*remapcolor*/
 
@@ -943,7 +943,7 @@ static void procremap
                 cr->state = CR_WAIT; /* end of SP_DCSQ */
             break;
             default:
-                fprintf(stderr, "ERR: procremap encountered unknown subtitle command: %d\n",*b);
+                fprintf(stderr, "ERR:  procremap encountered unknown subtitle command: %d\n",*b);
                 exit(1);
               } /*switch*/
         break;
@@ -1201,7 +1201,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 int i = 35;
                 if (buf[i] != 2)
                   {
-                    fprintf(stderr, "ERR: dvd info packet is version %d\n", buf[i]);
+                    fprintf(stderr, "ERR:  dvd info packet is version %d\n", buf[i]);
                     exit(1);
                   } /*if*/
                 switch (buf[i + 1]) // packet type
@@ -1311,7 +1311,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                             fprintf
                               (
                                 stderr,
-                                "ERR: dvd info packet command within subtitle: %d\n",
+                                "ERR:  dvd info packet command within subtitle: %d\n",
                                 buf[i]
                               );
                             exit(1);
@@ -1322,7 +1322,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 break;
                         
                 default:
-                    fprintf(stderr, "ERR: unknown dvdauthor-data packet type: %d\n", buf[i + 1]);
+                    fprintf(stderr, "ERR:  unknown dvdauthor-data packet type: %d\n", buf[i + 1]);
                     exit(1);
                 } /*switch*/
 
@@ -1379,7 +1379,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     fprintf
                       (
                         stderr,
-                        "ERR: SCR moves backwards, remultiplex input: %" PRId64" < %" PRId64"\n",
+                        "ERR:  SCR moves backwards, remultiplex input: %" PRId64" < %" PRId64"\n",
                         newscr,
                         lastscr
                       );

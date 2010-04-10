@@ -267,14 +267,14 @@ static void textsub_complete()
     textsub_subtitle_type textsub_subtitle;
     if (filename == NULL)
       {
-        fprintf(stderr, "ERR: Filename of subtitle file missing");
+        fprintf(stderr, "ERR:  Filename of subtitle file missing");
         exit(1);
       }
     else
       {
         if (textsub_init(filename, movie_fps, movie_width, movie_height) == NULL)
           {
-            fprintf(stderr, "ERR: Couldn't load file %s.\n", filename);
+            fprintf(stderr, "ERR:  Couldn't load file %s.\n", filename);
             exit(1);
           } /*if*/
         filename = NULL; /* belongs to textsub_subdata now */

@@ -505,7 +505,7 @@ subtitle *sub_fribidi(subtitle *sub)
             op = (char*)malloc(sizeof(char) * (max(2 * orig_len, 2 * len) + 1));
             if (op == NULL)
               {
-                fprintf(stderr, "ERR: Error allocating mem.\n");
+                fprintf(stderr, "ERR:  Error allocating mem.\n");
                 l++;
                 break;
               } /*if*/
@@ -2550,7 +2550,7 @@ void find_sub(sub_data * subd, unsigned long key)
             vo_sub = NULL;
             return;
           } /*if*/
-        fprintf(stderr, "ERR: HEH????  ");
+        fprintf(stderr, "ERR:  HEH????  ");
       }
     else
       {
@@ -2578,7 +2578,7 @@ void find_sub(sub_data * subd, unsigned long key)
     fprintf
       (
         stderr,
-        "ERR: %ld  ?  %ld --- %ld  [%d]  \n",
+        "ERR:  %ld  ?  %ld --- %ld  [%d]  \n",
         key, vo_sub->start, vo_sub->end, current_sub
       );
     vo_sub = NULL; // no sub here

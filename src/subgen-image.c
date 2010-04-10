@@ -179,7 +179,7 @@ static int read_magick(pict *s)
     }
 
     if( im->columns>MAXX || im->rows>MAXY ) {
-        fprintf(stderr,"ERR: Picture %s is too big: %lux%lu\n",s->fname,im->columns,im->rows);
+        fprintf(stderr,"ERR:  Picture %s is too big: %lux%lu\n",s->fname,im->columns,im->rows);
         DestroyImage(im);
         return -1;
     }
@@ -194,7 +194,7 @@ static int read_magick(pict *s)
            DispatchImage
 #endif
            (im,0,y,im->columns,1,"RGBA",CharPixel,pdata,&ei)) {
-            fprintf(stderr,"ERR: Extracting row %d from %s (%s,%s)\n",y,s->fname,ei.reason,ei.description);
+            fprintf(stderr,"ERR:  Extracting row %d from %s (%s,%s)\n",y,s->fname,ei.reason,ei.description);
             CatchException(&ei);
             MagickError(ei.severity,ei.reason,ei.description);
             DestroyImage(im);
@@ -236,24 +236,24 @@ static int read_png(pict *s)
 
     fp=fopen(s->fname,"rb");
     if( !fp ) {
-    fprintf(stderr,"ERR: Unable to open file %s\n",s->fname);
+    fprintf(stderr,"ERR:  Unable to open file %s\n",s->fname);
     return -1;
     }
     fread(pnghead,1,8,fp);
     if(png_sig_cmp(pnghead,0,8)) {
-    fprintf(stderr,"ERR: File %s isn't a png\n",s->fname);
+    fprintf(stderr,"ERR:  File %s isn't a png\n",s->fname);
     fclose(fp);
     return -1;
     }
     ps=png_create_read_struct(PNG_LIBPNG_VER_STRING,NULL,NULL,NULL);
     if( !ps ) {
-        fprintf(stderr,"ERR: Initializing png\n");
+        fprintf(stderr,"ERR:  Initializing png\n");
         fclose(fp);
         return -1;
     }
     pi=png_create_info_struct(ps);
     if( !pi ) {
-        fprintf(stderr,"ERR: Initializing png\n");
+        fprintf(stderr,"ERR:  Initializing png\n");
         png_destroy_read_struct(&ps,NULL,NULL);
         fclose(fp);
         return -1;
@@ -276,7 +276,7 @@ static int read_png(pict *s)
     assert(bit_depth==8); // 8bpp, not 1, 2, 4, or 16
     assert(!(color_type&PNG_COLOR_MASK_PALETTE)); // not a palette
     if( width>MAXX || height>MAXY ) {
-        fprintf(stderr,"ERR: PNG %s is too big: %lux%lu\n",s->fname,width,height);
+        fprintf(stderr,"ERR:  PNG %s is too big: %lux%lu\n",s->fname,width,height);
         png_destroy_read_struct(&ps,&pi,NULL);
         return -1;
     }
@@ -433,7 +433,7 @@ static bool pickbuttongroups(stinfo *s, int ng, int useimg)
                 fprintf
                   (
                     stderr,
-                    "ERR: Button coordinates out of range: (%d,%d)-(%d,%d)\n",
+                    "ERR:  Button coordinates out of range: (%d,%d)-(%d,%d)\n",
                     b->r.x0, b->r.y0, b->r.x1, b->r.y1
                   );
             exit(1);
@@ -899,7 +899,7 @@ static bool imgfix(stinfo *s)
         assert(useimg); // at this point I don't want to deal with blocking the primary subtitle image
         if (useimg < 0)
           {
-            fprintf(stderr, "ERR: Cannot pick button masks\n");
+            fprintf(stderr, "ERR:  Cannot pick button masks\n");
             return false;
           } /*if*/
 
@@ -921,13 +921,13 @@ static bool imgfix(stinfo *s)
                           } /*if; for*/
                     if (dc == -1)
                       { /* shouldn't occur */
-                        fprintf(stderr, "ERR: Button %d cannot find color %06x in group %d\n",
+                        fprintf(stderr, "ERR:  Button %d cannot find color %06x in group %d\n",
                             i, c, b->grp - 1);
                         assert(dc != -1); /* instant assertion failure */
                       } /*if*/
                     if (s->fimg[p] != dc && s->fimg[p] != 255)
                       { /* pixel already occupied by another button */
-                        fprintf(stderr, "ERR: Overlapping buttons\n");
+                        fprintf(stderr, "ERR:  Overlapping buttons\n");
                         return false;
                       } /*if*/
                     s->fimg[p] = dc;
@@ -961,7 +961,7 @@ static bool imgfix(stinfo *s)
                     goto if_found;
                   } /*if*/
           /* no room in s->pal */
-            fprintf(stderr, "ERR: Too many colors in base picture\n");
+            fprintf(stderr, "ERR:  Too many colors in base picture\n");
             return false;
 if_found:
             s->fimg[i] = j;
@@ -1086,7 +1086,7 @@ bool process_subtitle(stinfo *s)
     {
         if (debug > -1)
         {
-            fprintf(stderr, "ERR: Blank image, skipping line %d\n", iline - 1);
+            fprintf(stderr, "ERR:  Blank image, skipping line %d\n", iline - 1);
         }
         return false;
     }

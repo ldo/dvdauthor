@@ -472,7 +472,7 @@ static void dvd_encode_row(int y,int xd,unsigned char *icptr)
     store_align();
 
     if( subo-osubo >= 1440/8 ) {
-        fprintf(stderr,"ERR: Encoded row takes more than 1440 bits.  Please simplify subtitle.\n");
+        fprintf(stderr,"ERR:  Encoded row takes more than 1440 bits.  Please simplify subtitle.\n");
         exit(1);
     }
 }
