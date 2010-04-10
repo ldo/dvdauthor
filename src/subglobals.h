@@ -58,7 +58,6 @@ extern int movie_width;
 extern int movie_height;
 extern float text_font_scale_factor;
 extern bool text_forceit;
-extern float subtitle_font_radius;
 extern float subtitle_font_thickness;
 extern int subtitle_autoscale; /* fixme: not user-settable */
 extern int h_sub_alignment;

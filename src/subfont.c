@@ -455,146 +455,6 @@ static void outline0
       } /*for*/
   } /*outline0*/
 
-// gaussian blur
-static void blur
-  (
-    unsigned char *buffer, /* pixels to be blurred */
-    unsigned short *tmp2, /* result computation area, (width + 1) * height elements */
-      /* fixme: I think that needs to be (width + r) * height elements
-        (and references to width + 1 below similarly corrected to width + r) */
-    int width, /* dimensions of buffer */
-    int height,
-    int stride, /* of buffer */
-    const unsigned int *m2, /* precomputed convolution multiplications */
-    int r, /* blur radius */
-    int mwidth /* = 2 * r + 1 */
-  )
-  {
-    int x, y;
-    unsigned char * s = buffer;
-    unsigned short *t = tmp2 + 1;
-    for (y = 0; y < height; y++)
-      {
-        memset(t - 1, 0, (width + 1) * sizeof(short));
-        for (x = 0; x < r; x++)
-          {
-            const int src = s[x];
-            if (src)
-              {
-                register unsigned short * const dstp = t + x - r;
-                int mx;
-                const unsigned int * const m3 = m2 + src * mwidth;
-                for (mx = r - x; mx < mwidth; mx++)
-                  {
-                    dstp[mx] += m3[mx];
-                  } /*for*/
-              } /*if*/
-          } /*for*/
-        for(; x < width - r; x++)
-          {
-            const int src = s[x];
-            if (src)
-              {
-                register unsigned short * const dstp = t + x - r;
-                int mx;
-                const unsigned int * const m3 = m2 + src * mwidth;
-                for (mx = 0; mx < mwidth; mx++)
-                  {
-                    dstp[mx] += m3[mx];
-                  } /*for*/
-              } /*if*/
-          } /*for*/
-        for(; x < width; x++)
-          {
-            const int src = s[x];
-            if (src)
-              {
-                register unsigned short * const dstp = t + x - r;
-                int mx;
-                const int x2 = r + width - x;
-                const unsigned int * const m3 = m2 + src * mwidth;
-                for (mx = 0; mx < x2; mx++)
-                  {
-                    dstp[mx] += m3[mx];
-                  } /*for*/
-              } /*if*/
-          } /*for*/
-        s += stride;
-        t += width + 1;
-      } /*for*/
-    t = tmp2;
-    for (x = 0; x < width; x++)
-      {
-        for (y = 0; y < r; y++)
-          {
-            unsigned short * const srcp = t + y * (width + 1) + 1;
-            const int src = *srcp;
-            if (src)
-              {
-                register unsigned short * dstp = srcp - 1 + width + 1;
-                const int src2 = src + 128 >> 8;
-                const unsigned int * const m3 = m2 + src2 * mwidth;
-                int mx;
-                *srcp = 128;
-                for (mx = r - 1; mx < mwidth; mx++)
-                  {
-                    *dstp += m3[mx];
-                    dstp += width + 1;
-                  } /*for*/
-              } /*if*/
-          } /*for*/
-        for (; y < height - r; y++)
-          {
-            unsigned short * const srcp = t + y * (width + 1) + 1;
-            const int src = *srcp;
-            if (src)
-              {
-                register unsigned short * dstp = srcp - 1 - r * (width + 1);
-                const int src2 = src + 128 >> 8;
-                const unsigned int * const m3 = m2 + src2 * mwidth;
-                int mx;
-                *srcp = 128;
-                for (mx = 0; mx < mwidth; mx++)
-                  {
-                    *dstp += m3[mx];
-                    dstp += width + 1;
-                  } /*for*/
-              } /*if*/
-          } /*for*/
-        for (; y < height; y++)
-          {
-            unsigned short * const srcp = t + y * (width + 1) + 1;
-            const int src = *srcp;
-            if (src)
-              {
-                const int y2 = r + height - y;
-                register unsigned short * dstp = srcp - 1 - r * (width + 1);
-                const int src2 = src + 128 >> 8;
-                const unsigned int * const m3 = m2 + src2 * mwidth;
-                int mx;
-                *srcp = 128;
-                for (mx = 0; mx < y2; mx++)
-                  {
-                    *dstp += m3[mx];
-                    dstp += width + 1;
-                  } /*for*/
-              } /*if*/
-          } /*for*/
-        t++;
-      } /*for*/
-    t = tmp2;
-    s = buffer;
-    for (y = 0; y < height; y++)
-      {
-        for (x = 0; x < width; x++)
-          {
-            s[x] = t[x] >> 8;
-          } /*for*/
-        s += stride;
-        t += width + 1;
-      } /*for*/
-  } /*blur*/
-
 static void resample_alpha
   (
     unsigned char *abuf, /* image alpha to be transformed */
@@ -774,21 +634,6 @@ void render_one_glyph(font_desc_t *desc, int c)
           );
       } /*if*/
 //  fprintf(stderr, "fg: outline t = %lf\n", GetTimer()-t);
-    if (desc->tables.g_r)
-      {
-        blur
-          (
-            abuffer,
-            desc->tables.tmp,
-            width,
-            height,
-            stride,
-            desc->tables.gt2,
-            desc->tables.g_r,
-            desc->tables.g_w
-          );
-//      fprintf(stderr, "fg: blur t = %lf\n", GetTimer() - t);
-      } /*if*/
     resample_alpha(abuffer, bbuffer, width, height, stride, font_factor);
     pic_b->current_count++;
   } /*render_one_glyph*/
@@ -801,13 +646,12 @@ static int prepare_font
     int pic_idx, /* which entry in desc->faces to set up */
     int charset_size, /* length of charset array */
     const FT_ULong *charset, /* character codes to get glyphs for */
-    double thickness, /* only to compute inter-character padding */
-    double radius /* ditto */
+    double thickness /* only to compute inter-character padding */
   )
   /* fills in parts of desc indexed by pic_idx with face and related information. */
   {
     int i, err;
-    const int padding = ceil(radius) + ceil(thickness);
+    const int padding = ceil(thickness);
     raw_file * pic_a, * pic_b;
     desc->faces[pic_idx] = face;
     pic_a = (raw_file *)malloc(sizeof(raw_file));
@@ -853,92 +697,24 @@ static int prepare_font
 static int generate_tables
   (
     font_desc_t *desc,
-    double thickness,
-    double radius
+    double thickness
   )
   /* generates the tables used for anti-aliased compositing.
     This is all a waste of time for DVD-Video subtitles. */
   {
     const unsigned int base = 256;
-    const int width = desc->max_height;
-    const int height = desc->max_width;
-    const double A = log(1.0 / base) / (radius * radius * 2);
-      /* larger A => narrower Gaussian */
     int mx, my, i;
     unsigned char *omtp;
-    desc->tables.g_r = ceil(radius);
     desc->tables.o_r = ceil(thickness);
-    desc->tables.g_w = 2 * desc->tables.g_r + 1; /* diameter of blur convolution */
     desc->tables.o_w = 2 * desc->tables.o_r + 1; /* diameter of outline convolution */
     desc->tables.o_size = desc->tables.o_w * desc->tables.o_w; /* total nr entries in outline convolution */
 //  fprintf(stderr, "o_r = %d\n", desc->tables.o_r);
-    if (desc->tables.g_r)
-      {
-        desc->tables.g = (unsigned *)malloc(desc->tables.g_w * sizeof(unsigned));
-        desc->tables.gt2 = (unsigned *)malloc(256 * desc->tables.g_w * sizeof(unsigned));
-        if (desc->tables.g == NULL || desc->tables.gt2 == NULL)
-          {
-            return -1;
-          } /*if*/
-      } /*if*/
     desc->tables.om = (unsigned *)malloc(desc->tables.o_size * sizeof(unsigned));
     desc->tables.omt = malloc(desc->tables.o_size * 256);
-    desc->tables.tmp = malloc((width + 1) * height * sizeof(short));
-    if (desc->tables.om == NULL || desc->tables.omt == NULL || desc->tables.tmp == NULL)
+    if (desc->tables.om == NULL || desc->tables.omt == NULL)
       {
         return -1;
       }; /*if*/
-    if (desc->tables.g_r)
-      {
-        // gaussian curve with volume = 256
-        double volume_diff, volume_factor = 0;
-        for (volume_diff = 10000000; volume_diff > 0.0000001; volume_diff *= 0.5)
-          {
-          /* iterate computation of desc->tables.g elements until desc->tables.volume comes out right */
-          /* why not just scale all the values directly? */
-            volume_factor += volume_diff; /* try next increment */
-            desc->tables.volume = 0;
-            for (i = 0; i < desc->tables.g_w; ++i)
-              {
-                desc->tables.g[i] = (unsigned)
-                    (
-                            exp(A * (i - desc->tables.g_r) * (i - desc->tables.g_r))
-                        *
-                            volume_factor
-                    +
-                        .5
-                    );
-                desc->tables.volume += desc->tables.g[i];
-              } /*for*/
-            if (desc->tables.volume > 256)
-                volume_factor -= volume_diff; /* undo last increment */
-          } /*for*/
-      /* and do it all again with the right volume_factor */
-        desc->tables.volume = 0;
-        for (i = 0; i < desc->tables.g_w; ++i)
-          {
-            desc->tables.g[i] = (unsigned)
-                (
-                        exp(A * (i - desc->tables.g_r) * (i - desc->tables.g_r))
-                    *
-                        volume_factor
-                +
-                    .5
-                );
-            desc->tables.volume += desc->tables.g[i];
-          } /*for*/
-        // gauss table:
-        for (mx = 0; mx < desc->tables.g_w; mx++)
-          {
-           /* fill in gt2 with precomputed expansion of every g table entry multiplied by
-            every one of the possible 256 pixel values */
-            for (i = 0; i < 256; i++)
-              {
-                desc->tables.gt2[mx + i * desc->tables.g_w] = i * desc->tables.g[mx];
-              } /*for*/
-          } /*for*/
-      } /*if*/
-  /* desc->tables.g not needed from this point on! */
   /* outline matrix */
     for (my = 0; my < desc->tables.o_w; ++my)
       {
@@ -1043,11 +819,8 @@ static font_desc_t* init_font_desc()
     desc->height = 0;
     desc->max_width = 0;
     desc->max_height = 0;
-    desc->tables.g = NULL;
-    desc->tables.gt2 = NULL;
     desc->tables.om = NULL;
     desc->tables.omt = NULL;
-    desc->tables.tmp = NULL;
     for (i = 0; i < 65536; i++)
         desc->start[i] = desc->width[i] = desc->font[i] = -1; /* indicate no glyph images cached */
     for (i = 0; i < 16; i++)
@@ -1077,11 +850,8 @@ void free_font_desc(font_desc_t *desc)
         free(desc->pic_a[i]);
         free(desc->pic_b[i]);
       } /*for*/
-    free(desc->tables.g);
-    free(desc->tables.gt2);
     free(desc->tables.om);
     free(desc->tables.omt);
-    free(desc->tables.tmp);
     for (i = 0; i < desc->face_cnt; i++)
       {
         FT_Done_Face(desc->faces[i]);
@@ -1270,8 +1040,7 @@ font_desc_t* read_font_desc_ft
         /*pic_idx =*/ desc->face_cnt - 1,
         /*charset_size =*/ charset_size,
         /*charset =*/ my_charset,
-        /*thickness =*/ subtitle_font_thickness,
-        /*radius =*/ subtitle_font_radius
+        /*thickness =*/ subtitle_font_thickness
       );
     if (err)
       {
@@ -1279,7 +1048,7 @@ font_desc_t* read_font_desc_ft
         free_font_desc(desc);
         return NULL;
       } /*if*/
-    err = generate_tables(desc, subtitle_font_thickness, subtitle_font_radius);
+    err = generate_tables(desc, subtitle_font_thickness);
     if (err)
       {
         fprintf(stderr, "ERR:  Cannot generate tables.\n");

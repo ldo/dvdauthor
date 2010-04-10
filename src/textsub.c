@@ -75,7 +75,6 @@ int sub_utf8 = 0;
   when initialized on 0) */
 float font_factor=0.75;
 int verbose=0;
-float subtitle_font_radius = 0.0;     /*2.0*/
 float subtitle_font_thickness = 3.0;  /*2.0*/
 int subtitle_autoscale = AUTOSCALE_NONE;
 int sub_bg_color=8; /* subtitles background color */
