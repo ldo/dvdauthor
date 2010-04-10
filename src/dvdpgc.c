@@ -21,9 +21,8 @@
  */
 
 #include "config.h"
-
 #include "compat.h"
-
+#include <errno.h>
 #include <assert.h>
 
 #include "dvdauthor.h"
@@ -544,6 +543,19 @@ int CreatePGC(FILE *h, const struct workset *ws, vtypes ismenu)
     assert(ph <= bigwritebuflen);
     ph = (ph + 2047) & (-2048);
     if (h)
-        fwrite(buf, 1, ph, h);
+      {
+        (void)fwrite(buf, 1, ph, h);
+        if (errno != 0)
+          {
+            fprintf
+              (
+                stderr,
+                "\nERR:  Error %d -- %s -- writing output PGC\n",
+                errno,
+                strerror(errno)
+              );
+            exit(1);
+          } /*if*/
+      } /*if*/
     return ph / 2048;
   } /*CreatePGC*/

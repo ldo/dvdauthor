@@ -46,7 +46,6 @@ struct vscani {
     int firstgop; /* 1 => looking for first GOP, 2 => found first GOP, 0 => don't bother looking any more */
     int firsttemporal; /* first temporal sequence number seen in current sequence */
     int lastadjust; /* temporal sequence reset */
-    int adjustfields; /* fixme: not used for anything? */
 };
 
 static pts_t const timeline[19]={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
@@ -57,6 +56,32 @@ static pts_t const timeline[19]={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
 static unsigned char bigwritebuf[BIGWRITEBUFLEN];
 static int writebufpos=0;
 static int writefile=-1; /* fd of output file */
+
+static void flushclose(int fd)
+  /* ensures all data has been successfully written to disk before closing fd. */
+  {
+    if
+      (
+#if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
+        fdatasync(fd)
+#else
+        fsync(fd)
+#endif
+      )
+      {
+        if (errno != EINVAL)
+          {
+            fprintf(stderr, "ERR:  Error %d -- %s -- flushing output VOB\n", errno, strerror(errno));
+            exit(1);
+          }
+        else
+          {
+          /* non-flushable output */
+            errno = 0;
+          } /*if*/
+      } /*if*/
+    close(fd);
+  } /*flushclose*/
 
 static unsigned char videoslidebuf[15]={255,255,255,255, 255,255,255, 0,0,0,0, 0,0,0,0};
 
@@ -435,7 +460,7 @@ static void writeflush()
       {
         if (write(writefile, bigwritebuf, writebufpos) != writebufpos)
           {
-            fprintf(stderr,"ERR:  Error writing data\n"); /* fixme: report error code? */
+            fprintf(stderr, "ERR:  Error %d -- %s -- writing data\n", errno, strerror(errno));
             exit(1);
           } /*if*/
       } /*if*/
@@ -466,7 +491,7 @@ static void writeclose()
     writeflush();
     if (writefile != -1)
       {
-        close(writefile);
+        flushclose(writefile);
         writefile = -1;
       } /*if*/
   } /*writeclose*/
@@ -673,7 +698,6 @@ static void scanvideoptr
                 vsi->firstgop = 2; /* found first GOP */
                 vsi->firsttemporal = -1;
                 vsi->lastadjust = 0;
-                vsi->adjustfields = 0;
               }
             else if (vsi->firstgop == 2)
               {
@@ -2190,8 +2214,7 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
               /* time to start a new output file */
                 char fname[200];
                 if (outvob >= 0)
-                  /* fixme: should do an fsync or fdatasync and check for write errors */
-                    close(outvob);
+                    flushclose(outvob);
                 fnum = thisvobu->fnum;
                 if (fbase)
                   {
@@ -2502,10 +2525,23 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
           /* NAV pack all done, write it out */
             if (outvob != -1)
               {
-              /* fixme: check for write errors */
-                lseek(outvob, thisvobu->fsect * 2048, SEEK_SET);
+                if (lseek(outvob, thisvobu->fsect * 2048, SEEK_SET) == (off_t)-1)
                   /* where the NAV pack should go */
-                write(outvob, buf, 2048);
+                  {
+                    fprintf(stderr, "ERR:  Error %d -- %s -- seeking in output VOB\n", errno, strerror(errno));
+                    exit(1);
+                  } /*if*/
+                if (write(outvob, buf, 2048) != 2048)
+                  {
+                    fprintf
+                      (
+                        stderr,
+                        "ERR:  Error %d -- %s -- writing NAV PACK to output VOB\n",
+                        errno,
+                        strerror(errno)
+                      );
+                    exit(1);
+                  } /*if*/
                   /* update it */
               } /*if*/
             curvob++;
@@ -2522,8 +2558,7 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
           } /*for vobuindex*/
       } /*for pn*/
     if (outvob != -1)
-      /* fixme: should do an fsync or fdatasync and check for write errors */
-        close(outvob);
+        flushclose(outvob);
     if (totvob > 0)
         fprintf(stderr, "STAT: fixed %d VOBUs                         ", totvob);
     fprintf(stderr, "\n");

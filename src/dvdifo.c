@@ -21,9 +21,8 @@
  */
 
 #include "config.h"
-
 #include "compat.h"
-
+#include <errno.h>
 #include <assert.h>
 
 #include "dvdauthor.h"
@@ -114,7 +113,21 @@ static void nfwrite(const void *ptr, size_t len, FILE *h)
   /* writes to h, or turns into a noop if h is null. */
   {
     if (h)
-        fwrite(ptr, len, 1, h);
+      {
+        errno = 0; /* where is this being set? */
+        (void)fwrite(ptr, len, 1, h);
+        if (errno != 0)
+          {
+            fprintf
+              (
+                stderr,
+                "\nERR:  Error %d -- %s -- writing output IFO\n",
+                errno,
+                strerror(errno)
+              );
+            exit(1);
+          } /*if*/
+      } /*if*/
   } /*nfwrite*/
 
 static const struct vobuinfo *globalfindvobu(const struct pgc *ch, int pts)
@@ -630,20 +643,47 @@ void WriteIFOs(const char *fbase, const struct workset *ws)
   {
     FILE *h;
     static char buf[1000];
+    bool backup;
 
+    errno = 0;
     if (fbase)
       {
-        sprintf(buf, "%s_0.IFO", fbase);
-        h = fopen(buf, "wb");
-        WriteIFO(h, ws);
-          /* fixme: should do an fflush and check for write errors */
-        fclose(h);
-
-        sprintf(buf, "%s_0.BUP", fbase); /* same thing again, backup copy */
-        h = fopen(buf, "wb");
-        WriteIFO(h, ws);
-          /* fixme: should do an fflush and check for write errors */
-        fclose(h);
+        backup = false;
+        for (;;)
+          {
+            snprintf(buf, sizeof buf, "%s_0.%s", fbase, backup ? "BUP" : "IFO");
+            h = fopen(buf, "wb");
+            if (!h)
+              {
+                fprintf
+                  (
+                    stderr,
+                    "\nERR:  Error %d -- %s -- creating %s\n",
+                    errno,
+                    strerror(errno),
+                    buf
+                  );
+                exit(1);
+              } /*if*/
+            WriteIFO(h, ws);
+            fflush(h);
+            if (errno != 0)
+              {
+                fprintf
+                  (
+                    stderr,
+                    "\nERR:  Error %d -- %s -- flushing %s\n",
+                    errno,
+                    strerror(errno),
+                    buf
+                  );
+                exit(1);
+              } /*if*/
+            fclose(h);
+            if (backup)
+                break;
+            backup = true;
+          } /*for*/
       }
     else
       /* dummy write */
@@ -817,7 +857,12 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
         CreateCellAddressTable(h, ws->menus->vg); /* actually generate VMGM_C_ADT */
         CreateVOBUAD(h, ws->menus->vg); /* generate VMGM_VOBU_ADMAP */
       } /*if*/
-  /* fixme: should do an fflush and check for write errors */
+    fflush(h);
+    if (errno != 0)
+      {
+        fprintf(stderr, "\nERR:  Error %d -- %s -- flushing VMGM\n", errno, strerror(errno));
+        exit(1);
+      } /*if*/
     fclose(h);
   } /*TocGen*/
 
