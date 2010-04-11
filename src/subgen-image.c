@@ -37,13 +37,13 @@
 
 #include "subglobals.h"
 #include "subgen.h"
-#include "textsub.h"
 
 
 #define MAXX 720
 #define MAXY 576
 
 bool text_forceit = false;     /* Forcing of the subtitles */
+sub_data *textsub_subdata;
 
 static void constructblankpic(pict *p,int w,int h)
   /* allocates and fills in p with an image consisting entirely of transparent pixels */
@@ -342,7 +342,7 @@ static int read_pic(stinfo *s, pict *p)
     int r = 0;
     if (have_textsub)
       {
-        textsub_render(s->sub_title); /* will allocate and render into textsub_image_buffer */
+        vo_update_osd(s->sub_title); /* will allocate and render into textsub_image_buffer */
         s->forced = text_forceit;
         r = read_frame(p);
       }

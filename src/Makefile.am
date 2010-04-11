@@ -25,7 +25,7 @@ spumux_SOURCES = subgen.c subgen.h rgb.h \
     subgen-parse-xml.c readxml.c readxml.h \
     subgen-encode.c subgen-image.c subglobals.h \
     compat.c compat.h common.h \
-    textsub.c textsub.h subrender.c subrender.h subreader.c subreader.h subfont.c subfont.h
+    subrender.c subrender.h subreader.c subreader.h subfont.c subfont.h
 spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) \
     $(FRIBIDI_LIBS) $(FONTCONFIG_LIBS) $(LIBICONV)
 

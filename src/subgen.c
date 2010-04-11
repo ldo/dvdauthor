@@ -39,7 +39,6 @@
 #include "subglobals.h"
 #include "subrender.h"
 #include "subgen.h"
-#include "textsub.h"
 
 // (90000*300)/(1260000/2048)
 // (9*300)/(126/2048)
@@ -915,6 +914,10 @@ int main(int argc,char **argv)
         return -1;
     if (tofs >= 0 && debug > 0)
         fprintf(stderr, "INFO: Subtitles offset by %fs\n", (double)tofs / 90000);
+    if (have_textsub)
+      {
+        vo_init_osd();
+      } /*if*/
     spuindex = 0;
     skip = 0;
     if (!(sector = malloc(secsize)))
@@ -1035,7 +1038,7 @@ l_01ba:
     if (have_textsub)
       {
         textsub_statistics();
-        textsub_finish();
+        vo_finish_osd();
       } /*if*/
     image_shutdown();
     return 0;

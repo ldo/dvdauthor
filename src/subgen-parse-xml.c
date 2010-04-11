@@ -30,7 +30,6 @@
 #include "subglobals.h"
 #include "subgen.h"
 #include "readxml.h"
-#include "textsub.h"
 
 
 static void printtime(char *b,int t)
@@ -211,7 +210,7 @@ static void textsub_filename(const char *v)
 static void textsub_characterset(const char *v)
 {
 #ifdef HAVE_ICONV
-    subtitle_charset = strdup(v); /* won't leak, because I won't be called more than once */
+    subtitle_charset = v[0] != 0 ? strdup(v) : NULL; /* won't leak, because I won't be called more than once */
 #else
     fprintf(stderr, "ERR:  <textsub> characterset attribute cannot be interpreted without iconv\n");
     exit(1);
@@ -269,7 +268,9 @@ static void textsub_complete()
         fprintf(stderr, "ERR:  Filename of subtitle file missing");
         exit(1);
       } /*if*/
-    if (!textsub_init(filename))
+    textsub_subdata = sub_read_file(filename, movie_fps);
+      /* fixme: sub_free never called! */
+    if (textsub_subdata == NULL)
       {
         fprintf(stderr, "ERR:  Couldn't load file %s.\n", filename);
         exit(1);

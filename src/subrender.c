@@ -80,6 +80,9 @@ float movie_fps=25.0; /* fixme: should perhaps depend on video format */
 int movie_width=720;
 int movie_height=574; /* fixme: should perhaps depend on video format */
 
+unsigned char *textsub_image_buffer;
+size_t textsub_image_buffer_size;
+
 /* statistics */
 int sub_max_chars;
 int sub_max_lines;
@@ -857,30 +860,37 @@ inline static void vo_update_text_sub
 
 void vo_update_osd(const subtitle_elt * vo_sub)
   {
-    if (vo_osd && vo_sub)
-      {
-        vo_update_text_sub(vo_osd, vo_sub);
-        vo_draw_alpha_rgb24
-          (
-            /*w =*/ vo_osd->bbox.x2 - vo_osd->bbox.x1,
-            /*h =*/ vo_osd->bbox.y2 - vo_osd->bbox.y1,
-            /*src =*/ vo_osd->bitmap_buffer,
-            /*srca =*/ vo_osd->alpha_buffer,
-            /*srcstride =*/ vo_osd->stride,
-            /*dstbase =*/
-                    textsub_image_buffer
-                +
-                    3 * vo_osd->bbox.x1
-                +
-                    3 * vo_osd->bbox.y1 * movie_width,
-            /*dststride =*/ movie_width * 3
-          );
-      } /*if*/
+    memset(textsub_image_buffer, 128, textsub_image_buffer_size);
+      /* fill with transparent colour, which happens to be 50% grey */
+    vo_update_text_sub(vo_osd, vo_sub);
+    vo_draw_alpha_rgb24
+      (
+        /*w =*/ vo_osd->bbox.x2 - vo_osd->bbox.x1,
+        /*h =*/ vo_osd->bbox.y2 - vo_osd->bbox.y1,
+        /*src =*/ vo_osd->bitmap_buffer,
+        /*srca =*/ vo_osd->alpha_buffer,
+        /*srcstride =*/ vo_osd->stride,
+        /*dstbase =*/
+                textsub_image_buffer
+            +
+                3 * vo_osd->bbox.x1
+            +
+                3 * vo_osd->bbox.y1 * movie_width,
+        /*dststride =*/ movie_width * 3
+      );
   } /*vo_update_osd*/
 
 void vo_init_osd()
   {
     vo_finish_osd(); /* if previously allocated */
+    textsub_image_buffer_size = sizeof(uint8_t) * 3 * movie_height * movie_width;
+    textsub_image_buffer = malloc(textsub_image_buffer_size);
+      /* fixme: not freed from previous call! */
+    if (textsub_image_buffer == NULL)
+     {
+        fprintf(stderr, "ERR:  Failed to allocate memory\n");
+        exit(1);
+      } /*if*/
 #ifdef HAVE_FREETYPE
     init_freetype();
     load_font_ft();
@@ -909,4 +919,6 @@ void vo_finish_osd()
 #ifdef HAVE_FREETYPE
     done_freetype();
 #endif
+    free(textsub_image_buffer);
+    textsub_image_buffer = NULL;
   } /*vo_finish_osd*/

@@ -67,9 +67,11 @@ extern int sub_left_margin;
 extern int sub_right_margin;
 extern int sub_bottom_margin;
 extern int sub_top_margin;
+/* maintained by subrender: */
+extern unsigned char * textsub_image_buffer; /* where text subtitles are rendered */
+extern size_t textsub_image_buffer_size; /* size of buffer */
 
 /* parameters for subgen-image */
 extern bool text_forceit;
-
-extern unsigned char * textsub_image_buffer; /* where text subtitles are rendered */
-extern size_t textsub_image_buffer_size; /* size of buffer */
+/* maintained by subgen-image: */
+extern sub_data *textsub_subdata;
