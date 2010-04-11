@@ -41,63 +41,9 @@
 #include "subfont.h"
 #include "textsub.h"
 
-float sub_delay=0.0;
-/* sub_delay (float) contains delay for subtitles in 10 msec intervals (optional user parameter, 0.0 for no delay)*/
-float sub_fps=0.0;
-/* sub_fps (float)contains subtitle frames per second, only applicable when we have no timed subs (detection from
-   video stream, 0.0 for setting taken over from fps otherwise subtitle fps)*/
-int suboverlap_enabled=1;
-/* suboverlap_enabled (int) indicates overlap if the user forced it (suboverlap_enabled == 2) or
-   the user didn't forced no-overlapsub and the format is Jacosub or Ssa.
-   this is because usually overlapping subtitles are found in these formats,
-   while in others they are probably result of bad timing (set by subtile file type if
-   initialized on 1) */
- /* never set to any other value */
-int sub_utf8 = 0;
-/* sub_utf8 (int) is a flag which indicates the characterset encoding: 0=initial 1=utf8
-  dictated by filename extension ".utf", ".utf8" or "utf-8" or 2: set subtitle_charset being
-  validated is a valid ICONV "from character-set" (set by filename or valid subtitle_charset
-  when initialized on 0) */
-float font_factor=0.75;
-int verbose=0;
-float subtitle_font_thickness = 3.0;  /*2.0*/
-int subtitle_autoscale = AUTOSCALE_NONE;
-int sub_bg_color=8; /* subtitles background color */
-int sub_bg_alpha=0;
-int sub_justify=1;
-
-/*-----------------25-11-03 1:29--------------------
- * Start of minimum set of variables that should be user configurable
- *
- * 23-04-05   Added the text_forceit default value (by Pierre Dumuid)
- * --------------------------------------------------*/
-char* subtitle_charset = NULL;
-  /* subtitle_charset (char) contains "from character-set" for ICONV like ISO8859-1 and UTF-8, */
-  /* "to character-set" is set to UTF-8. If not specified, then defaults to locale */
-float text_font_scale_factor = 28.0; /* font size in font units */
-bool text_forceit = false;     /* Forcing of the subtitles */
-int h_sub_alignment = H_SUB_ALIGNMENT_LEFT;  /* Horizontal alignment 0=center, 1=left, 2=right, 4=subtitle default */
-int v_sub_alignment = V_SUB_ALIGNMENT_BOTTOM;      /* Vertical alignment 0=top, 1=center, 2=bottom */
-int sub_left_margin=60;   /* Size of left horizontal non-display area in pixel units */
-int sub_right_margin=60;  /* Size of right horizontal non-display area in pixel units */
-int sub_bottom_margin=30; /* Size of bottom horizontal non-display area in pixel units */
-int sub_top_margin=20;    /* Size of top horizontal non-display area in pixel units */
-char *sub_font = /* Name of true type font, windows OS apps will look in \windows\fonts others in home dir */
-#if HAVE_FONTCONFIG
-    "arial"
-#else
-    "arial.ttf"
-#endif
-;
-/*-----------------25-11-03 1:31--------------------
- * End of mimum set of variables that should be user configurable
- * --------------------------------------------------*/
-
-float movie_fps=25.0; /* fixme: should perhaps depend on video format */
-int movie_width=720;
-int movie_height=574; /* fixme: should perhaps depend on video format */
 sub_data *textsub_subdata;
 unsigned char *textsub_image_buffer;
+size_t textsub_image_buffer_size;
 
 bool textsub_init
   (
@@ -106,14 +52,13 @@ bool textsub_init
   /* loads subtitles from textsub_filename and sets up structures for rendering
     the text. */
   {
-    const size_t image_buffer_size =
-        sizeof(uint8_t) * 3 * movie_height * movie_width;
+    textsub_image_buffer_size = sizeof(uint8_t) * 3 * movie_height * movie_width;
     vo_init_osd();
 #ifdef ICONV
     if (subtitle_charset && !strcmp(subtitle_charset, ""))
         subtitle_charset = NULL;
 #endif
-    textsub_image_buffer = malloc(image_buffer_size);
+    textsub_image_buffer = malloc(textsub_image_buffer_size);
       /* fixme: not freed from previous call! */
     if (textsub_image_buffer == NULL)
      {
@@ -128,7 +73,7 @@ bool textsub_init
 void textsub_render(const subtitle_elt * sub)
   /* does the actual rendering of a previously-loaded subtitle. */
   {
-    memset(textsub_image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width);
+    memset(textsub_image_buffer, 128, textsub_image_buffer_size);
       /* fill with transparent colour, which happens to be 50% grey */
     vo_update_osd(sub);
   } /*textsub_render*/

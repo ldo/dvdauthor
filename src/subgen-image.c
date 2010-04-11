@@ -43,6 +43,8 @@
 #define MAXX 720
 #define MAXY 576
 
+bool text_forceit = false;     /* Forcing of the subtitles */
+
 static void constructblankpic(pict *p,int w,int h)
   /* allocates and fills in p with an image consisting entirely of transparent pixels */
 {

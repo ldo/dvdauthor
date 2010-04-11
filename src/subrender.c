@@ -66,13 +66,27 @@ typedef struct /* for holding and maintaining a rendered subtitle image */
 
 static int sub_pos=100;
 /* static int sub_width_p=100; */
-static mp_osd_obj_t* vo_osd = NULL;
+
+int sub_bg_color=8; /* subtitles background color */
+int sub_bg_alpha=0;
+int sub_justify=1; /* fixme: not user-settable */
+int sub_left_margin=60;   /* Size of left horizontal non-display area in pixel units */
+int sub_right_margin=60;  /* Size of right horizontal non-display area in pixel units */
+int sub_bottom_margin=30; /* Size of bottom horizontal non-display area in pixel units */
+int sub_top_margin=20;    /* Size of top horizontal non-display area in pixel units */
+int h_sub_alignment = H_SUB_ALIGNMENT_LEFT;  /* Horizontal alignment 0=center, 1=left, 2=right, 4=subtitle default */
+int v_sub_alignment = V_SUB_ALIGNMENT_BOTTOM;      /* Vertical alignment 0=top, 1=center, 2=bottom */
+float movie_fps=25.0; /* fixme: should perhaps depend on video format */
+int movie_width=720;
+int movie_height=574; /* fixme: should perhaps depend on video format */
 
 /* statistics */
 int sub_max_chars;
 int sub_max_lines;
 int sub_max_font_height;
 int sub_max_bottom_font_height;
+
+static mp_osd_obj_t* vo_osd = NULL;
 
 static inline void vo_draw_alpha_rgb24
   (

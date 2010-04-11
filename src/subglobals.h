@@ -16,10 +16,6 @@ typedef struct { /* holds text and related information read from a subtitle file
     int sub_errs;
 } sub_data;
 
-#ifdef HAVE_ICONV
-extern char *subtitle_charset; /* code page for interpreting subtitles */
-#endif
-
 enum /* horizontal alignment settings */
   {
     H_SUB_ALIGNMENT_LEFT = 1,
@@ -43,18 +39,25 @@ enum /* values for subtitle_autoscale */
     AUTOSCALE_MOVIE_DIAGONAL = 3, /* diagonal */
   };
 
+/* parameters for subreader */
 extern float sub_delay; /* not used anywhere */
 extern float sub_fps;
 extern int suboverlap_enabled;
+#ifdef HAVE_ICONV
+extern char *subtitle_charset; /* code page for interpreting subtitles */
+#endif
+
+/* parameters for subfont */
 extern float font_factor;
-extern unsigned char * textsub_image_buffer; /* where text subtitles are rendered */
+extern float text_font_scale_factor;
+extern char * sub_font;
+extern int subtitle_autoscale; /* fixme: not user-settable */
+extern float subtitle_font_thickness; /* fixme: not user-settable */
+
+/* parameters for subrender */
 extern float movie_fps;
 extern int movie_width;
 extern int movie_height;
-extern float text_font_scale_factor;
-extern bool text_forceit;
-extern float subtitle_font_thickness;
-extern int subtitle_autoscale; /* fixme: not user-settable */
 extern int h_sub_alignment;
 extern int v_sub_alignment;
 extern int sub_bg_color; /* subtitles background color */
@@ -64,4 +67,9 @@ extern int sub_left_margin;
 extern int sub_right_margin;
 extern int sub_bottom_margin;
 extern int sub_top_margin;
-extern char * sub_font;
+
+/* parameters for subgen-image */
+extern bool text_forceit;
+
+extern unsigned char * textsub_image_buffer; /* where text subtitles are rendered */
+extern size_t textsub_image_buffer_size; /* size of buffer */

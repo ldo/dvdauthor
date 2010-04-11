@@ -84,6 +84,18 @@ static FT_Library library;
 
 //static double ttime;
 
+float text_font_scale_factor = 28.0; /* font size in font units */
+float font_factor=0.75;
+float subtitle_font_thickness = 3.0;  /*2.0*/
+int subtitle_autoscale = AUTOSCALE_NONE;
+char *sub_font = /* Name of true type font, windows OS apps will look in \windows\fonts others in home dir */
+#if HAVE_FONTCONFIG
+    "arial"
+#else
+    "arial.ttf"
+#endif
+;
+
 static char *get_config_path(const char *filename)
   /* returns the path at which to find the config file named filename. If this is
     null, then just the config directory is returned. */

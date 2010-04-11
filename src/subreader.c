@@ -99,6 +99,27 @@ static unsigned long previous_sub_end;
 #endif
 
 /*
+    Caller-controllable settings
+*/
+
+char* subtitle_charset = NULL;
+  /* subtitle_charset (char) contains "from character-set" for ICONV like ISO8859-1 and UTF-8, */
+  /* "to character-set" is set to UTF-8. If not specified, then defaults to locale */
+
+float sub_delay=0.0;
+/* sub_delay (float) contains delay for subtitles in 10 msec intervals (optional user parameter, 0.0 for no delay)*/
+float sub_fps=0.0;
+/* sub_fps (float)contains subtitle frames per second, only applicable when we have no timed subs (detection from
+   video stream, 0.0 for setting taken over from fps otherwise subtitle fps)*/
+int suboverlap_enabled=1;
+/* suboverlap_enabled (int) indicates overlap if the user forced it (suboverlap_enabled == 2) or
+   the user didn't forced no-overlapsub and the format is Jacosub or Ssa.
+   this is because usually overlapping subtitles are found in these formats,
+   while in others they are probably result of bad timing (set by subtile file type if
+   initialized on 1) */
+ /* never set to any other value */
+
+/*
     Useful string-handling routines
 */
 
