@@ -23,15 +23,6 @@
  * USA
  */
 
-/*
- * vo_png.c, Portable Network Graphics Renderer for Mplayer
- *
- * Copyright 2001 by Felix Buenemann <atmosfear@users.sourceforge.net>
- *
- * Uses libpng (which uses zlib), so see according licenses.
- *
- */
-
 #include "config.h"
 #include "compat.h"
 
