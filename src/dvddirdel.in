@@ -1,13 +1,5 @@
 #!/bin/sh
 
-if [ -f @sysconfdir@/dvdauthor.conf ]; then
-    . @sysconfdir@/dvdauthor.conf
-fi
-
-if [ -f ~/.dvdauthorrc ]; then
-    . ~/.dvdauthorrc
-fi
-
 help=0
 out=0
 for i in "$@"; do
