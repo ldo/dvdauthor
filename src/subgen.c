@@ -36,6 +36,7 @@
 
 #include "common.h"
 #include "rgb.h"
+#include "subrender.h"
 #include "subgen.h"
 #include "textsub.h"
 
@@ -78,7 +79,7 @@ static char header[32];
 
 unsigned char *sub;
 int debug;
-int max_sub_size;
+static int max_sub_size;
 
 
 
@@ -787,6 +788,17 @@ static void mux(bool eoinput)
         freestinfo(cursti);
       } /*while*/
   } /*mux*/
+
+static void textsub_statistics()
+  {
+    fprintf(stderr, "\nText Subtitle Statistics:\n");
+    fprintf(stderr, "- Processed %d subtitles.\n", sub_num_of_subtitles);
+    fprintf(stderr, "- The longest display line had %d characters.\n", sub_max_chars - 1);
+    fprintf(stderr, "- The maximum number of displayed lines was %d.\n", sub_max_lines);
+    fprintf(stderr, "- The normal display height of the font %s was %d.\n", sub_font, sub_max_font_height);
+    fprintf(stderr, "- The bottom display height of the font %s was %d.\n", sub_font, sub_max_bottom_font_height);
+    fprintf(stderr, "- The biggest subtitle box had %d bytes.\n", max_sub_size);
+  } /*textsub_statistics*/
 
 int main(int argc,char **argv)
 {

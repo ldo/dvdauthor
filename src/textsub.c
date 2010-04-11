@@ -113,13 +113,9 @@ sub_data *textsub_subdata;
 subtitle *vo_sub;
 unsigned char *textsub_image_buffer;
 int current_sub;
-int sub_max_chars;
-int sub_max_lines;
-int sub_max_font_height;
-int sub_max_bottom_font_height;
 
 static int sub_last;
-static int sub_num_of_subtitles;
+int sub_num_of_subtitles;
 
 bool textsub_init
   (
@@ -136,10 +132,6 @@ bool textsub_init
     vo_sub = NULL;
     current_sub = -1;
     sub_last = 1;
-    sub_max_chars = 0;
-    sub_max_lines = 0;
-    sub_max_font_height = 0;
-    sub_max_bottom_font_height = 0;
     sub_num_of_subtitles = 0;
     movie_fps = textsub_movie_fps;
     movie_width = textsub_movie_width;
@@ -160,12 +152,8 @@ bool textsub_init
         fprintf(stderr, "ERR:  Failed to allocate memory\n");
         exit(1);
       } /*if*/
-    memset(textsub_image_buffer, 128, image_buffer_size);
     textsub_subdata = sub_read_file(textsub_filename, textsub_movie_fps);
       /* fixme: sub_free never called! */
-  /* following doesn't seem to actually achieve anything: */
-    vo_update_osd(textsub_movie_width, textsub_movie_height);
-    vo_osd_changed();
     return textsub_subdata != NULL;
   } /*textsub_init*/
 
@@ -179,7 +167,7 @@ textsub_subtitle_type textsub_find_sub(unsigned long text_sub_pts)
   /* looks for the subtitle entry covering the specified time, returning it
     if it exists and is not the same as was returned for the previous call.
     Kind of a roundabout way of finding durations of successive subtitles.
-    Oh, and it also sets the text_forced flag while it's at it. */
+    Oh, and it also sets the alignment and text_forced fields while it's at it. */
   {
     textsub_subtitle_type result;
     result.valid = 0;
@@ -208,23 +196,11 @@ void textsub_render(subtitle * sub)
   /* does the actual rendering of a previously-loaded subtitle. */
   {
     vo_sub = sub;
-    vo_osd_changed();
     memset(textsub_image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width);
       /* fill with default transparent colour */
     vo_update_osd(movie_width, movie_height);
 /*  draw_image(movie_width, movie_height, textsub_image_buffer, movie_width * 3); */
   } /*textsub_render*/
-
-void textsub_statistics()
-  {
-    fprintf(stderr, "\nStatistics:\n");
-    fprintf(stderr, "- Processed %d subtitles.\n", sub_num_of_subtitles);
-    fprintf(stderr, "- The longest display line had %d characters.\n", sub_max_chars - 1);
-    fprintf(stderr, "- The maximum number of displayed lines was %d.\n", sub_max_lines);
-    fprintf(stderr, "- The normal display height of the font %s was %d.\n", sub_font, sub_max_font_height);
-    fprintf(stderr, "- The bottom display height of the font %s was %d.\n", sub_font, sub_max_bottom_font_height);
-    fprintf(stderr, "- The biggest subtitle box had %d bytes.\n", max_sub_size);
-  } /*textsub_statistics*/
 
 void textsub_finish()
   {

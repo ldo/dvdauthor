@@ -49,10 +49,9 @@ typedef struct mp_osd_obj_s /* for holding and maintaining a rendered subtitle i
   {
     struct mp_osd_obj_s* next; /* linked list */
     unsigned char alignment; // 2 bits: x;y percentages, 2 bits: x;y relative to parent; 2 bits: alignment left/right/center
-    unsigned short flags;
   /* int x; */
     int y;
-    int dxs, dys;
+    int dys;
     mp_osd_bbox_t bbox; // bounding box
   /* mp_osd_bbox_t old_bbox; */ // the renderer will save bbox here
     union
@@ -75,12 +74,15 @@ typedef struct mp_osd_obj_s /* for holding and maintaining a rendered subtitle i
     unsigned char *bitmap_buffer; /* one byte per pixel */
   } mp_osd_obj_t;
 
-/* masks for mp_osd_obj_s.flags, only the ones used by spumux */
-#define OSDFLAG_FORCE_UPDATE 16 /* indicates osd obj needs to be redrawn, but we could do without this flag */
-
 static int sub_pos=100;
 /* static int sub_width_p=100; */
 static mp_osd_obj_t* vo_osd_list=NULL;
+
+/* statistics */
+int sub_max_chars;
+int sub_max_lines;
+int sub_max_font_height;
+int sub_max_bottom_font_height;
 
 static inline void vo_draw_alpha_rgb24
   (
@@ -864,9 +866,9 @@ inline static void vo_update_text_sub
       }
   } /*vo_update_text_sub*/
 
-static mp_osd_obj_t * new_osd_obj(void)
+static void new_osd_obj(void)
   /* creates a new mp_osd_obj_t object with initially no buffers allocated,
-    pushes it on the head of vo_osd_list, and returns it. */
+    and pushes it on the head of vo_osd_list. */
   {
     mp_osd_obj_t * const osd = malloc(sizeof(mp_osd_obj_t));
     memset(osd, 0, sizeof(mp_osd_obj_t));
@@ -875,7 +877,6 @@ static mp_osd_obj_t * new_osd_obj(void)
     osd->alpha_buffer = NULL;
     osd->bitmap_buffer = NULL;
     osd->allocated = -1;
-    return osd;
   } /*new_osd_obj*/
 
 void vo_update_osd(int dxs, int dys)
@@ -892,34 +893,27 @@ void vo_update_osd(int dxs, int dys)
 
     while(obj)
       {
-        if (dxs != obj->dxs || dys != obj->dys || obj->flags & OSDFLAG_FORCE_UPDATE)
+        if (vo_sub)
           {
-            if (vo_sub)
-              {
-                obj->dxs = dxs;
-                obj->dys = dys;
-                vo_update_text_sub(obj, dxs ,dys);
-              /* obj->dxs = dxs; obj->dys = dys;
-                fprintf(stderr, "x1:%d x2:%d y1:%d y2:%d\n", obj->bbox.x1, obj->bbox.x2, obj->bbox.y1, obj->bbox.y2); */
-                vo_draw_alpha_rgb24
-                  (
-                    /*w =*/ obj->bbox.x2 - obj->bbox.x1,
-                    /*h =*/ obj->bbox.y2 - obj->bbox.y1,
-                    /*src =*/ obj->bitmap_buffer,
-                    /*srca =*/ obj->alpha_buffer,
-                    /*srcstride =*/ obj->stride,
-                    /*dstbase =*/
-                            textsub_image_buffer
-                        +
-                            3 * obj->bbox.x1
-                        +
-                            3 * obj->bbox.y1 * movie_width,
-                    /*dststride =*/ movie_width * 3
-                  );
-              } /*if*/
-            // remove the cause of automatic update:
-            obj->flags &= ~OSDFLAG_FORCE_UPDATE;
+            obj->dys = dys;
+            vo_update_text_sub(obj, dxs ,dys);
+            vo_draw_alpha_rgb24
+              (
+                /*w =*/ obj->bbox.x2 - obj->bbox.x1,
+                /*h =*/ obj->bbox.y2 - obj->bbox.y1,
+                /*src =*/ obj->bitmap_buffer,
+                /*srca =*/ obj->alpha_buffer,
+                /*srcstride =*/ obj->stride,
+                /*dstbase =*/
+                        textsub_image_buffer
+                    +
+                        3 * obj->bbox.x1
+                    +
+                        3 * obj->bbox.y1 * movie_width,
+                /*dststride =*/ movie_width * 3
+              );
           } /*if*/
+        // remove the cause of automatic update:
         obj = obj->next;
       } /*while*/
   } /*vo_update_osd*/
@@ -927,19 +921,12 @@ void vo_update_osd(int dxs, int dys)
 void vo_init_osd()
   {
     vo_finish_osd(); /* if previously allocated */
+    sub_max_chars = 0;
+    sub_max_lines = 0;
+    sub_max_font_height = 0;
+    sub_max_bottom_font_height = 0;
     new_osd_obj();
   } /*vo_init_osd*/
-
-void vo_osd_changed()
-  /* marks all entries in vo_osd_list with the specified type as requiring updates. */
-  {
-    mp_osd_obj_t * obj = vo_osd_list;
-    while (obj)
-      {
-        obj->flags |= OSDFLAG_FORCE_UPDATE;
-        obj = obj->next;
-      } /*while*/
-  } /*vo_osd_changed*/
 
 void vo_finish_osd()
   /* frees up memory allocated for vo_osd_list. */

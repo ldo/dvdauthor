@@ -44,7 +44,7 @@ enum /* values for subtitle_autoscale */
     AUTOSCALE_MOVIE_DIAGONAL = 3, /* diagonal */
   };
 
-extern float sub_delay;
+extern float sub_delay; /* not used anywhere */
 extern float sub_fps;
 extern int suboverlap_enabled;
 extern float font_factor;
@@ -68,8 +68,3 @@ extern int sub_right_margin;
 extern int sub_bottom_margin;
 extern int sub_top_margin;
 extern char * sub_font;
-extern int sub_max_chars;
-extern int sub_max_lines;
-extern int sub_max_font_height;
-extern int sub_max_bottom_font_height;
-extern int max_sub_size;
