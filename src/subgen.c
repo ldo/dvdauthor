@@ -36,6 +36,7 @@
 
 #include "common.h"
 #include "rgb.h"
+#include "subglobals.h"
 #include "subrender.h"
 #include "subgen.h"
 #include "textsub.h"
@@ -792,7 +793,7 @@ static void mux(bool eoinput)
 static void textsub_statistics()
   {
     fprintf(stderr, "\nText Subtitle Statistics:\n");
-    fprintf(stderr, "- Processed %d subtitles.\n", sub_num_of_subtitles);
+    fprintf(stderr, "- Processed %d subtitles.\n", numspus);
     fprintf(stderr, "- The longest display line had %d characters.\n", sub_max_chars - 1);
     fprintf(stderr, "- The maximum number of displayed lines was %d.\n", sub_max_lines);
     fprintf(stderr, "- The normal display height of the font %s was %d.\n", sub_font, sub_max_font_height);

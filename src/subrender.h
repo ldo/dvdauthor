@@ -9,6 +9,6 @@ extern int sub_max_font_height;
 extern int sub_max_bottom_font_height;
 
 void vo_init_osd();
-void vo_update_osd();
+void vo_update_osd(const subtitle_elt * vo_sub);
 void vo_finish_osd();
 #endif

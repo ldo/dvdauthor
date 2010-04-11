@@ -1,20 +1,9 @@
-typedef struct /* return result from textsub_find_sub */
-  {
-    unsigned long start;
-    unsigned long end;
-    int valid;
-  } textsub_subtitle_type;
-
 extern sub_data *textsub_subdata;
-
-/* statistics: */
-extern int sub_num_of_subtitles;
 
 bool textsub_init
   (
     const char *textsub_filename
   );
 extern void textsub_dump_file();
-extern textsub_subtitle_type textsub_find_sub(unsigned long text_sub_pts);
 extern void textsub_finish();
-void textsub_render(subtitle_elt * sub);
+void textsub_render(const subtitle_elt * sub);

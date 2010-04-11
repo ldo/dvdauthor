@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <ctype.h>
 
+#include "subglobals.h"
 #include "subgen.h"
 #include "readxml.h"
 #include "textsub.h"
@@ -85,7 +86,7 @@ static unsigned int parsetime(const char *t)
 static bool
     had_stream = false, /* whether I've seen <stream> */
     had_textsub = false; /* whether I've seen <textsub> */
-static stinfo *st=0; /* current <spu> directive collected here */
+static stinfo *curspu = 0; /* current <spu> directive collected here */
 static button *curbutton=0;
 static char * filename = 0;
 
@@ -101,38 +102,38 @@ static void stream_begin()
 
 static void spu_begin()
 {
-    st = malloc(sizeof(stinfo));
-    memset(st, 0, sizeof(stinfo));
+    curspu = malloc(sizeof(stinfo));
+    memset(curspu, 0, sizeof(stinfo));
 }
 
-static void spu_image(const char *v)        { st->img.fname=localize_filename(v); }
-static void spu_highlight(const char *v)    { st->hlt.fname=localize_filename(v); }
-static void spu_select(const char *v)       { st->sel.fname=localize_filename(v); }
-static void spu_start(const char *v)        { st->spts         = parsetime(v); }
-static void spu_end(const char *v)          { st->sd           = parsetime(v); }
-static void spu_outlinewidth(const char *v) { st->outlinewidth = strtounsigned(v, "spu outlinewidth");      }
-static void spu_xoffset(const char *v)      { st->x0 = strtounsigned(v, "spu xoffset");                }
-static void spu_yoffset(const char *v)      { st->y0 = strtounsigned(v, "spu yoffset");                }
+static void spu_image(const char *v)        { curspu->img.fname=localize_filename(v); }
+static void spu_highlight(const char *v)    { curspu->hlt.fname=localize_filename(v); }
+static void spu_select(const char *v)       { curspu->sel.fname=localize_filename(v); }
+static void spu_start(const char *v)        { curspu->spts         = parsetime(v); }
+static void spu_end(const char *v)          { curspu->sd           = parsetime(v); }
+static void spu_outlinewidth(const char *v) { curspu->outlinewidth = strtounsigned(v, "spu outlinewidth");      }
+static void spu_xoffset(const char *v)      { curspu->x0 = strtounsigned(v, "spu xoffset");                }
+static void spu_yoffset(const char *v)      { curspu->y0 = strtounsigned(v, "spu yoffset");                }
 
 static void spu_force(const char *v)
 {
-    st->forced = xml_ison(v, "spu force");
+    curspu->forced = xml_ison(v, "spu force");
 }
 
 static void spu_transparent(const char *v)
 {
     int c = 0;
     sscanf(v, "%x", &c);
-    st->transparentc.r = c>>16;
-    st->transparentc.g = c>>8;
-    st->transparentc.b = c;
-    st->transparentc.t = 255;
+    curspu->transparentc.r = c>>16;
+    curspu->transparentc.g = c>>8;
+    curspu->transparentc.b = c;
+    curspu->transparentc.t = 255;
 }
 
 static void spu_autooutline(const char *v)
 {
-    if (!strcmp(v,"infer"))
-        st->autooutline = true;
+    if (!strcmp(v, "infer"))
+        curspu->autooutline = true;
     else
       {
         fprintf(stderr, "ERR:  Unknown autooutline type %s\n", v);
@@ -142,10 +143,10 @@ static void spu_autooutline(const char *v)
 
 static void spu_autoorder(const char *v)
 {
-    if (!strcmp(v,"rows"))
-        st->autoorder = false;
-    else if (!strcmp(v,"columns"))
-        st->autoorder = true;
+    if (!strcmp(v, "rows"))
+        curspu->autoorder = false;
+    else if (!strcmp(v, "columns"))
+        curspu->autoorder = true;
     else
       {
         fprintf(stderr, "ERR:  Unknown autoorder type %s\n", v);
@@ -155,30 +156,30 @@ static void spu_autoorder(const char *v)
 
 static void spu_complete()
 {
-    if (!st->sd) /* no end time specified */
-        st->sd = -1; /* default to indefinite */
+    if (!curspu->sd) /* no end time specified */
+        curspu->sd = -1; /* default to indefinite */
     else
       {
-        if (st->sd <= st->spts)
+        if (curspu->sd <= curspu->spts)
           {
             char stime[50], etime[50];
-            printtime(stime, st->spts);
-            printtime(etime, st->sd);
+            printtime(stime, curspu->spts);
+            printtime(etime, curspu->sd);
             fprintf(stderr, "ERR:  sub has end (%s)<=start (%s), skipping\n", etime, stime);
             skip++;
             return;
           } /*if*/
-        st->sd -= st->spts;
+        curspu->sd -= curspu->spts;
       } /*if*/
     spus = realloc(spus, (numspus + 1) * sizeof(stinfo *));
-    spus[numspus++] = st;
-    st = 0;
+    spus[numspus++] = curspu;
+    curspu = 0;
 }
 
 static void button_begin()
 {
-    st->buttons = realloc(st->buttons, (st->numbuttons + 1) * sizeof(button));
-    curbutton = &st->buttons[st->numbuttons++];
+    curspu->buttons = realloc(curspu->buttons, (curspu->numbuttons + 1) * sizeof(button));
+    curbutton = &curspu->buttons[curspu->numbuttons++];
     memset(curbutton, 0, sizeof(button));
     curbutton->r.x0 = -1;
     curbutton->r.y0 = -1;
@@ -262,58 +263,49 @@ static void textsub_begin()
 static void textsub_complete()
   /* called on a </textsub> tag to load and parse the subtitles. */
   {
-    unsigned long pts = 0;
-    unsigned long subtitle_end;
-    textsub_subtitle_type textsub_subtitle;
+    int i;
     if (filename == NULL)
       {
         fprintf(stderr, "ERR:  Filename of subtitle file missing");
         exit(1);
-      }
-    else
-      {
-        if (!textsub_init(filename))
-          {
-            fprintf(stderr, "ERR:  Couldn't load file %s.\n", filename);
-            exit(1);
-          } /*if*/
-        filename = NULL; /* belongs to textsub_subdata now */
-        have_textsub = true;
-        subtitle_end = textsub_subdata->subtitles[textsub_subdata->sub_num - 1].end;
-        for (pts = 0; pts < subtitle_end; pts++)
-          {
-          /* scan the entire duration of the <textsub> tag, and each time a new
-            subtitle entry appears, append a description of it to the spus array */
-            textsub_subtitle = textsub_find_sub(pts);
-            if (textsub_subtitle.valid) /* another subtitle entry appears */
-              {
-                st = malloc(sizeof(stinfo));
-                memset(st, 0, sizeof(stinfo));
-                if (!textsub_subdata->sub_uses_time)
-                  {
-                  /* start and end are in frame numbers */
-                    st->spts = textsub_subtitle.start * 90000.0 / movie_fps;
-                    st->sd =
-                            (textsub_subtitle.end - textsub_subtitle.start)
-                        *
-                            90000.0
-                        /
-                            movie_fps;
-                  }
-                else
-                  {
-                  /* start and end are in hundredths of a second */
-                    st->spts = textsub_subtitle.start * 900;
-                    st->sd = (textsub_subtitle.end - textsub_subtitle.start) * 900;
-                  } /*if*/
-                st->sub_title = vo_sub;
-                spus = realloc(spus, (numspus + 1) * sizeof(stinfo *));
-                spus[numspus++] = st;
-              } /*if*/
-          } /*for*/
-        free(filename);
-        filename = NULL;
       } /*if*/
+    if (!textsub_init(filename))
+      {
+        fprintf(stderr, "ERR:  Couldn't load file %s.\n", filename);
+        exit(1);
+      } /*if*/
+    filename = NULL; /* belongs to textsub_subdata now */
+    have_textsub = true;
+    numspus = textsub_subdata->sub_num;
+    spus = realloc(spus, textsub_subdata->sub_num * sizeof(stinfo *));
+      /* fixme: need to make sure user doesn't specify both <textsub> and <spu> */
+    for (i = 0; i < textsub_subdata->sub_num; ++i)
+      {
+        subtitle_elt * const thissub = textsub_subdata->subtitles + i;
+        stinfo * const newspu = malloc(sizeof(stinfo));
+        memset(newspu, 0, sizeof(stinfo));
+        if (!textsub_subdata->sub_uses_time)
+          {
+          /* start and end are in frame numbers */
+            newspu->spts = thissub->start * 90000.0 / movie_fps;
+            newspu->sd =
+                    (thissub->end - thissub->start)
+                *
+                    90000.0
+                /
+                    movie_fps;
+          }
+        else
+          {
+          /* start and end are in hundredths of a second */
+            newspu->spts = thissub->start * 900;
+            newspu->sd = (thissub->end - thissub->start) * 900;
+          } /*if*/
+        newspu->sub_title = thissub;
+        spus[i] = newspu;
+      } /*for*/
+    free(filename);
+    filename = NULL;
   } /*textsub_complete*/
 
 static void textsub_l_margin(const char *v)     { sub_left_margin=strtounsigned(v, "textsub left-margin");        }

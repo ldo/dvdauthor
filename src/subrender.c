@@ -841,7 +841,7 @@ inline static void vo_update_text_sub
       }
   } /*vo_update_text_sub*/
 
-void vo_update_osd()
+void vo_update_osd(const subtitle_elt * vo_sub)
   {
     if (vo_osd && vo_sub)
       {

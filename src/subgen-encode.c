@@ -27,6 +27,7 @@
 
 #include <assert.h>
 
+#include "subglobals.h"
 #include "subgen.h"
 #include "common.h"
 

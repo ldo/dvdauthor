@@ -4,6 +4,7 @@
 /* Copyright (C) 2000 - 2003 various authors of the MPLAYER project
  * This module uses various parts of the MPLAYER project (http://www.mplayerhq.hu)
  * With many changes by Sjef van Gool (svangool@hotmail.com) November 2003
+ * And many changes by Lawrence D'Oliveiro <ldo@geek-central.gen.nz> April 2010.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1835,12 +1836,12 @@ struct subreader { /* describes a subtitle format */
     const char *name; /* descriptive name */
 };
 
-sub_data *sub_read_file(const char *filename, float fps)
+sub_data *sub_read_file(const char *filename, float movie_fps)
   /* parses the contents of filename, auto-recognizing the subtitle file format,
     and returns the result. The subtitles will be translated from the subtitle_charset
     character set to Unicode if specified, unless the file name ends in ".utf",
     ".utf8" or ".utf-8" (case-insensitive), in which case they will be assumed
-    to already be in UTF-8. fps is the movie frame rate, needed for subtitle
+    to already be in UTF-8. movie_fps is the movie frame rate, needed for subtitle
     formats which specify fractional-second durations in frames. */
   {
     //filename is assumed to be malloc'ed, free() is used in sub_free()
@@ -2054,7 +2055,7 @@ sub_data *sub_read_file(const char *filename, float fps)
       {
       // here we manage overlapping subtitles
         int n_first, sub_first, sub_orig, i, j;
-        adjust_subs_time(first, 6.0, fps, 0, sub_num, uses_time); /*~6 secs AST*/
+        adjust_subs_time(first, 6.0, movie_fps, 0, sub_num, uses_time); /*~6 secs AST*/
         sub_orig = sub_num;
         n_first = sub_num;
         sub_num = 0;
@@ -2353,7 +2354,7 @@ sub_data *sub_read_file(const char *filename, float fps)
       }
     else /* not suboverlap_enabled */
       {
-        adjust_subs_time(first, 6.0, fps, 1, sub_num, uses_time);/*~6 secs AST*/
+        adjust_subs_time(first, 6.0, movie_fps, 1, sub_num, uses_time);/*~6 secs AST*/
         return_sub = first;
       } /*if*/
     if (return_sub == NULL)
@@ -2382,127 +2383,6 @@ void sub_free(sub_data * subd)
     free((void *)subd->filename);
     free(subd);
   } /*sub_free*/
-
-static long nosub_range_start = -1;
-static long nosub_range_end = -1;
-
-void find_sub(sub_data * subd, unsigned long key)
-  /* puts into current_sub the index of the subd->subtitles array element,
-    and into vo_sub a pointer to this element, which overlaps the time specified
-    by key. vo_sub will be NULL if no such element can be found. */
-  {
-    subtitle_elt *subs;
-    int i, j;
-    if (!subd || subd->sub_num == 0)
-        return;
-    subs = subd->subtitles;
-  /* first, see if previously-returned result will do */
-    if (vo_sub)
-      {
-        if (key >= vo_sub->start && key <= vo_sub->end)
-            return; // OK!
-      }
-    else
-      {
-        if (key > nosub_range_start && key < nosub_range_end)
-            return; // OK!
-      } /*if*/
-  /* no it won't */
-    if (key <= 0)
-      {
-        vo_sub = NULL; // no sub here
-        return;
-      } /*if*/
-//    fprintf(stderr, "\r---- sub changed ----\n");
-  /* see if the following one will do */
-    if (current_sub >= 0 && current_sub + 1 < subd->sub_num)
-      {
-        if (key > subs[current_sub].end && key < subs[current_sub + 1].start)
-          {
-            // no sub
-            nosub_range_start = subs[current_sub].end;
-            nosub_range_end = subs[current_sub + 1].start;
-            vo_sub = NULL;
-            return;
-          } /*if*/
-        // next sub?
-        ++current_sub;
-        vo_sub = &subs[current_sub];
-        if (key >= vo_sub->start && key <= vo_sub->end)
-            return; // OK!
-      } /*if*/
-//    fprintf(stderr, "\r---- sub log search... ----\n");
- /* nope, do a binary search over the entire array to find a suitable entry */
-    i = 0;
-    j = subd->sub_num - 1;
-//    fprintf(stderr, "Searching %d in %d..%d\n",key,subs[i].start,subs[j].end);
-    while (j >= i)
-      {
-        current_sub = (i + j + 1) / 2;
-        vo_sub = &subs[current_sub];
-        if (key < vo_sub->start)
-            j = current_sub - 1;
-        else if (key > vo_sub->end)
-            i = current_sub + 1;
-        else
-            return;         // found!
-      } /*while*/
-//    if (key >= vo_sub->start && key <= vo_sub->end) return; // OK!
-    // check where are we...
-    if (key < vo_sub->start)
-      {
-        if (current_sub <= 0)
-          {
-            // before the first sub
-            nosub_range_start = key - 1; // tricky
-            nosub_range_end = vo_sub->start;
-/*          fprintf(stderr,"FIRST...  key=%ld  end=%ld  \n",key,vo_sub->start); */
-            vo_sub = NULL;
-            return;
-          } /*if*/
-        --current_sub;
-        if (key > subs[current_sub].end && key < subs[current_sub + 1].start)
-          {
-            // no sub
-            nosub_range_start = subs[current_sub].end;
-            nosub_range_end = subs[current_sub + 1].start;
-//          fprintf(stderr, "No sub... 1 \n");
-            vo_sub = NULL;
-            return;
-          } /*if*/
-        fprintf(stderr, "ERR:  HEH????  ");
-      }
-    else
-      {
-        if (key <= vo_sub->end)
-            fprintf(stderr, "INFO: JAJJ!  ");
-        else if (current_sub + 1 >= subd->sub_num)
-          {
-            // at the end?
-            nosub_range_start = vo_sub->end;
-            nosub_range_end = 0x7FFFFFFF; // MAXINT
-//          fprintf(stderr, "END!?\n");
-            vo_sub = NULL;
-            return;
-          }
-        else if (key > subs[current_sub].end && key<subs[current_sub + 1].start)
-          {
-            // no sub
-            nosub_range_start = subs[current_sub].end;
-            nosub_range_end = subs[current_sub + 1].start;
-//          fprintf(stderr, "No sub... 2 \n");
-            vo_sub = NULL;
-            return;
-          } /*if*/
-      } /*if*/
-    fprintf
-      (
-        stderr,
-        "ERR:  %ld  ?  %ld --- %ld  [%d]  \n",
-        key, vo_sub->start, vo_sub->end, current_sub
-      );
-    vo_sub = NULL; // no sub here
-  } /*find_sub*/
 
 /*
     Additional unused stuff (remove some time)

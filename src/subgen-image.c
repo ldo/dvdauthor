@@ -35,6 +35,7 @@
 #include <png.h>
 #endif
 
+#include "subglobals.h"
 #include "subgen.h"
 #include "textsub.h"
 
