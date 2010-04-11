@@ -6,11 +6,10 @@ typedef struct { /* holds subtitle info to be displayed over a particular interv
     unsigned long end; /* end time for displaying subtitle */
     char *text[SUB_MAX_TEXT]; /* array [lines] of char* */
     unsigned char alignment;
-    int text_forced;
-} subtitle;
+} subtitle_elt;
 
 typedef struct { /* holds text and related information read from a subtitle file */
-    subtitle *subtitles; /* array [sub_num] */ /* succession of subtitles to be displayed */
+    subtitle_elt *subtitles; /* array [sub_num] */ /* succession of subtitles to be displayed */
     const char *filename;
     bool sub_uses_time; /* true => start and end are in hundredths of a second; false => they are frame numbers */
     int sub_num;          // number of subtitle structs
@@ -18,7 +17,7 @@ typedef struct { /* holds text and related information read from a subtitle file
 } sub_data;
 
 #ifdef HAVE_ICONV
-extern char *sub_cp; /* code page for interpreting subtitles */
+extern char *subtitle_charset; /* code page for interpreting subtitles */
 #endif
 
 enum /* horizontal alignment settings */
@@ -61,7 +60,7 @@ extern int h_sub_alignment;
 extern int v_sub_alignment;
 extern int sub_bg_color; /* subtitles background color */
 extern int sub_bg_alpha;
-extern subtitle* vo_sub;
+extern subtitle_elt * vo_sub;
 extern int sub_justify;
 extern int sub_left_margin;
 extern int sub_right_margin;

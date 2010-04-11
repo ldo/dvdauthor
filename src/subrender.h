@@ -9,6 +9,6 @@ extern int sub_max_font_height;
 extern int sub_max_bottom_font_height;
 
 void vo_init_osd();
-void vo_update_osd(int dxs,int dys);
+void vo_update_osd();
 void vo_finish_osd();
 #endif

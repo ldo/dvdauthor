@@ -340,7 +340,7 @@ static int read_pic(stinfo *s, pict *p)
     if (have_textsub)
       {
         textsub_render(s->sub_title); /* will allocate and render into textsub_image_buffer */
-        s->forced = s->sub_title->text_forced;
+        s->forced = text_forceit;
         r = read_frame(p);
       }
     else /* read image file */

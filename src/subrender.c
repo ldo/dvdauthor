@@ -38,35 +38,25 @@
 
 typedef struct mp_osd_bbox_s
   {
-    int x1,y1; /* top left */
-    int x2,y2; /* bottom right */
+    int x1, y1; /* top left */
+    int x2, y2; /* bottom right */
   } mp_osd_bbox_t;
 
 #define MAX_UCS 1600
 #define MAX_UCSLINES 16
 
-typedef struct mp_osd_obj_s /* for holding and maintaining a rendered subtitle image */
+typedef struct /* for holding and maintaining a rendered subtitle image */
   {
-    struct mp_osd_obj_s* next; /* linked list */
-    unsigned char alignment; // 2 bits: x;y percentages, 2 bits: x;y relative to parent; 2 bits: alignment left/right/center
-  /* int x; */
-    int y;
-    int dys;
+    int topy;
     mp_osd_bbox_t bbox; // bounding box
-  /* mp_osd_bbox_t old_bbox; */ // the renderer will save bbox here
     union
       {
         struct /* only one used by spumux */
-          {
-            void* sub;          // value of vo_sub at last update
+          { /* subtitle text lines already laid out ready for rendering */
             int utbl[MAX_UCS + 1]; /* all display lines concatenated, each terminated by a null */
             int xtbl[MAX_UCSLINES]; /* x-positions of lines for centre alignment */
             int lines;          // no. of lines
           } subtitle;
-      /* struct
-          {
-            int elems;
-          } progbar; */
       } params;
     int stride; /* bytes per row of both alpha and bitmap buffers */
     int allocated; /* size in bytes of each buffer */
@@ -76,7 +66,7 @@ typedef struct mp_osd_obj_s /* for holding and maintaining a rendered subtitle i
 
 static int sub_pos=100;
 /* static int sub_width_p=100; */
-static mp_osd_obj_t* vo_osd_list=NULL;
+static mp_osd_obj_t* vo_osd = NULL;
 
 /* statistics */
 int sub_max_chars;
@@ -205,8 +195,8 @@ static void draw_alpha_buf
       } /*for*/
   } /*draw_alpha_buf*/
 
-// allocates/enlarges the alpha/bitmap buffer
 static void alloc_buf(mp_osd_obj_t * obj)
+  /* (re)allocates pixel buffers to be large enough for bbox. */
   {
     int len;
   /* fprintf(stderr,"x1:%d x2:%d y1:%d y2:%d\n",obj->bbox.x1,obj->bbox.x2,obj->bbox.y1,obj->bbox.y2); */
@@ -234,10 +224,9 @@ static void alloc_buf(mp_osd_obj_t * obj)
 inline static void vo_update_text_sub
   (
     mp_osd_obj_t * obj,
-    int dxs,
-    int dys
+    const subtitle_elt * the_sub
   )
-  /* lays out and renders the subtitle text from vo_sub using the font settings from vo_font,
+  /* lays out and renders the subtitle text from the_sub using the font settings from vo_font,
     putting the results into obj. */
   {
     // Structures needed for the new splitting algorithm.
@@ -260,26 +249,26 @@ inline static void vo_update_text_sub
     int linedone, linesleft;
     bool warn_overlong_word;
     int textlen, sub_totallen;
-  /* const int widthlimit = dxs * sub_width_p / 100; */
-    const int widthlimit = dxs - sub_right_margin - sub_left_margin;
+  /* const int widthlimit = movie_width * sub_width_p / 100; */
+    const int widthlimit = movie_width - sub_right_margin - sub_left_margin;
       /* maximum width of display lines after deducting space for margins
         and starting point */
     int xmin = widthlimit, xmax = 0;
     int max_line_height;
     int xtblc, utblc;
 
-    if (!vo_sub || !vo_font)
+    if (!the_sub || !vo_font)
       {
         return;
       } /*if*/
-    obj->bbox.y2 = obj->y = dys - sub_bottom_margin;
+    obj->bbox.y2 = obj->topy = movie_height - sub_bottom_margin;
     obj->params.subtitle.lines = 0;
 
     // too long lines divide into a smaller ones
     linedone = sub_totallen = 0;
     max_line_height = vo_font->height;
       /* actually a waste of time computing this when I don't allow mixing fonts */
-    linesleft = vo_sub->lines;
+    linesleft = the_sub->lines;
       {
         struct osd_text_line
           // these are used to store the whole sub text osd
@@ -296,7 +285,7 @@ inline static void vo_update_text_sub
             int xsize = -vo_font->charspace;
               /* cancels out extra space left before first word of first line */
             linesleft--;
-            text = (const unsigned char *)vo_sub->text[linedone++];
+            text = (const unsigned char *)the_sub->text[linedone++];
             textlen = strlen((const char *)text);
             wordlen = 0;
             wordbuf = (int *)realloc(wordbuf, textlen * sizeof(int));
@@ -304,7 +293,7 @@ inline static void vo_update_text_sub
             osl = NULL;
             osl_tail = NULL;
             warn_overlong_word = true;
-            // reading the subtitle words from vo_sub->text[]
+            // reading the subtitle words from the_sub->text[]
             chindex = 0;
             for (;;) /* split line into words */
               {
@@ -415,7 +404,7 @@ inline static void vo_update_text_sub
                 struct osd_text_line *lastnewelt;
                 struct osd_text_word *curword;
                 struct osd_text_line *otp_new;
-                // otp_new will contain the chain of the osd subtitle lines coming from the single vo_sub line.
+                // otp_new will contain the chain of the osd subtitle lines coming from the single the_sub line.
                 otp_new = lastnewelt = (struct osd_text_line *)calloc(1, sizeof(struct osd_text_line));
                 lastnewelt->words = osl;
                 curword = lastnewelt->words;
@@ -629,7 +618,7 @@ inline static void vo_update_text_sub
         // write lines into utbl
         xtblc = 0; /* count of display lines */
         utblc = 0; /* total count of characters in all display lines */
-        obj->y = dys - sub_bottom_margin;
+        obj->topy = movie_height - sub_bottom_margin;
         obj->params.subtitle.lines = 0;
           {
           /* collect display line text into obj->params.subtitle.utbl and x-positions
@@ -649,10 +638,10 @@ inline static void vo_update_text_sub
                     fprintf(stderr, "WARN: max_ucs_lines\n");
                     break;
                   } /*if*/
-                if (max_line_height + sub_top_margin > obj->y) // out of the screen so end parsing
+                if (max_line_height + sub_top_margin > obj->topy) // out of the screen so end parsing
                   {
-                    obj->y += vo_font->height; /* undo inclusion of last line */
-                    fprintf(stderr, "WARN: Out of screen at Y: %d\n", obj->y);
+                    obj->topy += vo_font->height; /* undo inclusion of last line */
+                    fprintf(stderr, "WARN: Out of screen at Y: %d\n", obj->topy);
                     obj->params.subtitle.lines -= 1;
                       /* discard overlong line */
                     break;
@@ -695,7 +684,7 @@ inline static void vo_update_text_sub
                   } /*for*/
                 obj->params.subtitle.utbl[utblc - 1] = 0;
                   /* overwrite last space with string terminator */
-                obj->y -= vo_font->height; /* adjust top to leave room for another line */
+                obj->topy -= vo_font->height; /* adjust top to leave room for another line */
                   /* fixme: shouldn't that be max_line_height? same is true some other places
                     vo_font->height is mentioned */
               } /*for*/
@@ -707,7 +696,7 @@ inline static void vo_update_text_sub
         if (sub_max_bottom_font_height < vo_font->pic_a[vo_font->font[40]]->h)
             sub_max_bottom_font_height = vo_font->pic_a[vo_font->font[40]]->h;
         if (obj->params.subtitle.lines)
-            obj->y = dys - sub_bottom_margin - (obj->params.subtitle.lines * vo_font->height); /* + vo_font->pic_a[vo_font->font[40]]->h; */
+            obj->topy = movie_height - sub_bottom_margin - (obj->params.subtitle.lines * vo_font->height); /* + vo_font->pic_a[vo_font->font[40]]->h; */
 
         // free memory
         if (otp_sub != NULL)
@@ -738,13 +727,13 @@ inline static void vo_update_text_sub
                 (obj->params.subtitle.lines - 1) * vo_font->height
             +
                 vo_font->pic_a[vo_font->font[40]]->h;
-      /* fprintf(stderr,"^1 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d f:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height,font); */
+      /* fprintf(stderr,"^1 bby1:%d bby2:%d h:%d movie_height:%d oy:%d sa:%d sh:%d f:%d\n",obj->bbox.y1,obj->bbox.y2,h,movie_height,obj->topy,v_sub_alignment,subs_height,font); */
         if (v_sub_alignment == V_SUB_ALIGNMENT_BOTTOM)
-            obj->y = dys * sub_pos / 100 - sub_bottom_margin - subs_height;
+            obj->topy = movie_height * sub_pos / 100 - sub_bottom_margin - subs_height;
         else if (v_sub_alignment == V_SUB_ALIGNMENT_CENTER)
-            obj->y =
+            obj->topy =
                     (
-                        dys * sub_pos / 100
+                        movie_height * sub_pos / 100
                     -
                         sub_bottom_margin
                     -
@@ -757,39 +746,26 @@ inline static void vo_update_text_sub
                 /
                     2;
         else /* v_sub_alignment = V_SUB_ALIGNMENT_TOP */
-            obj->y = sub_top_margin;
-        if (obj->y < sub_top_margin)
-            obj->y = sub_top_margin;
-        if (obj->y > dys - sub_bottom_margin - vo_font->height)
-            obj->y = dys - sub_bottom_margin - vo_font->height;
-        obj->bbox.y2 = obj->y + subs_height + 3;
+            obj->topy = sub_top_margin;
+        if (obj->topy < sub_top_margin)
+            obj->topy = sub_top_margin;
+        if (obj->topy > movie_height - sub_bottom_margin - vo_font->height)
+            obj->topy = movie_height - sub_bottom_margin - vo_font->height;
+        obj->bbox.y2 = obj->topy + subs_height + 3;
         // calculate bbox:
         if (sub_justify)
             xmin = sub_left_margin;
         obj->bbox.x1 = xmin - 3;
         obj->bbox.x2 = xmax + 3 + vo_font->spacewidth;
-      /* if (obj->bbox.x2 >= dxs - sub_right_margin - 20)
+      /* if (obj->bbox.x2 >= movie_width - sub_right_margin - 20)
            {
-             obj->bbox.x2 = dxs;
+             obj->bbox.x2 = movie_width;
            } */
-        obj->bbox.y1 = obj->y - 3;
-    //  obj->bbox.y2 = obj->y + obj->params.subtitle.lines * vo_font->height;
+        obj->bbox.y1 = obj->topy - 3;
+    //  obj->bbox.y2 = obj->topy + obj->params.subtitle.lines * vo_font->height;
         alloc_buf(obj);
-      /* fprintf(stderr,"^2 bby1:%d bby2:%d h:%d dys:%d oy:%d sa:%d sh:%d\n",obj->bbox.y1,obj->bbox.y2,h,dys,obj->y,v_sub_alignment,subs_height); */
+      /* fprintf(stderr,"^2 bby1:%d bby2:%d h:%d movie_height:%d oy:%d sa:%d sh:%d\n",obj->bbox.y1,obj->bbox.y2,h,movie_height,obj->topy,v_sub_alignment,subs_height); */
       }
-    switch (vo_sub->alignment)
-      {
-    case H_SUB_ALIGNMENT_LEFT:
-        obj->alignment |= H_SUB_ALIGNMENT_LEFT;
-    break;
-    case H_SUB_ALIGNMENT_CENTER:
-        obj->alignment |= H_SUB_ALIGNMENT_CENTER;
-    break;
-    case H_SUB_ALIGNMENT_RIGHT:
-    default:
-        obj->alignment |= H_SUB_ALIGNMENT_RIGHT;
-    break;
-      } /*switch*/
       {
       /* now to actually render the subtitle */
         int i, chindex, prev_line_end;
@@ -798,7 +774,7 @@ inline static void vo_update_text_sub
         if (linesleft != 0)
           {
             int xtbl_min, x;
-            int y = obj->y;
+            int y = obj->topy;
             for (xtbl_min = widthlimit; linedone < linesleft; ++linedone)
               /* can't see how this loop would ever execute */
                 if (obj->params.subtitle.xtbl[linedone] < xtbl_min)
@@ -806,8 +782,7 @@ inline static void vo_update_text_sub
             for (i = 0; i < linesleft; ++i)
               {
                 int prevch, curch;
-                switch (obj->alignment & 0x3) /* determine start position for rendering line */
-                  /* fixme: why not just use vo_sub->alignment and dispense with obj->alignment altogether? */
+                switch (the_sub->alignment) /* determine start position for rendering line */
                   {
                 case H_SUB_ALIGNMENT_LEFT:
                     if (sub_justify)
@@ -836,7 +811,7 @@ inline static void vo_update_text_sub
                     x += kerning(vo_font, prevch, curch);
                     if (font >= 0)
                       {
-                      /* fprintf(stderr, "^3 vfh:%d vfh+y:%d odys:%d\n", vo_font->pic_a[font]->h, vo_font->pic_a[font]->h + y, obj->dys); */
+                      /* fprintf(stderr, "^3 vfh:%d vfh+y:%d odys:%d\n", vo_font->pic_a[font]->h, vo_font->pic_a[font]->h + y, movie_height); */
                         draw_alpha_buf
                           (
                             /*obj =*/ obj,
@@ -844,10 +819,10 @@ inline static void vo_update_text_sub
                             /*y0 =*/ y,
                             /*w =*/ vo_font->width[curch],
                             /*h =*/
-                                vo_font->pic_a[font]->h + y < obj->dys - sub_bottom_margin ?
+                                vo_font->pic_a[font]->h + y < movie_height - sub_bottom_margin ?
                                     vo_font->pic_a[font]->h
                                 :
-                                    obj->dys - sub_bottom_margin - y,
+                                    movie_height - sub_bottom_margin - y,
                             /*src =*/ vo_font->pic_b[font]->bmp + vo_font->start[curch],
                             /*srca =*/ vo_font->pic_a[font]->bmp + vo_font->start[curch],
                             /*stride =*/ vo_font->pic_a[font]->w
@@ -866,79 +841,58 @@ inline static void vo_update_text_sub
       }
   } /*vo_update_text_sub*/
 
-static void new_osd_obj(void)
-  /* creates a new mp_osd_obj_t object with initially no buffers allocated,
-    and pushes it on the head of vo_osd_list. */
+void vo_update_osd()
   {
-    mp_osd_obj_t * const osd = malloc(sizeof(mp_osd_obj_t));
-    memset(osd, 0, sizeof(mp_osd_obj_t));
-    osd->next = vo_osd_list;
-    vo_osd_list = osd;
-    osd->alpha_buffer = NULL;
-    osd->bitmap_buffer = NULL;
-    osd->allocated = -1;
-  } /*new_osd_obj*/
-
-void vo_update_osd(int dxs, int dys)
-  {
-    mp_osd_obj_t * obj = vo_osd_list;
-
-#ifdef HAVE_FREETYPE
-    // here is the right place to get screen dimensions
-    if (!vo_font)
+    if (vo_osd && vo_sub)
       {
-        load_font_ft(dxs, dys);
+        vo_update_text_sub(vo_osd, vo_sub);
+        vo_draw_alpha_rgb24
+          (
+            /*w =*/ vo_osd->bbox.x2 - vo_osd->bbox.x1,
+            /*h =*/ vo_osd->bbox.y2 - vo_osd->bbox.y1,
+            /*src =*/ vo_osd->bitmap_buffer,
+            /*srca =*/ vo_osd->alpha_buffer,
+            /*srcstride =*/ vo_osd->stride,
+            /*dstbase =*/
+                    textsub_image_buffer
+                +
+                    3 * vo_osd->bbox.x1
+                +
+                    3 * vo_osd->bbox.y1 * movie_width,
+            /*dststride =*/ movie_width * 3
+          );
       } /*if*/
-#endif
-
-    while(obj)
-      {
-        if (vo_sub)
-          {
-            obj->dys = dys;
-            vo_update_text_sub(obj, dxs ,dys);
-            vo_draw_alpha_rgb24
-              (
-                /*w =*/ obj->bbox.x2 - obj->bbox.x1,
-                /*h =*/ obj->bbox.y2 - obj->bbox.y1,
-                /*src =*/ obj->bitmap_buffer,
-                /*srca =*/ obj->alpha_buffer,
-                /*srcstride =*/ obj->stride,
-                /*dstbase =*/
-                        textsub_image_buffer
-                    +
-                        3 * obj->bbox.x1
-                    +
-                        3 * obj->bbox.y1 * movie_width,
-                /*dststride =*/ movie_width * 3
-              );
-          } /*if*/
-        // remove the cause of automatic update:
-        obj = obj->next;
-      } /*while*/
   } /*vo_update_osd*/
 
 void vo_init_osd()
   {
     vo_finish_osd(); /* if previously allocated */
+#ifdef HAVE_FREETYPE
+    init_freetype();
+    load_font_ft();
+#endif
     sub_max_chars = 0;
     sub_max_lines = 0;
     sub_max_font_height = 0;
     sub_max_bottom_font_height = 0;
-    new_osd_obj();
+    vo_osd = malloc(sizeof(mp_osd_obj_t));
+    memset(vo_osd, 0, sizeof(mp_osd_obj_t));
+    vo_osd->alpha_buffer = NULL;
+    vo_osd->bitmap_buffer = NULL;
+    vo_osd->allocated = -1;
   } /*vo_init_osd*/
 
 void vo_finish_osd()
-  /* frees up memory allocated for vo_osd_list. */
+  /* frees up memory allocated for vo_osd. */
   {
-    mp_osd_obj_t * obj = vo_osd_list;
-    while (obj)
+    if (vo_osd)
       {
-        mp_osd_obj_t * const next = obj->next;
-        free(obj->alpha_buffer);
-        free(obj->bitmap_buffer);
-        free(obj);
-        obj = next;
-      } /*while*/
-    vo_osd_list = NULL;
+        free(vo_osd->alpha_buffer);
+        free(vo_osd->bitmap_buffer);
+      } /*if*/
+    free(vo_osd);
+    vo_osd = NULL;
+#ifdef HAVE_FREETYPE
+    done_freetype();
+#endif
   } /*vo_finish_osd*/

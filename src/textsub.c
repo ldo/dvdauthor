@@ -68,8 +68,8 @@ int suboverlap_enabled=1;
  /* never set to any other value */
 int sub_utf8 = 0;
 /* sub_utf8 (int) is a flag which indicates the characterset encoding: 0=initial 1=utf8
-  dictated by filename extension ".utf", ".utf8" or "utf-8" or 2: set by sub_cp being
-  validated is a valid ICONV "from character-set" (set by filename or valid sub_cp
+  dictated by filename extension ".utf", ".utf8" or "utf-8" or 2: set subtitle_charset being
+  validated is a valid ICONV "from character-set" (set by filename or valid subtitle_charset
   when initialized on 0) */
 float font_factor=0.75;
 int verbose=0;
@@ -84,8 +84,8 @@ int sub_justify=1;
  *
  * 23-04-05   Added the text_forceit default value (by Pierre Dumuid)
  * --------------------------------------------------*/
-char* sub_cp = NULL;
-  /* sub_cp (char) contains "from character-set" for ICONV like ISO8859-1 and UTF-8, */
+char* subtitle_charset = NULL;
+  /* subtitle_charset (char) contains "from character-set" for ICONV like ISO8859-1 and UTF-8, */
   /* "to character-set" is set to UTF-8. If not specified, then defaults to locale */
 float text_font_scale_factor = 28.0; /* font size in font units */
 bool text_forceit = false;     /* Forcing of the subtitles */
@@ -106,11 +106,11 @@ char *sub_font = /* Name of true type font, windows OS apps will look in \window
  * End of mimum set of variables that should be user configurable
  * --------------------------------------------------*/
 
-float movie_fps=25.0;
+float movie_fps=25.0; /* fixme: should perhaps depend on video format */
 int movie_width=720;
-int movie_height=574;
+int movie_height=574; /* fixme: should perhaps depend on video format */
 sub_data *textsub_subdata;
-subtitle *vo_sub;
+subtitle_elt *vo_sub;
 unsigned char *textsub_image_buffer;
 int current_sub;
 
@@ -119,31 +119,21 @@ int sub_num_of_subtitles;
 
 bool textsub_init
   (
-    const char *textsub_filename,
-    float textsub_movie_fps,
-    float textsub_movie_width,
-    float textsub_movie_height
+    const char * textsub_filename
   )
   /* loads subtitles from textsub_filename and sets up structures for rendering
     the text. */
   {
     const size_t image_buffer_size =
-        sizeof(uint8_t) * 3 * textsub_movie_height * textsub_movie_width;
+        sizeof(uint8_t) * 3 * movie_height * movie_width;
     vo_sub = NULL;
     current_sub = -1;
     sub_last = 1;
     sub_num_of_subtitles = 0;
-    movie_fps = textsub_movie_fps;
-    movie_width = textsub_movie_width;
-    movie_height = textsub_movie_height;
-#ifdef HAVE_FREETYPE
-    init_freetype();
-#endif
     vo_init_osd();
 #ifdef ICONV
-    if (sub_cp)
-        if (!strcmp(sub_cp, ""))
-            sub_cp = NULL;
+    if (subtitle_charset && !strcmp(subtitle_charset, ""))
+        subtitle_charset = NULL;
 #endif
     textsub_image_buffer = malloc(image_buffer_size);
       /* fixme: not freed from previous call! */
@@ -152,7 +142,7 @@ bool textsub_init
         fprintf(stderr, "ERR:  Failed to allocate memory\n");
         exit(1);
       } /*if*/
-    textsub_subdata = sub_read_file(textsub_filename, textsub_movie_fps);
+    textsub_subdata = sub_read_file(textsub_filename, movie_fps);
       /* fixme: sub_free never called! */
     return textsub_subdata != NULL;
   } /*textsub_init*/
@@ -166,8 +156,7 @@ void textsub_dump_file()
 textsub_subtitle_type textsub_find_sub(unsigned long text_sub_pts)
   /* looks for the subtitle entry covering the specified time, returning it
     if it exists and is not the same as was returned for the previous call.
-    Kind of a roundabout way of finding durations of successive subtitles.
-    Oh, and it also sets the alignment and text_forced fields while it's at it. */
+    Kind of a roundabout way of finding durations of successive subtitles. */
   {
     textsub_subtitle_type result;
     result.valid = 0;
@@ -176,11 +165,6 @@ textsub_subtitle_type textsub_find_sub(unsigned long text_sub_pts)
     find_sub(textsub_subdata, text_sub_pts);
     if (vo_sub && current_sub != sub_last)
       {
-        if (h_sub_alignment != H_SUB_ALIGNMENT_DEFAULT)
-          {
-            vo_sub->alignment = h_sub_alignment;
-          } /*if*/
-        vo_sub->text_forced = text_forceit;   // Not sure where this should go... PMD
         sub_num_of_subtitles++;
         sub_last = current_sub;
         result.start = vo_sub->start;
@@ -192,13 +176,13 @@ textsub_subtitle_type textsub_find_sub(unsigned long text_sub_pts)
 
 /* extern char *draw_image(int p_w, int p_h, unsigned char* p_planes,unsigned int p_stride); */
 
-void textsub_render(subtitle * sub)
+void textsub_render(subtitle_elt * sub)
   /* does the actual rendering of a previously-loaded subtitle. */
   {
     vo_sub = sub;
     memset(textsub_image_buffer, 128, sizeof(uint8_t) * 3 * movie_height * movie_width);
       /* fill with default transparent colour */
-    vo_update_osd(movie_width, movie_height);
+    vo_update_osd();
 /*  draw_image(movie_width, movie_height, textsub_image_buffer, movie_width * 3); */
   } /*textsub_render*/
 
@@ -206,9 +190,6 @@ void textsub_finish()
   {
     vo_finish_osd();
     free(textsub_image_buffer);
-#ifdef HAVE_FREETYPE
-    done_freetype();
-#endif
   } /*textsub_finish*/
 
 #ifdef TEXTSUB_DEBUG
@@ -395,7 +376,7 @@ int main(int argc, char **argv)
   } stinfo;
 
   unsigned long pts=0;
-  subtitle *last_sub;
+  subtitle_elt *last_sub;
   textsub_subtitle_type textsub_subtitle;
   stinfo **spus=NULL;
   stinfo *st=NULL;

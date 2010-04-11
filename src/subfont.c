@@ -94,7 +94,7 @@ static char *get_config_path(const char *filename)
     char exedir[260];
     static char *config_dir = "/spumux";
 #else
-    static char *config_dir = "/.spumux";
+    static char *config_dir = "/.spumux"; /* fixme: should perhaps use xdg base dir stuff in conffile.[ch] */
 #endif
     int len;
 #if defined(__MINGW32__) || defined(__CYGWIN__)
@@ -222,6 +222,8 @@ static int check_font
             /*char_height =*/ floatTof266(ppem),
             /*horiz_resolution =*/ 0, /* use 72dpi */
             /*vert_resolution =*/ 0 /* what he said */
+              /* fixme: need to account for nonsquare pixel aspect ratio,
+                which is also different between PAL and NTSC! */
           );
         if (error)
             WARNING("FT_Set_Char_Size failed.");
@@ -230,7 +232,7 @@ static int check_font
       {
         int j = 0;
         int jppem = face->available_sizes[0].height;
-        /* find closest size */
+      /* find closest size */
         for (i = 0; i < face->num_fixed_sizes; ++i)
           {
             if
@@ -825,7 +827,7 @@ static font_desc_t* init_font_desc()
     return desc;
   } /*init_font_desc*/
 
-void free_font_desc(font_desc_t *desc)
+static void free_font_desc(font_desc_t *desc)
   /* disposes of all storage allocated for a font_desc_t structure. */
   {
     int i;
@@ -916,7 +918,7 @@ static void load_sub_face(const char *name, FT_Face *face)
             fprintf(stderr, "ERR:  cannot get the font name.\n");
             break;
           } /*if*/
-        fprintf(stderr, "INFO: found font file %s\n", foundfilename);
+        fprintf(stderr, "INFO: font name \"%s\" matches font file %s\n", name, foundfilename);
         err = FT_New_Face(library, (const char *)foundfilename, 0, face);
         if (err == 0)
             break;
@@ -968,7 +970,7 @@ int kerning(font_desc_t *desc, int prevc, int c)
     return f266ToInt(kern.x);
   } /*kerning*/
 
-font_desc_t* read_font_desc_ft
+static font_desc_t * read_font_desc_ft
   (
     const char *fname,
     int movie_width,
@@ -1091,24 +1093,26 @@ int done_freetype()
     int err;
     if (!freetype_inited)
         return 0;
-    freetype_inited = false;
     free_font_desc(vo_font);
     vo_font = NULL;
+#if 0 /* don't bother */
+    freetype_inited = false;
     err = FT_Done_FreeType(library);
     if (err)
       {
         fprintf(stderr, "ERR:  FT_Done_FreeType failed.\n");
         return -1;
       } /*if*/
+#endif
     return 0;
   } /*done_freetype*/
 
-void load_font_ft(int width, int height)
+void load_font_ft()
   /* sets up vo_font for rendering glyphs with the font named sub_font to
     make subtitles for a movie with the specified width and height. */
   {
     free_font_desc(vo_font);
-    vo_font = read_font_desc_ft(sub_font, width, height);
+    vo_font = read_font_desc_ft(sub_font, movie_width, movie_height);
   } /*load_font_ft*/
 
 #endif /* HAVE_FREETYPE */

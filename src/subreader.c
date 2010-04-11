@@ -164,9 +164,9 @@ static int
     ic_eof;
 
 static void subcp_open(void)
-  /* opens an iconv context for converting subtitles from sub_cp to UTF-8 if appropriate. */
+  /* opens an iconv context for converting subtitles from subtitle_charset to UTF-8 if appropriate. */
   {
-    const char * const fromcp = sub_cp != NULL ? sub_cp : default_charset;
+    const char * const fromcp = subtitle_charset != NULL ? subtitle_charset : default_charset;
     const char * const tocp = "UTF-8";
     icdsc = iconv_open(tocp, fromcp);
     if (icdsc != ICONV_NULL)
@@ -369,7 +369,7 @@ static char * sub_fgets
 #ifndef max
 #define max(a,b)  (((a)>(b))?(a):(b))
 #endif
-subtitle *sub_fribidi(subtitle *sub)
+subtitle_elt *sub_fribidi(subtitle_elt *sub)
   /* reorders character codes as necessary so right-to-left text will come out
     in the correct order when rendered left-to-right. */
   {
@@ -445,7 +445,7 @@ subtitle *sub_fribidi(subtitle *sub)
     Decoders for various subtitle formats
 */
 
-subtitle *sub_read_line_sami(subtitle *current)
+subtitle_elt *sub_read_line_sami(subtitle_elt *current)
   {
   /* yuk--internal static state */
     static char line[LINE_LEN + 1];
@@ -621,7 +621,7 @@ static const char *sub_readtext(const char *source, char **dest)
         return NULL;  // last text field
   } /*sub_readtext*/
 
-subtitle *sub_read_line_microdvd(subtitle *current)
+subtitle_elt *sub_read_line_microdvd(subtitle_elt *current)
   {
     char line[LINE_LEN + 1];
     char line2[LINE_LEN + 1];
@@ -663,7 +663,7 @@ subtitle *sub_read_line_microdvd(subtitle *current)
     return current;
   } /*sub_read_line_microdvd*/
 
-subtitle *sub_read_line_subrip(subtitle *current)
+subtitle_elt *sub_read_line_subrip(subtitle_elt *current)
   {
     char line[LINE_LEN + 1];
     int a1, a2, a3, a4, b1, b2, b3, b4;
@@ -708,7 +708,7 @@ subtitle *sub_read_line_subrip(subtitle *current)
     return current;
   } /*sub_read_line_subrip*/
 
-subtitle *sub_read_line_subviewer(subtitle *current)
+subtitle_elt *sub_read_line_subviewer(subtitle_elt *current)
   {
     char line[LINE_LEN + 1];
     int a1, a2, a3, a4, b1, b2, b3, b4;
@@ -784,7 +784,7 @@ subtitle *sub_read_line_subviewer(subtitle *current)
     return current;
   } /*sub_read_line_subviewer*/
 
-subtitle *sub_read_line_subviewer2(subtitle *current)
+subtitle_elt *sub_read_line_subviewer2(subtitle_elt *current)
   {
     char line[LINE_LEN + 1];
     int a1, a2, a3, a4;
@@ -827,7 +827,7 @@ subtitle *sub_read_line_subviewer2(subtitle *current)
     return current;
   } /*sub_read_line_subviewer2*/
 
-subtitle *sub_read_line_vplayer(subtitle *current)
+subtitle_elt *sub_read_line_vplayer(subtitle_elt *current)
   {
     char line[LINE_LEN + 1];
     int a1, a2, a3;
@@ -888,7 +888,7 @@ subtitle *sub_read_line_vplayer(subtitle *current)
     return current;
   } /*sub_read_line_vplayer*/
 
-subtitle *sub_read_line_rt(subtitle *current)
+subtitle_elt *sub_read_line_rt(subtitle_elt *current)
   {
     //TODO: This format uses quite rich (sub/super)set of xhtml
     // I couldn't check it since DTD is not included.
@@ -1044,7 +1044,7 @@ subtitle *sub_read_line_rt(subtitle *current)
     return current;
   } /*sub_read_line_rt*/
 
-subtitle *sub_read_line_ssa(subtitle *current)
+subtitle_elt *sub_read_line_ssa(subtitle_elt *current)
   {
 /*
  * Sub Station Alpha v4 (and v2?) scripts have 9 commas before subtitle
@@ -1131,7 +1131,7 @@ subtitle *sub_read_line_ssa(subtitle *current)
     return current;
   } /*sub_read_line_ssa*/
 
-void sub_pp_ssa(subtitle *sub)
+void sub_pp_ssa(subtitle_elt *sub)
   {
     int l = sub->lines;
     const char *so, *start;
@@ -1161,7 +1161,7 @@ void sub_pp_ssa(subtitle *sub)
       } /*while*/
   } /*sub_pp_ssa*/
 
-subtitle *sub_read_line_pjs(subtitle *current)
+subtitle_elt *sub_read_line_pjs(subtitle_elt *current)
   {
     char line[LINE_LEN + 1];
     char text[LINE_LEN + 1];
@@ -1174,7 +1174,7 @@ subtitle *sub_read_line_pjs(subtitle *current)
     return current;
   } /*sub_read_line_pjs*/
 
-subtitle *sub_read_line_mpsub(subtitle *current)
+subtitle_elt *sub_read_line_mpsub(subtitle_elt *current)
   {
     char line[LINE_LEN + 1];
     float startdelay, duration;
@@ -1228,10 +1228,10 @@ subtitle *sub_read_line_mpsub(subtitle *current)
 
 #ifndef USE_SORTSUB
 //we don't need this if we use previous_sub_end
-static subtitle *previous_aqt_sub = NULL;
+static subtitle_elt *previous_aqt_sub = NULL;
 #endif
 
-subtitle *sub_read_line_aqt(subtitle *current)
+subtitle_elt *sub_read_line_aqt(subtitle_elt *current)
   {
     char line[LINE_LEN + 1];
     const char *next;
@@ -1288,10 +1288,10 @@ subtitle *sub_read_line_aqt(subtitle *current)
   } /*sub_read_line_aqt*/
 
 #ifndef USE_SORTSUB
-static subtitle *previous_subrip09_sub = NULL;
+static subtitle_elt *previous_subrip09_sub = NULL;
 #endif
 
-subtitle *sub_read_line_subrip09(subtitle *current)
+subtitle_elt *sub_read_line_subrip09(subtitle_elt *current)
   {
     char line[LINE_LEN + 1];
     int a1, a2, a3;
@@ -1345,7 +1345,7 @@ subtitle *sub_read_line_subrip09(subtitle *current)
     return current;
   } /*sub_read_line_subrip09*/
 
-subtitle *sub_read_line_jacosub(subtitle * current)
+subtitle_elt *sub_read_line_jacosub(subtitle_elt * current)
   {
     char line1[LINE_LEN], line2[LINE_LEN], directive[LINE_LEN];
     unsigned a1, a2, a3, a4, b1, b2, b3, b4, comment = 0;
@@ -1354,7 +1354,7 @@ subtitle *sub_read_line_jacosub(subtitle * current)
     const char *p;
     char *q;
 
-    bzero(current, sizeof(subtitle));
+    bzero(current, sizeof(subtitle_elt));
     bzero(line1, LINE_LEN);
     bzero(line2, LINE_LEN);
     bzero(directive, LINE_LEN);
@@ -1490,7 +1490,7 @@ subtitle *sub_read_line_jacosub(subtitle * current)
           {
             int cont, jLength;
             if (sscanf(p, "%s %[^\n\r]", directive, line1) < 2)
-                return (subtitle *)ERR;
+                return (subtitle_elt *)ERR;
             jLength = strlen(directive);
             for (cont = 0; cont < jLength; ++cont)
               {
@@ -1756,7 +1756,7 @@ static int sub_autodetect(bool * uses_time)
 
 static void adjust_subs_time
   (
-    subtitle * sub, /* array of subtitles */
+    subtitle_elt * sub, /* array of subtitle_elts */
     float subtime, /* duration to truncate overlapping subtitle to--why? */
     float fps,
     int block, /* whether to check for overlapping subtitles (false if caller will fix them up) */
@@ -1766,7 +1766,7 @@ static void adjust_subs_time
   /* adjusts for overlapping subtitle durations, and also for sub_fps if specified. */
   {
     int nradjusted, adjusted;
-    subtitle* nextsub;
+    subtitle_elt * nextsub;
     int i = sub_num;
     unsigned long const subfms = (sub_uses_time ? 100 : fps) * subtime;
       /* subtime converted to subtitle duration units */
@@ -1830,14 +1830,14 @@ static void adjust_subs_time
   } /*adjust_subs_time*/
 
 struct subreader { /* describes a subtitle format */
-    subtitle * (*read)(subtitle *dest); /* file reader routine */
-    void       (*post)(subtitle *dest); /* optional post-processor routine */
+    subtitle_elt * (*read)(subtitle_elt *dest); /* file reader routine */
+    void       (*post)(subtitle_elt *dest); /* optional post-processor routine */
     const char *name; /* descriptive name */
 };
 
 sub_data *sub_read_file(const char *filename, float fps)
   /* parses the contents of filename, auto-recognizing the subtitle file format,
-    and returns the result. The subtitles will be translated from the sub_cp
+    and returns the result. The subtitles will be translated from the subtitle_charset
     character set to Unicode if specified, unless the file name ends in ".utf",
     ".utf8" or ".utf-8" (case-insensitive), in which case they will be assumed
     to already be in UTF-8. fps is the movie frame rate, needed for subtitle
@@ -1846,9 +1846,9 @@ sub_data *sub_read_file(const char *filename, float fps)
     //filename is assumed to be malloc'ed, free() is used in sub_free()
     int sub_format;
     int n_max;
-    subtitle *first, *second, *new_sub, *return_sub;
+    subtitle_elt *first, *second, *new_sub, *return_sub;
 #ifdef USE_SORTSUB
-    subtitle temp_sub;
+    subtitle_elt temp_sub;
 #endif
     sub_data *subt_data;
     bool uses_time = false;
@@ -1889,7 +1889,7 @@ sub_data *sub_read_file(const char *filename, float fps)
           {
             const char * const exts[] = {".utf", ".utf8", ".utf-8"};
               /* if filename ends with one of these extensions, then its contents
-                are assumed to be in UTF-8 encoding, and sub_cp is ignored */
+                are assumed to be in UTF-8 encoding, and subtitle_charset is ignored */
             for (k = 3; --k >= 0;)
                 if (l > strlen(exts[k]) && !strcasecmp(filename + (l - strlen(exts[k])), exts[k]))
                   {
@@ -1912,7 +1912,7 @@ sub_data *sub_read_file(const char *filename, float fps)
     sub_rewind();
     sub_num = 0;
     n_max = 32; /* initial size of "first" array */
-    first = (subtitle *)malloc(n_max * sizeof(subtitle));
+    first = (subtitle_elt *)malloc(n_max * sizeof(subtitle_elt));
   /* fixme: don't bother recovering from any of the following allocation etc failures, just die */
     if(!first)
       {
@@ -1932,7 +1932,7 @@ sub_data *sub_read_file(const char *filename, float fps)
         if (sub_num == n_max) /* need more room in "first" array */
           {
             n_max += 16;
-            first = realloc(first, n_max * sizeof(subtitle));
+            first = realloc(first, n_max * sizeof(subtitle_elt));
           } /*if*/
 #ifdef USE_SORTSUB
         new_sub = &temp_sub;
@@ -1941,10 +1941,14 @@ sub_data *sub_read_file(const char *filename, float fps)
         new_sub = &first[sub_num];
           /* just put it directly on the end */
 #endif
-        memset(new_sub, '\0', sizeof(subtitle));
+        memset(new_sub, '\0', sizeof(subtitle_elt));
         new_sub = srp->read(new_sub);
         if (!new_sub)
             break;   // EOF
+        if (h_sub_alignment != H_SUB_ALIGNMENT_DEFAULT)
+          {
+            new_sub->alignment = h_sub_alignment; /* override settings from subtitle file */
+          } /*if*/
 #ifdef HAVE_FRIBIDI
         if (new_sub != ERR)
             new_sub = sub_fribidi(new_sub);
@@ -2272,15 +2276,15 @@ sub_data *sub_read_file(const char *filename, float fps)
                   {
                     // the 'block' has too much lines, so we don't overlap the
                     // subtitles
-                    second = (subtitle *)realloc
+                    second = (subtitle_elt *)realloc
                       (
                         second,
-                        (sub_num + sub_to_add + 1) * sizeof(subtitle)
+                        (sub_num + sub_to_add + 1) * sizeof(subtitle_elt)
                       );
                     for (j = 0; j <= sub_to_add; ++j)
                       {
                         int ls;
-                        memset(&second[sub_num + j], '\0', sizeof(subtitle));
+                        memset(&second[sub_num + j], '\0', sizeof(subtitle_elt));
                         second[sub_num + j].start = first[sub_first + j].start;
                         second[sub_num + j].end = first[sub_first + j].end;
                         second[sub_num + j].lines = first[sub_first + j].lines;
@@ -2296,8 +2300,8 @@ sub_data *sub_read_file(const char *filename, float fps)
                     break;
                   } /*if*/
                 // we read the placeholder structure and create the new subs.
-                second = (subtitle *)realloc(second, (sub_num + 1) * sizeof(subtitle));
-                memset(&second[sub_num], '\0', sizeof(subtitle));
+                second = (subtitle_elt *)realloc(second, (sub_num + 1) * sizeof(subtitle_elt));
+                memset(&second[sub_num], '\0', sizeof(subtitle_elt));
                 second[sub_num].start = local_start;
                 second[sub_num].end = local_end;
                 second[sub_num].alignment = H_SUB_ALIGNMENT_CENTER;
@@ -2387,8 +2391,8 @@ void find_sub(sub_data * subd, unsigned long key)
     and into vo_sub a pointer to this element, which overlaps the time specified
     by key. vo_sub will be NULL if no such element can be found. */
   {
-    subtitle *subs;
-    int i,j;
+    subtitle_elt *subs;
+    int i, j;
     if (!subd || subd->sub_num == 0)
         return;
     subs = subd->subtitles;
@@ -2507,10 +2511,10 @@ void find_sub(sub_data * subd, unsigned long key)
 void list_sub_file(const sub_data * subd)
   {
     int i, j;
-    const subtitle * const subs = subd->subtitles;
+    const subtitle_elt * const subs = subd->subtitles;
     for (j = 0; j < subd->sub_num; j++)
       {
-        const subtitle * const egysub = &subs[j];
+        const subtitle_elt * const egysub = &subs[j];
         fprintf(stdout, "%i line%c (%li-%li)\n",
             egysub->lines,
             1 == egysub->lines ? ' ' : 's',

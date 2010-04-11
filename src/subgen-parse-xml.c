@@ -210,7 +210,7 @@ static void textsub_filename(const char *v)
 static void textsub_characterset(const char *v)
 {
 #ifdef HAVE_ICONV
-    sub_cp = strdup(v); /* won't leak, because I won't be called more than once */
+    subtitle_charset = strdup(v); /* won't leak, because I won't be called more than once */
 #else
     fprintf(stderr, "ERR:  <textsub> characterset attribute cannot be interpreted without iconv\n");
     exit(1);
@@ -272,7 +272,7 @@ static void textsub_complete()
       }
     else
       {
-        if (!textsub_init(filename, movie_fps, movie_width, movie_height))
+        if (!textsub_init(filename))
           {
             fprintf(stderr, "ERR:  Couldn't load file %s.\n", filename);
             exit(1);
