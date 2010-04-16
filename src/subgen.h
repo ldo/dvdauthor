@@ -71,8 +71,6 @@ typedef struct { /* representation of a subpicture and associated buttons */
 extern unsigned char *sub;
 extern int debug;
 extern bool have_textsub; /* whether a <textsub> tag has been seen */
-extern bool have_transparent;
-extern int transparent_color;
 
 extern stinfo **spus;
 extern int numspus;

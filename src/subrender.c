@@ -60,15 +60,12 @@ typedef struct /* for holding and maintaining a rendered subtitle image */
       } params;
     int stride; /* bytes per row of both alpha and bitmap buffers */
     int allocated; /* size in bytes of each buffer */
-    unsigned char *alpha_buffer; /* alpha channel, one byte per pixel */
-    unsigned char *bitmap_buffer; /* one byte per pixel */
+    unsigned char *bitmap_buffer; /* four bytes per pixel */
   } mp_osd_obj_t;
 
 static int sub_pos=100;
 /* static int sub_width_p=100; */
 
-int sub_bg_color=8; /* subtitles background color */
-int sub_bg_alpha=0;
 int sub_justify=1; /* fixme: not user-settable */
 int sub_left_margin=60;   /* Size of left horizontal non-display area in pixel units */
 int sub_right_margin=60;  /* Size of right horizontal non-display area in pixel units */
@@ -91,78 +88,52 @@ int sub_max_bottom_font_height;
 
 static mp_osd_obj_t* vo_osd = NULL;
 
-static inline void vo_draw_alpha_rgb24
+static inline void vo_draw_subtitle_line
   (
     int w, /* dimensions of area to copy */
     int h,
-    const unsigned char * src, /* source luma */
-    const unsigned char * srca, /* source alpha */
-    int srcstride, /* for both src and srca */
+    const unsigned char * srcbase, /* source pixels */
+    int srcstride, /* for srcbase */
     unsigned char * dstbase, /* where to copy to */
     int dststride /* for dstbase */
   )
-  /* composites pixels from monochrome src onto full-colour 24-bit dstbase according to
-    transparency taken from srca. Used to transfer a complete rendered line to
-    textsub_image_buffer. */
+  /* copies pixels from srcbase onto dstbase. Used to transfer a complete
+    rendered line to textsub_image_buffer. */
   {
     int y, i;
     for (y = 0; y < h; y++)
       {
+        const register unsigned char * src = srcbase;
         register unsigned char * dst = dstbase;
         register int x;
         for (x = 0; x < w; x++)
           {
-            if (srca[x]) /* not fully opaque?? */
-              {
-                dst[0] = (dst[0] * srca[x] >> 8) + src[x];
-                dst[1] = (dst[1] * srca[x] >> 8) + src[x];
-                dst[2] = (dst[2] * srca[x] >> 8) + src[x];
-              /* dst[0] = (src[x] >> 6) << 6;
-                dst[1] = (src[x] >> 6) << 6;
-                dst[2] = (src[x] >> 6) << 6; */
-                for (i = 0; i < 3; i++)
-                  {
-                  /* quantize dst to just 4 component intensities: 0, 1, 127 and 255,
-                    for 64 colour combinations in all */
-                    if (dst[i])
-                      {
-                        if (dst[i] >= 170)
-                            dst[i] = 255;
-                        else
-                          {
-                            if (dst[i] >= 127)
-                                dst[i] = 127;
-                            else
-                                dst[i] = 1;
-                          } /*if*/
-                      } /*if*/
-                  } /*for*/
-                /* fprintf(stderr,"%d.",src[x]); */
-              } /*if*/
-            dst += 3; // 24bpp
+            *dst++ = *src++;
+            *dst++ = *src++;
+            *dst++ = *src++;
+            *dst++ = *src++;
           } /*for*/
-        src += srcstride;
-        srca += srcstride;
+        srcbase += srcstride;
         dstbase += dststride;
       } /*for*/
-  } /*vo_draw_alpha_rgb24*/
+  } /*vo_draw_subtitle_line*/
 
-static void draw_alpha_buf
+static void draw_glyph
   (
     mp_osd_obj_t * obj,
     int x0, /* origin in destination buffer to copy to */
     int y0,
     int w, /* dimensions of area to copy */
     int h,
-    const unsigned char * src, /* source luma */
-    const unsigned char * srca, /* source alpha */
+    const unsigned char * src, /* source pixels */
+    const colorspec * srccolors, /* source palette */
     int stride /* of source */
   )
   /* used to assemble complete rendered screen lines in obj by copying individual
     glyph images. */
   {
     int dststride = obj->stride;
-    int dstskip = obj->stride - w;
+    int dstskip = obj->stride - w * 4;
     int srcskip = stride - w;
     int i, j;
     unsigned char * bdst =
@@ -170,16 +141,8 @@ static void draw_alpha_buf
         +
             (y0 - obj->bbox.y1) * dststride
         +
-            (x0 - obj->bbox.x1);
-    unsigned char * adst =
-            obj->alpha_buffer
-        +
-            (y0 - obj->bbox.y1) * dststride
-        +
-            (x0 - obj->bbox.x1);
+            (x0 - obj->bbox.x1) * 4;
     const unsigned char * bsrc = src;
-    const unsigned char * asrc = srca;
-    int k = 0;
   /* fprintf(stderr, "***w:%d x0:%d bbx1:%d bbx2:%d dstsstride:%d y0:%d h:%d bby1:%d bby2:%d ofs:%d ***\n",w,x0,obj->bbox.x1,obj->bbox.x2,dststride,y0,h,obj->bbox.y1,obj->bbox.y2,(y0-obj->bbox.y1)*dststride + (x0-obj->bbox.x1));*/
     if (x0 < obj->bbox.x1 || x0 + w > obj->bbox.x2 || y0 < obj->bbox.y1 || y0 + h > obj->bbox.y2)
       {
@@ -194,23 +157,25 @@ static void draw_alpha_buf
       } /*if*/
     for (i = 0; i < h; i++)
       {
-        for (j = 0; j < w; j++, bdst++, adst++, bsrc++, asrc++)
+        for (j = 0; j < w; j++)
           {
-            if (*bdst < *bsrc) /* composite according to max operator */
-                *bdst = *bsrc;
-            if (*asrc) /* not fully transparent */
+            const colorspec srccolor = srccolors[*bsrc++];
+            if (srccolor.a != 0)
               {
-                if (*adst == 0 || *adst > *asrc)
-                  *adst = *asrc;
+                *bdst++ = srccolor.r;
+                *bdst++ = srccolor.g;
+                *bdst++ = srccolor.b;
+                *bdst++ = srccolor.a;
+              }
+            else
+              {
+                bdst += 4;
               } /*if*/
           } /*for*/
-        k += dstskip;
         bdst += dstskip;
-        adst += dstskip;
         bsrc += srcskip;
-        asrc += srcskip;
       } /*for*/
-  } /*draw_alpha_buf*/
+  } /*draw_glyph*/
 
 static void alloc_buf(mp_osd_obj_t * obj)
   /* (re)allocates pixel buffers to be large enough for bbox. */
@@ -221,22 +186,17 @@ static void alloc_buf(mp_osd_obj_t * obj)
         obj->bbox.x2 = obj->bbox.x1;
     if (obj->bbox.y2 < obj->bbox.y1)
         obj->bbox.y2 = obj->bbox.y1;
-    obj->stride = obj->bbox.x2 - obj->bbox.x1 + 7 & ~7; /* round up to multiple of 8 bytes--why bother? */
+    obj->stride = (obj->bbox.x2 - obj->bbox.x1) * 4 + 7 & ~7; /* round up to multiple of 8 bytes--why bother? */
     len = obj->stride * (obj->bbox.y2 - obj->bbox.y1);
     if (obj->allocated < len)
       {
       /* allocate new, bigger buffers, don't bother preserving contents of old ones */
         obj->allocated = len;
         free(obj->bitmap_buffer);
-        free(obj->alpha_buffer);
         obj->bitmap_buffer = (unsigned char *)malloc(len);
-        obj->alpha_buffer = (unsigned char *)malloc(len);
       } /*if*/
-    memset(obj->bitmap_buffer, sub_bg_color, len);
-    memset(obj->alpha_buffer, sub_bg_alpha, len);
+    memset(obj->bitmap_buffer, 0, len);
   } /*alloc_buf*/
-
-// vo_draw_text_sub(int dxs,int dys,void (*draw_alpha)(int x0,int y0, int w,int h, unsigned char* src, unsigned char *srca, int stride))
 
 inline static void vo_update_text_sub
   (
@@ -394,9 +354,9 @@ inline static void vo_update_text_sub
                           {
                           /* keep track of line heights to ensure no overlap */
                             const int font = vo_font->font[curch];
-                            if (font >= 0 && vo_font->pic_a[font]->h > max_line_height)
+                            if (font >= 0 && vo_font->pic_b[font]->h > max_line_height)
                               {
-                                max_line_height = vo_font->pic_a[font]->h;
+                                max_line_height = vo_font->pic_b[font]->h;
                               } /*if*/
                           } /*if*/
                       }
@@ -710,10 +670,10 @@ inline static void vo_update_text_sub
             sub_max_lines = obj->params.subtitle.lines;
         if (sub_max_font_height < vo_font->height)
             sub_max_font_height = vo_font->height;
-        if (sub_max_bottom_font_height < vo_font->pic_a[vo_font->font[40]]->h)
-            sub_max_bottom_font_height = vo_font->pic_a[vo_font->font[40]]->h;
+        if (sub_max_bottom_font_height < vo_font->pic_b[vo_font->font[40]]->h)
+            sub_max_bottom_font_height = vo_font->pic_b[vo_font->font[40]]->h;
         if (obj->params.subtitle.lines)
-            obj->topy = movie_height - sub_bottom_margin - (obj->params.subtitle.lines * vo_font->height); /* + vo_font->pic_a[vo_font->font[40]]->h; */
+            obj->topy = movie_height - sub_bottom_margin - (obj->params.subtitle.lines * vo_font->height); /* + vo_font->pic_b[vo_font->font[40]]->h; */
 
         // free memory
         if (otp_sub != NULL)
@@ -743,7 +703,7 @@ inline static void vo_update_text_sub
         const int subs_height =
                 (obj->params.subtitle.lines - 1) * vo_font->height
             +
-                vo_font->pic_a[vo_font->font[40]]->h;
+                vo_font->pic_b[vo_font->font[40]]->h;
       /* fprintf(stderr,"^1 bby1:%d bby2:%d h:%d movie_height:%d oy:%d sa:%d sh:%d f:%d\n",obj->bbox.y1,obj->bbox.y2,h,movie_height,obj->topy,v_sub_alignment,subs_height,font); */
         if (v_sub_alignment == V_SUB_ALIGNMENT_BOTTOM)
             obj->topy = movie_height * sub_pos / 100 - sub_bottom_margin - subs_height;
@@ -828,21 +788,21 @@ inline static void vo_update_text_sub
                     x += kerning(vo_font, prevch, curch);
                     if (font >= 0)
                       {
-                      /* fprintf(stderr, "^3 vfh:%d vfh+y:%d odys:%d\n", vo_font->pic_a[font]->h, vo_font->pic_a[font]->h + y, movie_height); */
-                        draw_alpha_buf
+                      /* fprintf(stderr, "^3 vfh:%d vfh+y:%d odys:%d\n", vo_font->pic_b[font]->h, vo_font->pic_b[font]->h + y, movie_height); */
+                        draw_glyph
                           (
                             /*obj =*/ obj,
                             /*x0 =*/ x,
                             /*y0 =*/ y,
                             /*w =*/ vo_font->width[curch],
                             /*h =*/
-                                vo_font->pic_a[font]->h + y < movie_height - sub_bottom_margin ?
-                                    vo_font->pic_a[font]->h
+                                vo_font->pic_b[font]->h + y < movie_height - sub_bottom_margin ?
+                                    vo_font->pic_b[font]->h
                                 :
                                     movie_height - sub_bottom_margin - y,
                             /*src =*/ vo_font->pic_b[font]->bmp + vo_font->start[curch],
-                            /*srca =*/ vo_font->pic_a[font]->bmp + vo_font->start[curch],
-                            /*stride =*/ vo_font->pic_a[font]->w
+                            /*srccolors =*/ vo_font->pic_b[font]->pal,
+                            /*stride =*/ vo_font->pic_b[font]->w
                           );
                       } /*if*/
                     x += vo_font->width[curch] + vo_font->charspace;
@@ -860,30 +820,29 @@ inline static void vo_update_text_sub
 
 void vo_update_osd(const subtitle_elt * vo_sub)
   {
-    memset(textsub_image_buffer, 128, textsub_image_buffer_size);
-      /* fill with transparent colour, which happens to be 50% grey */
+    memset(textsub_image_buffer, 0, textsub_image_buffer_size);
+      /* fill with transparent colour */
     vo_update_text_sub(vo_osd, vo_sub);
-    vo_draw_alpha_rgb24
+    vo_draw_subtitle_line
       (
         /*w =*/ vo_osd->bbox.x2 - vo_osd->bbox.x1,
         /*h =*/ vo_osd->bbox.y2 - vo_osd->bbox.y1,
-        /*src =*/ vo_osd->bitmap_buffer,
-        /*srca =*/ vo_osd->alpha_buffer,
+        /*srcbase =*/ vo_osd->bitmap_buffer,
         /*srcstride =*/ vo_osd->stride,
         /*dstbase =*/
                 textsub_image_buffer
             +
-                3 * vo_osd->bbox.x1
+                4 * vo_osd->bbox.x1
             +
-                3 * vo_osd->bbox.y1 * movie_width,
-        /*dststride =*/ movie_width * 3
+                4 * vo_osd->bbox.y1 * movie_width,
+        /*dststride =*/ movie_width * 4
       );
   } /*vo_update_osd*/
 
 void vo_init_osd()
   {
     vo_finish_osd(); /* if previously allocated */
-    textsub_image_buffer_size = sizeof(uint8_t) * 3 * movie_height * movie_width;
+    textsub_image_buffer_size = sizeof(uint8_t) * 4 * movie_height * movie_width;
     textsub_image_buffer = malloc(textsub_image_buffer_size);
       /* fixme: not freed from previous call! */
     if (textsub_image_buffer == NULL)
@@ -901,7 +860,6 @@ void vo_init_osd()
     sub_max_bottom_font_height = 0;
     vo_osd = malloc(sizeof(mp_osd_obj_t));
     memset(vo_osd, 0, sizeof(mp_osd_obj_t));
-    vo_osd->alpha_buffer = NULL;
     vo_osd->bitmap_buffer = NULL;
     vo_osd->allocated = -1;
   } /*vo_init_osd*/
@@ -911,7 +869,6 @@ void vo_finish_osd()
   {
     if (vo_osd)
       {
-        free(vo_osd->alpha_buffer);
         free(vo_osd->bitmap_buffer);
       } /*if*/
     free(vo_osd);

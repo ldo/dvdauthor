@@ -84,8 +84,16 @@ static FT_Library library;
 
 //static double ttime;
 
+enum
+  { /* predefined colour-table indexes */
+    COLIDX_TRANSPARENT,
+    COLIDX_FILL,
+    COLIDX_OUTLINE,
+  };
+static int const font_load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
+/* static int const font_load_flags = FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
+/* fixme: should probably take out FT_LOAD_NO_HINTING and add FT_LOAD_TARGET_MONO */
 float text_font_scale_factor = 28.0; /* font size in font units */
-float font_factor=0.75;
 float subtitle_font_thickness = 3.0;  /*2.0*/
 int subtitle_autoscale = AUTOSCALE_NONE;
 char *sub_font = /* Name of true type font, windows OS apps will look in \windows\fonts others in home dir */
@@ -168,7 +176,7 @@ static void paste_bitmap
     int srow = 0;
     int sp, dp, w, h;
     if (bitmap->pixel_mode == FT_PIXEL_MODE_MONO)
-      /* map one-bit-per-pixel source to 8 bits per pixel */
+      /* map one-bit-per-pixel source to indexed pixel */
         for
           (
             h = bitmap->rows;
@@ -178,11 +186,11 @@ static void paste_bitmap
             for (w = bwidth, sp = dp = 0; w > 0; --w, ++dp, ++sp)
                 bbuffer[drow + dp] =
                     (bitmap->buffer[srow + sp / 8] & 0x80 >> sp % 8) != 0 ?
-                        255
+                        COLIDX_FILL
                     :
-                        0;
+                        COLIDX_TRANSPARENT;
     else
-      /* assume FT_PIXEL_MODE_GRAY, copy pixels as is */
+      /* assume FT_PIXEL_MODE_GRAY */
         for
           (
             h = bitmap->rows;
@@ -190,8 +198,173 @@ static void paste_bitmap
             --h, height--, drow += width, srow += bitmap->pitch
           )
             for (w = bwidth, sp = dp = 0; w > 0; --w, ++dp, ++sp)
-                bbuffer[drow + dp] = bitmap->buffer[srow + sp];
+                bbuffer[drow + dp] = bitmap->buffer[srow + sp] >= 128 ? COLIDX_FILL : COLIDX_TRANSPARENT;
   } /*paste_bitmap*/
+
+static void add_outline
+  (
+    unsigned char * image,
+    int width, /* dimensions of image */
+    int height,
+    int stride
+  )
+  {
+    int x, y, x1, y1;
+    const int maxradius = ceil(subtitle_font_thickness);
+    for (y = 0; y < height; ++y)
+      {
+        for (x = 0; x < width; ++x)
+          {
+            if (image[y * stride + x] == COLIDX_FILL)
+              {
+                for
+                  (
+                    y1 = y >= maxradius ? y - maxradius : 0;
+                    y1 < y + maxradius && y1 + maxradius < height;
+                    ++y1
+                  )
+                  {
+                    for
+                      (
+                        x1 = x >= maxradius ? x - maxradius : 0;
+                        x1 < x + maxradius && x1 + maxradius < width;
+                        ++x1
+                      )
+                      {
+                        if
+                          (
+                                image[y1 * stride + x1] == COLIDX_TRANSPARENT
+                            &&
+                                    (y1 - y) * (y1 - y) + (x1 - x) * (x1 - x)
+                                <
+                                    subtitle_font_thickness * subtitle_font_thickness
+                          )
+                          {
+                            image[y1 * stride + x1] = COLIDX_OUTLINE;
+                          } /*if*/
+                      } /*for*/
+                  } /*for*/
+              } /*if*/
+          } /*for*/
+      } /*for*/
+  } /*add_outline*/
+
+void render_one_glyph(font_desc_t *desc, int c)
+  /* renders the glyph corresponding to Unicode character code c and saves the
+    image in desc, if it is not there already. */
+  {
+    FT_GlyphSlot slot;
+    FT_UInt glyph_index;
+    FT_Glyph oglyph;
+    FT_BitmapGlyph glyph;
+    int width, height, stride, maxw, off;
+    unsigned char *bbuffer;
+    int pen_xa;
+    const int font = desc->font[c];
+    raw_file * const pic_b = desc->pic_b[font];
+    int error;
+//  fprintf(stderr, "render_one_glyph %d\n", c);
+    if (desc->width[c] != -1) /* already rendered */
+        return;
+    if (desc->font[c] == -1) /* can't render without a font face */
+        return;
+    glyph_index = desc->glyph_index[c];
+    // load glyph into the face's glyph slot
+    error = FT_Load_Glyph(desc->faces[font], glyph_index, font_load_flags);
+    if (error)
+      {
+        WARNING("FT_Load_Glyph 0x%02x (char 0x%04x) failed.", glyph_index, c);
+        desc->font[c] = -1;
+        return;
+      } /*if*/
+    slot = desc->faces[font]->glyph;
+    // render glyph
+    if (slot->format != FT_GLYPH_FORMAT_BITMAP)
+      {
+      /* make it a bitmap */
+        error = FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL);
+        if (error)
+          {
+            WARNING("FT_Render_Glyph 0x%04x (char 0x%04x) failed.", glyph_index, c);
+            desc->font[c] = -1;
+            return;
+          } /*if*/
+      } /*if*/
+    // extract glyph image
+    error = FT_Get_Glyph(slot, &oglyph);
+    if (error)
+      {
+        WARNING("FT_Get_Glyph 0x%04x (char 0x%04x) failed.", glyph_index, c);
+        desc->font[c] = -1;
+        return;
+      } /*if*/
+    if (oglyph->format != FT_GLYPH_FORMAT_BITMAP)
+      {
+        WARNING("FT_Get_Glyph did not return a bitmap glyph.");
+        desc->font[c] = -1;
+        return;
+      } /*if*/
+    glyph = (FT_BitmapGlyph)oglyph;
+//  fprintf(stderr, "glyph generated\n");
+    maxw = pic_b->charwidth;
+    if (glyph->bitmap.width > maxw)
+      {
+        fprintf(stderr, "WARN: glyph too wide!\n");
+      } /*if*/
+    // allocate new memory, if needed
+//  fprintf(stderr, "\n%d %d %d\n", pic_b->charwidth, pic_b->charheight, pic_b->current_alloc);
+    off =
+            pic_b->current_count
+        *
+            pic_b->charwidth
+        *
+            pic_b->charheight;
+    if (pic_b->current_count == pic_b->current_alloc)
+      { /* filled allocated space for bmp blocks, need more */
+        const size_t ALLOC_INCR = 32; /* grow in steps of this */
+        const int newsize =
+                pic_b->charwidth
+            *
+                pic_b->charheight
+            *
+                (pic_b->current_alloc + ALLOC_INCR);
+        const int increment =
+                pic_b->charwidth
+            *
+                pic_b->charheight
+            *
+                ALLOC_INCR;
+        pic_b->current_alloc += ALLOC_INCR;
+    //  fprintf(stderr, "\nns = %d inc = %d\n", newsize, increment);
+        pic_b->bmp = realloc(pic_b->bmp, newsize);
+      /* initialize newly-added memory to zero: */
+        memset(pic_b->bmp + off, 0, increment);
+      } /*if*/
+    bbuffer = pic_b->bmp + off;
+    paste_bitmap /* copy glyph into next available space in pic_b->bmp */
+      (
+        /*bbuffer =*/ bbuffer,
+        /*bitmap =*/ &glyph->bitmap,
+        /*x =*/ pic_b->padding + glyph->left,
+        /*y =*/ pic_b->baseline - glyph->top,
+        /*width =*/ pic_b->charwidth,
+        /*height =*/ pic_b->charheight,
+        /*bwidth =*/ glyph->bitmap.width <= maxw ? glyph->bitmap.width : maxw
+      );
+//  fprintf(stderr, "glyph pasted\n");
+    FT_Done_Glyph((FT_Glyph)glyph);
+  /* advance pen */
+    pen_xa = f266ToInt(slot->advance.x) + 2 * pic_b->padding;
+    if (pen_xa > maxw)
+        pen_xa = maxw;
+    desc->start[c] = off;
+    width = desc->width[c] = pen_xa;
+    height = pic_b->charheight;
+    stride = pic_b->w;
+    add_outline(bbuffer, width, height, stride);
+//  fprintf(stderr, "fg: outline t = %lf\n", GetTimer()-t);
+    pic_b->current_count++;
+  } /*render_one_glyph*/
 
 static int check_font
   (
@@ -206,9 +379,6 @@ static int check_font
   {
     FT_Error error;
     const FT_Face face = desc->faces[pic_idx];
-    int const load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
-  /* int const load_flags = FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
-  /* fixme: should probably take out FT_LOAD_NO_HINTING and add FT_LOAD_TARGET_MONO */
     raw_file * const pic_b = desc->pic_b[pic_idx];
     int ymin = INT_MAX, ymax = INT_MIN;
     int space_advance = 20;
@@ -271,7 +441,7 @@ static int check_font
     if (FT_IS_FIXED_WIDTH(face))
         WARNING("Selected font is fixed-width.");
   /* compute space advance */
-    error = FT_Load_Char(face, ' ', load_flags);
+    error = FT_Load_Char(face, ' ', font_load_flags);
     if (error)
         WARNING("spacewidth set to default.");
     else
@@ -339,316 +509,10 @@ static int check_font
     pic_b->current_count = 0;
     pic_b->w = width;
     pic_b->h = height;
-    pic_b->c = nr_colors;
     pic_b->bmp = NULL;
     pic_b->pen = 0;
     return 0;
   } /*check_font*/
-
-// general outline
-static void outline
-  (
-    const unsigned char *s, /* source image */
-    unsigned char *t, /* where to compute outlined version */
-    int width, /* dimensions of s and t */
-    int height,
-    int stride, /* of both s and t buffers */
-    const unsigned char *m, /* precomputed convolution multiplications */
-    int r, /* thickness */
-    int mwidth, /* convolution matrix dimension = 2 * r + 1 */
-    int msize /* nr matrix elements = mwidth * mwidth */
-  )
-  {
-    int x, y;
-    for (y = 0; y < height; y++)
-      {
-        for (x = 0; x < width; x++)
-          {
-            const int src = s[x];
-            if (src != 0)
-              {
-              /* compute limits of convolution, truncated as appropriate at edges of image */
-                const int x1 = x < r ? r - x : 0;
-                const int y1 = y < r ? r - y : 0;
-                const int x2 = x + r >= width ? r + width - x : 2 * r + 1;
-                const int y2 = y + r >= height ? r + height - y : 2 * r + 1;
-                register unsigned char * dstp = t + (y1 + y - r) * stride + x - r;
-                //register int *mp = m + y1 * mwidth;
-                const register unsigned char * mp = m + msize * src + y1 * mwidth;
-                  /* point at precomputed convolution results for src pixel value */
-                int my;
-                for (my = y1; my < y2; my++)
-                  {
-                    register int mx;
-                    for (mx = x1; mx < x2; mx++)
-                      {
-                        if (dstp[mx] < mp[mx]) /* composite with max operator */
-                            dstp[mx] = mp[mx];
-                      } /*for*/
-                    dstp += stride;
-                    mp += mwidth;
-                  } /*for*/
-              } /*if*/
-          } /*for*/
-        s += stride;
-      } /*for*/
-  } /*outline*/
-
-// 1 pixel outline
-static void outline1
-  (
-    const unsigned char *s,
-    unsigned char *t,
-    int width,
-    int height,
-    int stride
-  )
-  {
-    const int skip = stride - width; /* for skipping rest of each row */
-    int x, y;
-    for (x = 0; x < width; ++x, ++s, ++t) /* copy first row as is */
-        *t = *s;
-    s += skip;
-    t += skip;
-    for (y = 1; y < height - 1; ++y)
-      {
-        *t++ = *s++; /* copy first column as is */
-        for (x = 1; x < width - 1; ++x, ++s, ++t)
-          {
-            const unsigned int v =
-                        (
-                            s[-1 - stride] /* upper-left neighbour */
-                        +
-                            s[-1 + stride] /* lower-left neighbour */
-                        +
-                            s[+1 - stride] /* upper-right neighbour */
-                        +
-                            s[+1 + stride] /* lower-right neighbour */
-                        )
-                    /
-                        2
-                      /* because these are further away from centre--shouldn't division be by sqrt(2)? */
-                +
-                    (
-                        s[-1] /* left neighbour */
-                    +
-                        s[+1] /* right neighbour */
-                    +
-                        s[-stride] /* upper neighbour */
-                    +
-                        s[+stride] /* lower neighbour */
-                    +
-                        s[0] /* pixel itself */
-                    );
-            *t = v > maxcolor ? maxcolor : v;
-          } /*for*/
-        *t++ = *s++; /* copy last column as is */
-        s += skip;
-        t += skip;
-      } /*for*/
-    for (x = 0; x < width; ++x, ++s, ++t) /* copy last row as is */
-        *t = *s;
-  } /*outline1*/
-
-// "0 pixel outline"
-static void outline0
-  (
-    const unsigned char *s,
-    unsigned char *t,
-    int width,
-    int height,
-    int stride
-  )
-  {
-    int y;
-    for (y = 0; y < height; ++y) /* just copy all pixels as is */
-      {
-        memcpy(t, s, width);
-        s += stride;
-        t += stride;
-      } /*for*/
-  } /*outline0*/
-
-static void resample_alpha
-  (
-    unsigned char *abuf, /* image alpha to be transformed */
-    const unsigned char *bbuf, /* image luma */
-    int width, /* dimensions of both buffers */
-    int height,
-    int stride, /* width in bytes of both buffers */
-    float factor /* scale factor to be applied to alpha */
-  )
-  /* scales contents of abuf by factor and inverts them. */
-  {
-    const int f = factor * 256.0f;
-    int i, j;
-    for (i = 0; i < height; i++)
-      {
-        unsigned char * a = abuf + i * stride;
-        const unsigned char * b = bbuf + i * stride;
-        for (j = 0; j < width; j++, a++, b++)
-          {
-            int x = *a;   // alpha
-            const int y = *b;   // bitmap
-            x = 255 - (x * f >> 8); // scale
-            if (x + y > 255)
-                x = 255 - y; // to avoid overflows
-            if (x < 1)
-                x = 1;
-            else if (x >= 252)
-                x = 0;
-            *a = x;
-          } /*for*/
-      } /*for*/
-  } /*resample_alpha*/
-
-void render_one_glyph(font_desc_t *desc, int c)
-  /* renders the glyph corresponding to Unicode character code c and saves the
-    image in desc, if it is not there already. */
-  {
-    FT_GlyphSlot slot;
-    FT_UInt glyph_index;
-    FT_Glyph oglyph;
-    FT_BitmapGlyph glyph;
-    int width, height, stride, maxw, off;
-    unsigned char *abuffer, *bbuffer;
-    int const load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
-  /* int const load_flags = FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
-    int pen_xa;
-    const int font = desc->font[c];
-    raw_file * const pic_a = desc->pic_a[font];
-    raw_file * const pic_b = desc->pic_b[font];
-    int error;
-//  fprintf(stderr, "render_one_glyph %d\n", c);
-    if (desc->width[c] != -1) /* already rendered */
-        return;
-    if (desc->font[c] == -1) /* can't render without a font face */
-        return;
-    glyph_index = desc->glyph_index[c];
-    // load glyph into the face's glyph slot
-    error = FT_Load_Glyph(desc->faces[font], glyph_index, load_flags);
-    if (error)
-      {
-        WARNING("FT_Load_Glyph 0x%02x (char 0x%04x) failed.", glyph_index, c);
-        desc->font[c] = -1;
-        return;
-      } /*if*/
-    slot = desc->faces[font]->glyph;
-    // render glyph
-    if (slot->format != FT_GLYPH_FORMAT_BITMAP)
-      {
-      /* make it a bitmap */
-        error = FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL);
-        if (error)
-          {
-            WARNING("FT_Render_Glyph 0x%04x (char 0x%04x) failed.", glyph_index, c);
-            desc->font[c] = -1;
-            return;
-          } /*if*/
-      } /*if*/
-    // extract glyph image
-    error = FT_Get_Glyph(slot, &oglyph);
-    if (error)
-      {
-        WARNING("FT_Get_Glyph 0x%04x (char 0x%04x) failed.", glyph_index, c);
-        desc->font[c] = -1;
-        return;
-      } /*if*/
-    if (oglyph->format != FT_GLYPH_FORMAT_BITMAP)
-      {
-        WARNING("FT_Get_Glyph did not return a bitmap glyph.");
-        desc->font[c] = -1;
-        return;
-      } /*if*/
-    glyph = (FT_BitmapGlyph)oglyph;
-//  fprintf(stderr, "glyph generated\n");
-    maxw = pic_b->charwidth;
-    if (glyph->bitmap.width > maxw)
-      {
-        fprintf(stderr, "WARN: glyph too wide!\n");
-      } /*if*/
-    // allocate new memory, if needed
-//  fprintf(stderr, "\n%d %d %d\n", pic_b->charwidth, pic_b->charheight, pic_b->current_alloc);
-    off =
-            pic_b->current_count
-        *
-            pic_b->charwidth
-        *
-            pic_b->charheight;
-    if (pic_b->current_count == pic_b->current_alloc)
-      { /* filled allocated space for bmp blocks, need more */
-        const size_t ALLOC_INCR = 32; /* grow in steps of this */
-        const int newsize =
-                pic_b->charwidth
-            *
-                pic_b->charheight
-            *
-                (pic_b->current_alloc + ALLOC_INCR);
-        const int increment =
-                pic_b->charwidth
-            *
-                pic_b->charheight
-            *
-                ALLOC_INCR;
-        pic_b->current_alloc += ALLOC_INCR;
-    //  fprintf(stderr, "\nns = %d inc = %d\n", newsize, increment);
-        pic_b->bmp = realloc(pic_b->bmp, newsize);
-        pic_a->bmp = realloc(pic_a->bmp, newsize);
-      /* initialize newly-added memory to zero: */
-        memset(pic_b->bmp + off, 0, increment);
-        memset(pic_a->bmp + off, 0, increment);
-      } /*if*/
-    abuffer = pic_a->bmp + off;
-    bbuffer = pic_b->bmp + off;
-    paste_bitmap /* copy glyph into next available space in pic_b->bmp */
-      (
-        /*bbuffer =*/ bbuffer,
-        /*bitmap =*/ &glyph->bitmap,
-        /*x =*/ pic_b->padding + glyph->left,
-        /*y =*/ pic_b->baseline - glyph->top,
-        /*width =*/ pic_b->charwidth,
-        /*height =*/ pic_b->charheight,
-        /*bwidth =*/ glyph->bitmap.width <= maxw ? glyph->bitmap.width : maxw
-      );
-//  fprintf(stderr, "glyph pasted\n");
-    FT_Done_Glyph((FT_Glyph)glyph);
-  /* advance pen */
-    pen_xa = f266ToInt(slot->advance.x) + 2 * pic_b->padding;
-    if (pen_xa > maxw)
-        pen_xa = maxw;
-    desc->start[c] = off;
-    width = desc->width[c] = pen_xa;
-    height = pic_b->charheight;
-    stride = pic_b->w;
-  /* now generate corresponding anti-aliased/outlined mask into alpha buffer
-    for the glyph I just rendered */
-    if (desc->tables.o_r == 0)
-      {
-        outline0(bbuffer, abuffer, width, height, stride);
-      }
-    else if (desc->tables.o_r == 1)
-      {
-        outline1(bbuffer, abuffer, width, height, stride);
-      }
-    else
-      {
-        outline
-          (
-            bbuffer,
-            abuffer,
-            width,
-            height,
-            stride,
-            desc->tables.omt,
-            desc->tables.o_r,
-            desc->tables.o_w,
-            desc->tables.o_size
-          );
-      } /*if*/
-//  fprintf(stderr, "fg: outline t = %lf\n", GetTimer()-t);
-    resample_alpha(abuffer, bbuffer, width, height, stride, font_factor);
-    pic_b->current_count++;
-  } /*render_one_glyph*/
 
 static int prepare_font
   (
@@ -662,35 +526,26 @@ static int prepare_font
   )
   /* fills in parts of desc indexed by pic_idx with face and related information. */
   {
-    int i, err;
+    int err;
     const int padding = ceil(thickness);
-    raw_file * pic_a, * pic_b;
+    raw_file * pic_b;
     desc->faces[pic_idx] = face;
-    pic_a = (raw_file *)malloc(sizeof(raw_file));
-    if (pic_a == NULL)
-        return -1;
     pic_b = (raw_file *)malloc(sizeof(raw_file));
     if (pic_b == NULL)
-      {
-        free(pic_a);
         return -1;
-      } /*if*/
-    desc->pic_a[pic_idx] = pic_a;
     desc->pic_b[pic_idx] = pic_b;
-    pic_a->bmp = NULL;
-    pic_a->pal = NULL;
     pic_b->bmp = NULL;
-    pic_b->pal = NULL;
-    pic_a->pal = (unsigned char *)malloc(sizeof(unsigned char) * 256 * 3);
-    if (!pic_a->pal)
-        return -1;
-    for (i = 0; i < 768; ++i)
-        pic_a->pal[i] = i / 3; /* fill with greyscale ramp */
-    pic_b->pal = (unsigned char *)malloc(sizeof(unsigned char) * 256 * 3);
-    if (!pic_b->pal)
-        return -1;
-    for (i = 0; i < 768; ++i)
-        pic_b->pal[i] = i / 3; /* fill with greyscale ramp */
+    memset(pic_b->pal, 0, sizeof pic_b->pal);
+  /* COLIDX_TRANSPARENT is transparent, COLIDX_FILL is opaque white, COLIDX_OUTLINE is opaque black */
+  /* fixme: make COLIDX_FILL & COLIDX_OUTLINE entries user-specifiable in future */
+    pic_b->pal[COLIDX_FILL].r = 255;
+    pic_b->pal[COLIDX_FILL].g = 255;
+    pic_b->pal[COLIDX_FILL].b = 255;
+    pic_b->pal[COLIDX_FILL].a = 255;
+    pic_b->pal[COLIDX_OUTLINE].r = 0;
+    pic_b->pal[COLIDX_OUTLINE].g = 0;
+    pic_b->pal[COLIDX_OUTLINE].b = 0;
+    pic_b->pal[COLIDX_OUTLINE].a = 255;
 //  ttime = GetTimer();
     err = check_font(desc, ppem, padding, pic_idx, charset_size, charset);
 //  ttime = GetTimer() - ttime;
@@ -698,73 +553,10 @@ static int prepare_font
     if (err)
         return -1;
 //  fprintf(stderr, "fg: render t = %lf\n", GetTimer() - t);
-    pic_a->w = pic_b->w;
-    pic_a->h = pic_b->h;
-    pic_a->c = nr_colors;
-    pic_a->bmp = NULL;
-//  fprintf(stderr, "fg: w = %d, h = %d\n", pic_a->w, pic_a->h);
+    pic_b->bmp = NULL;
+//  fprintf(stderr, "fg: w = %d, h = %d\n", pic_b->w, pic_b->h);
     return 0;
   } /*prepare_font*/
-
-static int generate_tables
-  (
-    font_desc_t *desc,
-    double thickness
-  )
-  /* generates the tables used for anti-aliased compositing.
-    This is all a waste of time for DVD-Video subtitles. */
-  {
-    const unsigned int base = 256;
-    int mx, my, i;
-    unsigned char *omtp;
-    desc->tables.o_r = ceil(thickness);
-    desc->tables.o_w = 2 * desc->tables.o_r + 1; /* diameter of outline convolution */
-    desc->tables.o_size = desc->tables.o_w * desc->tables.o_w; /* total nr entries in outline convolution */
-//  fprintf(stderr, "o_r = %d\n", desc->tables.o_r);
-    desc->tables.om = (unsigned *)malloc(desc->tables.o_size * sizeof(unsigned));
-    desc->tables.omt = malloc(desc->tables.o_size * 256);
-    if (desc->tables.om == NULL || desc->tables.omt == NULL)
-      {
-        return -1;
-      }; /*if*/
-  /* outline matrix */
-    for (my = 0; my < desc->tables.o_w; ++my)
-      {
-        for (mx = 0; mx < desc->tables.o_w; ++mx)
-          {
-          // antialiased circle would be perfect here, but this one is good enough
-            const double d = /* [1.0 + thickness - ceil(thickness) .. thickness + 1.0] */
-                    thickness
-                +
-                    1
-                -
-                    sqrt /* radius from centre of convolution */
-                      (
-                            (mx - desc->tables.o_r) * (mx - desc->tables.o_r)
-                        +
-                            (my - desc->tables.o_r) * (my - desc->tables.o_r)
-                      );
-            desc->tables.om[mx + my * desc->tables.o_w] =
-                d >= 1 ? /* within outline radius */
-                    base
-                : d <= 0 ? /* outside outline radius */
-                    0
-                :
-                    d * base + .5; /* anti-aliased outline edges */
-          } /*for*/
-      } /*for*/
-  // outline table:
-    omtp = desc->tables.omt;
-    for (i = 0; i < 256; i++)
-      {
-       /* fill in omt with precomputed expansion of every om table entry multiplied by
-        every one of the possible 256 pixel values */
-        for (mx = 0; mx < desc->tables.o_size; mx++)
-            *omtp++ = (i * desc->tables.om[mx] + base / 2) / base;
-      } /*for*/
-  /* desc->tables.om not needed from this point on! */
-    return 0;
-  } /*generate_tables*/
 
 static int prepare_charset_unicode
   (
@@ -830,12 +622,10 @@ static font_desc_t* init_font_desc()
     desc->height = 0;
     desc->max_width = 0;
     desc->max_height = 0;
-    desc->tables.om = NULL;
-    desc->tables.omt = NULL;
     for (i = 0; i < 65536; i++)
         desc->start[i] = desc->width[i] = desc->font[i] = -1; /* indicate no glyph images cached */
     for (i = 0; i < 16; i++)
-        desc->pic_a[i] = desc->pic_b[i] = NULL;
+        desc->pic_b[i] = NULL;
     return desc;
   } /*init_font_desc*/
 
@@ -847,21 +637,12 @@ static void free_font_desc(font_desc_t *desc)
         return; /* nothing to do */
     for (i = 0; i < 16; i++)
       {
-        if (desc->pic_a[i])
-          {
-            free(desc->pic_a[i]->bmp);
-            free(desc->pic_a[i]->pal);
-          } /*if*/
         if (desc->pic_b[i])
           {
             free(desc->pic_b[i]->bmp);
-            free(desc->pic_b[i]->pal);
           } /*if*/
-        free(desc->pic_a[i]);
         free(desc->pic_b[i]);
       } /*for*/
-    free(desc->tables.om);
-    free(desc->tables.omt);
     for (i = 0; i < desc->face_cnt; i++)
       {
         FT_Done_Face(desc->faces[i]);
@@ -1049,13 +830,6 @@ static font_desc_t * read_font_desc_ft
     if (err)
       {
         fprintf(stderr, "ERR:  Cannot prepare subtitle font.\n");
-        free_font_desc(desc);
-        return NULL;
-      } /*if*/
-    err = generate_tables(desc, subtitle_font_thickness);
-    if (err)
-      {
-        fprintf(stderr, "ERR:  Cannot generate tables.\n");
         free_font_desc(desc);
         return NULL;
       } /*if*/

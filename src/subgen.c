@@ -70,8 +70,6 @@ static uint64_t lps;
 stinfo **spus=0;
 int numspus=0;
 bool have_textsub = false;
-bool have_transparent = true;
-int transparent_color=0x808080;
 
 int skip;
 

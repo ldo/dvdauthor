@@ -60,8 +60,6 @@ extern int movie_width;
 extern int movie_height;
 extern int h_sub_alignment;
 extern int v_sub_alignment;
-extern int sub_bg_color; /* subtitles background color */
-extern int sub_bg_alpha;
 extern int sub_justify;
 extern int sub_left_margin;
 extern int sub_right_margin;

@@ -322,14 +322,14 @@ static int read_frame(pict *s)
     createimage(s, movie_width, movie_height);
     for (y = 0; y < movie_height; y++)
       {
-          const unsigned char * d = textsub_image_buffer + y * movie_width * 3;
+          const unsigned char * d = textsub_image_buffer + y * movie_width * 4;
           for (x = 0; x < movie_width; x++)
             {
               palt p;
               p.r = *d++;
               p.g = *d++;
               p.b = *d++;
-              p.t = 255;
+              p.t = *d++;
               putpixel(s, y * s->width + x, &p);
             } /*for*/
       } /*for*/

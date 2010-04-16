@@ -11,11 +11,16 @@
 #include FT_FREETYPE_H
 #endif
 
+typedef struct
+  {
+    unsigned char r, g, b, a;
+  } colorspec;
+
 typedef struct /* a bitmap for caching glyph images */
   {
-    unsigned char *bmp; /* 8-bit-per-pixel image bitmap accumulated here */
-    unsigned char *pal; /* colour palette--not actually needed */
-    int w, h, c;
+    unsigned char *bmp; /* 8-bit-per-pixel indexed image bitmap accumulated here */
+    colorspec pal[256]; /* colour palette */
+    int w, h;
 #ifdef HAVE_FREETYPE
     int charwidth, charheight;
     int pen, baseline, padding;
@@ -29,14 +34,12 @@ typedef struct
     int spacewidth;
     int charspace; /* extra inter-character spacing, may be negative */
     int height;
-    raw_file* pic_a[16]; /* alpha for glyph images */
     raw_file* pic_b[16]; /* luma for glyph images, 8 bits per pixel */
     short font[65536];
       /* index into faces array, which FT_Face to use for rendering this Unicode character */
     int start[65536];   // short is not enough for unicode fonts
       /* horizontal offset into bmp at which to find image for each Unicode character */
     short width[65536]; /* width in pixels of image for each Unicode character */
-    int freetype;
 
 #ifdef HAVE_FREETYPE
     int face_cnt; /* how many entries in faces are used (actually always only 1) */
@@ -44,16 +47,6 @@ typedef struct
     FT_UInt glyph_index[65536]; /* glyph index indexed by Unicode character code */
 
     int max_width, max_height;
-
-    struct /* parameters for anti-aliased/outlined rendering */
-      {
-        int o_r; /* outline radius */
-        int g_w; /* = 2 * g_r + 1 */
-        int o_w; /* = 2 * o_r + 1 */
-        int o_size; /* = o_w * o_w */
-        unsigned *om; /* array [o_size] of outline convolution coefficients */
-        unsigned char *omt; /* array [256][o_size] of precomputed outline convolutions for all 256 pixel values */
-      } tables;
 #endif
   } font_desc_t;
 
