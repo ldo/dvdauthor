@@ -174,8 +174,8 @@ is not specified.
 <synopsis>
 &lt;subpictures&gt;
    &lt;stream&gt;
-      &lt;textsub filename="demo1.srt" characterset="ISO8859-1" 
-         fontsize="28.0" font="arial" horizontal-alignment="left" 
+      &lt;textsub filename="demo1.srt" characterset="UTF-8" 
+         fontsize="28.0" font="arial" thickness="3.0" horizontal-alignment="left" 
          vertical-alignment="bottom" left-margin="60" right-margin="60" 
          top-margin="20" bottom-margin="30" subtitle-fps="25" 
          movie-fps="25" movie-width="720" movie-height="574"
@@ -211,6 +211,12 @@ the cygwin/mingw home directory and into the execution directory for windows-bas
 execution for the specified font. Looking for free fonts? One listing is 
 here http://www.microsoft.com/typography/links/links.asp?type=free&amp;part=1 
 (this is only about fonts, not about operating systems).
+
+</para>
+<para>
+
+The thickness attribute specifies the thickness of the outline to draw around
+each character, to set it off from the video background.
 
 </para>
 <para>

@@ -320,6 +320,11 @@ static void textsub_movie_width(const char* v)  { movie_width=strtounsigned(v, "
 static void textsub_movie_height(const char* v) { movie_height=strtounsigned(v, "textsub movie-height");           }
 static void textsub_fontsize(const char *v)     { text_font_scale_factor=atof(v); }
 
+static void textsub_thickness(const char *v)
+  {
+    subtitle_font_thickness = atof(v);
+  } /*textsub_thickness*/
+
 static void textsub_force(const char *v)
 {
     text_forceit = xml_ison(v, "textsub force");
@@ -377,6 +382,7 @@ static struct elemattr spu_attrs[]={
     {"textsub","filename",textsub_filename},
     {"textsub","characterset",textsub_characterset},
     {"textsub","fontsize",textsub_fontsize},
+    {"textsub","thickness",textsub_thickness},
     {"textsub","horizontal-alignment",textsub_h_alignment},
     {"textsub","vertical-alignment",textsub_v_alignment},
     {"textsub","left-margin",textsub_l_margin},

@@ -354,7 +354,7 @@ void render_one_glyph(font_desc_t *desc, int c)
 //  fprintf(stderr, "glyph pasted\n");
     FT_Done_Glyph((FT_Glyph)glyph);
   /* advance pen */
-    pen_xa = f266ToInt(slot->advance.x) + 2 * pic_b->padding;
+    pen_xa = f266ToInt(slot->advance.x) + 3 * pic_b->padding;
     if (pen_xa > maxw)
         pen_xa = maxw;
     desc->start[c] = off;
