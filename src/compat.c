@@ -30,6 +30,7 @@ void init_locale()
     default_charset_buf[sizeof default_charset_buf - 1] = 0;
     default_charset = default_charset_buf;
     // fprintf(stderr, "INFO: default codeset is \"%s\"\n", default_charset); /* debug */
+    setlocale(LC_ALL, "C"); /* don't need locale for anything else */
 #else
     // fprintf(stderr, "INFO: all text will be interpreted as UTF-8\n"); /* debug */
 #endif /*HAVE_ICONV*/
