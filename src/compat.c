@@ -1230,65 +1230,67 @@ colorspec parse_color
             if (gothue)
               {
                 component[0] %= 360;
+              /* convert to RGB using formulas from Wikipedia */
                   {
                     const int hue = component[0];
-                    const int saturation =
+                    const int chroma =
+                            (gotlightness ?
+                                    2
+                                *
+                                    (component[2] < 128 ? component[2] : 255 - component[2])
+                            :
+                                component[2]
+                            )
+                        *
+                            component[1]
+                        /
+                            255;
+                    const int second = chroma * (60 - abs(hue % 120 - 60)) / 60;
+                    const int brighten =
                         gotlightness ?
-                            (component[2] >= 128 ? 255 - component[2] : 128) * component[1] / 128
+                            component[2] - chroma / 2
                         :
-                            component[1];
-                    const int brightness = component[2];
-                    int * left, * right, * opposite, huelo, huehi, huemid;
-                    if (hue < 120)
+                            component[2] - chroma;
+                    int * primary, * secondary, * opposite;
+                    if (hue < 60)
                       {
-                        left = component + 0;
-                        right = component + 1;
+                        primary = component + 0;
+                        secondary = component + 1;
                         opposite = component + 2;
-                        huelo = 0;
-                        huehi = 120;
                       }
-                    else if (hue >= 120 && hue < 240)
+                    else if (hue >= 60 && hue < 120)
                       {
-                        left = component + 1;
-                        right = component + 2;
+                        primary = component + 1;
+                        secondary = component + 0;
+                        opposite = component + 2;
+                      }
+                    else if (hue >= 120 && hue < 180)
+                      {
+                        primary = component + 1;
+                        secondary = component + 2;
                         opposite = component + 0;
-                        huelo = 120;
-                        huehi = 240;
                       }
-                    else /* hue >= 240 && hue < 360 */
+                    else if (hue >= 180 && hue < 240)
                       {
-                        left = component + 2;
-                        right = component + 0;
+                        primary = component + 2;
+                        secondary = component + 1;
+                        opposite = component + 0;
+                      }
+                    else if (hue >= 240 && hue < 300)
+                      {
+                        primary = component + 2;
+                        secondary = component + 0;
                         opposite = component + 1;
-                        huelo = 240;
-                        huehi = 360;
+                      }
+                    else /* hue >= 300 && hue < 360 */
+                      {
+                        primary = component + 0;
+                        secondary = component + 2;
+                        opposite = component + 1;
                       } /*if*/
-                    huemid = (huehi + huelo) / 2;
-                    *left =
-                            (gotlightness ? brightness > 127 ? 255 : brightness * 2 : brightness)
-                        *
-                            (hue < huemid ?
-                                120
-                            :
-                                (120 - (hue - huemid) * 2 * saturation / 255)
-                            )
-                        /
-                            120;
-                    *right =
-                            (gotlightness ? brightness > 127 ? 255 : brightness * 2 : brightness)
-                        *
-                            (hue >= huemid ?
-                                120
-                            :
-                                (120 - (huemid - hue) * 2 * saturation / 255)
-                            )
-                        /
-                            120;
-                    *opposite =
-                        gotlightness ?
-                            brightness >= 128 ? (brightness - 128) * 2 : 0
-                        :
-                            brightness *  (255 - saturation) * 255;
+                    *primary = chroma + brighten;
+                    *secondary = second + brighten;
+                    *opposite = brighten;
                   }
               }
             else if (!gotcolors)
