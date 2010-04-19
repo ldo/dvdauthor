@@ -60,7 +60,7 @@ Here's a sample configuration file:
    &lt;stream&gt;
       &lt;spu start="<replaceable>start-time</replaceable>" [ end="<replaceable>end-time</replaceable>" ] [ image="<replaceable>picture.png</replaceable>" ]
            [ highlight="<replaceable>picture.png</replaceable>" ] [ select="<replaceable>picture.png</replaceable>" ]
-           [ transparent="<replaceable>color-code</replaceable>" ] [ force="yes" ]
+           [ transparent="<replaceable>color-spec</replaceable>" ] [ force="yes" ]
            [ autooutline="infer" [ outlinewidth="<replaceable>width</replaceable>" ]
              [ autoorder="rows" | autoorder="columns" ] ]
            [ xoffset="<replaceable>x-coord</replaceable>" yoffset="<replaceable>y-coord</replaceable>" ] &gt;
@@ -82,7 +82,8 @@ image is not a full screen image, you can use xoffset and yoffset to
 move the picture around.  In the advent that the author is unable to
 use a graphics format with an alpha channel, then the transparent
 attribute can be used to describe which color should become fully
-transparent.  The color is in hexadecimal as "RRGGBB".  If you want to
+transparent.  For the valid formats for <replaceable>color-spec</replaceable>,
+see SPECIFYING COLORS below.  If you want to
 force the display of the subtitle, regardless of whether the user has
 enabled subtitles or not, you can use the force tag.  When you are
 making menus, the force tag is required.
@@ -175,8 +176,10 @@ is not specified.
 &lt;subpictures&gt;
    &lt;stream&gt;
       &lt;textsub filename="demo1.srt" characterset="UTF-8" 
-         fontsize="28.0" font="arial" thickness="3.0" horizontal-alignment="left" 
-         vertical-alignment="bottom" left-margin="60" right-margin="60" 
+         fontsize="28.0" font="arial" fill-color="<replaceable>color-spec</replaceable>"
+         outline-color="<replaceable>color-spec</replaceable>" outline-thickness="3.0"
+         horizontal-alignment="left"  vertical-alignment="bottom"
+         left-margin="60" right-margin="60" 
          top-margin="20" bottom-margin="30" subtitle-fps="25" 
          movie-fps="25" movie-width="720" movie-height="574"
          force="yes"
@@ -215,8 +218,11 @@ here http://www.microsoft.com/typography/links/links.asp?type=free&amp;part=1
 </para>
 <para>
 
-The thickness attribute specifies the thickness of the outline to draw around
-each character, to set it off from the video background.
+The fill-color attribute specifies the color to be used for filling the interior
+of the text, while outline-color specifies the color for the outline border to draw
+around each character, to set it off from the video background.
+The outline-thickness attribute specifies the thickness of this outline. For the
+valid formats for <replaceable>color-spec</replaceable>, see SPECIFYING COLORS below.
 
 </para>
 <para>
@@ -259,5 +265,29 @@ The force option allows you to force the display of the subtitle,
 regardless of whether the user has enabled subtitles or not.
 
 </para>
+</refsect1>
+<refsect1><title>Specifying Colors</title>
+
+<para>
+Colors for image transparency and text fill and outlines can be specified in a number
+of ways:
+</para>
+<itemizedlist>
+<listitem><para>As a color name, e.g. "green". You can use most of the color names
+listed at &lt;http://www.imagemagick.org/script/color.php&gt;.</para></listitem>
+<listitem><para>As a hexadecimal string preceded by a "#", similar to HTML format,
+e.g. "#FF8080". The number of digits must be a multiple of 3; the first group specifies
+the red component, the second green, and the third blue.</para></listitem>
+<listitem><para>As the name of a color space, followed by one to four component values
+in parentheses, e.g. "hsv(120, 50%, 90%)".</para></listitem>
+</itemizedlist>
+
+<para>Valid color spaces are "gray" (1 component), "graya"
+(2 components), "hsl" (3 components), "hsla" (4 components), "hsv" (3 components),
+"hsva" (4 components), "rgb" (3 components) and "rgba" (4 components). Each component can
+be specified as either a percentage of the maximum value suffixed by "%", or an absolute
+value in the range 0-360 for hues, 0-255 for everything else. For color space names ending
+with "a", the last component is the alpha (transparency) value.</para>
+
 </refsect1>
 </refentry>
