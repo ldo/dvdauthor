@@ -289,5 +289,9 @@ be specified as either a percentage of the maximum value suffixed by "%", or an 
 value in the range 0-360 for hues, 0-255 for everything else. For color space names ending
 with "a", the last component is the alpha (transparency) value.</para>
 
+<para>Alpha values are meaningless for the "transparent" attribute on the &lt;spu&gt;
+tag above. Unfortunately, they are also meaningless for text subtitle colors for the
+moment.</para>
+
 </refsect1>
 </refentry>
