@@ -58,7 +58,7 @@ static void constructblankpic(pict *p,int w,int h)
     p->pal[0].r=0;
     p->pal[0].g=0;
     p->pal[0].b=0;
-    p->pal[0].t=0;
+    p->pal[0].a=0;
     memset(p->img,0,w*h);
 }
 
@@ -80,12 +80,12 @@ static void scanpict(stinfo *s, pict *p)
     // we won't replace the background color if there is already evidence
     // of alpha channel information
     for (i = 0; i < p->numpal; i++)
-        if (p->pal[i].t != 255)
+        if (p->pal[i].a != 255)
             goto skip_transreplace;
     for (i = 0; i < p->numpal; i++)
-        if (!memcmp(p->pal + i, &s->transparentc, sizeof(palt)))
+        if (!memcmp(p->pal + i, &s->transparentc, sizeof(colorspec)))
           { /* found matching entry */
-            memset(&p->pal[i], 0, sizeof(palt)); /* zap the RGB components */
+            memset(&p->pal[i], 0, sizeof(colorspec)); /* zap the RGB components */
             break;
           } /*if; for*/
  skip_transreplace:
@@ -94,23 +94,23 @@ static void scanpict(stinfo *s, pict *p)
           /* just make sure all the colours are in the colour table */
   } /*scanpict*/
 
-static void putpixel(pict *p, int x, const palt *c)
+static void putpixel(pict *p, int x, const colorspec *c)
   /* stores another pixel into pict p at offset x with colour c. Adds a new
     entry into the colour table if not already present and there's room. */
   {
     int i;
-    palt ct;
-    if (!c->t && (c->r || c->g || c->b))
+    colorspec ct;
+    if (!c->a && (c->r || c->g || c->b))
       {
       /* all transparent pixels look alike to me */
-        ct.t = 0;
+        ct.a = 0;
         ct.r = 0;
         ct.g = 0;
         ct.b = 0;
         c = &ct;
       } /*if*/
     for (i = 0; i < p->numpal; i++)
-        if (!memcmp(&p->pal[i], c, sizeof(palt)))
+        if (!memcmp(&p->pal[i], c, sizeof(colorspec)))
           {
           /* matches existing palette entry */
             p->img[x] = i;
@@ -124,7 +124,7 @@ static void putpixel(pict *p, int x, const palt *c)
       } /*if*/
   /* allocate new palette entry */
     p->img[x] = p->numpal;
-/*  fprintf(stderr, "CREATING COLOR %d,%d,%d %d\n", c->r, c->g, c->b, c->t); */
+/*  fprintf(stderr, "CREATING COLOR %d,%d,%d %d\n", c->r, c->g, c->b, c->a); */
     p->pal[p->numpal++] = *c;
   } /*putpixel*/
 
@@ -140,11 +140,11 @@ static void createimage(pict *s, int w, int h)
       {
       /* set padding pixels along side to transparent */
         int y;
-        palt t;
+        colorspec t;
         t.r = 0;
         t.g = 0;
         t.b = 0;
-        t.t = 0;
+        t.a = 0;
         for (y = 0; y < h; y++)
             putpixel(s, w + y * s->width, &t);
       } /*if*/
@@ -152,11 +152,11 @@ static void createimage(pict *s, int w, int h)
       {
       /* set padding pixels along bottom to transparent */
         int x;
-        palt t;
+        colorspec t;
         t.r = 0;
         t.g = 0;
         t.b = 0;
-        t.t = 0;
+        t.a = 0;
         for (x = 0; x < s->width; x++)
             putpixel(s, x + h * s->width, &t);
       } /*if*/
@@ -204,17 +204,16 @@ static int read_magick(pict *s)
             return -1;
         }
         for( x=0; x<im->columns; x++ ) {
-            palt p;
-
+            colorspec p;
             p.r=pdata[x*4];
             p.g=pdata[x*4+1];
             p.b=pdata[x*4+2];
             // the meaning of RGBA swapped with ImageMagick 6.0.0...
             // ...but not with GraphicsMagick
 #if defined(HAVE_MAGICK) && MagickLibVersion >= 0x600
-            p.t=pdata[x*4+3];
+            p.a=pdata[x*4+3];
 #else
-            p.t=255-pdata[x*4+3];
+            p.a=255-pdata[x*4+3];
 #endif
             putpixel(s,y*s->width+x,&p);
         }
@@ -287,8 +286,7 @@ static int read_png(pict *s)
     for( y=0; y<height; y++ ) {
         unsigned char *d=rowp[y];
         for( x=0; x<width; x++ ) {
-            palt p;
-
+            colorspec p;
             if(color_type&PNG_COLOR_MASK_COLOR) {
                 p.r=*d++;
                 p.g=*d++;
@@ -299,9 +297,9 @@ static int read_png(pict *s)
                 p.b=p.r;
             }
             if( color_type&PNG_COLOR_MASK_ALPHA )
-                p.t=*d++;
+                p.a=*d++;
             else
-                p.t=255;
+                p.a=255;
             d+=channels;
             putpixel(s,y*s->width+x,&p);
         }
@@ -325,11 +323,11 @@ static int read_frame(pict *s)
           const unsigned char * d = textsub_image_buffer + y * movie_width * 4;
           for (x = 0; x < movie_width; x++)
             {
-              palt p;
+              colorspec p;
               p.r = *d++;
               p.g = *d++;
               p.b = *d++;
-              p.t = *d++;
+              p.a = *d++;
               putpixel(s, y * s->width + x, &p);
             } /*for*/
       } /*for*/
@@ -545,11 +543,11 @@ ui_found:
                   (
                         tri == -1
                     ||
-                            s->img.pal[(tri >> 16) & 0xFF].t == 0
+                            s->img.pal[(tri >> 16) & 0xFF].a == 0
                         &&
-                            s->hlt.pal[(tri >> 8) & 0xFF].t == 0
+                            s->hlt.pal[(tri >> 8) & 0xFF].a == 0
                         &&
-                            s->sel.pal[tri & 0xFF].t == 0
+                            s->sel.pal[tri & 0xFF].a == 0
                   )
                   {
                     spare = k;
@@ -563,19 +561,19 @@ ui_found:
               /* got an unused slot, make up a transparent entry to exchange it with */
                 tri = 0;
                 for (k = 0; k < s->img.numpal; ++k)
-                    if (s->img.pal[k].t == 0)
+                    if (s->img.pal[k].a == 0)
                       {
                         tri |= k << 16;
                         break;
                       } /*if; for*/
                 for (k = 0; k < s->hlt.numpal; ++k)
-                    if (s->hlt.pal[k].t == 0)
+                    if (s->hlt.pal[k].a == 0)
                       {
                         tri |= k << 8;
                         break;
                       } /*if; for*/
                 for (k = 0; k < s->sel.numpal; ++k)
-                    if (s->sel.pal[k].t == 0)
+                    if (s->sel.pal[k].a == 0)
                       {
                         tri |= k;
                         break;
@@ -777,7 +775,7 @@ static void detectbuttons(stinfo *s)
     if( !s->outlinewidth )
         s->outlinewidth=1;
     for( i=0; i<s->xd*s->yd; i++ )
-        visitmask[i]=( s->hlt.pal[s->hlt.img[i]].t || s->sel.pal[s->sel.img[i]].t ) ? 1 : 0;
+        visitmask[i]=( s->hlt.pal[s->hlt.img[i]].a || s->sel.pal[s->sel.img[i]].a ) ? 1 : 0;
     for( y=0; y<s->yd; y++ )
         for( x=0; x<s->xd; x++ )
             if( visitmask[y*s->xd+x] ) {
@@ -942,7 +940,7 @@ static bool imgfix(stinfo *s)
         s->pal[i].r = 255;
         s->pal[i].g = 255;
         s->pal[i].b = 255;
-        s->pal[i].t = 0;
+        s->pal[i].a = 0;
       } /*for*/
     for (i = 0; i < w * h; i++)
         if (s->fimg[i] != 255)
@@ -952,13 +950,13 @@ static bool imgfix(stinfo *s)
         if (s->fimg[i] == 255)
           { /* haven't already done this pixel */
             int j;
-            const palt * const p = &s->img.pal[s->img.img[i]];
+            const colorspec * const p = &s->img.pal[s->img.img[i]];
             for (j = 0; j < 4; j++)
               /* see if colour is already in s->pal */
-                if (!memcmp(&s->pal[j], p, sizeof(palt)))
+                if (!memcmp(&s->pal[j], p, sizeof(colorspec)))
                     goto if_found;
             for (j = 0; j < 4; j++) /* insert new colour in place of unused/transparent entry */
-                if (s->pal[j].t == 0 && s->pal[j].r == 255) /* not checking all the components? */
+                if (s->pal[j].a == 0 && s->pal[j].r == 255) /* not checking all the components? */
                   {
                     s->pal[j] = *p;
                     goto if_found;
@@ -981,11 +979,11 @@ if_found:
           {
             if
               (
-                    s->img.pal[s->img.img[i]].t
+                    s->img.pal[s->img.img[i]].a
                 ||
-                    s->hlt.pal[s->hlt.img[i]].t
+                    s->hlt.pal[s->hlt.img[i]].a
                 ||
-                    s->sel.pal[s->sel.img[i]].t
+                    s->sel.pal[s->sel.img[i]].a
               )
               {
                 if (y0 == -1)

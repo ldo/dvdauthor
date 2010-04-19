@@ -121,16 +121,6 @@ extern const char * default_charset;
 
 #endif /*HAVE_ICONV*/
 
-void init_locale();
-  /* does locale initialization and initializes default_charset. */
-
-char * locale_decode
-  (
-    const char * localestr
-  );
-  /* allocates and returns a string containing the UTF-8 representation of
-    localestr interpreted according to the user's locale settings. */
-
 unsigned int strtounsigned
   (
     const char * s,
@@ -146,6 +136,16 @@ char * strndup
     size_t n
   );
 #endif
+
+void init_locale();
+  /* does locale initialization and initializes default_charset. */
+
+char * locale_decode
+  (
+    const char * localestr
+  );
+  /* allocates and returns a string containing the UTF-8 representation of
+    localestr interpreted according to the user's locale settings. */
 
 #if !HAVE_DECL_O_BINARY
 #define O_BINARY 0
@@ -166,6 +166,11 @@ char * strndup
 
 enum {VF_NONE=0,VF_NTSC=1,VF_PAL=2}; /* values for videodesc.vformat in da-internal.h as well as other uses */
 
+typedef struct
+  {
+    unsigned char r, g, b, a;
+  } colorspec;
+
 #if HAVE_ICONV && LOCALIZE_FILENAMES
 
 char * localize_filename(const char * pathname);
@@ -184,6 +189,7 @@ struct vfile /* for keeping track of files opened by varied_open */
     FILE * h; /* do your I/O to/from this */
     int ftype, mode; /* for use by varied_close */
   } /*vfile*/;
+
 struct vfile varied_open
   (
     const char * fname,
@@ -199,5 +205,14 @@ struct vfile varied_open
 
     Will abort the process on any errors.
   */
+
 void varied_close(struct vfile vf);
   /* closes a file previously opened by varied_open. */
+
+colorspec parse_color
+  (
+    const char * colorstr,
+    const char * what /* additional explanatory text for error message */
+  );
+  /* parses colorstr and returns the resulting colour. Will abort the process
+    on any errors. */

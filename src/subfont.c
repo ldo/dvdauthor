@@ -95,6 +95,10 @@ static int const font_load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_
 /* fixme: should probably take out FT_LOAD_NO_HINTING and add FT_LOAD_TARGET_MONO */
 float text_font_scale_factor = 28.0; /* font size in font units */
 float subtitle_font_thickness = 3.0;  /*2.0*/
+colorspec
+    subtitle_fill_color = {255, 255, 255, 255},
+    subtitle_outline_color = {0, 0, 0, 255};
+
 int subtitle_autoscale = AUTOSCALE_NONE;
 char *sub_font = /* Name of true type font, windows OS apps will look in \windows\fonts others in home dir */
 #if HAVE_FONTCONFIG
@@ -337,8 +341,8 @@ void render_one_glyph(font_desc_t *desc, int c)
         pic_b->current_alloc += ALLOC_INCR;
     //  fprintf(stderr, "\nns = %d inc = %d\n", newsize, increment);
         pic_b->bmp = realloc(pic_b->bmp, newsize);
-      /* initialize newly-added memory to zero: */
-        memset(pic_b->bmp + off, 0, increment);
+      /* initialize newly-added pixels to transparent: */
+        memset(pic_b->bmp + off, COLIDX_TRANSPARENT, increment);
       } /*if*/
     bbuffer = pic_b->bmp + off;
     paste_bitmap /* copy glyph into next available space in pic_b->bmp */
@@ -537,15 +541,8 @@ static int prepare_font
     pic_b->bmp = NULL;
     memset(pic_b->pal, 0, sizeof pic_b->pal);
   /* COLIDX_TRANSPARENT is transparent, COLIDX_FILL is opaque white, COLIDX_OUTLINE is opaque black */
-  /* fixme: make COLIDX_FILL & COLIDX_OUTLINE entries user-specifiable in future */
-    pic_b->pal[COLIDX_FILL].r = 255;
-    pic_b->pal[COLIDX_FILL].g = 255;
-    pic_b->pal[COLIDX_FILL].b = 255;
-    pic_b->pal[COLIDX_FILL].a = 255;
-    pic_b->pal[COLIDX_OUTLINE].r = 0;
-    pic_b->pal[COLIDX_OUTLINE].g = 0;
-    pic_b->pal[COLIDX_OUTLINE].b = 0;
-    pic_b->pal[COLIDX_OUTLINE].a = 255;
+    pic_b->pal[COLIDX_FILL] = subtitle_fill_color;
+    pic_b->pal[COLIDX_OUTLINE] = subtitle_outline_color;
 //  ttime = GetTimer();
     err = check_font(desc, ppem, padding, pic_idx, charset_size, charset);
 //  ttime = GetTimer() - ttime;

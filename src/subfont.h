@@ -11,11 +11,6 @@
 #include FT_FREETYPE_H
 #endif
 
-typedef struct
-  {
-    unsigned char r, g, b, a;
-  } colorspec;
-
 typedef struct /* a bitmap for caching glyph images */
   {
     unsigned char *bmp; /* 8-bit-per-pixel indexed image bitmap accumulated here */

@@ -58,12 +58,8 @@ static const char *base_name;
 static bool have_bits;
 static FILE *fdo;
 
-typedef struct /* a colour-table entry */
-  {
-    unsigned char r, g, b, t;
-  } palt;
-static palt
-    current_palette[16]; /* current PGC colour table */
+static colorspec
+    current_palette[16]; /* current PGC colour table, alpha unused */
 
 struct spu /* data for one subpicture unit (SPU) */
   {

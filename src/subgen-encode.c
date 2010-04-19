@@ -116,20 +116,19 @@ static void svcd_rotate(stinfo *s)
         if( cst[i]>cst[j] )
             j=i;
     if( j!=0 ) {
-        palt p[4];
-
+        colorspec p[4];
         for( i=0; i<s->xd*s->yd; i++ )
             s->fimg[i]=(s->fimg[i]-j)&3;
         for( i=0; i<4; i++ )
             p[i]=s->pal[(i+j)&3];
-        memcpy(s->pal,p,4*sizeof(palt));
+        memcpy(s->pal,p,4*sizeof(colorspec));
     }
 }
 
 int svcd_encode(stinfo *s)
 {
     unsigned int x,y,c,l2o;
-    palt *epal=s->img.pal;
+    colorspec *epal=s->img.pal;
 
     svcd_rotate(s);
 
@@ -158,7 +157,7 @@ int svcd_encode(stinfo *s)
     store_1(calcY(&epal[c]));
     store_1(calcCr(&epal[c]));
     store_1(calcCb(&epal[c]));
-    store_1(epal[c].t);
+    store_1(epal[c].a);
     } 
  
     store_1(0); //?????
@@ -221,7 +220,7 @@ int svcd_encode(stinfo *s)
 int cvd_encode(stinfo *s)
 {
     unsigned int x, y, c, d;
-    palt *epal=s->pal;
+    colorspec *epal=s->pal;
     int ofs, ofs1=0;
  
     store_init();
@@ -306,8 +305,8 @@ int cvd_encode(stinfo *s)
     if(debug > 3)
     {
     fprintf(stderr,\
-                "epal[0].t=%d epal[1].t=%d epal[2].t=%d epal[3].t=%d\n",\
-                epal[0].t, epal[1].t, epal[2].t, epal[3].t);
+                "epal[0].a=%d epal[1].a=%d epal[2].a=%d epal[3].a=%d\n",\
+                epal[0].a, epal[1].a, epal[2].a, epal[3].a);
     }
 
 /* x0, y0 */
@@ -320,14 +319,14 @@ int cvd_encode(stinfo *s)
     store_bits(s->x0+s->xd-1,10);
     store_bits(s->y0+s->yd-1,10);
  
-/* 0x37 is pallette.t 0-3 contrast */
+/* 0x37 is pallette.a 0-3 contrast */
     store_2( 0x37ff );
 //nco = 0x00;
 //nco = 0xff;
-    store_nibble( epal[3].t >> 4 );
-    store_nibble( epal[2].t >> 4 );
-    store_nibble( epal[1].t >> 4 );
-    store_nibble( epal[0].t >> 4 );
+    store_nibble( epal[3].a >> 4 );
+    store_nibble( epal[2].a >> 4 );
+    store_nibble( epal[1].a >> 4 );
+    store_nibble( epal[0].a >> 4 );
 
     if(debug > 3)
     {
@@ -335,7 +334,7 @@ int cvd_encode(stinfo *s)
                 sub[subo - 1], sub[subo - 2]);
     }
 
-/* 0x3f is high light pallette.t 4-7 contrast */
+/* 0x3f is high light pallette.a 4-7 contrast */
     store_2( 0x3fff );
     store_2( 0xfff0 );
 
@@ -576,10 +575,10 @@ int dvd_encode(stinfo *s)
 
     /* command 4, alpha blend, contrast / transparency t_palette, 3 bytes  0, 15, 15, 15 */
     store_1(SPU_SET_CONTR);
-    store_nibble(s->pal[3].t>>4);
-    store_nibble(s->pal[2].t>>4);
-    store_nibble(s->pal[1].t>>4);
-    store_nibble(s->pal[0].t>>4);
+    store_nibble(s->pal[3].a>>4);
+    store_nibble(s->pal[2].a>>4);
+    store_nibble(s->pal[1].a>>4);
+    store_nibble(s->pal[0].a>>4);
 
     /* command 5, display area, 7 bytes from: startx, xsize, starty, ysize */
     store_1(SPU_SET_DAREA);

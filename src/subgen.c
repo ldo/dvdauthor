@@ -274,12 +274,12 @@ static unsigned int getpts(const unsigned char *buf)
             (buf[3] & 14) * 16384 * 256 * 128;
   } /*getpts*/
 
-int findmasterpal(stinfo *s, const palt *p)
+int findmasterpal(stinfo *s, const colorspec *p)
   /* returns the index in s->masterpal corresponding to colour p, allocating a
     new palette entry if not there already. */
   {
     int i;
-    if (!p->t)
+    if (!p->a)
         return 0;
     for (i = 0; i < s->numpal; i++)
         if
@@ -319,17 +319,17 @@ static void freestinfo(stinfo *s)
     free(s);
 }
 
-int calcY(const palt *p)
+int calcY(const colorspec *p)
 {
     return RGB2Y(p->r,p->g,p->b);
 }
 
-int calcCr(const palt *p)
+int calcCr(const colorspec *p)
 {
     return RGB2Cr(p->r,p->g,p->b);
 }
 
-int calcCb(const palt *p)
+int calcCb(const colorspec *p)
 {
     return RGB2Cb(p->r,p->g,p->b);
 }
@@ -626,7 +626,7 @@ static void mux(bool eoinput)
                             sh[1] =
                                     sh[1] << 4
                                 |
-                                    cursti->hlt.pal[k >> 8 & 255].t >> 4;
+                                    cursti->hlt.pal[k >> 8 & 255].a >> 4;
                             sh[2] =
                                     sh[2] << 4
                                 |
@@ -634,7 +634,7 @@ static void mux(bool eoinput)
                             sh[3] =
                                     sh[3] << 4
                                 |
-                                    cursti->sel.pal[k & 255].t >> 4;
+                                    cursti->sel.pal[k & 255].a >> 4;
                           } /*if*/
                       } /*for*/
                     for (j = 0; j < 4; j++)

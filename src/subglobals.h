@@ -52,7 +52,8 @@ extern float font_factor;
 extern float text_font_scale_factor;
 extern char * sub_font;
 extern int subtitle_autoscale; /* fixme: not user-settable */
-extern float subtitle_font_thickness; /* fixme: not user-settable */
+extern float subtitle_font_thickness;
+extern colorspec subtitle_fill_color, subtitle_outline_color;
 
 /* parameters for subrender */
 extern float movie_fps;

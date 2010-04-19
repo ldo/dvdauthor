@@ -18,15 +18,10 @@
  * USA
  */
 
-typedef struct
-{
-    unsigned char r, g, b, t; // t=255 means opaque, t=0 means transparent
-} palt;
-
 typedef struct { /* representation of a raster image read from a file on disk */
     char *fname; /* name of file to read image from */
     unsigned char *img; /* one byte per pixel, index into pal */
-    palt pal[256]; /* image colour table */
+    colorspec pal[256]; /* image colour table */
     int numpal; /* nr used entries in pal */
     int width,height; /* dimensions of image (will be even) */
 } pict;
@@ -56,9 +51,9 @@ typedef struct { /* representation of a subpicture and associated buttons */
     pict hlt; /* button image in "highlighted" state (user has moved to button with remote) */
     pict sel; /* button image in "selected" state (user has hit OK key with button highlighted) */
     unsigned char *fimg; /* combined menu subpicture image built here */
-    palt pal[4]; /* palette for fimg */
-    palt masterpal[16];
-    palt transparentc;
+    colorspec pal[4]; /* palette for fimg */
+    colorspec masterpal[16];
+    colorspec transparentc;
     int numgroups; /* how many button groups */
     int groupmap[3][4]; /* colour table for each button group, -1 for unused entries in each group */
     button *buttons; /* array of buttons */
@@ -77,11 +72,11 @@ extern int numspus;
 
 extern int skip;
 
-int calcY(const palt *p);
-int calcCr(const palt *p);
-int calcCb(const palt *p);
+int calcY(const colorspec *p);
+int calcCr(const colorspec *p);
+int calcCb(const colorspec *p);
 
-int findmasterpal(stinfo *s, const palt *p);
+int findmasterpal(stinfo *s, const colorspec *p);
   /* returns the index in s->masterpal corresponding to colour p, allocating a
     new palette entry if not there already. */
 

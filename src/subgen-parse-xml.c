@@ -121,12 +121,7 @@ static void spu_force(const char *v)
 
 static void spu_transparent(const char *v)
 {
-    int c = 0;
-    sscanf(v, "%x", &c);
-    curspu->transparentc.r = c>>16;
-    curspu->transparentc.g = c>>8;
-    curspu->transparentc.b = c;
-    curspu->transparentc.t = 255;
+    curspu->transparentc = parse_color(v, "transparency");
 }
 
 static void spu_autooutline(const char *v)
@@ -320,10 +315,20 @@ static void textsub_movie_width(const char* v)  { movie_width=strtounsigned(v, "
 static void textsub_movie_height(const char* v) { movie_height=strtounsigned(v, "textsub movie-height");           }
 static void textsub_fontsize(const char *v)     { text_font_scale_factor=atof(v); }
 
-static void textsub_thickness(const char *v)
+static void textsub_fill_color(const char *v)
+  {
+    subtitle_fill_color = parse_color(v, "text fill");
+  } /*textsub_fill_color*/
+
+static void textsub_outline_color(const char *v)
+  {
+    subtitle_outline_color = parse_color(v, "text outline");
+  } /*textsub_outline_color*/
+
+static void textsub_outline_thickness(const char *v)
   {
     subtitle_font_thickness = atof(v);
-  } /*textsub_thickness*/
+  } /*textsub_outline_thickness*/
 
 static void textsub_force(const char *v)
 {
@@ -382,7 +387,9 @@ static struct elemattr spu_attrs[]={
     {"textsub","filename",textsub_filename},
     {"textsub","characterset",textsub_characterset},
     {"textsub","fontsize",textsub_fontsize},
-    {"textsub","thickness",textsub_thickness},
+    {"textsub","fill-color",textsub_fill_color},
+    {"textsub","outline-color",textsub_outline_color},
+    {"textsub","outline-thickness",textsub_outline_thickness},
     {"textsub","horizontal-alignment",textsub_h_alignment},
     {"textsub","vertical-alignment",textsub_v_alignment},
     {"textsub","left-margin",textsub_l_margin},
