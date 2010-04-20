@@ -753,7 +753,6 @@ inline static void vo_update_text_sub
             int xtbl_min, x;
             int y = obj->topy;
             for (xtbl_min = widthlimit; linedone < linesleft; ++linedone)
-              /* can't see how this loop would ever execute */
                 if (obj->params.subtitle.xtbl[linedone] < xtbl_min)
                     xtbl_min = obj->params.subtitle.xtbl[linedone];
             for (i = 0; i < linesleft; ++i)

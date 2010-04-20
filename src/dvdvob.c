@@ -36,7 +36,7 @@
 
 struct colorremap /* for remapping colours to indexes into a common palette */
   {
-    int newcolors[16]; /* bit 24 is set to indicate a colour needs remapping */
+    int newcolors[16]; /* bottom 24 bits are YCbCr, bit 24 is set to indicate a colour needs remapping */
     int state,curoffs,maxlen,nextoffs,skip,ln_ctli; /* state of SPU parser machine (procremap) */
     struct colorinfo *origmap; /* colours merged into common indexes into this palette */
   };

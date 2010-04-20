@@ -51,6 +51,7 @@ static int negatecompare(int compareop)
   /* returns the comparison with the opposite result. Assumes the op isn't BC ("&"). */
   {
     return compareop ^ 1 ^ ((compareop & 4) >> 1);
+      /* EQ <=> NE, GE <=> LT, GT <=> LE */
   } /*negatecompare*/
 
 static int swapcompare(int compareop)
@@ -77,7 +78,7 @@ static bool compile_usesreg(const struct vm_statement *cs, int target)
   } /*compile_usesreg*/
 
 static int nexttarget(int t)
-  /* returns the next register in the range I have reserved. Will fail
+  /* returns the next register after t in the range I have reserved. Will fail
     if it's all used, or if I haven't got a reserved range. */
   {
     if (!allowallreg)
@@ -1194,7 +1195,7 @@ static void applyif(unsigned char *b,unsigned int ifs)
       } /*switch*/
   } /*applyif*/
 
-static bool ifcombinable(unsigned char b0, unsigned char b1, unsigned char b8)
+static bool ifcombinable(unsigned char b0 /* actually caller always passes 0 */, unsigned char b1, unsigned char b8)
   /* can the instruction whose first two bytes are b0 and b1 have its condition
     combined with the one whose first byte is b8. */
   {
@@ -1211,7 +1212,7 @@ static bool ifcombinable(unsigned char b0, unsigned char b1, unsigned char b8)
     case 3:
     case 4:
     case 5:
-        iftype = 0;
+        iftype = 0; /* 2nd operand always register */
     break;
     default:
         return false;
@@ -1223,18 +1224,19 @@ static bool ifcombinable(unsigned char b0, unsigned char b1, unsigned char b8)
     case 2:
     case 6:
     case 7:
-        return true;
+        return true; /* can take both immediate and register 2nd operands */
     case 3:
     case 4:
     case 5:
-        return iftype == 0;
+        return iftype == 0; /* can only take register 2nd operand */
     default:
         return false;
       } /*switch*/
   } /*ifcombinable*/
 
 static int countreferences(const unsigned char *buf, const unsigned char *end, int linenum)
-  /* how many branches are there with destination linenum. */
+  /* how many branches are there with destination linenum. Actually caller only cares
+    whether result is zero or not. */
   {
     const unsigned char *b;
     int numref = 0;
@@ -1265,7 +1267,8 @@ static void deleteinstruction
   } /*deleteinstruction*/
 
 void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **end)
-  /* does various peephole optimizations on the part of obuf from buf to *end. */
+  /* does various peephole optimizations on the part of obuf from buf to *end.
+    *end will be updated if unnecessary instructions are removed. */
   {
     unsigned char *b;
  again:
@@ -1282,11 +1285,13 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
           (
                 b[0] == 0
             &&
-                (b[1] & 0x70) != 0
+                (b[1] & 0x70) != 0 /* conditional */
             &&
-                (b[1] & 15) == 1
+                (b[1] & 15) == 1 /* cmd = goto */
             &&
                 b[7] == curline + 2 // step 1
+          /* &&
+                (b[9] & 0x70) == 0 */ /* second instr not conditional */ /* fixme: do this? */
             &&
                 ifcombinable(b[0], b[1], b[8]) // step 2
             &&
@@ -1347,6 +1352,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
                 (b[-7] & 15) != 0 /* previous was unconditional transfer */
             &&
                 countreferences(buf, *end, curline) == 0 /* no references here */
+           /* fixme: should also remove in the case where jump was to this instruction */
           )
           {
           /* remove dead code */

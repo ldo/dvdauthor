@@ -599,6 +599,8 @@ static void mux(bool eoinput)
                 wdbyte(calcY(cursti->masterpal + i));
                 wdbyte(calcCr(cursti->masterpal + i));
                 wdbyte(calcCb(cursti->masterpal + i));
+              /* I don't need to pass alpha, because that has already been encoded
+                into the subpicture stream with SPU_SET_CONTR commands */
               } /*for*/
 
             if (cursti->numgroups)

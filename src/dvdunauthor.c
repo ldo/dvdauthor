@@ -437,7 +437,7 @@ static void dump_buttons(xmlNodePtr cellNode, int vob)
             const struct vobbutton * const v = &vobbuttons[i];
             const hli_t * const h = &v->h;
             const xmlNodePtr buttonsNode = NewChildTag(cellNode, "buttons");
-            // XXX: add proper button overlap detection
+            // fixme: add proper button overlap detection
             if
               (
                     last
@@ -520,12 +520,15 @@ static void FindWith(xmlNodePtr angleNode, const pgcit_t *pgcs, int vob, const c
     free(vobs);
   } /*FindWith*/
 
-static const char * const entries[16]={
-    "UNKNOWN0",  "UNKNOWN1",  "title",     "root",      // XXX: is 1 == fpc?
+static const char * const entries[16] =
+  /* types of entry menus in VMGM_PGCI_UT and VTSM_PGCI_UT tables. FPC doesn't
+    occur in this list because it is found via its own special pointer in the VMG IFO. */
+  {
+    "UNKNOWN0",  "UNKNOWN1",  "title",     "root",
     "subtitle",  "audio",     "angle",     "ptt",
     "UNKNOWN8",  "UNKNOWN9",  "UNKNOWN10", "UNKNOWN11",
-    "UNKNOWN12", "UNKNOWN13", "UNKNOWN14", "UNKNOWN15"
-};
+    "UNKNOWN12", "UNKNOWN13", "UNKNOWN14", "UNKNOWN15",
+  };
 
 static const char * const subp_control_modes[4]={
     "panscan","letterbox","widescreen","normal"

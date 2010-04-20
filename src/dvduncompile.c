@@ -120,7 +120,7 @@ static const char * const system_reg_abbr_table[] = {
 };
 #endif
 
-static const char * const entries[16]= /* menu entry types */
+static const char * const entries[16] = /* menu entry types */
 {
     "UNKNOWN0",  "UNKNOWN1",  "title",     "root", // XXX: is 1 == fpc?
     "subtitle",  "audio",     "angle",     "ptt",
@@ -252,11 +252,12 @@ static void print_set_op(uint8_t op)
         fprintf(stderr, "WARN: Unknown set op %d\n", op);
   } /*print_set_op*/
 
-static void print_reg_or_data(cmd_t *cmd, int immediate, int bytei, int byter, int scln)
+static void print_reg_or_data(cmd_t *cmd, bool immediate, int immedbyte, int regbyte, bool scln)
+  /* prints a 16-bit operand, which might be a literal value or a register reference. */
   {
     if (immediate)
       {
-        const int i = bits(cmd, bytei, 0, 16); /* immediate value */
+        const int i = bits(cmd, immedbyte, 0, 16); /* immediate value */
         node_printf("%d", i);
         if (scln)
             node_printf(";");
@@ -266,13 +267,15 @@ static void print_reg_or_data(cmd_t *cmd, int immediate, int bytei, int byter, i
       }
     else
       {
-        print_reg(bits(cmd, byter, 0, 8));
+        print_reg(bits(cmd, regbyte, 0, 8));
         if (scln)
             node_printf(";");
       } /*if*/
   } /*print_reg_or_data*/
 
-static void print_reg_or_data_2(cmd_t *cmd, int immediate, int byte)
+static void print_reg_or_data_2(cmd_t *cmd, bool immediate, int byte)
+  /* prints an operand for a SetSTN instruction, which might be a 7-bit literal
+    value or a GPRM reference. */
   {
     if (immediate)
         node_printf("0x%x;", bits(cmd, byte, 1, 7));
@@ -280,19 +283,19 @@ static void print_reg_or_data_2(cmd_t *cmd, int immediate, int byte)
         node_printf("g%" PRIu8 ";", bits(cmd, byte, 4, 4));
   } /*print_reg_or_data_2*/
 
-static void print_if(cmd_t *cmd,int p11,int p12,int p21,int p22,int p23)
-  /* prints the start of an if-statement. */
+static void print_if(cmd_t *cmd, int regbyte1, int regbit1, bool op2immed, int immedbyte2, int regbyte2)
+  /* common code for printing the start of an if-statement, if an instruction is conditinal. */
   {
-    const uint8_t op = bits(cmd, 1, 1, 3);
-    if (op)
+    const uint8_t cmpop = bits(cmd, 1, 1, 3);
+    if (cmpop) /* 0 => unconditional */
       {
         node_printf("if (");
-        if (op == 1)  // and gets special treatment
+        if (cmpop == 1)  // and gets special treatment
             node_printf("(");
-        print_reg(bits(cmd, p11, p12, 8 - p12));
-        print_cmp_op(op);
-        print_reg_or_data(cmd, p21, p22, p23, 0);
-        if (op == 1)  // and gets special treatment
+        print_reg(bits(cmd, regbyte1, regbit1, 8 - regbit1));
+        print_cmp_op(cmpop);
+        print_reg_or_data(cmd, op2immed, immedbyte2, regbyte2, false);
+        if (cmpop == 1)  // and gets special treatment
             node_printf(") != 0");
         node_printf(") {");
         node_indent();
@@ -304,43 +307,71 @@ static void print_if_version_1(cmd_t *cmd)
     print_if
       (
         /*cmd =*/ cmd,
-        /*p11 =*/ 3,
-        /*p12 =*/ 0,
-        /*p21 =*/ bits(cmd, 1, 0, 1),
-        /*p22 =*/ 4,
-        /*p23 =*/ 5
+        /*regbyte1 =*/ 3,
+        /*regbit1 =*/ 0,
+        /*op2immed =*/ bits(cmd, 1, 0, 1),
+        /*immedbyte2 =*/ 4,
+        /*regbyte2 =*/ 5
       );
   } /*print_if_version_1*/
 
 static void print_if_version_2(cmd_t *cmd)
   {
-    print_if(cmd,
-             6,0,
-             0,6,7);
+    print_if
+      (
+        /*cmd =*/ cmd,
+        /*regbyte1 =*/ 6,
+        /*regbit1 =*/ 0,
+        /*op2immed =*/ false,
+        /*immedbyte2 =*/ 6,
+        /*regbyte2 =*/ 7
+      );
   } /*print_if_version_2*/
 
-static void print_if_version_3(cmd_t *cmd) {
-    print_if(cmd,
-             2,0,
-             bits(cmd,1,0,1),6,7);
-}
+static void print_if_version_3(cmd_t *cmd)
+  {
+    print_if
+      (
+        /*cmd =*/ cmd,
+        /*regbyte1 =*/ 2,
+        /*regbit1 =*/ 0,
+        /*op2immed =*/ bits(cmd, 1, 0, 1),
+        /*immedbyte2 =*/ 6,
+        /*regbyte2 =*/ 7
+      );
+  } /*print_if_version_3*/
 
-static void print_if_version_4(cmd_t *cmd) {
-    print_if(cmd,
-             1,4,
-             bits(cmd,1,0,1),4,5);
-}
+static void print_if_version_4(cmd_t *cmd)
+  {
+    print_if
+      (
+        /*cmd =*/ cmd,
+        /*regbyte1 =*/ 1,
+        /*regbit1 =*/ 4,
+        /*op2immed =*/ bits(cmd, 1, 0, 1),
+        /*immedbyte2 =*/ 4,
+        /*regbyte2 =*/ 5
+      );
+  } /*print_if_version_4*/
 
-static void print_if_version_5(cmd_t *cmd) {
-    print_if(cmd,
-             4,0,
-             0,4,5);
-}
+static void print_if_version_5(cmd_t *cmd)
+  {
+    print_if
+      (
+        /*cmd =*/ cmd,
+        /*regbyte1 =*/ 4,
+        /*regbit1 =*/ 0,
+        /*op2immed =*/ false,
+        /*immedbyte2 =*/ 4,
+        /*regbyte2 =*/ 5
+      );
+  } /*print_if_version_5*/
 
 static void print_if_close_v12345(cmd_t *cmd)
+  /* prints common closing sequence for all the above forms of if-statement. */
   {
-    const uint8_t op = bits(cmd, 1, 1, 3);
-    if (op)
+    const uint8_t cmpop = bits(cmd, 1, 1, 3);
+    if (cmpop) /* 0 => unconditional */
         node_closebrace();
   } /*print_if_close_v12345*/
 
@@ -402,20 +433,20 @@ static void button_maybe_set(int button)
 
 static void print_linksub_instruction(cmd_t *cmd)
   {
-    const int linkop = bits(cmd,7,3,5);
-    const int button = bits(cmd,6,0,6);
-    if (linkop < sizeof(link_table)/sizeof(char *) && link_table[linkop] != NULL)
+    const int linkop = bits(cmd, 7, 3, 5);
+    const int button = bits(cmd, 6, 0, 6);
+    if (linkop < sizeof(link_table) / sizeof(char *) && link_table[linkop] != NULL)
       {
         node_newline();
         button_maybe_set(button);
-        if (linkop != 0)
+        if (linkop != 0) /* not LinkNoLink */
             node_printf("%s;", link_table[linkop]);
       }
     else
         fprintf(stderr, "WARN: Unknown linksub instruction (%i)", linkop);
   } /*print_linksub_instruction*/
 
-static void print_link_instruction(cmd_t *cmd, int optional)
+static void print_link_instruction(cmd_t *cmd, bool optional)
   {
     const uint8_t op = bits(cmd, 1, 4, 4);
     node_newline();
@@ -512,10 +543,10 @@ static void print_jump_instruction(cmd_t *cmd)
             node_printf("call vmgm menu entry %s", entries[bits(cmd, 5, 4, 4)]);
         break;
         case 2: // VTSM menu
-            node_printf("call menu entry %s",entries[bits(cmd, 5, 4, 4)]);
+            node_printf("call menu entry %s", entries[bits(cmd, 5, 4, 4)]);
         break;
         case 3:
-            node_printf("call vmgm menu %" PRIu8,bits(cmd, 2, 1, 15));
+            node_printf("call vmgm menu %" PRIu8, bits(cmd, 2, 1, 15));
         break;
           } /*switch*/
         if (bits(cmd, 4, 0, 8))
@@ -549,7 +580,7 @@ static void print_system_set(cmd_t *cmd)
     case 2: // Set system reg 9 & 10 (Navigation timer, Title PGC number)
         print_system_reg(9);
         node_printf(" = ");
-        print_reg_or_data(cmd, bits(cmd, 0, 3, 1), 2, 3, 1);
+        print_reg_or_data(cmd, bits(cmd, 0, 3, 1), 2, 3, true);
         node_printf(" ");
         print_system_reg(10);
         node_printf(" = %" PRIu8 ";", bits(cmd, 5, 0, 8)); // ??
@@ -561,7 +592,7 @@ static void print_system_set(cmd_t *cmd)
             node_printf("register ");
         print_reg(bits(cmd, 5, 4, 4));
         node_printf(" = ");
-        print_reg_or_data(cmd, bits(cmd, 0, 3, 1), 2, 3, 1);
+        print_reg_or_data(cmd, bits(cmd, 0, 3, 1), 2, 3, true);
     break;
     case 6: // Set system reg 8 (Highlighted button)
         if (bits(cmd, 0, 3, 1))
@@ -582,36 +613,36 @@ static void print_system_set(cmd_t *cmd)
       } /*switch*/
   } /*print_system_set*/
 
-static void print_set(cmd_t *cmd, int p11, int p12, int p13, int p21, int p22)
+static void print_set(cmd_t *cmd, int dstregbyte, int dstregbit, int dstregwidth, int srcimmedbyte, int srcregbyte)
   {
     const uint8_t set_op = bits(cmd, 0, 4, 4);
     node_newline();
     if (set_op == 2) // swap
       {
         node_printf("swap(");
-        print_reg(bits(cmd, p11, p12, p13));
+        print_reg(bits(cmd, dstregbyte, dstregbit, dstregwidth));
         node_printf(", ");
-        print_reg_or_data(cmd,bits(cmd, 0, 3, 1), p21, p22, 0);
+        print_reg_or_data(cmd, bits(cmd, 0, 3, 1), srcimmedbyte, srcregbyte, false);
         node_printf(");");
       }
     else if (set_op)
       {
-        print_reg(bits(cmd, p11, p12, p13));
+        print_reg(bits(cmd, dstregbyte, dstregbit, dstregwidth));
         node_printf(" = ");
         if (set_op == 8)
           { // random
             node_printf("random(");
-            print_reg_or_data(cmd, bits(cmd, 0, 3, 1), p21, p22, 0);
+            print_reg_or_data(cmd, bits(cmd, 0, 3, 1), srcimmedbyte, srcregbyte, false);
             node_printf(");");
           }
         else
           {
             if (set_op != 1) /* not mov */
               {
-                print_reg(bits(cmd, p11, p12, p13));
+                print_reg(bits(cmd, dstregbyte, dstregbit, dstregwidth));
                 print_set_op(set_op);
               } /*if*/
-            print_reg_or_data(cmd, bits(cmd, 0, 3, 1), p21, p22, 1);
+            print_reg_or_data(cmd, bits(cmd, 0, 3, 1), srcimmedbyte, srcregbyte, true);
           } /*if*/
       }
     else
@@ -653,7 +684,7 @@ static void print_command(cmd_t *cmd)
         else
           {
             print_if_version_1(cmd);
-            print_link_instruction(cmd, 0); // must be present
+            print_link_instruction(cmd, false); // must be present
             print_if_close_v12345(cmd);
           } /*if*/
     break;
@@ -661,13 +692,13 @@ static void print_command(cmd_t *cmd)
         print_if_version_2(cmd);
         print_system_set(cmd);
         print_if_close_v12345(cmd);
-        print_link_instruction(cmd, 1); // either 'if' or 'link'
+        print_link_instruction(cmd, true); // either 'if' or 'link'
     break;
     case 3: // Set General Parameters instructions
         print_if_version_3(cmd);
         print_set_version_1(cmd);
         print_if_close_v12345(cmd);
-        print_link_instruction(cmd, 1); // either 'if' or 'link'
+        print_link_instruction(cmd, true); // either 'if' or 'link'
     break;
     case 4: // Set, Compare -> LinkSub instructions
         print_set_version_2(cmd);
