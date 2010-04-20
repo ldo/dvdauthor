@@ -28,6 +28,7 @@
 #include <ctype.h>
 
 #include "subglobals.h"
+#include "subreader.h"
 #include "subgen.h"
 #include "readxml.h"
 
@@ -330,6 +331,29 @@ static void textsub_outline_thickness(const char *v)
     subtitle_font_thickness = atof(v);
   } /*textsub_outline_thickness*/
 
+static void textsub_shadow_offset(const char *v)
+  {
+    char * dx, * dy, * junk;
+    dx = str_extract_until(&v, ", ");
+    dy = str_extract_until(&v, ", ");
+    junk = str_extract_until(&v, ", ");
+    if (dy == NULL || junk != NULL)
+      {
+        fprintf(stderr,"ERR:  shadow offset must consist of exactly 2 numbers.\n");
+        exit(1);
+      } /*if*/
+    subtitle_shadow_dx = strtosigned(dx, "text shadow x-offset");
+    subtitle_shadow_dy = strtosigned(dy, "text shadow y-offset");
+    free(dx);
+    free(dy);
+    free(junk);
+  } /*textsub_shadow_offset*/
+
+static void textsub_shadow_color(const char *v)
+  {
+    subtitle_shadow_color = parse_color(v, "text shadow");
+  } /*textsub_shadow_color*/
+
 static void textsub_force(const char *v)
 {
     text_forceit = xml_ison(v, "textsub force");
@@ -390,6 +414,8 @@ static struct elemattr spu_attrs[]={
     {"textsub","fill-color",textsub_fill_color},
     {"textsub","outline-color",textsub_outline_color},
     {"textsub","outline-thickness",textsub_outline_thickness},
+    {"textsub","shadow-offset",textsub_shadow_offset},
+    {"textsub","shadow-color",textsub_shadow_color},
     {"textsub","horizontal-alignment",textsub_h_alignment},
     {"textsub","vertical-alignment",textsub_v_alignment},
     {"textsub","left-margin",textsub_l_margin},

@@ -129,6 +129,14 @@ unsigned int strtounsigned
   /* parses s as an unsigned decimal integer, returning its value. Aborts the
     program on error. */
 
+int strtosigned
+  (
+    const char * s,
+    const char * what /* description of what I'm trying to convert, for error message */
+  );
+  /* parses s as a signed decimal integer, returning its value. Aborts the
+    program on error. */
+
 #ifndef HAVE_STRNDUP
 char * strndup
   (
@@ -136,6 +144,16 @@ char * strndup
     size_t n
   );
 #endif
+
+char * str_extract_until
+  (
+    const char ** src,
+    const char * delim
+  );
+  /* scans *src, looking for the first occurrence of a character in delim. Returns
+    a copy of the prior part of *src if found, and updates *src to point after the
+    delimiter character; else returns a copy of the whole of *src, and sets *src
+    to NULL. Returns NULL iff *src is NULL. */
 
 void init_locale();
   /* does locale initialization and initializes default_charset. */

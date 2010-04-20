@@ -85,10 +85,11 @@ static FT_Library library;
 //static double ttime;
 
 enum
-  { /* predefined colour-table indexes */
-    COLIDX_TRANSPARENT,
-    COLIDX_FILL,
-    COLIDX_OUTLINE,
+  { /* predefined colour-table indexes--note can't have more than 4 */
+    COLIDX_TRANSPARENT, /* always transparent to let background video through */
+    COLIDX_FILL, /* text fill colour */
+    COLIDX_OUTLINE, /* text outline colour */
+    COLIDX_SHADOW /* text shadow colour */
   };
 static int const font_load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
 /* static int const font_load_flags = FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
@@ -96,8 +97,12 @@ static int const font_load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_
 float text_font_scale_factor = 28.0; /* font size in font units */
 float subtitle_font_thickness = 3.0;  /*2.0*/
 colorspec
-    subtitle_fill_color = {255, 255, 255, 255},
-    subtitle_outline_color = {0, 0, 0, 255};
+    subtitle_fill_color = {255, 255, 255, 255}, /* default opaque white */
+    subtitle_outline_color = {0, 0, 0, 255}, /* default opaque black */
+    subtitle_shadow_color = {0, 0, 0, 255}; /* default opaque black */
+int
+    subtitle_shadow_dx = 0,
+    subtitle_shadow_dy = 0;
 
 int subtitle_autoscale = AUTOSCALE_NONE;
 char *sub_font = /* Name of true type font, windows OS apps will look in \windows\fonts others in home dir */
@@ -212,6 +217,7 @@ static void add_outline
     int height,
     int stride
   )
+  /* puts an outline around the text. */
   {
     int x, y, x1, y1;
     const int maxradius = ceil(subtitle_font_thickness);
@@ -252,6 +258,48 @@ static void add_outline
           } /*for*/
       } /*for*/
   } /*add_outline*/
+
+static void add_shadow
+  (
+    unsigned char * image,
+    int width, /* dimensions of image */
+    int height,
+    int stride
+  )
+  /* adds a shadow to the text. */
+  {
+    int x, y;
+    for
+      (
+        y = subtitle_shadow_dy < 0 ? -subtitle_shadow_dy : 0;
+        y < (subtitle_shadow_dy > 0 ? height - subtitle_shadow_dy : height);
+        ++y
+      )
+      {
+        for
+          (
+            x = subtitle_shadow_dx < 0 ? -subtitle_shadow_dx : 0;
+            x < (subtitle_shadow_dx > 0 ? width - subtitle_shadow_dx : width);
+            ++x
+          )
+          {
+            const int dstpix = (y + subtitle_shadow_dy) * stride + (x + subtitle_shadow_dx);
+            if
+              (
+                    (
+                        image[y * stride + x] == COLIDX_FILL
+                    ||
+                        image[y * stride + x] == COLIDX_OUTLINE
+                    )
+                &&
+                    image[dstpix] == COLIDX_TRANSPARENT
+              )
+              {
+                image[dstpix] = COLIDX_SHADOW;
+              } /*if*/
+          } /*for*/
+      } /*for*/
+  } /*add_shadow*/
 
 void render_one_glyph(font_desc_t *desc, int c)
   /* renders the glyph corresponding to Unicode character code c and saves the
@@ -366,7 +414,11 @@ void render_one_glyph(font_desc_t *desc, int c)
     height = pic_b->charheight;
     stride = pic_b->w;
     add_outline(bbuffer, width, height, stride);
-//  fprintf(stderr, "fg: outline t = %lf\n", GetTimer()-t);
+    if (subtitle_shadow_dx != 0 || subtitle_shadow_dy != 0)
+      {
+        add_shadow(bbuffer, width, height, stride);
+      } /*if*/
+//  fprintf(stderr, "fg: outline & shadow t = %lf\n", GetTimer()-t);
     pic_b->current_count++;
   } /*render_one_glyph*/
 
@@ -540,9 +592,9 @@ static int prepare_font
     desc->pic_b[pic_idx] = pic_b;
     pic_b->bmp = NULL;
     memset(pic_b->pal, 0, sizeof pic_b->pal);
-  /* COLIDX_TRANSPARENT is transparent, COLIDX_FILL is opaque white, COLIDX_OUTLINE is opaque black */
     pic_b->pal[COLIDX_FILL] = subtitle_fill_color;
     pic_b->pal[COLIDX_OUTLINE] = subtitle_outline_color;
+    pic_b->pal[COLIDX_SHADOW] = subtitle_shadow_color;
 //  ttime = GetTimer();
     err = check_font(desc, ppem, padding, pic_idx, charset_size, charset);
 //  ttime = GetTimer() - ttime;

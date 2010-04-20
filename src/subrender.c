@@ -100,7 +100,7 @@ static inline void vo_draw_subtitle_line
   /* copies pixels from srcbase onto dstbase. Used to transfer a complete
     rendered line to textsub_image_buffer. */
   {
-    int y, i;
+    int y;
     for (y = 0; y < h; y++)
       {
         const register unsigned char * src = srcbase;

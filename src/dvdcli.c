@@ -36,35 +36,6 @@
 
 int default_video_format = VF_NONE;
 
-static char * str_extract_until
-  (
-    const char ** src,
-    const char * delim
-  )
-  /* scans *src, looking for the first occurrence of a character in delim. Returns
-    a copy of the prior part of *src if found, and updates *src to point after the
-    delimiter character; else returns a copy of the whole of *src, and sets *src
-    to NULL. Returns NULL iff *src is NULL. */
-  {
-    char * result = NULL; /* to begin with */
-    if (*src != NULL)
-      {
-        const size_t pos = strcspn(*src, delim);
-        if (pos < strlen(*src))
-          {
-            result = strndup(*src, pos);
-            *src = *src + pos + strspn(*src + pos, delim);
-          }
-        else
-          {
-            result = strdup(*src);
-            *src = NULL;
-          } /*if*/
-      } /*if*/
-    return
-        result;
-  } /*str_extract_until*/
-
 /* common parsing bits for both command line and XML file */
 
 #define RGB2YCrCb(R,G,B) ((((int)RGB2Y(R,G,B))<<16)|(((int)RGB2Cr(R,G,B))<<8)|(((int)RGB2Cb(R,G,B))))

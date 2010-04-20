@@ -178,6 +178,7 @@ is not specified.
       &lt;textsub filename="demo1.srt" characterset="UTF-8" 
          fontsize="28.0" font="arial" fill-color="<replaceable>color-spec</replaceable>"
          outline-color="<replaceable>color-spec</replaceable>" outline-thickness="3.0"
+         shadow-offset="0, 0" shadow-color="<replaceable>color-spec</replaceable>"
          horizontal-alignment="left"  vertical-alignment="bottom"
          left-margin="60" right-margin="60" 
          top-margin="20" bottom-margin="30" subtitle-fps="25" 
@@ -223,7 +224,17 @@ of the text, while outline-color specifies the color for the outline border to d
 around each character, to set it off from the video background.
 The outline-thickness attribute specifies the thickness of this outline. For the
 valid formats for <replaceable>color-spec</replaceable>, see SPECIFYING COLORS below.
+The default fill color is white and the default outline color is black.
 
+</para>
+<para>
+
+The shadow-offset and shadow-color attributes specify a shadow effect to be applied
+to the text. The shadow-offset is specified as 2 signed integers, being the horizontal and
+vertical offset respectively, with positive values being to the right and down. For the
+valid formats for <replaceable>color-spec</replaceable>, see SPECIFYING COLORS below.
+In order to have a visible effect, the shadow offset should be greater than the outline
+thickness. The default shadow color is black.
 </para>
 <para>
 

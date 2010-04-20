@@ -45,6 +45,37 @@ unsigned int strtounsigned
     return result;
   } /*strtounsigned*/
 
+int strtosigned
+  (
+    const char * s,
+    const char * what /* description of what I'm trying to convert, for error message */
+  )
+  /* parses s as a signed decimal integer, returning its value. Aborts the
+    program on error. */
+  {
+    char * s_end;
+    long result;
+    errno = 0;
+    result = strtol(s, &s_end, 10);
+    if (errno == 0)
+      {
+        if (*s_end != '\0')
+          {
+            errno = EINVAL;
+          }
+        else if (result < -INT_MAX || result > INT_MAX)
+          {
+            errno = ERANGE;
+          }
+      } /*if*/
+    if (errno != 0)
+      {
+        fprintf(stderr, "ERR:  %d converting %s \"%s\" -- %s\n", errno, what, s, strerror(errno));
+        exit(1);
+      } /*if*/
+    return result;
+  } /*strtosigned*/
+
 #ifndef HAVE_STRNDUP
 char * strndup
   (
@@ -65,6 +96,35 @@ char * strndup
         result;
   } /*strndup*/
 #endif /*HAVE_STRNDUP*/
+
+char * str_extract_until
+  (
+    const char ** src,
+    const char * delim
+  )
+  /* scans *src, looking for the first occurrence of a character in delim. Returns
+    a copy of the prior part of *src if found, and updates *src to point after the
+    delimiter character; else returns a copy of the whole of *src, and sets *src
+    to NULL. Returns NULL iff *src is NULL. */
+  {
+    char * result = NULL; /* to begin with */
+    if (*src != NULL)
+      {
+        const size_t pos = strcspn(*src, delim);
+        if (pos < strlen(*src))
+          {
+            result = strndup(*src, pos);
+            *src = *src + pos + strspn(*src + pos, delim);
+          }
+        else
+          {
+            result = strdup(*src);
+            *src = NULL;
+          } /*if*/
+      } /*if*/
+    return
+        result;
+  } /*str_extract_until*/
 
 /*
     locale stuff

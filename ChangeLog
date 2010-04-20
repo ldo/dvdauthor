@@ -14,6 +14,7 @@
 		with --enable-localize-filenames.
 	You can now specify fill and outline colours and outline thickness for text subtitles.
 		Colours can be specified in additional ways, including by name and in HSV space.
+	You can now also specify a shadow offset and colour for text subtitles.
 
 0.6.18: 2010 March 18
 	implement link-subset jumps

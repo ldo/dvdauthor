@@ -36,6 +36,7 @@
 #endif
 
 #include "subglobals.h"
+#include "subrender.h"
 #include "subgen.h"
 
 
