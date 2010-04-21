@@ -233,8 +233,7 @@ The shadow-offset and shadow-color attributes specify a shadow effect to be appl
 to the text. The shadow-offset is specified as 2 signed integers, being the horizontal and
 vertical offset respectively, with positive values being to the right and down. For the
 valid formats for <replaceable>color-spec</replaceable>, see SPECIFYING COLORS below.
-In order to have a visible effect, the shadow offset should be greater than the outline
-thickness. The default shadow color is black.
+The default shadow color is black.
 </para>
 <para>
 
