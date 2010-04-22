@@ -1290,8 +1290,8 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
                 (b[1] & 15) == 1 /* cmd = goto */
             &&
                 b[7] == curline + 2 // step 1
-          /* &&
-                (b[9] & 0x70) == 0 */ /* second instr not conditional */ /* fixme: do this? */
+            &&
+                (b[9] & 0x70) == 0 /* second instr not conditional */
             &&
                 ifcombinable(b[0], b[1], b[8]) // step 2
             &&
