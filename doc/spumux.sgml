@@ -67,7 +67,8 @@ Here's a sample configuration file:
          &lt;button [ name="<replaceable>name</replaceable>" ] [ x0="<replaceable>x0</replaceable>" ] [ y0="<replaceable>y0</replaceable>" ] [ x1="<replaceable>x1</replaceable>" ]
                  [ y1="<replaceable>y1</replaceable>" ] [ up="<replaceable>name</replaceable>" ] [ down="<replaceable>name</replaceable>" ]
                  [ left="<replaceable>name</replaceable>" ] [ right="<replaceable>name</replaceable>" ] /&gt;
-         &lt;action [ name="<replaceable>name</replaceable>" ] /&gt;
+         &lt;action [ name="<replaceable>name</replaceable>" ] [ x0="<replaceable>x0</replaceable>" ] [ y0="<replaceable>y0</replaceable>" ] [ x1="<replaceable>x1</replaceable>" ]
+                 [ y1="<replaceable>y1</replaceable>" ] /&gt;
       &lt;/spu&gt;
    &lt;/stream&gt;
 &lt;/subpictures&gt;
