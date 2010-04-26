@@ -8,3 +8,21 @@ Then to install, type
 
 If you don't want the files installed to /usr/local/bin, then you can
 specify --prefix=/usr or some other dir as a parameter to configure.
+
+* Useful options to configure:
+
+These options may be used to restore behaviour that was built into older
+versions of DVDAuthor.
+
+	--enable-default-video-format=NTSC
+	--enable-default-video-format=PAL
+
+Without one of these, there is no hard-coded default video format.
+(Of course, a user- or system-specified default always takes precedence
+if present.)
+
+	--enable-localize-filenames
+
+Specify this if you want filenames to be interpreted according to your
+locale setting. Without this, filenames are assumed to be in UTF-8
+encoding.
