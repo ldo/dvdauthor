@@ -499,13 +499,14 @@ static int write_png
   /* outputs the contents of s as a PNG file, converting pixels to colours
     according to map. */
   {
-    unsigned int a, x, y, nonzero;
+    unsigned int a, x, y;
+    bool nonzero;
     unsigned char *out_buf, *temp;
     FILE *fp;
     png_structp png_ptr;
     png_infop info_ptr;
     temp = out_buf = malloc(s->xd * s->yd * 4);
-    nonzero = 0;
+    nonzero = false;
     for (y = 0; y < s->yd; y++)
       {
         for (x = 0; x < s->xd; x++)
@@ -517,7 +518,7 @@ static int write_png
             *temp++ = current_palette[cix & 15].b;
             *temp++ = (cix >> 4) * 17;
             if (cix & 0xf0)
-                nonzero = 1;
+                nonzero = true;
           } /*for*/
       } /*for*/
     if (!nonzero)
