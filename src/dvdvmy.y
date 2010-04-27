@@ -154,6 +154,10 @@ statement: jumpstatement {
 ;
 
 jtsl: TITLESET_TOK NUM_TOK {
+    if ($2 < 1 || $2 > 99)
+      {
+        yyerror("titleset number out of range");
+      } /*if*/
     $$=($2)+1;
 }
 | VMGM_TOK {
@@ -165,6 +169,10 @@ jtsl: TITLESET_TOK NUM_TOK {
 ;
 
 jtml: MENU_TOK NUM_TOK {
+    if ($2 < 1 || $2 > 99)
+      {
+        yyerror("menu number out of range");
+      } /*if*/
     $$=$2;
 }
 | MENU_TOK {
@@ -192,6 +200,10 @@ jtml: MENU_TOK NUM_TOK {
     $$=121;
 }
 | TITLE_TOK NUM_TOK {
+    if ($2 < 1 || $2 > 99)
+      {
+        yyerror("title number out of range");
+      } /*if*/
     $$=($2)|128;
 }
 | {
@@ -200,6 +212,10 @@ jtml: MENU_TOK NUM_TOK {
 ;
 
 jcl: CHAPTER_TOK NUM_TOK {
+    if ($2 < 1 || $2 > 65535)
+      {
+        yyerror("chapter number out of range");
+      } /*if*/
     $$=$2;
 }
 | {
@@ -210,16 +226,25 @@ jcl: CHAPTER_TOK NUM_TOK {
 jumpstatement: JUMP_TOK jtsl jtml jcl SEMICOLON_TOK {
     $$=statement_new();
     $$->op=VM_JUMP;
+  /* values already range-checked: */
     $$->i1=$2;
     $$->i2=$3;
     $$->i3=$4;
 }
 | JUMP_TOK CELL_TOK NUM_TOK SEMICOLON_TOK {
+    if ($3 < 1 || $3 > 65535)
+      {
+        yyerror("cell number out of range");
+      } /*if*/
     $$=statement_new();
     $$->op=VM_JUMP;
     $$->i3=2*65536+$3;
 }
 | JUMP_TOK PROGRAM_TOK NUM_TOK SEMICOLON_TOK {
+    if ($3 < 1 || $3 > 65535)
+      {
+        yyerror("program number out of range");
+      } /*if*/
     $$=statement_new();
     $$->op=VM_JUMP;
     $$->i3=65536+$3;
@@ -282,6 +307,10 @@ jumpstatement: JUMP_TOK jtsl jtml jcl SEMICOLON_TOK {
 ;
 
 resumel: RESUME_TOK NUM_TOK {
+    if ($2 < 1 || $2 > 65535)
+      {
+        yyerror("resume cell number out of range");
+      } /*if*/
     $$=$2;
 }
 | {
@@ -292,6 +321,7 @@ resumel: RESUME_TOK NUM_TOK {
 callstatement: CALL_TOK jtsl jtml jcl resumel SEMICOLON_TOK {
     $$=statement_new();
     $$->op=VM_CALL;
+  /* values already range-checked: */
     $$->i1=$2;
     $$->i2=$3;
     $$->i3=$4;

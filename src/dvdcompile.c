@@ -632,14 +632,6 @@ static unsigned char *compilecs
             or program number + 65536; or cell number + 131072 */
 
           /* check for various disallowed combinations */
-            if (i2 >= 128)
-              {
-                if (i2 == 128 || i2 > 128 + 99)
-                  {
-                    fprintf(stderr, "ERR:  Illegal title number %d, must be 1-99\n", i2 - 128);
-                    return 0;
-                  } /*if*/
-              } /*if*/
             if (i1 == 1 && ismenu == VTYPE_VMGM)
               {
                 //  VMGM    VMGM    NOPGC   NOCH
@@ -1518,6 +1510,7 @@ void dvdvmerror(const char *s)
   {
     extern char *dvdvmtext;
     fprintf(stderr, "ERR:  Parse error '%s' on token '%s'\n", s, dvdvmtext);
+    exit(1);
   } /*dvdvmerror*/
 
 struct vm_statement *vm_parse(const char *b)

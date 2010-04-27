@@ -1412,7 +1412,7 @@ colorspec parse_color
             componentscale = (1 << 4 * componentlength) - 1;
             for (componentindex = 0; componentindex < 3; ++componentindex)
               {
-                int component, digit, j;
+                int component, j;
                 unsigned char * dest;
                 component = 0;
                 for (j = 0; j < componentlength; ++j)
