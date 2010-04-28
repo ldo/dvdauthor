@@ -638,7 +638,25 @@ this to create looping menus: <literal>jump cell
 
 </variablelist>
 
+<para>Chapters are numbered from 1 in each title, while programs are numbered from
+1 in each PGC. Thus, the latter can reset independently of the former when there is more
+than one PGC in a title.</para>
+
 </refsect2>
+
+</refsect1>
+
+<refsect1><title>Limitations</title>
+<para>The following limits are imposed by the DVD-Video spec.</para>
+<para>There can be no more than 99 titlesets, no more than 99 menus in the VMG
+or a titleset, and no more than 99 titles in a titleset.</para>
+<para>Each title may be made up of up to 999 PGCs. Each PGC may consist of up to 255 programs.
+The <literal>&lt;pre&gt;</literal> and <literal>&lt;post&gt;</literal> sections of a PGC
+put together can contain no more than 128 VM instructions.</para>
+<para>Since there is only one VOB file (<literal>VIDEO_TS.VOB</literal>) in the VMG,
+the total amount of video in the VMG menus must fit into 1073709056 bytes (524272
+sectors of 2kiB each). In each titleset, all the menu video must fit in the first VOB
+(<literal>VTS_</literal>nn<literal>_0.VOB</literal>), so is limited to the same amount.</para>
 
 </refsect1>
 
