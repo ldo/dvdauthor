@@ -172,7 +172,8 @@ struct button { /* describes a button including versions across different subpic
 struct pgc { /* describes a program chain corresponding to a <pgc> directive */
     int numsources; /* length of sources array */
     int numbuttons; /* length of buttons array */
-    int numchapters,numprograms,numcells,entries,pauselen;
+    int numchapters,numprograms,numcells,pauselen;
+    int entries; /* bit mask of applicable menu entry types, or, in a titleset, nonzero if non-title PGC */
     struct source **sources; /* array of <vob> directives seen */
     struct button *buttons; /* array */
     struct vm_statement *prei,*posti;

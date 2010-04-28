@@ -141,16 +141,15 @@ static void parseinstructions(struct pgc *va,const char *b)
     free(c);
 }
 
-static void parseentries(struct pgc *p,const char *b)
-{
+static void parseentries(struct pgc *p, vtypes ismenuf, const char *b)
+  {
     char *v;
-
-    while(NULL!=(v=str_extract_until(&b,", ")))
+    while (NULL != (v = str_extract_until(&b, ", ")))
       {
-        pgc_add_entry(p,v);
+        pgc_add_entry(p, ismenuf, v);
         free(v);
       } /*while*/
-}
+  } /*parseentries*/
 
 static double parsechapter(const char *s)
 {
@@ -570,7 +569,7 @@ int main(int argc, char **argv)
                 fprintf(stderr, "ERR:  Cannot specify an entry for a title.\n");
                 return 1;
               } /*if*/
-            parseentries(curpgc, optarg);
+            parseentries(curpgc, istoc ? VTYPE_VMGM : VTYPE_VTSM, optarg);
         break;
 
         case 'P':
@@ -1148,7 +1147,7 @@ static void pgc_entry(const char *e)
 {
     // xml attributes can only be defined once, so entry="foo" entry="bar" won't work
     // instead, use parseentries...
-    parseentries(curpgc, e);
+    parseentries(curpgc, ismenuf, e);
 }
 
 static void pgc_palette(const char *p)

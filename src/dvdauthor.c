@@ -1132,6 +1132,7 @@ static void ScanIfo(struct toc_summary *ts, const char *ifo)
   } /*ScanIfo*/
 
 static void forceaddentry(struct pgcgroup *va, int entry)
+  /* gives the first PGC in va the specified entry type, if this is not present already. */
   {
     if (!va->numpgcs && !jumppad)
         return;
@@ -1145,6 +1146,8 @@ static void forceaddentry(struct pgcgroup *va, int entry)
   } /*forceaddentry*/
 
 static void checkaddentry(struct pgcgroup *va, int entry)
+  /* gives the first PGC in va the specified entry type, if this is not present already
+    and it has at least one PGC. */
   {
     if (va->numpgcs)
         forceaddentry(va, entry);
@@ -1355,15 +1358,21 @@ static void validatesummary(struct pgcgroup *va)
                     fprintf(stderr,"ERR:  Multiple definitions for entry %s, 2nd occurance in PGC #%d\n",entries[j],i);
             err = true;
         }
-        if( p->entries & ~allowedentries ) {
+        if (va->pstype != VTYPE_VTS && (p->entries & ~allowedentries) != 0)
+          {
           /* disallowed entry menu types present--report them */
             int j;
-
-            for( j=0; j<8; j++ )
-                if( p->entries & (~allowedentries) & (1<<j) )
-                    fprintf(stderr,"ERR:  Entry %s is not allowed for menu type %s\n",entries[j],pstypes[va->pstype]);
+            for (j = 0; j < 8; j++)
+                if (p->entries & (~allowedentries) & (1 << j))
+                    fprintf
+                      (
+                        stderr,
+                        "ERR:  Entry %s is not allowed for menu type %s\n",
+                        entries[j],
+                        pstypes[va->pstype]
+                      );
             err = true;
-        }
+          } /*if*/
         va->allentries|=p->entries;
         if( p->numsources ) {
             int j;
@@ -1544,23 +1553,40 @@ int pgc_set_subpic_stream(struct pgc *p,int ch,const char *m,int id)
     return 0;
 }
 
-void pgc_add_entry(struct pgc *p,char *entry)
-{
+void pgc_add_entry(struct pgc *p, vtypes vtype, const char *entry)
+  {
     int i;
-   
-    for( i=2; i<8; i++ )
-        if( !strcasecmp(entry,entries[i])) {
-            int v=1<<i;
-            if( p->entries&v ) {
-                fprintf(stderr,"ERR:  Defined entry '%s' multiple times for the same PGC\n",entry);
-                exit(1);
-            }
-            p->entries|=1<<i;
+    if (vtype != VTYPE_VTS)
+      {
+        for (i = 2; i < 8; i++)
+            if (!strcasecmp(entry, entries[i]))
+              {
+                int v = 1 << i;
+                if (p->entries & v)
+                  {
+                    fprintf
+                      (
+                        stderr,
+                        "ERR:  Defined entry '%s' multiple times for the same PGC\n",
+                        entry
+                      );
+                    exit(1);
+                  } /*if*/
+                p->entries |= 1 << i;
+                return;
+              } /*if*/
+      }
+    else
+      {
+        if (!strcasecmp(entry, "notitle"))
+          {
+            p->entries |= 1; /* anything nonzero */
             return;
-        }
+          } /*if*/
+      } /*if*/
     fprintf(stderr,"ERR:  Unknown entry '%s'\n",entry);
     exit(1);
-}
+  } /*pgc_add_entry*/
 
 void pgc_add_source(struct pgc *p,struct source *v)
 {

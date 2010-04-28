@@ -421,40 +421,45 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
   } /*genpgc*/
 
 static int createpgcgroup(const struct workset *ws,vtypes ismenu,const struct pgcgroup *va,unsigned char *buf /* where to put generated table */)
-  /* generates a VMGM_LU or VTSM_LU table and all associated PGCs. Returns -1 if there wasn't enough space. */
+  /* generates a VMGM_LU, VTSM_LU or VTS_PGCI table and all associated PGCs. Returns -1 if there wasn't enough space. */
   {
-    int len,i,pgcidx;
-
+    int len, i, pgcidx, nrtitles;
     len = va->numpgcs + va->numentries;
+      /* duplicate each PGC for each additional menu entry type it may have ... */
     for (i = 0; i < va->numpgcs; i++)
         if (va->pgcs[i]->entries)
-            len--;
-    write2(buf, len); /* nr program chains */
-    len = len * 8 + 8; /* total length of VMGM_LU/VTSM_LU */
+            len--; /* ...  beyond the first one */
+    write2(buf, len); /* nr language units (VMGM_LU, VTSM_LU)/program chains (VTS_PGCI) */
+    len = len * 8 + 8; /* total length of VMGM_LU/VTSM_LU/VTS_PGCI */
     pgcidx = 8;
-
+    nrtitles = 0;
     for (i = 0; i < va->numpgcs; i++)
       { /* generate the PGCs and put in their offsets */
         int j = 0;
         if (buf + len + BUFFERPAD - bigwritebuf > bigwritebuflen)
             return -1; /* caller needs to give me more space */
         if (ismenu == VTYPE_VTS)
-            buf[pgcidx] = 0x81 + i; /* menu type for VTSM_LU */
+          {
+            if (va->pgcs[i]->entries == 0)
+              {
+                ++nrtitles;
+                buf[pgcidx] = 0x80 | nrtitles; /* title type & nr for VTS_PGC */
+              } /*if*/
+          }
         else
           {
             buf[pgcidx] = 0;
             for (j = 2; j < 8; j++)
                 if (va->pgcs[i]->entries & (1 << j))
                   {
-                    buf[pgcidx] = 0x80 | j; /* menu type for VMGM_LU */
+                    buf[pgcidx] = 0x80 | j; /* menu type for VMGM_LU/VTSM_LU */
                     break;
                   } /*if; for*/
           } /*if*/
-        write4(buf + pgcidx + 4, len); /* offset to VMGM_PGC/VTSM_PGC */
+        write4(buf + pgcidx + 4, len); /* offset to VMGM_PGC/VTSM_PGC/VTS_PGC */
         len += genpgc(buf + len, ws, va, i, ismenu, j); /* put it there */
         pgcidx += 8;
       } /*for*/
-
     for (i = 2; i < 8; i++)
       {
         if (va->allentries & (1 << i))
@@ -480,7 +485,6 @@ static int createpgcgroup(const struct workset *ws,vtypes ismenu,const struct pg
             pgcidx += 8;
           } /*if*/
       } /*for*/
-
     write4(buf + 4, len - 1);
       /* end address (last byte of last PGC in this LU) relative to VMGM_LU/VTSM_LU */
     return len;
@@ -518,9 +522,9 @@ int CreatePGC(FILE *h, const struct workset *ws, vtypes ismenu)
             unsigned char * const plu = buf + 8 + 8 * i;
             const struct langgroup * const lg = &ws->menus->groups[i];
             memcpy(plu, lg->lang, 2); /* ISO639 language code */
-            if (ismenu == 1)
+            if (ismenu == VTYPE_VTSM)
                 plu[3] = lg->pg->allentries;
-            else
+            else /* ismenu = VTYPE_VMGM */
                 plu[3] = 0x80; // menu system contains entry for title
             write4(plu + 4, ph);
             len = createpgcgroup(ws, ismenu, lg->pg, buf + ph);
@@ -534,7 +538,7 @@ int CreatePGC(FILE *h, const struct workset *ws, vtypes ismenu)
     else
       {
       /* generate VTS_PGCI structure */
-        len = createpgcgroup(ws, 0, ws->titles, buf);
+        len = createpgcgroup(ws, VTYPE_VTS, ws->titles, buf);
         if (len < 0)
             goto retry;
         ph = len;

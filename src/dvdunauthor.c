@@ -539,22 +539,60 @@ static void dump_pgcs(const ifo_handle_t *ifo, const pgcit_t *pgcs, const struct
   {
     if (pgcs)
       {
-        int i, j;
+        int i, j, titlenr, titletotal;
+        titlenr = 0;
+        if (titlef)
+          {
+            titletotal = 0;
+            for (i = 0; i < pgcs->nr_of_pgci_srp; i++)
+              {
+                if ((pgcs->pgci_srp[i].entry_id & 0x80) != 0)
+                  {
+                    ++titletotal;
+                  } /*if*/
+              } /*for*/
+          } /*if*/
         for (i = 0; i < pgcs->nr_of_pgci_srp; i++)
           {
             const pgc_t * const pgc = pgcs->pgci_srp[i].pgc;
             xmlNodePtr pgcNode, vobNode = 0, angleNode = 0;
             int curvob = -1;
-            AddComment
-              (
-                /*parent =*/ titleNode,
-                /*format =*/ " %s %d/%d ",
-                titlef ? "Title" : "Menu",
-                i + 1,
-                pgcs->nr_of_pgci_srp
-              );
+            if (!titlef || (pgcs->pgci_srp[i].entry_id & 0x80) != 0)
+              {
+                if (titlef)
+                  {
+                    AddComment
+                      (
+                        /*parent =*/ titleNode,
+                        /*format =*/ " Title %d/%d ",
+                        pgcs->pgci_srp[i].entry_id & 0x7f,
+                        titletotal
+                      );
+                  }
+                else
+                  {
+                    AddComment
+                      (
+                        /*parent =*/ titleNode,
+                        /*format =*/ " Menu %d/%d ",
+                        i + 1,
+                        pgcs->nr_of_pgci_srp
+                      );
+                  } /*if*/
+              } /*if*/
             pgcNode = NewChildTag(titleNode, "pgc");
-            if (!titlef && (pgcs->pgci_srp[i].entry_id & 0x80)) /* entry PGC */
+            if (titlef)
+              {
+                if ((pgcs->pgci_srp[i].entry_id & 0x80) == 0)
+                  {
+                    xmlNewProp(pgcNode, (const xmlChar *)"entry", "notitle");
+                  }
+                else
+                  {
+                    ++titlenr;
+                  } /*if*/
+              }
+            else if ((pgcs->pgci_srp[i].entry_id & 0x80) != 0) /* entry PGC */
               {
                 if (pgcs->pgci_srp[i].entry_id & 0x70)
                   {
@@ -565,7 +603,12 @@ static void dump_pgcs(const ifo_handle_t *ifo, const pgcit_t *pgcs, const struct
                         pgcs->pgci_srp[i].entry_id
                       );
                   } /*if*/
-                xmlNewProp(pgcNode, (const xmlChar *)"entry", (const xmlChar *)entries[pgcs->pgci_srp[i].entry_id&0xF]);
+                xmlNewProp
+                  (
+                    pgcNode,
+                    (const xmlChar *)"entry",
+                    (const xmlChar *)entries[pgcs->pgci_srp[i].entry_id & 0xF]
+                  );
               } /*if*/
           /* add pgc nav info */
             if (pgc->goup_pgc_nr)
