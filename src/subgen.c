@@ -791,13 +791,13 @@ static void mux(bool eoinput)
 
 static void textsub_statistics()
   {
-    fprintf(stderr, "\nText Subtitle Statistics:\n");
-    fprintf(stderr, "- Processed %d subtitles.\n", numspus);
-    fprintf(stderr, "- The longest display line had %d characters.\n", sub_max_chars - 1);
-    fprintf(stderr, "- The maximum number of displayed lines was %d.\n", sub_max_lines);
-    fprintf(stderr, "- The normal display height of the font %s was %d.\n", sub_font, sub_max_font_height);
-    fprintf(stderr, "- The bottom display height of the font %s was %d.\n", sub_font, sub_max_bottom_font_height);
-    fprintf(stderr, "- The biggest subtitle box had %d bytes.\n", max_sub_size);
+    fprintf(stderr, "\nINFO: Text Subtitle Statistics:\n");
+    fprintf(stderr, "INFO: - Processed %d subtitles.\n", numspus);
+    fprintf(stderr, "INFO: - The longest display line had %d characters.\n", sub_max_chars - 1);
+    fprintf(stderr, "INFO: - The maximum number of displayed lines was %d.\n", sub_max_lines);
+    fprintf(stderr, "INFO: - The normal display height of the font %s was %d.\n", sub_font, sub_max_font_height);
+    fprintf(stderr, "INFO: - The bottom display height of the font %s was %d.\n", sub_font, sub_max_bottom_font_height);
+    fprintf(stderr, "INFO: - The biggest subtitle box had %d bytes.\n", max_sub_size);
   } /*textsub_statistics*/
 
 int main(int argc,char **argv)
