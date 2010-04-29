@@ -246,7 +246,7 @@ Here is the basic structure of the control file:
       &lt;titles&gt;
          [&lt;video ... /&gt;]
          [&lt;audio ... /&gt;]
-         &lt;pgc [palette="<replaceable>yuvfile|rgbfile</replaceable>"] [pause="<replaceable>seconds</replaceable>|inf"]&gt;
+         &lt;pgc [entry="notitle"] [palette="<replaceable>yuvfile|rgbfile</replaceable>"] [pause="<replaceable>seconds</replaceable>|inf"]&gt;
             [...]
          &lt;/pgc&gt;
          [&lt;pgc ... /&gt;]
@@ -351,6 +351,9 @@ you can use root, subtitle, audio, angle, and ptt.  If you want more
 than one, separate them by a space or a comma.  Note that
 <literal>root</literal> entry is meant for commands that jump from a
 VMGM level menu to a titleset menu.</para>
+
+<para>If the PGC is in a titleset, then it is assumed to be a title unless
+<literal>entry="notitle"</literal> is specified.</para>
 
 <para>All button and menu masks and all subtitles within a PGC must
 share the same 16 color palette.  If you use <command>spumux</command>
