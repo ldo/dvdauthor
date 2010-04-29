@@ -36,6 +36,7 @@
 #include "compat.h"
 
 #include <ctype.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
 #include <assert.h>
@@ -163,24 +164,51 @@ static const char *stristr(const char *haystack, const char *needle)
     Input-file reading
 */
 
-static FILE *
-    subfile = NULL;
+enum
+  {
+    sub_buf_size = 2048,
+  };
+struct vfile
+    subfile;
+static char *
+    sub_buf = NULL;
+static size_t
+    sub_out_size,
+    sub_next_out,
+    sub_end_out;
+static bool
+    sub_buf_rewindable = false;
 static int
     in_charno = 0,
     in_lineno = 1;
+
+static void sub_open(const char * filename)
+  {
+    subfile = varied_open(filename, O_RDONLY, "subtitle file");
+    sub_out_size = sub_buf_size;
+    sub_buf = malloc(sub_out_size);
+    sub_next_out = 0;
+    sub_end_out = 0;
+    in_charno = 0;
+    in_lineno = 1;
+  } /*sub_open*/
+
+static void sub_close(void)
+  {
+    varied_close(subfile);
+    free(sub_buf);
+    sub_buf = NULL;
+  } /*sub_close*/
 
 #ifdef HAVE_ICONV
 
 static iconv_t
     icdsc = ICONV_NULL; /* for converting subtitle text encoding to UTF-8 */
 static char
-    ic_inbuf[2048], /* size to minimize reads from disk */
-    ic_outbuf[2048]; /* size to minimize number of iconv calls */
+    ic_inbuf[sub_buf_size]; /* size to minimize reads from disk */
 static size_t
     ic_next_in,
-    ic_end_in,
-    ic_next_out,
-    ic_end_out;
+    ic_end_in;
 static int
     ic_needmore,
     ic_eof;
@@ -196,8 +224,6 @@ static void subcp_open(void)
         fprintf(stderr, "INFO: Opened iconv descriptor. *%s* <= *%s*\n", tocp, fromcp);
         ic_next_in = 0;
         ic_end_in = 0;
-        ic_next_out = 0;
-        ic_end_out = 0;
         ic_needmore = false;
         ic_eof = false;
       }
@@ -231,10 +257,10 @@ static int sub_getc()
     end of the file has been reached. */
   {
     int result;
-#ifdef HAVE_ICONV
-    if (icdsc != ICONV_NULL)
+    if (sub_next_out == sub_end_out)
       {
-        if (ic_next_out == ic_end_out)
+#ifdef HAVE_ICONV
+        if (icdsc != ICONV_NULL)
           {
             if ((ic_next_in == ic_end_in || ic_needmore) && !ic_eof)
               {
@@ -250,9 +276,8 @@ static int sub_getc()
                   {
                     ic_end_in = 0;
                   } /*if*/
-                bytesread = fread(ic_inbuf + ic_end_in, 1, sizeof ic_inbuf - ic_end_in, subfile);
+                bytesread = fread(ic_inbuf + ic_end_in, 1, sizeof ic_inbuf - ic_end_in, subfile.h);
                 ic_end_in += bytesread;
-                in_charno += bytesread;
                 if (ic_end_in < sizeof ic_inbuf)
                   {
                     ic_eof = true;
@@ -262,22 +287,41 @@ static int sub_getc()
               } /*if*/
             if (ic_next_in < ic_end_in)
               {
-              /* refill ic_outbuf with more decoded characters */
+              /* refill sub_buf with more decoded characters */
                 const char * nextin;
                 char * nextout;
-                size_t inleft, outleft;
-                int convok;
+                size_t inleft, outleft, prev_sub_end_out;
+                bool convok;
                 nextin = ic_inbuf + ic_next_in;
-                nextout = ic_outbuf;
+                if (sub_buf_rewindable)
+                  {
+                    nextout = sub_buf + sub_end_out; /* keep what's in buffer */
+                    if (sub_out_size - sub_end_out < sub_buf_size)
+                      {
+                      /* make room for more */
+                        sub_out_size += sub_buf_size;
+                        sub_buf = realloc(sub_buf, sub_out_size);
+                      } /*if*/
+                  }
+                else
+                  {
+                    if (sub_out_size > sub_buf_size) /* don't need bigger buffer any more */
+                      {
+                        sub_out_size = sub_buf_size;
+                        sub_buf = realloc(sub_buf, sub_out_size);
+                      } /*if*/
+                    nextout = sub_buf;
+                  } /*if*/
                 inleft = ic_end_in - ic_next_in; /* won't be zero */
-                outleft = sizeof ic_outbuf;
+                outleft = sub_out_size - (nextout - sub_buf);
                 convok = iconv(icdsc, (char **)&nextin, &inleft, &nextout, &outleft) != (size_t)-1;
                 if (!convok)
                   {
                     if (!ic_eof && errno == EINVAL)
                       {
                         errno = 0;
-                        ic_needmore = true; /* can't decode what's left in ic_inbuf without reading more */
+                        ic_needmore = true;
+                          /* can't decode what's left in ic_inbuf without reading more */
                       }
                     else /* E2BIG (shouldn't occur), EILSEQ, EINVAL at end of file */
                       {
@@ -285,44 +329,72 @@ static int sub_getc()
                           (
                             stderr,
                             "ERR:  Error %d -- %s -- decoding subtitle file at approx"
-                                " line pos %d, char pos %d\n",
+                                " line pos %d + char pos %d\n",
                             errno,
                             strerror(errno),
-                            in_lineno,
-                            in_charno
+                            in_lineno, /* might be wrong */
+                            in_charno + (int)(nextin - ic_inbuf) /* hopefully this is better */
                           );
                         exit(1);
                       } /*if*/
                   } /*if*/
                 ic_next_in = nextin - ic_inbuf;
-                ic_end_out = nextout - ic_outbuf;
-                assert(ic_end_out != 0); /* because I gave it plenty of input data to work on */
-                ic_next_out = 0;
-              } /*if*/
-          } /*if*/
-        if (ic_next_out < ic_end_out)
-          {
-            result = ic_outbuf[ic_next_out];
-            ++ic_next_out;
-            if (result == '\n')
-              {
-                ++in_lineno;
+                prev_sub_end_out = sub_buf_rewindable ? sub_end_out : 0;
+                sub_end_out = nextout - sub_buf;
+                assert(sub_end_out != prev_sub_end_out);
+                  /* because I gave it plenty of input data to work on */
+                if (!sub_buf_rewindable)
+                  {
+                    sub_next_out = 0;
+                  } /*if*/
               } /*if*/
           }
         else
-          {
-            result = EOF;
-          } /*if*/
-      }
-    else
 #endif /*HAVE_ICONV*/
+          {
+            char * nextout;
+            size_t bytesread;
+            if (sub_buf_rewindable)
+              {
+                nextout = sub_buf + sub_end_out; /* keep what's in buffer */
+                if (sub_out_size - sub_end_out < sub_buf_size)
+                  {
+                  /* make room for more */
+                    sub_out_size += sub_buf_size;
+                    sub_buf = realloc(sub_buf, sub_out_size);
+                  } /*if*/
+              }
+            else
+              {
+                if (sub_out_size > sub_buf_size) /* don't need bigger buffer any more */
+                  {
+                    sub_out_size = sub_buf_size;
+                    sub_buf = realloc(sub_buf, sub_out_size);
+                  } /*if*/
+                nextout = sub_buf;
+              } /*if*/
+            if (!sub_buf_rewindable)
+              {
+                sub_end_out = 0;
+                sub_next_out = 0;
+              } /*if*/
+            bytesread = fread(nextout, 1, sub_out_size - sub_end_out, subfile.h);
+            sub_end_out += bytesread;
+          } /*if*/
+      } /*if*/
+    if (sub_next_out < sub_end_out)
       {
-        result = fgetc(subfile);
+        result = sub_buf[sub_next_out];
         ++in_charno;
+        ++sub_next_out;
         if (result == '\n')
           {
             ++in_lineno;
           } /*if*/
+      }
+    else
+      {
+        result = EOF;
       } /*if*/
     return result;
   } /*sub_getc*/
@@ -330,18 +402,21 @@ static int sub_getc()
 static void sub_rewind()
   /* rewinds to the beginning of the input subtitle file. */
   {
-    rewind(subfile);
-    in_charno = 0;
-    in_lineno = 1;
+    if (!sub_buf_rewindable)
+      {
+        fprintf(stderr, "ERR:  trying to rewind subtitle file when not in rewindable state\n");
+        exit(1);
+      } /*if*/
+    sub_next_out = 0;
 #ifdef HAVE_ICONV
     (void)iconv(icdsc, NULL, NULL, NULL, NULL);
     ic_next_in = 0;
     ic_end_in = 0;
-    ic_next_out = 0;
-    ic_end_out = 0;
     ic_needmore = false;
     ic_eof = false;
 #endif /*HAVE_ICONV*/
+    in_charno = 0;
+    in_lineno = 1;
   } /*sub_rewind*/
 
 static char * sub_fgets
@@ -1896,12 +1971,7 @@ sub_data *sub_read_file(const char *filename, float movie_fps)
 
     if (filename == NULL)
         return NULL; //qnx segfault
-    subfile = fopen(filename, "r");
-    if (!subfile)
-      {
-        fprintf(stderr, "ERR:  Couldn't open subtitle file \"%s\"\n", filename);
-        exit(1);
-      } /*if*/
+    sub_open(filename);
 #ifdef HAVE_ICONV
       {
         int l, k;
@@ -1922,6 +1992,7 @@ sub_data *sub_read_file(const char *filename, float movie_fps)
             subcp_open(); /* to convert the text to UTF-8 */
       }
 #endif
+    sub_buf_rewindable = true;
     sub_format = sub_autodetect(&uses_time);
     mpsub_multiplier = (uses_time ? 100.0 : 1.0);
     if (sub_format == SUB_INVALID)
@@ -1932,6 +2003,7 @@ sub_data *sub_read_file(const char *filename, float movie_fps)
     srp = sr + sub_format;
     fprintf(stderr, "INFO: Detected subtitle file format: %s\n", srp->name);
     sub_rewind();
+    sub_buf_rewindable = false;
     sub_num = 0;
     n_max = 32; /* initial size of "first" array */
     first = (subtitle_elt *)malloc(n_max * sizeof(subtitle_elt));
@@ -2047,11 +2119,10 @@ sub_data *sub_read_file(const char *filename, float movie_fps)
         else
             ++sub_num; // Error vs. Valid
       } /*while*/
-    fclose(subfile);
-    subfile = NULL;
 #ifdef HAVE_ICONV
     subcp_close();
 #endif
+    sub_close();
 //  fprintf(stderr, "SUB: Subtitle format %s time.\n", uses_time ? "uses" : "doesn't use");
     fprintf(stderr, "INFO: Read %i subtitles\n", sub_num);
     if (sub_errs)
