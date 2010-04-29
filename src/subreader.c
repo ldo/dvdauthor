@@ -408,13 +408,6 @@ static void sub_rewind()
         exit(1);
       } /*if*/
     sub_next_out = 0;
-#ifdef HAVE_ICONV
-    (void)iconv(icdsc, NULL, NULL, NULL, NULL);
-    ic_next_in = 0;
-    ic_end_in = 0;
-    ic_needmore = false;
-    ic_eof = false;
-#endif /*HAVE_ICONV*/
     in_charno = 0;
     in_lineno = 1;
   } /*sub_rewind*/
