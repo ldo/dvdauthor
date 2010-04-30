@@ -1,0 +1,12 @@
+#!/bin/bash
+#+
+# Restore to a pristine source tree.
+#
+# Written by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+#-
+
+rm -f src/*.o doc/*.1 doc/manpage.{links,refs} config.log config.status
+rm -rf autom4te.cache autotools dvdauthor.spec src/.deps
+rm -f configure {,src/,doc/}Makefile{,.in} src/config.h src/config.h.in aclocal.m4
+rm -f src/stamp-h1 src/dvdvml.c src/dvdvmy.c src/dvdvmy.h
+rm -f src/{dvdauthor,spumux,dvdunauthor,spuunmux,mpeg2desc,dvddirdel}

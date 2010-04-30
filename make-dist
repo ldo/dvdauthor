@@ -12,6 +12,7 @@ dstdir=dvdauthor-tartmp
 mkdir ../$dstdir/ || exit 1
 cp -a ./ ../$dstdir/dvdauthor/
 cd ../$dstdir/dvdauthor
+./clean
 rm -rf .git
 ./bootstrap
 (cd src; flex -s -B -Cem -odvdvml.c -Pdvdvm dvdvml.l)
@@ -22,7 +23,7 @@ eval $(grep PACKAGE_VERSION= configure)
 rm doc/manpage.links doc/manpage.refs
 rm doc/*.sgml doc/html.dsl
 sed -i '/\.\/bootstrap/d' INSTALL
-rm bootstrap make-dist
+rm bootstrap make-dist clean
 cd ..
 tar czhvf ../dvdauthor-$PACKAGE_VERSION.tar.gz dvdauthor/
 cd ..
