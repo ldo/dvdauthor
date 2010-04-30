@@ -19,7 +19,7 @@ dvdauthor_SOURCES = dvdauthor.c common.h dvdauthor.h da-internal.h \
 dvdauthor_LDADD = $(LIBICONV) $(XML_LIBS)
 
 dvdunauthor_SOURCES = dvdunauthor.c dvduncompile.c common.h dvduncompile.h compat.c compat.h
-dvdunauthor_LDADD = $(XML_LIBS) -ldvdread
+dvdunauthor_LDADD = $(XML_LIBS) $(LIBICONV) -ldvdread
 
 spumux_SOURCES = subgen.c subgen.h rgb.h \
     subgen-parse-xml.c readxml.c readxml.h \
@@ -30,9 +30,10 @@ spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) \
     $(FRIBIDI_LIBS) $(FONTCONFIG_LIBS) $(LIBICONV)
 
 spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h common.h
-spuunmux_LDADD = -lpng -lz -lm
+spuunmux_LDADD = $(LIBICONV) -lpng -lz -lm
 
 mpeg2desc_SOURCES = mpeg2desc.c compat.c
+mpeg2desc_LDADD = $(LIBICONV)
 
 edit = sed \
     -e 's,@sysconfdir\@,$(sysconfdir),g' \
