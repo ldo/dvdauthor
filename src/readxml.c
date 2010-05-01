@@ -209,6 +209,7 @@ int readxml
           }
         break;
         case XML_READER_TYPE_TEXT:
+        case XML_READER_TYPE_CDATA:
           {
             const char * const v = (const char *)xmlTextReaderValue(f);
             if (!parser_body)

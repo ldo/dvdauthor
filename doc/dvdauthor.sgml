@@ -517,7 +517,8 @@ are:</para>
 
 <para>Since the code is encapsulated in XML, the parser will catch any
 unescaped &lt; characters (i.e. not written as "&amp;lt;"), thus alphabetic mnemonics have been
-provided for all comparison operators for consistency.</para>
+provided for all comparison operators for consistency. Or you can put the code
+in a &lt;![CDATA[ ... ]]&gt; section.</para>
 
 <para>There is also a numerical function:</para>
 
