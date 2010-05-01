@@ -41,6 +41,22 @@ lang_code       \"[a-z]{2}\"
 
 %%
 
+"/*" {
+        bool seen_star = false;
+        for (;;)
+          {
+            const int c = input();
+            if (c == EOF)
+              {
+                fprintf(stderr, "EOF in comment");
+                return ERROR_TOK;
+              } /*if*/
+            if (c == '/' && seen_star)
+                break;
+            seen_star = c == '*';
+          } /*for*/
+    }
+
 and     { return _AND_TOK; }
 angle       { return ANGLE_TOK; }
 audio       { return AUDIO_TOK; }

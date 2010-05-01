@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define YY_NO_INPUT
-
 #ifdef YY_END_OF_BUFFER_CHAR
 #define dvdvm_buffer_state YY_BUFFER_STATE
 #else

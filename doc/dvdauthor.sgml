@@ -428,7 +428,8 @@ The language is quite simple and roughly looks like C.
 <listitem><para>Statements can span multiple lines.</para></listitem>
 <listitem><para>Multiple statements can appear on one line.</para></listitem>
 <listitem><para>Whitespace (space, tab, newlines) are not important, except to separate keywords and identifiers.</para></listitem>
-<listitem><para>If you want to insert comments, use XML comments &lt;!-- like this --&gt;</para></listitem>
+<listitem><para>C-style /* ... */ comments are allowed. Or you can use XML comments
+&lt;!-- like this --&gt;</para></listitem>
 </itemizedlist>
 
 <refsect2><title>Variables</title>
