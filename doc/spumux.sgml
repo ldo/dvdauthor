@@ -174,16 +174,17 @@ is not specified.
 
 </para>
 <synopsis>
-&lt;subpictures&gt;
+&lt;subpictures [format="NTSC|PAL"]&gt;
    &lt;stream&gt;
-      &lt;textsub filename="demo1.srt" characterset="UTF-8" 
+      &lt;textsub filename="demo1.srt" characterset="UTF-8"
          fontsize="28.0" font="arial" fill-color="<replaceable>color-spec</replaceable>"
          outline-color="<replaceable>color-spec</replaceable>" outline-thickness="3.0"
          shadow-offset="0, 0" shadow-color="<replaceable>color-spec</replaceable>"
          horizontal-alignment="left"  vertical-alignment="bottom"
-         left-margin="60" right-margin="60" 
-         top-margin="20" bottom-margin="30" subtitle-fps="25" 
-         movie-fps="25" movie-width="720" movie-height="574"
+         left-margin="60" right-margin="60"
+         top-margin="20" bottom-margin="30" subtitle-fps="<replaceable>fps</replaceable>"
+         movie-fps="<replaceable>fps</replaceable>"
+         movie-width="720" movie-height="<replaceable>height</replaceable>"
          force="yes"
       /&gt;
    &lt;/stream&gt;
@@ -258,16 +259,26 @@ border of the image and the border of the subtitle lines.
 </para>
 <para>
 
-Defining the subtitle-fps and movie-fps attributes make it possible for 
+The subtitle-fps is needed for subtitle formats which use frame numbers rather
+than fractional seconds for specifying subtitle times, while the movie-fps
+is the frame rate of the movie onto which the subtitles are being multiplexed; if
+omitted, both of these default to 29.97 for NTSC and 25 for PAL.
+
+</para>
+<para>
+
+Having separate subtitle-fps and movie-fps attributes make it possible for 
 spumux to recalculate the subtitle timing if these are not the same.
 
 </para>
 <para>
 
 The movie-width and movie-height attributes define the maximum size of 
-the subtitle page, these shouldn't be larger than the fram-size of the 
-movie frame, normally they are the same. Some DVD players prefer
-subtitle frames that are 2 or 4 pixels smaller in height.
+the subtitle page, these shouldn't be larger than the size of the 
+video frame (720x480 for NTSC, 720x576 for PAL), normally they are the same.
+Some DVD players prefer subtitle frames that are 2 or 4 pixels smaller in height.
+If omitted, the default movie width is 720 and the height is 2 pixels less than
+the video frame height.
 
 </para>
 <para>

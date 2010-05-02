@@ -67,6 +67,8 @@ static int svcd;
 
 static uint64_t lps;
 
+int default_video_format = VF_NONE;
+
 stinfo **spus=0;
 int numspus=0;
 bool have_textsub = false;
@@ -808,6 +810,7 @@ int main(int argc,char **argv)
     unsigned char psbuf[psbufs], ncnt;
     int optch;
 
+    default_video_format = get_video_format();
     init_locale();
     newsti = 0;
     mode = 0; /* default DVD */
@@ -825,6 +828,29 @@ int main(int argc,char **argv)
       } /*if*/
     image_init();
     fputs(PACKAGE_HEADER("spumux"), stderr);
+    if (default_video_format != VF_NONE)
+      {
+        fprintf
+          (
+            stderr,
+            "INFO: default video format is %s\n",
+            default_video_format == VF_PAL ? "PAL" : "NTSC"
+          );
+      }
+    else
+      {
+#if defined(DEFAULT_VIDEO_FORMAT)
+#    if DEFAULT_VIDEO_FORMAT == 1
+        fprintf(stderr, "INFO: default video format is NTSC\n");
+        default_video_format = VF_NTSC;
+#    elif DEFAULT_VIDEO_FORMAT == 2
+        fprintf(stderr, "INFO: default video format is PAL\n");
+        default_video_format = VF_PAL;
+#    endif
+#else
+        fprintf(stderr, "INFO: no default video format, must explicitly specify NTSC or PAL\n");
+#endif
+      } /*if*/
     gts = 0;
     nextgts = 0;
     tofs = -1;

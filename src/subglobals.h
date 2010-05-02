@@ -75,3 +75,5 @@ extern size_t textsub_image_buffer_size; /* size of buffer */
 extern bool text_forceit;
 /* maintained by subgen-image: */
 extern sub_data *textsub_subdata;
+
+extern int default_video_format; /* defined in subgen.c */

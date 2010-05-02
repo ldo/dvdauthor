@@ -146,6 +146,7 @@ int readxml
                               } /*if*/
                         if (!attrs[attrindex].elem)
                           {
+                            bool gotattr = false;
                             fprintf
                               (
                                 stderr,
@@ -156,7 +157,14 @@ int readxml
                               );
                             for (attrindex = 0; attrs[attrindex].elem; attrindex++)
                                 if (!strcmp(attrs[attrindex].elem, elems[tagindex].elemname))
+                                  {
                                     fprintf(stderr, "ERR:      %s\n", attrs[attrindex]. attr);
+                                    gotattr = true;
+                                  } /*if*/
+                            if (!gotattr)
+                              {
+                                fprintf(stderr, "ERR:      (none)\n");
+                              } /*if*/
                             return 1;
                           } /*if*/
                         xmlFree((xmlChar *)nm);

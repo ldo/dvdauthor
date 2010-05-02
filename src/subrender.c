@@ -73,9 +73,10 @@ int sub_bottom_margin=30; /* Size of bottom horizontal non-display area in pixel
 int sub_top_margin=20;    /* Size of top horizontal non-display area in pixel units */
 int h_sub_alignment = H_SUB_ALIGNMENT_LEFT;  /* Horizontal alignment 0=center, 1=left, 2=right, 4=subtitle default */
 int v_sub_alignment = V_SUB_ALIGNMENT_BOTTOM;      /* Vertical alignment 0=top, 1=center, 2=bottom */
-float movie_fps=25.0; /* fixme: should perhaps depend on video format */
-int movie_width=720;
-int movie_height=574; /* fixme: should perhaps depend on video format */
+/* following default according to default_video_format if not explicitly set by user: */
+float movie_fps = 0.0;
+int movie_width = 0;
+int movie_height = 0;
 
 unsigned char *textsub_image_buffer;
 size_t textsub_image_buffer_size;
@@ -841,6 +842,40 @@ void vo_update_osd(const subtitle_elt * vo_sub)
 void vo_init_osd()
   {
     vo_finish_osd(); /* if previously allocated */
+    switch (default_video_format)
+      {
+    case VF_NTSC:
+        if (movie_fps == 0.0)
+          {
+            movie_fps = 29.97;
+          } /*if*/
+        if (movie_width == 0)
+          {
+            movie_width = 720;
+          }
+        if (movie_height == 0)
+          {
+            movie_height = 478;
+          } /*if*/
+    break;
+    case VF_PAL:
+        if (movie_fps == 0.0)
+          {
+            movie_fps = 25.0;
+          } /*if*/
+        if (movie_width == 0)
+          {
+            movie_width = 720;
+          }
+        if (movie_height == 0)
+          {
+            movie_height = 574;
+          } /*if*/
+    break;
+    default:
+        fprintf(stderr, "ERR:  cannot determine default video size and frame rate--no video format specified\n");
+        exit(1);
+      } /*switch*/
     textsub_image_buffer_size = sizeof(uint8_t) * 4 * movie_height * movie_width;
     textsub_image_buffer = malloc(textsub_image_buffer_size);
       /* fixme: not freed from previous call! */

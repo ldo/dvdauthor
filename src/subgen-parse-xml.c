@@ -94,11 +94,28 @@ static void stream_begin()
   {
     if (had_stream)
       {
-        fprintf(stderr,"ERR:  Only one stream is currently allowed.\n");
+        fprintf(stderr, "ERR:  Only one stream is currently allowed.\n");
         exit(1);
       } /*if*/
     had_stream = true;
   } /*stream_begin*/
+
+static void stream_video_format(const char *v)
+  {
+    if (!strcasecmp(v, "NTSC"))
+      {
+        default_video_format = VF_NTSC;
+      }
+    else if (!strcasecmp(v, "PAL"))
+      {
+        default_video_format = VF_PAL;
+      }
+    else
+      {
+        fprintf(stderr, "ERR:  unrecognized video format \"%s\"\n", v);
+        exit(1);
+      } /*if*/
+  } /*stream_video_format*/
 
 static void spu_begin()
 {
@@ -378,6 +395,7 @@ static struct elemdesc spu_elems[]={
 };
 
 static struct elemattr spu_attrs[]={
+    {"subpictures","format",stream_video_format},
     {"spu","image",spu_image},
     {"spu","highlight",spu_highlight},
     {"spu","select",spu_select},
