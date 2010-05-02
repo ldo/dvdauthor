@@ -49,6 +49,10 @@ struct pgc;
 struct source;
 struct cell;
 
+extern bool delete_output_dir;
+  /* whether to delete any existing output directory structure
+    before creating a new one */
+
 struct pgc *pgc_new();
 void pgc_free(struct pgc *p);
 int pgc_add_button(struct pgc *p,const char *name,const char *cmd);

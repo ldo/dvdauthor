@@ -93,7 +93,9 @@ systems by avoiding extra filesystem accesses.</para>
 <variablelist>
 
 <varlistentry><term><literal>-o <replaceable>output-dir</replaceable></literal></term>
-<listitem><para>The destination directory to store the DVD-Video file structure in.</para></listitem></varlistentry>
+<term><literal>-O <replaceable>output-dir</replaceable></literal></term>
+<listitem><para>The destination directory to store the DVD-Video file structure in.
+If -O is specified, then any existing directory is deleted.</para></listitem></varlistentry>
 
 <varlistentry><term><literal>-j</literal></term><term><literal>--jumppad</literal></term>
 <listitem><para>Enables the creation of jumppads, which allow greater flexibility in choosing jump/call desinations.</para></listitem></varlistentry>

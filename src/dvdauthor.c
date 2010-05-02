@@ -24,6 +24,8 @@
 
 #include "compat.h"
 
+#include <sys/types.h>
+#include <dirent.h>
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -128,6 +130,8 @@ static const int ratedenom[9]={0,90090,90000,90000,90090,90000,90000,90090,90000
     to convert nominal to actual frame rate */
 static const int evenrate[9]={0,    24,   24,   25,   30,   30,   50,   60,   60};
   /* corresponding to vratedesc, nominal frame rate */
+
+bool delete_output_dir = false;
 
 static int getratecode(const struct vobgroup *va)
   /* returns the frame rate code if specified, else the default. */
@@ -1155,23 +1159,90 @@ static void checkaddentry(struct pgcgroup *va, int entry)
 
 static int getvtsnum(const char *fbase)
   /* returns the next unused titleset number within output directory fbase. */
-{
+  {
     static char realfbase[1000];
     int i;
-    
-    if( !fbase )
+    if (!fbase)
         return 1;
-    for( i=1; i<=99; i++ ) {
+    for (i = 1; i <= 99; i++)
+      {
         FILE *h;
-        sprintf(realfbase,"%s/VIDEO_TS/VTS_%02d_0.IFO",fbase,i);
-        h=fopen(realfbase,"rb");
-        if( !h )
+        snprintf(realfbase, sizeof realfbase, "%s/VIDEO_TS/VTS_%02d_0.IFO", fbase, i);
+        h = fopen(realfbase, "rb");
+        if (!h)
             break; /* doesn't look like this number is in use */
         fclose(h);
-    }
-    fprintf(stderr,"STAT: Picking VTS %02d\n",i);
+      } /*for*/
+    fprintf(stderr, "STAT: Picking VTS %02d\n", i);
     return i;
-}
+  } /*getvtsnum*/
+
+static void deletedir(const char * fbase)
+  /* deletes any existing output directory structure. Note for safety I only look for
+    names matching limited patterns. */
+  {
+    static char dirname[1000], subname[1000];
+    DIR  * subdir;
+    snprintf(dirname, sizeof dirname, "%s/VIDEO_TS", fbase);
+    subdir = opendir(dirname);
+    if (subdir == NULL && errno != ENOENT)
+      {
+        fprintf(stderr, "ERR:  cannot open dir for deleting %s: %s\n", dirname, strerror(errno));
+        exit(1);
+      } /*if*/
+    if (subdir != NULL)
+      {
+        for (;;)
+          {
+            const struct dirent * const entry = readdir(subdir);
+            if (entry == NULL)
+                break;
+            if
+              (
+                    strlen(entry->d_name) == 12
+                &&
+                    entry->d_name[8] == '.'
+                &&
+                    (
+                        !strcmp(entry->d_name + 9, "IFO")
+                    ||
+                        !strcmp(entry->d_name + 9, "BUP")
+                    ||
+                        !strcmp(entry->d_name + 9, "VOB")
+                    )
+                &&
+                    (
+                        !strncmp(entry->d_name, "VIDEO_TS", 8)
+                    ||
+                            !strncmp(entry->d_name, "VTS_", 4)
+                        &&
+                            entry->d_name[6] == '_'
+                    )
+              )
+              {
+                snprintf(subname, sizeof subname, "%s/%s", dirname, entry->d_name);
+                if (unlink(subname))
+                  {
+                    fprintf(stderr, "ERR:  cannot delete file %s: %s\n", subname, strerror(errno));
+                    exit(1);
+                  } /*if*/
+              } /*if*/
+          } /*for*/
+        closedir(subdir);
+      } /*if*/
+    if (rmdir(dirname) && errno != ENOENT)
+      {
+        fprintf(stderr, "ERR:  cannot delete dir %s: %s\n", dirname, strerror(errno));
+        exit(1);
+      } /*if*/
+    snprintf(dirname, sizeof dirname, "%s/AUDIO_TS", fbase);
+    if (rmdir(dirname) && errno != ENOENT)
+      {
+        fprintf(stderr, "ERR:  cannot delete dir %s: %s\n", dirname, strerror(errno));
+        exit(1);
+      } /*if*/
+    errno = 0;
+  } /*deletedir*/
 
 static void initdir(const char * fbase)
   /* creates the top-level DVD-video subdirectories within the output directory,
@@ -1180,24 +1251,30 @@ static void initdir(const char * fbase)
     static char realfbase[1000];
     if (fbase)
       {
+        if (delete_output_dir)
+          {
+            deletedir(fbase);
+            delete_output_dir = false; /* only do on first call */
+          } /*if*/
         if (mkdir(fbase, 0777) && errno != EEXIST)
           {
             fprintf(stderr, "ERR:  cannot create dir %s: %s\n", fbase, strerror(errno));
             exit(1);
           } /*if*/
-        sprintf(realfbase,"%s/VIDEO_TS",fbase);
+        snprintf(realfbase, sizeof realfbase, "%s/VIDEO_TS", fbase);
         if (mkdir(realfbase, 0777) && errno != EEXIST)
           {
             fprintf(stderr, "ERR:  cannot create dir %s: %s\n", realfbase, strerror(errno));
             exit(1);
           } /*if*/
-        sprintf(realfbase,"%s/AUDIO_TS",fbase);
+        snprintf(realfbase, sizeof realfbase, "%s/AUDIO_TS", fbase);
         if (mkdir(realfbase, 0777) && errno != EEXIST)
           {
             fprintf(stderr, "ERR:  cannot create dir %s: %s\n", realfbase, strerror(errno));
             exit(1);
           } /*if*/
       } /*if*/
+    errno = 0;
   } /*initdir*/
 
 static struct colorinfo *colorinfo_new()
@@ -1599,26 +1676,27 @@ void pgc_add_source(struct pgc *p,struct source *v)
 }
 
 int pgc_add_button(struct pgc *p,const char *name,const char *cmd)
-{
+  {
     struct button *bs;
-
-    if( p->numbuttons==36 ) {
-        fprintf(stderr,"ERR:  Limit of up to 36 buttons\n");
+    if (p->numbuttons == 36)
+      {
+        fprintf(stderr, "ERR:  Limit of up to 36 buttons\n");
         exit(1);
-    }
-    p->buttons=(struct button *)realloc(p->buttons,(p->numbuttons+1)*sizeof(struct button));
-    bs=&p->buttons[p->numbuttons++];
-    memset(bs,0,sizeof(struct button));
-    if( name )
-        bs->name=strdup(name);
-    else {
+      } /*if*/
+    p->buttons = (struct button *)realloc(p->buttons, (p->numbuttons + 1) * sizeof(struct button));
+    bs = &p->buttons[p->numbuttons++];
+    memset(bs, 0, sizeof(struct button));
+    if (name)
+        bs->name = strdup(name);
+    else
+      {
         char nm[10];
-        sprintf(nm,"%d",p->numbuttons);
-        bs->name=strdup(nm);
-    }
-    bs->commands=vm_parse(cmd);
+        snprintf(nm, sizeof nm, "%d", p->numbuttons);
+        bs->name = strdup(nm);
+      } /*if*/
+    bs->commands = vm_parse(cmd);
     return 0;
-}
+  } /*pgc_add_button*/
 
 struct pgcgroup *pgcgroup_new(vtypes type)
   {
@@ -1819,7 +1897,7 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
       {
         if (!ifonames[i][0])
             break;
-        sprintf(fbuf, "%s/%s", vtsdir, ifonames[i]);
+        snprintf(fbuf, sizeof fbuf, "%s/%s", vtsdir, ifonames[i]);
         fprintf(stderr, "INFO: Scanning %s\n",fbuf);
         ScanIfo(&ts, fbuf); /* collect info about existing titleset for inclusion in new VMG IFO */
       } /*for*/
@@ -1837,7 +1915,7 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
     if (menus->vg->numvobs)
       {
         fprintf(stderr, "INFO: Creating menu for TOC\n");
-        sprintf(fbuf, "%s/VIDEO_TS.VOB", vtsdir);
+        snprintf(fbuf, sizeof fbuf, "%s/VIDEO_TS.VOB", vtsdir);
         FindVobus(fbuf, menus->vg, VTYPE_VMGM);
         MarkChapters(menus->vg);
         setattr(menus->vg, VTYPE_VMGM);
@@ -1849,9 +1927,9 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
         set_video_format_attr(menus->vg, VTYPE_VMGM); /* for the sake of buildtimeeven */
       } /*if*/
   /* (re)generate VMG IFO */
-    sprintf(fbuf, "%s/VIDEO_TS.IFO", vtsdir);
+    snprintf(fbuf, sizeof fbuf, "%s/VIDEO_TS.IFO", vtsdir);
     TocGen(&ws, fpc, fbuf);
-    sprintf(fbuf, "%s/VIDEO_TS.BUP", vtsdir); /* same thing again, backup copy */
+    snprintf(fbuf, sizeof fbuf, "%s/VIDEO_TS.BUP", vtsdir); /* same thing again, backup copy */
     TocGen(&ws, fpc, fbuf);
     for (i = 0; i < ts.numvts; i++)
         if (ts.vts[i].numchapters)
@@ -1889,7 +1967,7 @@ void dvdauthor_vts_gen(struct menugroup *menus, struct pgcgroup *titles, const c
     vtsnum = getvtsnum(fbase);
     if (fbase)
       {
-        sprintf(realfbase, "%s/VIDEO_TS/VTS_%02d", fbase, vtsnum);
+        snprintf(realfbase, sizeof realfbase, "%s/VIDEO_TS/VTS_%02d", fbase, vtsnum);
         fbase = realfbase;
       } /*if*/
     if (menus->vg->numvobs)

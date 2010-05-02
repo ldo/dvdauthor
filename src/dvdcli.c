@@ -435,7 +435,7 @@ int main(int argc, char **argv)
     while (true)
       {
         struct pgcgroup *vc = va[curva];
-        int c = GETOPTFUNC(argc, argv, "f:o:v:a:s:hc:Cp:Pmtb:Ti:e:x:jgn");
+        int c = GETOPTFUNC(argc, argv, "f:o:O:v:a:s:hc:Cp:Pmtb:Ti:e:x:jgn");
         if (c == -1)
             break;
         switch (c)
@@ -489,6 +489,9 @@ int main(int argc, char **argv)
             usedtocflag = true; // just for completeness (also see -x FOO)
         break;
 
+        case 'O':
+            delete_output_dir = true;
+        /* and fallthru */
         case 'o': 
             fbase = optarg;
         break;
