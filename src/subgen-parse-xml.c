@@ -85,6 +85,7 @@ static unsigned int parsetime(const char *t)
 
 static bool
     had_stream = false, /* whether I've seen <stream> */
+    had_spu = false, /* whether I've seen <spu> */
     had_textsub = false; /* whether I've seen <textsub> */
 static stinfo *curspu = 0; /* current <spu> directive collected here */
 static button *curbutton=0;
@@ -118,10 +119,16 @@ static void stream_video_format(const char *v)
   } /*stream_video_format*/
 
 static void spu_begin()
-{
+  {
+    if (had_textsub)
+      {
+        fprintf(stderr, "ERR:  cannot have both <textsub> and <spu>\n");
+        exit(1);
+      } /*if*/
     curspu = malloc(sizeof(stinfo));
     memset(curspu, 0, sizeof(stinfo));
-}
+    had_spu = true;
+  }
 
 static void spu_image(const char *v)        { curspu->img.fname=localize_filename(v); }
 static void spu_highlight(const char *v)    { curspu->hlt.fname=localize_filename(v); }
@@ -264,6 +271,11 @@ void textsub_v_alignment(const char *v)
 
 static void textsub_begin()
   {
+    if (had_spu)
+      {
+        fprintf(stderr, "ERR:  cannot have both <spu> and <textsub>\n");
+        exit(1);
+      } /*if*/
     if (had_textsub)
       {
         fprintf(stderr,"ERR:  Only one textsub is currently allowed.\n");
