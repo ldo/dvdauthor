@@ -453,15 +453,23 @@ static int check_font
   /* set size */
     if (FT_IS_SCALABLE(face))
       {
+        const int horiz_resolution =
+            widescreen ? 
+                54 /* = 72 * (4 / 3) / (16 / 9) */
+            :
+                72;
+        const int vert_resolution =
+            default_video_format == VF_NTSC ?
+                64 /* = 72 * 480 / 540 */
+            : /* default_video_format == VF_PAL ? */
+                77; /* = 72 * 576 / 540 */
         error = FT_Set_Char_Size
           (
             /*face =*/ face,
             /*char_width =*/ 0, /* use height */
             /*char_height =*/ floatTof266(ppem),
-            /*horiz_resolution =*/ 0, /* use 72dpi */
-            /*vert_resolution =*/ 0 /* what he said */
-              /* fixme: need to account for nonsquare pixel aspect ratio,
-                which is also different between PAL and NTSC! */
+            /*horiz_resolution =*/ horiz_resolution,
+            /*vert_resolution =*/ vert_resolution
           );
         if (error)
             WARNING("FT_Set_Char_Size failed.");

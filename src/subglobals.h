@@ -76,4 +76,6 @@ extern bool text_forceit;
 /* maintained by subgen-image: */
 extern sub_data *textsub_subdata;
 
-extern int default_video_format; /* defined in subgen.c */
+/* kept in subgen.c, but usable elsewhere: */
+extern int default_video_format;
+extern bool widescreen;

@@ -331,6 +331,24 @@ static void textsub_sub_fps(const char *v)      { sub_fps=atof(v);              
 static void textsub_movie_fps(const char *v)    { movie_fps=atof(v);              }
 static void textsub_movie_width(const char* v)  { movie_width=strtounsigned(v, "textsub movie-width");            }
 static void textsub_movie_height(const char* v) { movie_height=strtounsigned(v, "textsub movie-height");           }
+
+static void textsub_aspect(const char * v)
+  {
+    if (!strcmp(v, "16:9"))
+      {
+        widescreen = true;
+      }
+    else if (!strcmp(v, "4:3"))
+      {
+        widescreen = false;
+      }
+    else
+      {
+        fprintf(stderr,"ERR:  unrecognized aspect \"%s\" not 16:9 or 4:3.\n", v);
+        exit(1);
+      } /*if*/
+  } /*textsub_aspect*/
+
 static void textsub_fontsize(const char *v)     { text_font_scale_factor=atof(v); }
 
 static void textsub_fill_color(const char *v)
@@ -445,6 +463,7 @@ static struct elemattr spu_attrs[]={
     {"textsub","movie-fps",textsub_movie_fps},
     {"textsub","movie-width",textsub_movie_width},
     {"textsub","movie-height",textsub_movie_height},
+    {"textsub","aspect",textsub_aspect},
     {"textsub","force",textsub_force},
     {0,0,0}
 };

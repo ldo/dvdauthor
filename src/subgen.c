@@ -68,6 +68,7 @@ static int svcd;
 static uint64_t lps;
 
 int default_video_format = VF_NONE;
+bool widescreen = false;
 
 stinfo **spus=0;
 int numspus=0;

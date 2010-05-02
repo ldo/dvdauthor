@@ -184,7 +184,7 @@ is not specified.
          left-margin="60" right-margin="60"
          top-margin="20" bottom-margin="30" subtitle-fps="<replaceable>fps</replaceable>"
          movie-fps="<replaceable>fps</replaceable>"
-         movie-width="720" movie-height="<replaceable>height</replaceable>"
+         movie-width="720" movie-height="<replaceable>height</replaceable>" aspect="4:3"
          force="yes"
       /&gt;
    &lt;/stream&gt;
@@ -279,6 +279,13 @@ video frame (720x480 for NTSC, 720x576 for PAL), normally they are the same.
 Some DVD players prefer subtitle frames that are 2 or 4 pixels smaller in height.
 If omitted, the default movie width is 720 and the height is 2 pixels less than
 the video frame height.
+
+</para>
+<para>
+
+The aspect attribute lets you specify whether the video aspect ratio is 16:9 (widescreen)
+or 4:3. This, together with the video format, is used to adjust the rendering of the
+text to ensure it appears undistorted.
 
 </para>
 <para>
