@@ -185,7 +185,7 @@ static void spu_complete()
             printtime(stime, curspu->spts);
             printtime(etime, curspu->sd);
             fprintf(stderr, "ERR:  sub has end (%s)<=start (%s), skipping\n", etime, stime);
-            skip++;
+            nr_subtitles_skipped++;
             return;
           } /*if*/
         curspu->sd -= curspu->spts;

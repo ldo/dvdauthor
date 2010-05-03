@@ -35,6 +35,7 @@
 #include <netinet/in.h>
 
 #include "common.h"
+#include "conffile.h"
 #include "rgb.h"
 #include "subglobals.h"
 #include "subrender.h"
@@ -63,7 +64,7 @@ static unsigned char *cbuf;
 static unsigned int spuindex;
 static bool progr;
 static int tofs;
-static int svcd;
+static int svcd_adjust;
 
 static uint64_t lps;
 
@@ -74,7 +75,7 @@ stinfo **spus=0;
 int numspus=0;
 bool have_textsub = false;
 
-int skip;
+int nr_subtitles_skipped;
 
 static char header[32];
 
@@ -82,6 +83,7 @@ unsigned char *sub;
 int debug;
 static int max_sub_size;
 
+static bool substream_present[256];
 
 
 // these 4 lines of variables are used by mux() and main() to communicate
@@ -144,7 +146,7 @@ static void mkpackh
     unsigned int muxrate /* data rate in units of 50 bytes/second */,
     unsigned char stuffing /* nr stuffing bytes to follow, [0 .. 7] */
   )
-/* constructs the contents for a PACK header. */
+/* constructs the contents for a PACK header in header. */
 {
     unsigned long const th = time / 300, tl = time % 300;
     header[0] = 0x44 | ((th >> 27) & 0x38) | ((th >> 28) & 3);
@@ -160,7 +162,8 @@ static void mkpackh
 }
 
 static void mkpesh0(unsigned long int pts)
-/* constructs an MPEG-2 PES header extension with PTS data but no PES extension. */
+  /* constructs an MPEG-2 PES header extension with PTS data but no PES extension
+    in header. */
 {
     header[0] = 0x81; /* original flag set */
     header[1] = 0x80;   //pts flag
@@ -178,7 +181,7 @@ static void mkpesh1(unsigned long int pts)
     header[0] = 0x81; /* original flag set */
     header[1] = 0x81;   //pts flag + pes extension flag
     header[2] = 8; /* PES header data length */
-    header[3] = 0x21 | ((pts >> 29)&6); /* PTS[31 .. 30] */
+    header[3] = 0x21 | ((pts >> 29) & 6); /* PTS[31 .. 30] */
     header[4] = pts >> 22; /* PTS[29 .. 22] */
     header[5] = 1 | (pts >> 14); /* PTS[21 .. 15] */
     header[6] = (pts >> 7); /* PTS[14 .. 7] */
@@ -189,7 +192,7 @@ static void mkpesh1(unsigned long int pts)
 }
 
 static void mkpesh2 ()
-/* constructs an empty MPEG-2 PES header extension. */
+/* constructs an empty MPEG-2 PES header extension in header. */
 {
     header[0] = 0x81; /* original flag set */
     header[1] = 0; /* nothing else */
@@ -197,10 +200,11 @@ static void mkpesh2 ()
 }
 
 static unsigned int getmuxr(const unsigned char *buf)
-/* obtains the muxrate value from the contents of a PACK header. */
-{
-    return (buf[8] >> 2)|(buf[7]*64)|(buf[6]*16384);
-}
+  /* obtains the muxrate value (data rate in units of 50 bytes/second) from the
+    contents of a PACK header. */
+  {
+    return (buf[8] >> 2) | (buf[7] * 64) | (buf[6] * 16384);
+  } /*getmuxr*/
 
 static uint64_t getgts(const unsigned char *buf)
   /* returns the timestamp from the contents of a PACK header. This will be
@@ -242,6 +246,10 @@ static uint64_t getgts(const unsigned char *buf)
   } /*getgts*/
 
 static void fixgts(uint64_t *gts, uint64_t *nextgts)
+  /* ensures that *gts is increasing in steps of at least DVDRATE
+    on successive calls. *nextgts is the expected minimum value
+    computed on the previous call, will be updated to the expected
+    minimum for the next call. */
   {
     if (gts[0] < nextgts[0])
         gts[0] = nextgts[0];
@@ -435,7 +443,7 @@ static stinfo *getnextsub(void)
         if (process_subtitle(s))
             return s;
         freestinfo(s);
-        skip++;
+        nr_subtitles_skipped++;
       } /*while*/
   } /*getnextsub*/
 
@@ -457,7 +465,7 @@ static void mux(bool eoinput)
     while (newsti)
       {
         stinfo *cursti;
-        int bytes_send, sub_size;
+        int bytes_sent, sub_size;
         unsigned char seq;
         unsigned int q;
         int64_t dgts;
@@ -514,7 +522,7 @@ static void mux(bool eoinput)
                         cursti->spts / 90000, cursti->sd / 90000);
               } /*if*/
           } /*if*/
-        if ((cursti->sd == -1) && newsti && ((!svcd) || until_next_sub))
+        if ((cursti->sd == -1) && newsti && ((!svcd_adjust) || until_next_sub))
           {
             if (newsti->spts > cursti->spts + tbs)
                 cursti->sd = newsti->spts - cursti->spts - tbs;
@@ -527,11 +535,11 @@ static void mux(bool eoinput)
                             spuindex - 1);
                   } /*if*/
                 exit(1);
-                skip++;
+                nr_subtitles_skipped++;
                 continue;
               } /*if*/
           } /*if*/
-        switch(mode)
+        switch (mode)
           {
         case DVD_SUB:
           /* rle here */
@@ -553,7 +561,7 @@ static void mux(bool eoinput)
               {
                 fprintf(stderr, "WARN: Image too large (encoded size>64k), skipping line %d\n", spuindex - 1);
               } /*if*/
-            skip++;
+            nr_subtitles_skipped++;
             continue;
           } /*if*/
         if (sub_size > max_sub_size)
@@ -688,26 +696,27 @@ static void mux(bool eoinput)
             swrite(fdo, sector, pdl);
           } /*if mode == DVD_SUB*/
         // header_size is 12 before while starts
+      /* header_size includes first byte of PES data, i.e. substream ID */
       /* search packet start code */
-        bytes_send = 0;
-        while (bytes_send != sub_size)
+        bytes_sent = 0;
+        while (bytes_sent != sub_size)
           {
-            int i, stuffing;
+            int bytes_this_packet, stuffing;
             uint32_t c;
             uint16_t b;
           /* if not first time here */
-            if (bytes_send)
-                header_size = 4;
-            else if (header_size != 12)
-                header_size = 9; // not first time
+            if (bytes_sent)
+                header_size = 4; /* empty MPEG-2 PES header extension on continuation packet */
+            else if (header_size != 12) // not first time
+                header_size = 9; /* drop PES extension from subsequent packets */
           /* calculate how many bytes to send */
-            i = secsize - 20 - header_size - svcd;
-            stuffing = i - (sub_size - bytes_send);
+            bytes_this_packet = secsize - 20 - header_size - svcd_adjust;
+            stuffing = bytes_this_packet - (sub_size - bytes_sent);
             if ( stuffing < 0)
                 stuffing = 0;
             else
               {
-                i -= stuffing;
+                bytes_this_packet -= stuffing;
                 if (stuffing > 7)
                     stuffing = 0;
               } /*if*/
@@ -725,37 +734,40 @@ static void mux(bool eoinput)
             c = htonl(0x100 + MPID_PRIVATE1);
             swrite(fdo, &c, 4);
           /* write packet length */
-            b = ntohs(i + header_size + svcd + stuffing);
+            b = ntohs(bytes_this_packet + header_size + svcd_adjust + stuffing);
             swrite(fdo, &b, 2);
-          /* i has NOT changed here! and is still bytes to send */
             if (header_size == 9)
                 mkpesh0(cursti->spts);
             else if (header_size == 12)
                 mkpesh1(cursti->spts);
-            else
+            else /* header_size = 4 */
                 mkpesh2();
-            header[2] += stuffing;
+            header[2] += stuffing; /* include in PES header data size */
             memset(header + header_size - 1, 0xff, stuffing);
-            header[header_size + stuffing - 1] = svcd ? SVCD_SUB_CHANNEL : substr; /* subpicture stream number */
+            header[header_size + stuffing - 1] = /* substream ID */
+                svcd_adjust ?
+                    SVCD_SUB_CHANNEL /* real subpicture stream number inserted below */
+                :
+                    substr; /* subpicture stream number */
             swrite(fdo, header, header_size + stuffing);
-            if (svcd)
+            if (svcd_adjust)
               {
-              /* 4 byte svcd header */
+              /* additional 4 byte svcd header */
                 const uint16_t cc = htons(subno);
-                swrite(fdo, &substr, 1); // current subtitle stream
-                if (bytes_send + i == sub_size)
-                    seq |= 128;
+                swrite(fdo, &substr, 1); /* real subpicture stream number */
+                if (bytes_sent + bytes_this_packet == sub_size)
+                    seq |= 128; /* end of current sub */
                 swrite(fdo, &seq, 1); // packet number in current sub
                 // 0 - up, last packet has bit 7 set
                 swrite(fdo, &cc, 2);
               } /*if*/
-            seq++;
-          /* write i data bytes, increment bytes_send by bytes written */
-            swrite(fdo, sub + bytes_send, i);
-            bytes_send += i;
+            seq++; /* won't count past 127? */
+          /* write bytes_this_packet data bytes, increment bytes_sent by bytes written */
+            swrite(fdo, sub + bytes_sent, bytes_this_packet);
+            bytes_sent += bytes_this_packet;
           /* test if full sector */
-            i += 20 + header_size + stuffing + svcd;
-            if (i != secsize)
+            bytes_this_packet += 20 + header_size + stuffing + svcd_adjust;
+            if (bytes_this_packet != secsize)
               {
                 unsigned short bs;
               /* if sector not full, write padding? */
@@ -763,7 +775,7 @@ static void mux(bool eoinput)
                 c = htonl(0x100 + MPID_PAD); /* really just padding this time */
                 swrite(fdo, &c, 4);
               /* calculate number of padding bytes */
-                b = secsize - i - 6;
+                b = secsize - bytes_this_packet - 6;
                 if (debug > 4)
                   {
                     fprintf(stderr, "INFO: Padding, b: %d\n", b);
@@ -776,7 +788,7 @@ static void mux(bool eoinput)
                 for (q = 0; q < b; q++)
                     swrite(fdo, &c, 1);
               } /*if*/
-          } /* end while bytes_send ! sub_size */
+          } /* end while bytes_sent ! sub_size */
 
         if (debug > 0)
           {
@@ -909,19 +921,19 @@ int main(int argc,char **argv)
       {
     case DVD_SUB:
     default:
-        svcd = 0;
+        svcd_adjust = 0;
         substr += DVD_SUB_CHANNEL;
         muxrate = 10080 * 10 / 4; // 0x1131; // 10080 kbps
         secsize = 2048;
     break;
     case CVD_SUB:
-        svcd = 0;
+        svcd_adjust = 0;
         substr += CVD_SUB_CHANNEL;
         muxrate = 1040 * 10/4; //0x0a28; // 1040 kbps
         secsize = 2324;
     break;
     case SVCD_SUB:
-        svcd = 4;
+        svcd_adjust = 4;
         // svcd substream identification works differently...
         // substr += SVCD_SUB_CHANNEL;
         muxrate = 1760 * 10 / 4; //0x1131; // 1760 kbps
@@ -946,16 +958,17 @@ int main(int argc,char **argv)
         vo_init_osd();
       } /*if*/
     spuindex = 0;
-    skip = 0;
+    nr_subtitles_skipped = 0;
     if (!(sector = malloc(secsize)))
       {
         fprintf(stderr, "ERR:  Could not allocate space for sector buffer, aborting.\n");
         exit(1);
       } /*if*/
+    memset(substream_present, false, sizeof substream_present);
 
     newsti = getnextsub();
     max_sub_size = 0;
-    header_size = 12;
+    header_size = 12; /* first PES header extension will have PTS data and a PES extension */
     vss = 0;
     frame = 0;
     lps = 0;
@@ -977,7 +990,7 @@ l_01ba:
               } /*if*/
             if (debug > 5)
                 fprintf(stderr, "INFO: pack_start_code\n");
-            if (sread( fdi, psbuf, psbufs) != psbufs)
+            if (sread(fdi, psbuf, psbufs) != psbufs)
                 break;
             gts = getgts(psbuf);
             if (gts != -1)
@@ -1005,6 +1018,33 @@ l_01ba:
             b = ntohs(b);
             if (sread(fdi, cbuf, b) != b) /* packet contents */
                 break;
+            if (ch == 0x100 + MPID_PRIVATE1)
+              {
+                const int dptr = cbuf[2] /* PES header data length */ + 3 /* offset to packet data */;
+                const int substreamid =
+                    mode == SVCD_SUB ?
+                        cbuf[dptr] == SVCD_SUB_CHANNEL ?
+                            cbuf[dptr + 1]
+                        :
+                            -1 /*?*/
+                    : (cbuf[dptr] & 0xE0) != 0x80 ? /* not DVD-Video-specific audio */
+                        cbuf[dptr]
+                    :
+                        -1;
+                if (substreamid >= 0)
+                  {
+                    if (substreamid == substr)
+                      {
+                        fprintf(stderr, "ERR:  duplicate substream ID 0x%02x\n", substr);
+                        exit(1);
+                      } /*if*/
+                    if (!substream_present[substreamid])
+                      {
+                        fprintf(stderr, "INFO: found existing substream ID 0x%02x\n", substreamid);
+                        substream_present[substreamid] = true;
+                      } /*if*/
+                  } /*if*/
+              } /*if*/
             swrite(fdo, cbuf, b);
             if (ch == 0x100 + MPID_VIDEO_FIRST && tofs == -1)
               { /* video stream (DVD only allows one) */
@@ -1056,7 +1096,7 @@ l_01ba:
       {
         fprintf(stderr,
             "INFO: %d subtitles added, %d subtitles skipped, stream: %d, offset: %.2f\n",
-            subno + 1, skip, substr, (double)tofs / 90000);
+            subno + 1, nr_subtitles_skipped, substr, (double)tofs / 90000);
       }
     else
       {

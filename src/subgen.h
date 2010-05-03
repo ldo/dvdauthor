@@ -70,7 +70,7 @@ extern bool have_textsub; /* whether a <textsub> tag has been seen */
 extern stinfo **spus;
 extern int numspus;
 
-extern int skip;
+extern int nr_subtitles_skipped;
 
 int calcY(const colorspec *p);
 int calcCr(const colorspec *p);

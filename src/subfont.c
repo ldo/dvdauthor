@@ -473,6 +473,8 @@ static int check_font
           );
         if (error)
             WARNING("FT_Set_Char_Size failed.");
+      /* fixme: should I take nonsquare pixels into account in outline
+        and shadow rendering as well? */
       }
     else
       {
