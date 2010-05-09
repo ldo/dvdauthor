@@ -18,6 +18,8 @@
  *
  * With many changes by Scott Smith (trckjunky@users.sourceforge.net)
  *
+ * Svcd decoding by Giacomo Comes <encode2mpeg@users.sourceforge.net>
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -56,8 +58,9 @@ static int ofs, ofs1;
 static unsigned char sub[65536];
 static unsigned char next_bits;
 static const char *base_name;
-static bool have_bits;
+static unsigned int have_bits;
 static FILE *fdo;
+static unsigned char svcd_adjust;
 
 static colorspec
     current_palette[16]; /* current PGC colour table, alpha unused */
@@ -154,6 +157,30 @@ static unsigned char get_next_bits()
     have_bits = false;
     return next_bits & 15;
   } /*get_next_bits*/
+
+static unsigned char get_next_svcdbits()
+  /* returns next two bits from sub at offset ofs. */
+  {
+    switch (have_bits)
+      {
+    case 0:
+        ++have_bits;
+        return sub[++ofs] >> 6;
+    break;
+    case 1:
+        ++have_bits;
+        return (sub[ofs] & 0x30) >> 4;
+    break;
+    case 2:
+        ++have_bits;
+        return (sub[ofs] & 0x0c) >> 2;
+    break;
+    default:
+        have_bits = 0;
+        return sub[ofs] & 0x03;
+    break;
+      } /*switch*/
+  } /*get_next_svcdbits*/
 
 static unsigned int getpts(const unsigned char *buf)
   /* decodes a presentation time stamp (PTS) beginning at location buf. */
@@ -502,7 +529,7 @@ static unsigned char cmap_find
     int nummap, /* length of map array */
     int ci /* pixel value */
   )
-  /* returns the colour index (high nibble) and contrast (low nibble) of the
+  /* returns the colour index (low nibble) and contrast (high nibble) of the
     specified pixel, as determined from the highest-numbered entry of map that
     covers its coordinates. Returns 0 if no entry is found. */
   {
@@ -543,6 +570,7 @@ static int write_png
     FILE *fp;
     png_structp png_ptr;
     png_infop info_ptr;
+    const unsigned short subwidth = svcd_adjust ? 704 : 720;
     temp = out_buf = malloc(s->xd * s->yd * 4);
     nonzero = false;
     for (y = 0; y < s->yd; y++)
@@ -602,7 +630,7 @@ static int write_png
           (
             /*png_ptr =*/ png_ptr,
             /*info_ptr =*/ info_ptr,
-            /*width =*/ 720,
+            /*width =*/ subwidth,
             /*height =*/ 576,
             /*bit_depth =*/ 8,
             /*color_type =*/ PNG_COLOR_TYPE_RGB_ALPHA,
@@ -636,12 +664,12 @@ static int write_png
           {
             unsigned char *image;
             temp = out_buf;
-            image = malloc(720 * 576 * 4);
-            memset(image, 0, 720 * 576 * 4);    // fill image full transparrent
+            image = malloc(subwidth * 576 * 4);
+            memset(image, 0, subwidth * 576 * 4);    // fill image full transparent
             // insert image on the correct position
             for (y = s->y0; y < s->y0 + s->yd; y++)
               {
-                unsigned char *to = &image[y * 720 * 4 + s->x0 * 4];
+                unsigned char *to = &image[y * subwidth * 4 + s->x0 * 4];
                 for (x = 0; x < s->xd; x++)
                   {
                     *to++ = *temp++;
@@ -653,7 +681,7 @@ static int write_png
             y0 = 0;
             x0 = 0;
             yd = 576;
-            xd = 720;
+            xd = subwidth;
             free(out_buf);
             out_buf = image;
           } /*if*/
@@ -855,6 +883,138 @@ static void flushspus(unsigned int lasttime)
   } /*flushspus*/
 
 #define bps(n,R,G,B) do { current_palette[n].r = R; current_palette[n].g = G; current_palette[n].b = B; } while (false)
+
+static int svcddecode()
+  {
+    unsigned int io;
+    unsigned short int size, i, x, y;
+    unsigned char c;
+    struct spu *s;
+    int n;
+    size = read2(sub);
+    if (debug > 1)
+        fprintf(stderr, "packet: 0x%x bytes\n", size);
+    s = malloc(sizeof(struct spu));
+    memset(s, 0, sizeof(struct spu));
+    s->subno = subno++;
+    s->pts[0] = spts;
+    s->pts[1] = -1;
+    s->nummap = 1;
+    s->map = malloc(sizeof(struct colormap));
+    memset(s->map, 0, sizeof(struct colormap));
+    s->map[0].x2 = 0x7ffffff; /* single colour map covers entire picture */
+    s->map[0].y2 = 0x7ffffff;
+    i = 2;
+    if (sub[i] & 0x08) /* timestamp present */
+      {
+        s->pts[1] = spts + read4(sub + i + 2);
+        i += 4;
+      } /*if*/
+    i += 2;
+    s->x0 = read2(sub + i);
+    s->y0 = read2(sub + i + 2);
+    s->xd = read2(sub + i + 4);
+    s->yd = read2(sub + i + 6);
+    i += 8;
+    if (debug > 4)
+        fprintf(stderr, "img ofs: %d,%d  size: %d,%d\n", s->x0, s->y0, s->xd, s->yd);
+    for (n = 0; n < 4; n++)
+      {
+      /* collect colour table */
+        int r, g, b;
+        r = sub[i + 0 + n * 4];
+        g = sub[i + 1 + n * 4];
+        b = sub[i + 2 + n * 4];
+        ycrcb_to_rgb(&r, &g, &b);
+        bps(n, r, g, b);
+        if (debug > 4)
+          {
+            fprintf
+              (
+                stderr,
+                "palette: %d => 0x%02x 0x%02x 0x%02x 0x%02x => (%d, %d, %d)\n",
+                n,
+                sub[i + 0 + n * 4],
+                sub[i + 1 + n * 4],
+                sub[i + 2 + n * 4],
+                sub[i + 3 + n * 4],
+                r,
+                g,
+                b
+              );
+          } /*if*/
+      } /*for*/
+    s->map[0].color = 0x3210;
+    s->map[0].contrast =
+            (sub[i + 3] >> 4)
+        +
+            (sub[i + 7] & 0xf0)
+        +
+            ((sub[i + 11] & 0xf0) << 4)
+        +
+            ((sub[i + 15] & 0xf0) << 8);
+    if (debug > 4)
+        fprintf(stderr, "tpalette: %04x\n", s->map[0].contrast);
+    i += 16;
+    if (sub[i++] >> 6)
+      {
+        if (debug > 4)
+          {
+            fprintf
+              (
+                stderr,
+                "cmd: shift (unsupported), direction=%d time=%f\n",
+                sub[i - 1] >> 4 & 0x3,
+                read4(sub) / 90000.0
+              );
+          } /*if*/
+        i += 4;
+      } /*if*/
+    ofs = i + 2 - 1; // get_next_svcdbits will increment ofs by 1
+    ofs1 = ofs + read2(sub + i);
+    i += 2;
+    if (debug > 4)
+        fprintf(stderr, "cmd: image offsets 0x%x 0x%x\n", ofs, ofs1);
+    have_bits = 0;
+    x = y = 0;
+    io = 0;
+    s->img = malloc(s->xd * s->yd);
+    memset(s->img, 0, s->xd * s->yd);
+  /* decode the pixels */
+    while (ofs < size && y < s->yd)
+      {
+        if ((c = get_next_svcdbits()) != 0)
+          {
+            s->img[io++] = c;
+            ++x;
+          }
+        else
+          {
+            c = get_next_svcdbits() + 1;
+            x += c;
+            io += c;
+          } /*if*/
+        if (x >= s->xd)
+          {
+            y += 2;
+            x = 0;
+            if (y >= s->yd && !(y & 1))
+              {
+                y = 1;
+                ofs = ofs1;
+              } /*if*/
+            io = s->xd * y;
+            have_bits = 0;
+          } /*if*/
+      } /*while*/
+    s->pts[0] += add_offset;
+    if (s->pts[1] != -1)
+        s->pts[1] += add_offset;
+    addspu(s);
+    if (debug > 2)
+        fprintf(stderr, "ofs: 0x%x y: %d\n", ofs, y);
+    return 0;
+   } /*svcddecode*/
 
 static void usage(void)
   {
@@ -1118,12 +1278,17 @@ l_01ba:
                           } /*if*/
                         if (debug > 5)
                             fprintf(stderr, "tid: %d\n", pts);
-                        if ( /*(debug > 1) && */ cbuf[next_word] == 0x70)
-                            fprintf(stderr, "substr: %d\n", cbuf[next_word + 1]);
-                        if (cbuf[next_word] == stream_number + 32)
+                        if
+                          (
+                                cbuf[next_word] == stream_number + 32 /* DVD-Video stream nr */
+                            ||
+                                cbuf[next_word] == 0x70 && cbuf[next_word + 1] == stream_number
+                                  /* SVCD stream nr */
+                          )
                           {
                           /* this is the subpicture stream the user wants dumped */
-                            if (debug < 6 && debug > 1)
+                            svcd_adjust = cbuf[next_word] == 0x70 ? 4 : 0;
+                            if (/*debug < 6 &&*/ debug > 1)
                               {
                                 fprintf(stderr,
                                     "id: 0x%x 0x%x %d  tid: %d\n",
@@ -1134,30 +1299,53 @@ l_01ba:
                               {
                               /* starting a new SPU */
                                 subs =
-                                        ((unsigned int)cbuf[next_word + 1] << 8)
+                                        ((unsigned int)cbuf[next_word + 1 + svcd_adjust] << 8)
                                     +
-                                        cbuf[next_word + 2];
+                                        cbuf[next_word + 2 + svcd_adjust];
                                   /* SPDSZ, size of total subpicture data */
                                 spts = pts;
                               } /*if*/
-                            memcpy(sub + subi, cbuf + next_word + 1, package_length - next_word - 1);
+                            memcpy
+                              (
+                                /*dest =*/ sub + subi,
+                                /*src =*/ cbuf + next_word + 1 + svcd_adjust,
+                                /*n =*/ package_length - next_word - 1 - svcd_adjust
+                              );
                               /* collect the subpicture data */
                             if (debug > 1)
                               {
                                 fprintf(stderr, "found %d bytes of data\n",
-                                    package_length - next_word - 1);
+                                    package_length - next_word - 1 - svcd_adjust);
                               } /*if*/
-                            subi += package_length - next_word - 1;
+                            subi += package_length - next_word - 1 - svcd_adjust;
                               /* how much I just collected */
                             if (debug > 2)
                               {
                                 fprintf(stderr,
                                     "subi: %d (0x%x)  subs: %d (0x%x) b-a-1: %d (0x%x)\n",
                                     subi, subi, subs, subs,
-                                    package_length - next_word - 1,
-                                    package_length - next_word - 1);
+                                    package_length - next_word - 1 - svcd_adjust,
+                                    package_length - next_word - 1 - svcd_adjust);
                               } /*if*/
-                            if (subs == subi)
+                            if (svcd_adjust)
+                              {
+                                if (cbuf[next_word + 2] & 0x80)
+                                  {
+                                    subi = 0;
+                                    next_word = svcddecode();
+                                    if (next_word)
+                                      {
+                                        fprintf
+                                          (
+                                            stderr,
+                                            "found unreadable subtitle at %.2fs, skipping\n",
+                                            (double) spts / 90000
+                                          );
+                                        continue;
+                                      } /*if*/
+                                  } /*if*/
+                              }
+                            else if (subs == subi)
                               {
                               /* got a complete SPU */
                                 subi = 0;
