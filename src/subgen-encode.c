@@ -104,31 +104,34 @@ static void store_4(unsigned int val)
 }
 
 static void svcd_rotate(stinfo *s)
-{
-    int cst[4],i,j;
-
-    for( i=0; i<4; i++ )
-        cst[i]=0;
-    for( i=0; i<s->xd*s->yd; i++ )
+  /* ensures the most popular colour has palette index 0, because that
+    is the only index that SVCD does run-length compression for. */
+  {
+    int cst[4]; /* colour histogram */
+    int i, j;
+    for (i = 0; i < 4; i++)
+        cst[i] = 0;
+    for (i = 0; i < s->xd * s->yd; i++)
         cst[s->fimg[i]]++;
-    j=0;
-    for( i=1; i<4; i++ )
-        if( cst[i]>cst[j] )
-            j=i;
-    if( j!=0 ) {
+    j = 0;
+    for (i = 1; i < 4; i++) /* find most popular colour */
+        if (cst[i] > cst[j])
+            j = i;
+    if (j != 0)
+      { /* rotate entire colour table so most popular colour ends up at index 0 */
         colorspec p[4];
-        for( i=0; i<s->xd*s->yd; i++ )
-            s->fimg[i]=(s->fimg[i]-j)&3;
-        for( i=0; i<4; i++ )
-            p[i]=s->pal[(i+j)&3];
-        memcpy(s->pal,p,4*sizeof(colorspec));
-    }
-}
+        for (i = 0; i < s->xd * s->yd; i++)
+            s->fimg[i] = s->fimg[i] - j & 3;
+        for (i = 0; i < 4; i++)
+            p[i] = s->pal[i + j & 3];
+        memcpy(s->pal, p, 4 * sizeof(colorspec));
+      } /*if*/
+  } /*svcd_rotate*/
 
 int svcd_encode(stinfo *s)
 {
     unsigned int x,y,c,l2o;
-    colorspec *epal=s->img.pal;
+    const colorspec * const epal = s->pal;
 
     svcd_rotate(s);
 
