@@ -46,13 +46,17 @@
 // (9*300*2048)/126
 #define DVDRATE 43886
 
+/* all the subpicture formats follow the DVD-Video convention of using
+MPEG Private Stream 1, where the first byte of the packet content indicates
+the subpicture stream ID, based off the following values */
 #define CVD_SUB_CHANNEL     0x0
-#define SVCD_SUB_CHANNEL    0x70
+#define SVCD_SUB_CHANNEL    0x70 /* fixed value, actual stream ID is next byte */
 #define DVD_SUB_CHANNEL     0x20
 
-#define DVD_SUB     0
-#define CVD_SUB     1
-#define SVCD_SUB    2
+/* formats supported: */
+#define DVD_SUB     0 /* DVD-Video */
+#define CVD_SUB     1 /* China Video Disc */
+#define SVCD_SUB    2 /* Super Video CD */
 
 #define psbufs 10
 
@@ -826,7 +830,7 @@ int main(int argc,char **argv)
     default_video_format = get_video_format();
     init_locale();
     newsti = 0;
-    mode = 0; /* default DVD */
+    mode = DVD_SUB; /* default */
     sub = malloc(SUB_BUFFER_MAX + SUB_BUFFER_HEADROOM);
     if (!sub)
       {
@@ -870,7 +874,7 @@ int main(int argc,char **argv)
     progr = false;
     debug = 0;
     ncnt = 0;
-    substr = 0;
+    substr = 0; /* default */
     while (-1 != (optch = getopt(argc, argv, "hm:s:v:P")))
       {
         switch (optch)
@@ -900,6 +904,11 @@ int main(int argc,char **argv)
         break;
         case 's':
             substr = strtounsigned(optarg, "substream id");
+            if (substr > 31)
+              {
+                fprintf(stderr, "ERR:  Invalid stream ID, must be in 0 .. 31\n");
+                exit(1);
+              } /*if*/
         break;
         case 'v':
             debug = strtounsigned(optarg, "verbosity");
@@ -1040,7 +1049,36 @@ l_01ba:
                       } /*if*/
                     if (!substream_present[substreamid])
                       {
-                        fprintf(stderr, "INFO: found existing substream ID 0x%02x\n", substreamid);
+                        const char * modestr;
+                        int streamid;
+                        if (mode == DVD_SUB && substreamid >= DVD_SUB_CHANNEL)
+                          {
+                            modestr = "DVD-Video";
+                            streamid = substreamid - DVD_SUB_CHANNEL;
+                          }
+                        else if (mode == SVCD_SUB)
+                          {
+                            modestr = "SVCD";
+                            streamid = substreamid;
+                          }
+                        else if (mode == CVD_SUB)
+                          {
+                            modestr = "CVD";
+                            streamid = substreamid;
+                          }
+                        else
+                          {
+                            modestr= "?";
+                            streamid = substreamid;
+                          } /*if*/
+                        fprintf
+                          (
+                            stderr,
+                            "INFO: found existing substream ID 0x%02x (%s %d)\n",
+                            substreamid,
+                            modestr,
+                            streamid
+                          );
                         substream_present[substreamid] = true;
                       } /*if*/
                   } /*if*/
