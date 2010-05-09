@@ -52,6 +52,7 @@ static int debug = 0;
 static bool full_size = false;
 static unsigned int pts, spts, subi, subs, subno;
 static int ofs, ofs1;
+  /* offsets from beginning of SPU to bottom and top field data set by last SPU_SET_DSPXA command */
 static unsigned char sub[65536];
 static unsigned char next_bits;
 static const char *base_name;
@@ -205,14 +206,14 @@ static int dvddecode()
     the results onto pending_spus. */
   {
     unsigned int io;
-    uint16_t size, dsize, i, x, y, t;
+    uint16_t total_spu_size, dsize, thiscmdoffset, nextcmdoffset, i, x, y, t;
     unsigned char c;
     struct spu *newspu;
-    size = read2(sub); /* size of SPU */
-    dsize = read2(sub + 2); /* offset to SP_DCSQT */
+    total_spu_size = read2(sub); /* SPDSZ = size of SPU */
+    dsize = read2(sub + 2); /* SP_DCSQTA = offset to SP_DCSQT */
     ofs = -1;
     if (debug > 1)
-        fprintf(stderr, "packet: %d bytes, first block offset=%d\n", size, dsize);
+        fprintf(stderr, "packet: %d bytes, first block offset=%d\n", total_spu_size, dsize);
     newspu = malloc(sizeof(struct spu));
     memset(newspu, 0, sizeof(struct spu));
     newspu->subno = subno++;
@@ -223,7 +224,23 @@ static int dvddecode()
     newspu->map[0].x2 = 0x7fffffff;
     newspu->map[0].y2 = 0x7fffffff;
     i = dsize + 4; /* start of commands */
-    t = read2(sub + dsize); /* delay in 90kHz units / 1024 before executing commands */
+    thiscmdoffset = dsize;
+    nextcmdoffset = read2(sub + thiscmdoffset + 2);
+    if (nextcmdoffset < dsize)
+      {
+        if (debug > 0)
+          {
+            fprintf
+              (
+                stderr,
+                "invalid control header nextcommand=%d dsize=%d!\n",
+                nextcmdoffset,
+                dsize
+              );
+          } /*if*/
+        nextcmdoffset = thiscmdoffset;
+      } /*if*/
+    t = read2(sub + dsize); /* SP_DCSQ_STM = delay in 90kHz units / 1024 before executing commands */
     if (debug > 2)
         fprintf
           (
@@ -231,9 +248,10 @@ static int dvddecode()
             "\tBLK(%5d): time offset: %d; next: %d\n",
             dsize, t, read2(sub + dsize + 2)
           );
-    while (i < size)
+  /* decode the commands, including finding out where the image data is */
+    while (i < total_spu_size)
       {
-        c = sub[i];
+        c = sub[i]; /* get next command */
         switch (c)
           {
         case SPU_FSTA_DSP:
@@ -296,38 +314,57 @@ static int dvddecode()
         break;
 
         case SPU_CMD_END:
-            if (i + 5 > size)
+            if (thiscmdoffset == nextcmdoffset) /* no next SP_DCSQ */
               {
                 if (debug > 4)
-                    fprintf(stderr,"\tcmd(%5d): end cmd\n",i);
-                i = size;
+                  {
+                    fprintf(stderr, "cmd: last end command\n");
+                    if (i + 1 < total_spu_size)
+                      {
+                        fprintf
+                          (
+                            stderr,
+                            "data present after last command (%d bytes, size=%d)\n",
+                            total_spu_size - (i + 1),
+                            total_spu_size
+                          );
+                      } /*if*/
+                  } /*if*/
+                i = total_spu_size; /* indicate I'm finished */
                 break;
               } /*if*/
-          /* expect another SP_DCSQT following */
-            t = read2(sub + i + 1); /* delay in 90kHz units / 1024 before executing commands */
+            if (debug > 4)
+                fprintf(stderr, "\tcmd(%5d): end cmd\n", i);
+          /* another SP_DCSQT follows */
+            thiscmdoffset = nextcmdoffset;
+            nextcmdoffset = read2(sub + thiscmdoffset + 2);
+            if (nextcmdoffset < dsize)
+              {
+                if (debug > 0)
+                  {
+                    fprintf
+                      (
+                        stderr,
+                        "invalid control header nextcommand=%d dsize=%d!\n",
+                        nextcmdoffset,
+                        dsize
+                      );
+                  } /*if*/
+                nextcmdoffset = thiscmdoffset;
+                i = total_spu_size; /* force an end to all this */
+                break;
+              } /*if*/
+            t = read2(sub + thiscmdoffset); /* SP_DCSQ_STM = delay in 90kHz units / 1024 before executing commands */
             if (debug > 4)
               {
                 fprintf(stderr, "\tcmd(%5d): end cmd\n", i);
                 fprintf(stderr, "\tBLK(%5d): time offset: %d; next: %d\n", i + 1, t, read2(sub + i + 3));
-              }
-            if
-              (
-                    sub[i + 3] != sub[dsize + 2]
-                ||
-                    sub[i + 4] != sub[dsize + 3]
-              )
-              {
-              /* disagreement about offset to next SP_DCSQ */
-                if (debug > 0)
-                  {
-                    fprintf(stderr,
-                        "invalid control header (%02x%02x != %02x%02x) dsize=%d!\n",
-                        sub[i + 3], sub[i + 4], sub[dsize + 2], sub[dsize + 3], dsize);
-                  } /*if*/
-                i = size;
-                break;
               } /*if*/
-            i += 5;
+            if (debug > 4 && i + 1 < thiscmdoffset)
+              {
+                fprintf(stderr, "next packet jump: %d bytes\n", thiscmdoffset - (i + 1));
+              } /*if*/
+            i = thiscmdoffset + 4; /* start of next lot of commands */
         break;
 
       /* case SPU_CHG_COLCON: */ /* fixme: not handled */
@@ -340,18 +377,19 @@ static int dvddecode()
           } /*switch*/
       } /*while*/
 
+  /* now to decode the actual image data */
     have_bits = false;
     x = y = 0;
     io = 0;
     newspu->img = malloc(newspu->xd * newspu->yd);
     if (ofs < 0 && y < newspu->yd)
       {
-        fprintf(stderr,"WARN: No image data supplied for this subtitle\n");
+        fprintf(stderr, "WARN: No image data supplied for this subtitle\n");
       }
     else
       {
       /* decode image data */
-        while ((ofs < dsize) && (y < newspu->yd))
+        while (ofs < dsize && y < newspu->yd)
           {
             i = get_next_bits();
             if (i < 4)
