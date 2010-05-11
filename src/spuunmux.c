@@ -32,7 +32,6 @@
  */
 
 #include "config.h"
-
 #include "compat.h"
 
 #include <fcntl.h>
@@ -43,6 +42,7 @@
 
 #include "rgb.h"
 #include "common.h"
+#include "conffile.h"
 
 #define CBUFSIZE 65536 /* big enough for any MPEG packet */
 #define PSBUFSIZE 10
@@ -51,6 +51,7 @@ static unsigned int add_offset;
 
 static int debug = 0;
 
+static int video_format = VF_NONE;
 static bool full_size = false;
 static unsigned int pts, spts, subi, subs, subno;
 static int ofs, ofs1;
@@ -571,6 +572,7 @@ static int write_png
     png_structp png_ptr;
     png_infop info_ptr;
     const unsigned short subwidth = svcd_adjust ? 704 : 720;
+    const unsigned short subheight = video_format == VF_NTSC ? 480 : 576;
     temp = out_buf = malloc(s->xd * s->yd * 4);
     nonzero = false;
     for (y = 0; y < s->yd; y++)
@@ -631,7 +633,7 @@ static int write_png
             /*png_ptr =*/ png_ptr,
             /*info_ptr =*/ info_ptr,
             /*width =*/ subwidth,
-            /*height =*/ 576,
+            /*height =*/ subheight,
             /*bit_depth =*/ 8,
             /*color_type =*/ PNG_COLOR_TYPE_RGB_ALPHA,
             /*interlace_method =*/ PNG_INTERLACE_NONE,
@@ -659,17 +661,22 @@ static int write_png
     if (out_buf != NULL)
       {
         unsigned int x0 = s->x0, y0 = s->y0, xd = s->xd, yd = s->yd;
-        png_byte *row_pointers[576];
+        png_byte *row_pointers[576]; /* big enough for both PAL and NTSC */
         if (full_size)
           {
             unsigned char *image;
             temp = out_buf;
-            image = malloc(subwidth * 576 * 4);
-            memset(image, 0, subwidth * 576 * 4);    // fill image full transparent
+            image = malloc(subwidth * subheight * 4);
+            memset(image, 0, subwidth * subheight * 4);    // fill image full transparent
             // insert image on the correct position
             for (y = s->y0; y < s->y0 + s->yd; y++)
               {
                 unsigned char *to = &image[y * subwidth * 4 + s->x0 * 4];
+                if (y >= subheight)
+                  {
+                    fprintf(stderr, "WARN: subtitle %s truncated\n", file_name);
+                    break;
+                  } /*if*/
                 for (x = 0; x < s->xd; x++)
                   {
                     *to++ = *temp++;
@@ -680,7 +687,7 @@ static int write_png
               } /*for*/
             y0 = 0;
             x0 = 0;
-            yd = 576;
+            yd = subheight;
             xd = subwidth;
             free(out_buf);
             out_buf = image;
@@ -1027,7 +1034,9 @@ static void usage(void)
     fprintf(stderr,
         "-v <level>  verbosity level                     [0]\n");
     fprintf(stderr,
-        "-f          resize images to full size          [720x576]\n");
+        "-f          resize images to full size          [720x576 or 720x480]\n");
+    fprintf(stderr,
+        "-F <format> specify video format, NTSC or PAL\n");
     fprintf(stderr,
         "-s <stream> number of the substream to extract  [0]\n");
     fprintf(stderr,
@@ -1051,12 +1060,36 @@ int main(int argc, char **argv)
     char *iname[256]; /* names of input files -- fixme: no range checking */
     unsigned int last_system_time = -1;
 
+    video_format = get_video_format();
     fputs(PACKAGE_HEADER("spuunmux"), stderr);
+    if (video_format != VF_NONE)
+      {
+        fprintf
+          (
+            stderr,
+            "INFO: default video format is %s\n",
+            video_format == VF_PAL ? "PAL" : "NTSC"
+          );
+      }
+    else
+      {
+#if defined(DEFAULT_VIDEO_FORMAT)
+#    if DEFAULT_VIDEO_FORMAT == 1
+        fprintf(stderr, "INFO: default video format is NTSC\n");
+        video_format = VF_NTSC;
+#    elif DEFAULT_VIDEO_FORMAT == 2
+        fprintf(stderr, "INFO: default video format is PAL\n");
+        video_format = VF_PAL;
+#    endif
+#else
+        fprintf(stderr, "INFO: no default video format, must explicitly specify NTSC or PAL\n");
+#endif
+      } /*if*/
     base_name = "sub";
     stream_number = 0;
     palet_file = 0;
     nrinfiles = 0;
-    while ((option = getopt(argc, argv, "o:v:fs:p:Vh")) != -1)
+    while ((option = getopt(argc, argv, "o:v:fF:s:p:Vh")) != -1)
       {
         switch (option)
           {
@@ -1068,6 +1101,21 @@ int main(int argc, char **argv)
         break;
         case 'f':
             full_size = true;
+        break;
+        case 'F':
+            if (!strcasecmp(optarg, "ntsc"))
+              {
+                video_format = VF_NTSC;
+              }
+            else if (!strcasecmp(optarg, "pal"))
+              {
+                video_format = VF_PAL;
+              }
+            else
+              {
+                fprintf(stderr, "ERR:  Unrecognized video format \"%s\"\n", optarg);
+                exit(-1);
+              } /*if*/
         break;
         case 's':
             stream_number = strtounsigned(optarg, "stream number");
@@ -1097,6 +1145,11 @@ int main(int argc, char **argv)
       {
         usage();
         return -1;
+      } /*if*/
+    if (full_size && video_format == VF_NONE)
+      {
+        fprintf(stderr, "ERR:  cannot determine meaning of full size without knowing if it's NTSC or PAL\n");
+        exit(-1);
       } /*if*/
 
   /* initialize current_palette to default palette */

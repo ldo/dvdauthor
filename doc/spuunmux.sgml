@@ -59,7 +59,16 @@
 		<term>-f</term>
 		<listitem>
 			<para>
-			resize images to full size. Defaults to <replaceable>720x576</replaceable>.
+			resize images to full size, which is 720x480 for NTSC, 720x576 for PAL.
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-F PAL|NTSC</term>
+		<listitem>
+			<para>
+			specifies the video format, which is used to compute the dimensions of
+			full size for -f.
 			</para>
 		</listitem>
 	</varlistentry>
