@@ -31,6 +31,8 @@
  * ported inside mplayer by Jindrich Makovicka
  * <makovick@kmlinux.fjfi.cvut.cz>
  *
+ * Major rework by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+ *
  */
 
 #include "config.h"

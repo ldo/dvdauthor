@@ -4,6 +4,7 @@
 /* Copyright (C) 2000 - 2003 various authors of the MPLAYER project
  * This module uses various parts of the MPLAYER project (http://www.mplayerhq.hu)
  * With many changes by Sjef van Gool (svangool@hotmail.com) November 2003
+ * Major rework by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
