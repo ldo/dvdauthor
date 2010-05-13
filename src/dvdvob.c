@@ -1133,9 +1133,9 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
       {
         int i, j;
         int sysoffs;
-        int hadfirstvobu = 0;
+        bool hadfirstvobu = false;
         pts_t backoffs = 0, lastscr = 0;
-        int fill_in_vobus = 0, got_deferred_buf = 0;
+        bool fill_in_vobus = false, got_deferred_buf = false;
         struct vob * const thisvob = va->vobs[vnum];
         int prevvidsect = -1;
         struct vscani vsi;
@@ -1347,23 +1347,23 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                         stderr, "INFO: found video GOP without a preceding VOBU - creating VOBU\n"
                       );
                   } /*if*/
-                fill_in_vobus = 1; /* keep doing it from now on */
+                fill_in_vobus = true; /* keep doing it from now on */
                 memcpy(deferred_buf, buf, 2048); /* save just-read sector for processing on next iteration */
-                got_deferred_buf = 1; /* remember I've saved it */
+                got_deferred_buf = true; /* remember I've saved it */
               /* buf already has a system header */
                 buf[41] = MPID_PRIVATE2;
                 buf[42] = 0x03;
                 buf[43] = 0xd4;
-                buf[44] = 0x81;
+                buf[44] = 0x81; /* rest of PCI will be correctly filled in later by FixVobus */
                 memset(buf + 45, 0, 2048 - 45);
                 buf[1026] = 1;
                 buf[1027] = MPID_PRIVATE2;
                 buf[1028] = 0x03;
                 buf[1029] = 0xfa;
-                buf[1030] = 0x81;
+                buf[1030] = 0x81; /* rest of DSI will be correctly filled in later by FixVobus */
               }
             else if (got_deferred_buf)
-                got_deferred_buf = 0; /* already picked it up */
+                got_deferred_buf = false; /* already picked it up */
             if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1 && buf[3] == MPID_PACK)
               {
                 const pts_t newscr = readscr(buf + 4);
@@ -1438,7 +1438,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     if (thisvob->numvobus)
                         finishvideoscan(va, vnum, prevvidsect, &vsi);
                     // fprintf(stderr,"INFO: vobu\n");
-                    hadfirstvobu = 1; /* NAV PACK starts a VOBU */
+                    hadfirstvobu = true; /* NAV PACK starts a VOBU */
                     if (thisvob->numvobus == thisvob->maxvobus) /* need more space */
                       {
                         if (!thisvob->maxvobus)
@@ -2239,11 +2239,11 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
               } /*if*/
 
             memcpy(buf, thisvobu->sectdata, 0x26);
-            write4(buf + 0x26, 0x1bf); // private stream 2
+            write4(buf + 0x26, 0x100 + MPID_PRIVATE2); // private stream 2
             write2(buf + 0x2a, 0x3d4); // length
             buf[0x2c] = 0; /* substream ID, 0 = PCI */
             memset(buf + 0x2d,0, 0x400 - 0x2d);
-            write4(buf + 0x400, 0x1bf); // private stream 2
+            write4(buf + 0x400, 0x100 + MPID_PRIVATE2); // private stream 2
             write2(buf + 0x404, 0x3fa); // length
             buf[0x406] = 1; /* substream ID, 1 = DSI */
             memset(buf + 0x407, 0, 0x7ff - 0x407);
