@@ -77,7 +77,7 @@ static void setfilename(int vob)
   /* sets filenamebase to be a suitable name for a numbered video file. */
   {
     const int l=3+1+2+1+1; /* length of "vob_%02d%c_" */
-    snprintf(filenamebase + l,sizeof(filenamebase) - l, "%03d.vob", vob);
+    snprintf(filenamebase + l, sizeof(filenamebase) - l, "%03d.vob", vob);
   } /*setfilename*/
 
 static void addcst(int v, int c, int p)
@@ -454,8 +454,8 @@ static void dump_buttons(xmlNodePtr cellNode, int vob)
                         " (cell=%d - %d).\n",
                     h->hl_gi.hli_s_ptm,
                     h->hl_gi.hli_e_ptm,
-                    getpts(v->vob,v->cell),
-                    getpts(v->vob,v->cell + 1)
+                    getpts(v->vob, v->cell),
+                    getpts(v->vob, v->cell + 1)
                   );
               } /*if*/
             AddTimeAttribute(buttonsNode, "start", h->hl_gi.hli_s_ptm, getpts(vob, 1));
@@ -908,7 +908,7 @@ static void findpalette(int vob, const pgcit_t *pgcs, const uint32_t **palette, 
                     p->playback_time.frame_u & 0x3f;
             if (!(*palette) || ptime > *length)
               {
-                if (*palette && memcmp(*palette,p->palette,16*sizeof(uint32_t)))
+                if (*palette && memcmp(*palette, p->palette, 16 * sizeof(uint32_t)))
                     fprintf(stderr, "WARN:  VOB %d has conflicting palettes\n", vob);
                 *palette = p->palette;
                 *length = ptime;
@@ -1095,6 +1095,11 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
     numcst = 0;
 
     vobs = DVDOpenFile(dvd, titleset, titlef ? DVD_READ_TITLE_VOBS : DVD_READ_MENU_VOBS);
+    if (vobs == NULL)
+      {
+      /* error message already output */
+        exit(1);
+      } /*if*/
 
     numsect = 0;
     totalsect = 0;
@@ -1215,7 +1220,7 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
                         bigblock[j * DVD_VIDEO_LB_LEN + 1027] == MPID_PRIVATE2 // 2nd private2
                   )
                   {
-                /* looks like a NAV pack */
+                  /* looks like a NAV pack */
                     pci_t p;
                     //dsi_t d;
                     
@@ -1314,6 +1319,11 @@ static void dump_dvd
         exit(1);
       } /*if*/
     ifo = ifoOpen(dvd, titleset);
+    if (ifo == NULL)
+      {
+      /* error message already output */
+        exit(1);
+      } /*if*/
     if (!titleset)
         numtitlesets = ifo->vmgi_mat->vmg_nr_of_title_sets;
 
