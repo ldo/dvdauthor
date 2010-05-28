@@ -295,13 +295,13 @@ static int sub_getc()
                 nextin = ic_inbuf + ic_next_in;
                 if (sub_buf_rewindable)
                   {
-                    nextout = sub_buf + sub_end_out; /* keep what's in buffer */
                     if (sub_out_size - sub_end_out < sub_buf_size)
                       {
                       /* make room for more */
                         sub_out_size += sub_buf_size;
                         sub_buf = realloc(sub_buf, sub_out_size);
                       } /*if*/
+                    nextout = sub_buf + sub_end_out; /* keep what's in buffer */
                   }
                 else
                   {
@@ -314,7 +314,13 @@ static int sub_getc()
                   } /*if*/
                 inleft = ic_end_in - ic_next_in; /* won't be zero */
                 outleft = sub_out_size - (nextout - sub_buf);
+                prev_sub_end_out = outleft;
                 convok = iconv(icdsc, (char **)&nextin, &inleft, &nextout, &outleft) != (size_t)-1;
+                if (!convok && errno == E2BIG && outleft < prev_sub_end_out)
+                  { /* no room to completely convert input, but got something so that's OK */
+                    convok = true;
+                    errno = 0;
+                  } /*if*/
                 if (!convok)
                   {
                     if (!ic_eof && errno == EINVAL)
@@ -356,13 +362,13 @@ static int sub_getc()
             size_t bytesread;
             if (sub_buf_rewindable)
               {
-                nextout = sub_buf + sub_end_out; /* keep what's in buffer */
                 if (sub_out_size - sub_end_out < sub_buf_size)
                   {
                   /* make room for more */
                     sub_out_size += sub_buf_size;
                     sub_buf = realloc(sub_buf, sub_out_size);
                   } /*if*/
+                nextout = sub_buf + sub_end_out; /* keep what's in buffer */
               }
             else
               {
