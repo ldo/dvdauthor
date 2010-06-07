@@ -164,6 +164,13 @@ static void createimage(pict *s, int w, int h)
   } /*createimage*/
 
 #if defined(HAVE_MAGICK) || defined(HAVE_GMAGICK)
+// meaning of A in RGBA swapped in ImageMagick 6.0.0 and GraphicsMagick 1.3.8
+#if defined(HAVE_MAGICK)
+#define XMAGICK_NEW_RGBA_MINVER 0x600
+#else // HAVE_GMAGICK
+#define XMAGICK_NEW_RGBA_MINVER 0x060300
+#define ExportImagePixels DispatchImage
+#endif
 static int read_magick(pict *s)
 /* uses ImageMagick/GraphicsMagick to read image s from s->fname. */
 {
@@ -171,6 +178,8 @@ static int read_magick(pict *s)
     ImageInfo *ii;
     ExceptionInfo ei;
     int x,y;
+    unsigned long magickver;
+    unsigned char amask;
 
     GetExceptionInfo(&ei);
     ii=CloneImageInfo(NULL);
@@ -188,16 +197,12 @@ static int read_magick(pict *s)
         return -1;
     }
     createimage(s,im->columns,im->rows);
+    GetMagickVersion(&magickver);
+    amask = magickver < XMAGICK_NEW_RGBA_MINVER ? 255 : 0;
     for( y=0; y<im->rows; y++ ) {
         char pdata[MAXX*4];
 
-        if(!
-#ifdef HAVE_MAGICK
-           ExportImagePixels
-#else // HAVE_GMAGICK
-           DispatchImage
-#endif
-           (im,0,y,im->columns,1,"RGBA",CharPixel,pdata,&ei)) {
+        if(!ExportImagePixels(im,0,y,im->columns,1,"RGBA",CharPixel,pdata,&ei)) {
             fprintf(stderr,"ERR:  Extracting row %d from %s (%s,%s)\n",y,s->fname,ei.reason,ei.description);
             CatchException(&ei);
             MagickError(ei.severity,ei.reason,ei.description);
@@ -209,13 +214,7 @@ static int read_magick(pict *s)
             p.r=pdata[x*4];
             p.g=pdata[x*4+1];
             p.b=pdata[x*4+2];
-            // the meaning of RGBA swapped with ImageMagick 6.0.0...
-            // ...but not with GraphicsMagick
-#if defined(HAVE_MAGICK) && MagickLibVersion >= 0x600
-            p.a=pdata[x*4+3];
-#else
-            p.a=255-pdata[x*4+3];
-#endif
+            p.a = pdata[x*4+3] ^ amask;
             putpixel(s,y*s->width+x,&p);
         }
     }
