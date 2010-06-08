@@ -173,7 +173,7 @@ bool dowork(bool checkin)
         sleep(1);
     }
     if( n == -1 )
-        return 0;
+        return false;
     tv.tv_sec=1; // set timeout to 1 second just in case any files need to be opened
     tv.tv_usec=0;
     i=select(n+1,&rfd,&wfd,NULL,&tv);
@@ -208,9 +208,9 @@ bool dowork(bool checkin)
             }
         }
         if( FD_ISSET( STDIN_FILENO, &rfd ) )
-            return 1;
+            return true;
     }
-    return 0;
+    return false;
 }
 
 int forceread(void *ptr,int len,FILE *h)

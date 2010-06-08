@@ -382,7 +382,7 @@ static void transpose_ts(unsigned char *buf, pts_t tsoffs)
     }
   } /*transpose_ts*/
 
-static int has_gop(const unsigned char *buf)
+static bool has_gop(const unsigned char *buf)
   /* returns true iff there is a video GOP present in the sector in buf. */
   {
     if
@@ -417,29 +417,29 @@ static int has_gop(const unsigned char *buf)
                 &&
                     buf[i + 3] == MPID_GOP
               )
-                return 1;
+                return true;
             i += 4;
           } /*while*/
       } /*if*/
-    return 0;
+    return false;
   } /*has_gop*/
 
-static int mpa_valid(const unsigned char *b)
+static bool mpa_valid(const unsigned char *b)
   /* does b look like it points at a valid MPEG audio packet header. */
   {
     const unsigned int v = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
     int t;
     // sync, mpeg1, layer2, 48khz
     if ((v & 0xFFFE0C00) != 0xFFFC0400)
-        return 0;
+        return false;
     // bitrate 1..14
     t = (v >> 12) & 15;
     if (t == 0 || t == 15)
-        return 0;
+        return false;
     // emphasis reserved
     if ((v & 3) == 2)
-        return 0;
-    return 1;
+        return false;
+    return true;
   } /*mpa_valid*/
 
 static int mpa_len(const unsigned char *b)
