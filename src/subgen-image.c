@@ -233,7 +233,7 @@ static int read_png(pict *s)
     png_struct *ps;
     png_info *pi;
     png_byte **rowp;
-    unsigned long width,height;
+    png_uint_32 width,height;
     int bit_depth,color_type,channels,x,y;
 
     fp=fopen(s->fname,"rb");
