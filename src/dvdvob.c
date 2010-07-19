@@ -1020,7 +1020,7 @@ static void procremap
       } /*while*/
   } /*procremap*/
 
-static void printvobustatus(struct vobgroup *va, int cursect)
+static void printvobustatus(struct vobgroup *va, int cursect, bool checknonempty)
   /* report total number of VOBUs and PGCs seen so far, and how much of the
     input file has been processed. */
   {
@@ -1029,6 +1029,11 @@ static void printvobustatus(struct vobgroup *va, int cursect)
         nv += va->vobs[j]->numvobus;
     // fprintf(stderr, "STAT: VOBU %d at %dMB, %d PGCs, %d:%02d:%02d\r", nv, cursect / 512, va->numallpgcs, total / 324000000, (total % 324000000) / 5400000, (total % 5400000) / 90000);
     fprintf(stderr, "STAT: VOBU %d at %dMB, %d PGCs\r", nv, cursect / 512, va->numallpgcs);
+    if (checknonempty && nv == 0)
+      {
+        fprintf(stderr, "\nERR:  no VOBUs found.\n");
+        exit(1);
+      } /*if*/
   } /*printvobustatus*/
 
 static void audio_scan_ac3(struct audchannel *ach, const unsigned char *buf, int sof, int len)
@@ -1466,7 +1471,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     memcpy(thisvob->vobu[thisvob->numvobus].sectdata, buf, 0x26); // save pack and system header; the rest will be reconstructed later
                     thisvob->numvobus++;
                     if (!(thisvob->numvobus & 15)) /* time to let user know progress */
-                        printvobustatus(va, cursect);
+                        printvobustatus(va, cursect, false);
                     vsi.lastrefsect = 0;
                     vsi.firstgop = 1; /* restart scan for first GOP */
                   } /*if*/
@@ -1939,7 +1944,7 @@ noshow:
           } /*if*/
       } /*for*/
     writeclose();
-    printvobustatus(va, cursect);
+    printvobustatus(va, cursect, true);
     fprintf(stderr, "\n");
     free(crs);
     return 1;
