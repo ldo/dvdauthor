@@ -1340,65 +1340,80 @@ static void vobgroup_free(struct vobgroup *vg)
       } /*if*/
   } /*vobgroup_free*/
 
-static void vobgroup_addvob(struct vobgroup *pg,struct pgc *p,struct source *s)
-{
-    int i,forcenew;
-
-    forcenew=(p->numbuttons!=0);
-    if( !forcenew ) {
-        for( i=0; i<pg->numvobs; i++ )
-            if( !strcmp(pg->vobs[i]->fname,s->fname) && pg->vobs[i]->progchain->numbuttons==0 )
-            {
-                s->vob=pg->vobs[i];
+static void vobgroup_addvob(struct vobgroup *pg, struct pgc *p, struct source *s)
+  {
+    const bool forcenew = p->numbuttons != 0;
+    if (!forcenew)
+      {
+      /* Reuse a previously-created vob element with the same input file name,
+        if one can be found. This is not tried if buttons are present--is that
+        because of colour-remapping issues? */
+        int i;
+        for (i = 0; i < pg->numvobs; i++)
+            if (!strcmp(pg->vobs[i]->fname, s->fname) && pg->vobs[i]->progchain->numbuttons == 0)
+              {
+                s->vob = pg->vobs[i];
                 return;
-            }
-    }
-    pg->vobs=realloc(pg->vobs,(pg->numvobs+1)*sizeof(struct vob *));
-    s->vob=pg->vobs[pg->numvobs++]=vob_new(s->fname,p);
-}
+              } /*if*/
+      } /*if*/
+    pg->vobs = realloc(pg->vobs, (pg->numvobs + 1) * sizeof(struct vob *));
+    s->vob = pg->vobs[pg->numvobs++] = vob_new(s->fname, p);
+  } /*vobgroup_addvob*/
 
-static void pgcgroup_pushci(struct pgcgroup *p,int warn)
-{
-    int i,j,ii,jj;
-
-    for( i=0; i<p->numpgcs; i++ ) {
-        if( !p->pgcs[i]->colors )
+static void pgcgroup_pushci(struct pgcgroup *p, bool warn)
+  /* shares colorinfo structures among all pgc elements that have sources
+    which were allocated the same vob structures. */
+  {
+    int i, j, ii, jj;
+    for (i = 0; i < p->numpgcs; i++)
+      {
+        if (!p->pgcs[i]->colors)
             continue;
-        for( j=0; j<p->pgcs[i]->numsources; j++ ) {
-            struct vob *v=p->pgcs[i]->sources[j]->vob;
-
-            for( ii=0; ii<p->numpgcs; ii++ )
-                for( jj=0; jj<p->pgcs[ii]->numsources; jj++ )
-                    if( v==p->pgcs[ii]->sources[jj]->vob ) {
-                        if( !p->pgcs[ii]->colors ) {
-                            p->pgcs[ii]->colors=p->pgcs[i]->colors;
+        for (j = 0; j < p->pgcs[i]->numsources; j++)
+          {
+            const struct vob * const v = p->pgcs[i]->sources[j]->vob;
+            for (ii = 0; ii < p->numpgcs; ii++)
+                for (jj = 0; jj < p->pgcs[ii]->numsources; jj++)
+                    if (v == p->pgcs[ii]->sources[jj]->vob)
+                      {
+                        if (!p->pgcs[ii]->colors)
+                          {
+                            p->pgcs[ii]->colors = p->pgcs[i]->colors;
                             p->pgcs[ii]->colors->refcount++;
-                        } else if( p->pgcs[ii]->colors!=p->pgcs[i]->colors && warn) {
-                            fprintf(stderr,"WARN: Conflict in colormap between PGC %d and %d\n",i,ii);
-                        }
-                    }
-        }
-    }
-}
+                          }
+                        else if (p->pgcs[ii]->colors != p->pgcs[i]->colors && warn)
+                          {
+                            fprintf
+                              (
+                                stderr,
+                                "WARN: Conflict in colormap between PGC %d and %d\n",
+                                i, ii
+                              );
+                          } /*if*/
+                      } /*if; for; for*/
+          } /*for*/
+      } /*for*/
+  } /*pgcgroup_pushci*/
 
-static void pgcgroup_createvobs(struct pgcgroup *p,struct vobgroup *v)
-{
-    int i,j;
-
-    v->allpgcs=(struct pgc **)realloc(v->allpgcs,(v->numallpgcs+p->numpgcs)*sizeof(struct pgc *));
-    memcpy(v->allpgcs+v->numallpgcs,p->pgcs,p->numpgcs*sizeof(struct pgc *));
-    v->numallpgcs+=p->numpgcs;
-    for( i=0; i<p->numpgcs; i++ )
-        for( j=0; j<p->pgcs[i]->numsources; j++ )
-            vobgroup_addvob(v,p->pgcs[i],p->pgcs[i]->sources[j]);
-    pgcgroup_pushci(p,0);
-    for( i=0; i<p->numpgcs; i++ )
-        if( !p->pgcs[i]->colors ) {
-            p->pgcs[i]->colors=colorinfo_new();
-            pgcgroup_pushci(p,0);
-        }
-    pgcgroup_pushci(p,1);
-}
+static void pgcgroup_createvobs(struct pgcgroup *p, struct vobgroup *v)
+  /* appends p->pgcs onto v->allpgcs and builds the struct vob arrays in the vobgroups. */
+  {
+    int i, j;
+    v->allpgcs = (struct pgc **)realloc(v->allpgcs, (v->numallpgcs + p->numpgcs) * sizeof(struct pgc *));
+    memcpy(v->allpgcs + v->numallpgcs, p->pgcs, p->numpgcs * sizeof(struct pgc *));
+    v->numallpgcs += p->numpgcs;
+    for (i = 0; i < p->numpgcs; i++)
+        for (j = 0; j < p->pgcs[i]->numsources; j++)
+            vobgroup_addvob(v, p->pgcs[i], p->pgcs[i]->sources[j]);
+    pgcgroup_pushci(p, false);
+    for (i = 0; i < p->numpgcs; i++)
+        if (!p->pgcs[i]->colors)
+          {
+            p->pgcs[i]->colors = colorinfo_new();
+            pgcgroup_pushci(p, false);
+          } /*if; for*/
+    pgcgroup_pushci(p, true);
+  } /*pgcgroup_createvobs*/
 
 static void validatesummary(struct pgcgroup *va)
 /* merges the info for all pgcs and validates the collected settings for a pgcgroup. */
@@ -1676,6 +1691,7 @@ void pgc_add_source(struct pgc *p,struct source *v)
 }
 
 int pgc_add_button(struct pgc *p,const char *name,const char *cmd)
+  /* adds a new button definition, optional name, and associated commands to a PGC. */
   {
     struct button *bs;
     if (p->numbuttons == 36)
@@ -1686,10 +1702,12 @@ int pgc_add_button(struct pgc *p,const char *name,const char *cmd)
     p->buttons = (struct button *)realloc(p->buttons, (p->numbuttons + 1) * sizeof(struct button));
     bs = &p->buttons[p->numbuttons++];
     memset(bs, 0, sizeof(struct button));
+  /* note stream-specific info (including spatial and auto-action info) is initially empty */
     if (name)
         bs->name = strdup(name);
     else
       {
+      /* make up a sequentially-assigned name */
         char nm[10];
         snprintf(nm, sizeof nm, "%d", p->numbuttons);
         bs->name = strdup(nm);
@@ -1848,7 +1866,7 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
     ws.titlesets = &ts;
     ws.menus = menus;
     ws.titles = 0;
-    jp_force_menu(menus, 2);
+    jp_force_menu(menus, VTYPE_VMGM);
     for (i = 0; i < menus->numgroups; i++)
       {
         validatesummary(menus->groups[i].pg);
@@ -1949,7 +1967,7 @@ void dvdauthor_vts_gen(struct menugroup *menus, struct pgcgroup *titles, const c
     ws.titlesets = 0;
     ws.menus = menus;
     ws.titles = titles;
-    jp_force_menu(menus, 1);
+    jp_force_menu(menus, VTYPE_VTSM);
     for (i = 0; i < menus->numgroups; i++)
       {
         validatesummary(menus->groups[i].pg);

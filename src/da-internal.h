@@ -123,7 +123,7 @@ struct source { /* describes an input video file, corresponding to a single <vob
     char *fname; /* name of file */
     int numcells; /* nr elements in cells */
     struct cell *cells; /* array */
-    struct vob *vob; /* containing vob */
+    struct vob *vob; /* pointer to created vob */
 };
 
 struct audpts { /* describes a packet in an audio stream */
@@ -150,7 +150,7 @@ struct vob { /* one entry created for each source in each pgc */
         0-31: top two bits are the audio type (0 => AC3, 1 => MPEG, 2 => PCM, 3 => DTS),
             bottom 3 bits are the channel id
         32-63: bottom five bits are subpicture id */
-    unsigned char buttoncoli[24];
+    unsigned char buttoncoli[24]; /* 3 groups of SL_COLI (button colour) info for PCI packets */
 };
 
 struct buttoninfo { /* describes a button within a single subpicture stream */
@@ -190,7 +190,7 @@ struct pgcgroup { /* common info across a set of menus or a set of titles (<menu
     int numpgcs;
     int allentries; /* mask of entry types present */
     int numentries; /* number of entry types present */
-    struct vobgroup *vg; // only valid for pstype==VTYPE_VTS
+    struct vobgroup *vg; /* only for pstype==VTYPE_VTS, otherwise shared menugroup.vg field is used */
 };
 
 struct langgroup { /* contents of a <menus> directive */
@@ -201,7 +201,9 @@ struct langgroup { /* contents of a <menus> directive */
 struct menugroup { /* contents specific to all collections of <menus> directives, either VTSM or VMGM */
     int numgroups; /* length of groups array */
     struct langgroup *groups; /* array, one entry per <menus> directive */
-    struct vobgroup *vg;
+    struct vobgroup *vg; /* common among all groups[i]->pg elements */
+      /* fixme: I don't think this works right with multiple <menus> ,,, </menus> sections,
+        which the XML does allow */
 };
 
 struct vobgroup { /* contents of a menuset or titleset (<menus> or <titles>) */
