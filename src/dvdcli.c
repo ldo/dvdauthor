@@ -395,13 +395,13 @@ int main(int argc, char **argv)
         {0,0,0,0}
     };
 
-    default_video_format = get_video_format();
-    init_locale();
 #define GETOPTFUNC(x,y,z) getopt_long(x,y,"-" z,longopts,NULL)
 #else
 #define GETOPTFUNC(x,y,z) getopt(x,y,z)
 #endif
 
+    default_video_format = get_video_format();
+    init_locale();
     fputs(PACKAGE_HEADER("dvdauthor"), stderr);
     if (default_video_format != VF_NONE)
       {
