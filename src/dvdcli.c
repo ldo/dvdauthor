@@ -375,7 +375,7 @@ int main(int argc, char **argv)
     struct pgc *curpgc = 0,* fpc = 0;
     struct source *curvob = 0;
 #ifdef HAVE_GETOPT_LONG
-    static struct option longopts[]={
+    const static struct option longopts[]={
         {"video",1,0,'v'},
         {"audio",1,0,'a'},
         {"subpictures",1,0,'s'},
@@ -394,7 +394,6 @@ int main(int argc, char **argv)
         {"allgprm",0,0,'g'},
         {0,0,0,0}
     };
-
 #define GETOPTFUNC(x,y,z) getopt_long(x,y,"-" z,longopts,NULL)
 #else
 #define GETOPTFUNC(x,y,z) getopt(x,y,z)

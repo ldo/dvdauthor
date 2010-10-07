@@ -23,6 +23,7 @@
 
 // prog for encoding dvd subtitles and multiplexing them into an mpeg
 // available under GPL v2
+/* Thanks to TED for sponsoring implementation of --nomux and --nodvdauthor-data options */
 
 #include "config.h"
 
@@ -66,11 +67,14 @@ the subpicture stream ID, based off the following values */
 static unsigned char *cbuf;
 
 static unsigned int spuindex;
-static bool progr;
-static int tofs;
+static bool
+    show_progress = false,
+    dodvdauthor_data = true,
+    domux = true;
+static int tofs; /* timestamp of first video packet, for synchronizing subpicture timestamps */
 static int svcd_adjust;
 
-static uint64_t lps;
+static uint64_t lps; /* output bytes written */
 
 int default_video_format = VF_NONE;
 bool widescreen = false;
@@ -90,11 +94,11 @@ static int max_sub_size;
 static bool substream_present[256];
 
 
-// these 4 lines of variables are used by mux() and main() to communicate
+// these 4 lines of variables are used by muxnext() and main() to communicate
 static int subno,secsize,mode,fdo,header_size,muxrate;
 static unsigned char substr, *sector;
 static stinfo *newsti;
-static uint64_t gts, nextgts;
+static uint64_t lastgts, nextgts;
 
 
 /*
@@ -462,9 +466,9 @@ static void usage()
     exit(-1);
 }
 
-static void mux(bool eoinput)
+static void muxnext(bool eoinput)
   {
-    if (gts == 0 || tofs == -1 || (lps % secsize && !eoinput))
+    if (domux && (lastgts == 0 || tofs == -1 || (lps % secsize && !eoinput)))
         return;
     while (newsti)
       {
@@ -472,12 +476,12 @@ static void mux(bool eoinput)
         int bytes_sent, sub_size;
         unsigned char seq;
         unsigned int q;
-        int64_t dgts;
+        int64_t duegts;
       /* wait for correct time to insert sub, leave time for vpts to occur */
-        dgts = (newsti->spts - .15 * 90000) * 300;
-        if (dgts < 0)
-            dgts = 0;
-        if (dgts > gts && !eoinput)
+        duegts = (newsti->spts - .15 * 90000) * 300;
+        if (duegts < 0)
+            duegts = 0;
+        if (domux && duegts > lastgts && !eoinput)
             break; /* not yet time */
         cursti = newsti;
         if (debug > 1)
@@ -526,7 +530,7 @@ static void mux(bool eoinput)
                         cursti->spts / 90000, cursti->sd / 90000);
               } /*if*/
           } /*if*/
-        if ((cursti->sd == -1) && newsti && ((!svcd_adjust) || until_next_sub))
+        if (cursti->sd == -1 && newsti && (!svcd_adjust || until_next_sub))
           {
             if (newsti->spts > cursti->spts + tbs)
                 cursti->sd = newsti->spts - cursti->spts - tbs;
@@ -576,128 +580,138 @@ static void mux(bool eoinput)
           } /*if*/
         seq = 0;
         subno++;
-        gts = dgts;
+        lastgts = duegts;
         if (mode == DVD_SUB)
           {
-          /* write out custom dvdauthor information */
-            int pdl = secsize - 6 - 10 - 4, i;
-            unsigned int c;
-          /* write packet start code */
-            c = htonl(0x100 + MPID_PACK);
-            swrite(fdo, &c, 4);
-            mkpackh(gts, muxrate, 0);
-            fixgts(&gts, &nextgts);
-            swrite(fdo, header, 10);
-            // start padding streamcode
-            header[0] = 0;
-            header[1] = 0;
-            header[2] = 1;
-            header[3] = MPID_PAD; /* for my private button/palette data */
-            header[4] = pdl >> 8;
-            header[5] = pdl;
-            swrite(fdo, header, 6);
-
-            memset(sector, 0xff, pdl);
-
-            wdest = sector;
-            wdstr("dvdauthor-data");
-            wdbyte(2); // version
-            wdbyte(1); // subtitle info
-            wdbyte(substr); // sub number
-            wdlong(cursti->spts); // start pts
-            wdlong(cursti->sd == -1 ? -1 : cursti->sd + cursti->spts); // end pts
-
-            wdbyte(1); // colormap
-            wdbyte(cursti->numpal); // number of colors
-            for (i = 0; i < cursti->numpal; i++)
+            if (dodvdauthor_data)
               {
-                wdbyte(calcY(cursti->masterpal + i));
-                wdbyte(calcCr(cursti->masterpal + i));
-                wdbyte(calcCb(cursti->masterpal + i));
-              /* I don't need to pass alpha, because that has already been encoded
-                into the subpicture stream with SPU_SET_CONTR commands */
-              } /*for*/
+              /* write out custom dvdauthor information */
+                int pdl = secsize - 6 - 10 - 4, i;
+                unsigned int c;
+              /* write packet start code */
+                c = htonl(0x100 + MPID_PACK);
+                swrite(fdo, &c, 4);
+                mkpackh(lastgts, muxrate, 0);
+                fixgts(&lastgts, &nextgts);
+                swrite(fdo, header, 10);
+                // start padding streamcode
+                header[0] = 0;
+                header[1] = 0;
+                header[2] = 1;
+                header[3] = MPID_PAD; /* for my private button/palette data */
+                header[4] = pdl >> 8;
+                header[5] = pdl;
+                swrite(fdo, header, 6);
 
-            if (cursti->numgroups)
-              {
-                wdbyte(2); // st_coli
-                wdbyte(cursti->numgroups);
-                for (i = 0; i < cursti->numgroups; i++)
+                memset(sector, 0xff, pdl);
+
+                wdest = sector;
+                wdstr("dvdauthor-data");
+                wdbyte(2); // version
+                wdbyte(1); // subtitle info
+                wdbyte(substr); // sub number
+                wdlong(cursti->spts); // start pts
+                wdlong(cursti->sd == -1 ? -1 : cursti->sd + cursti->spts); // end pts
+
+                wdbyte(1); // colormap
+                wdbyte(cursti->numpal); // number of colors
+                for (i = 0; i < cursti->numpal; i++)
                   {
-                    unsigned short sh[4];
-                    int j;
-                    for (j = 3; j >= 0; j--)
+                    wdbyte(calcY(cursti->masterpal + i));
+                    wdbyte(calcCr(cursti->masterpal + i));
+                    wdbyte(calcCb(cursti->masterpal + i));
+                  /* I don't need to pass alpha, because that has already been encoded
+                    into the subpicture stream with SPU_SET_CONTR commands */
+                  } /*for*/
+
+                if (cursti->numgroups)
+                  {
+                    wdbyte(2); // st_coli
+                    wdbyte(cursti->numgroups);
+                    for (i = 0; i < cursti->numgroups; i++)
                       {
-                        int k = cursti->groupmap[i][j];
-                        if (k == -1)
+                        unsigned short sh[4];
+                        int j;
+                        for (j = 3; j >= 0; j--)
                           {
-                            for (k = 0; k < 4; k++)
-                                sh[k] <<= 4;
-                          }
-                        else
-                          {
-                            sh[0] =
-                                    sh[0] << 4
-                                |
-                                    findmasterpal(cursti, cursti->hlt.pal + (k >> 8 & 255));
-                            sh[1] =
-                                    sh[1] << 4
-                                |
-                                    cursti->hlt.pal[k >> 8 & 255].a >> 4;
-                            sh[2] =
-                                    sh[2] << 4
-                                |
-                                    findmasterpal(cursti, cursti->sel.pal + (k & 255));
-                            sh[3] =
-                                    sh[3] << 4
-                                |
-                                    cursti->sel.pal[k & 255].a >> 4;
-                          } /*if*/
+                            int k = cursti->groupmap[i][j];
+                            if (k == -1)
+                              {
+                                for (k = 0; k < 4; k++)
+                                    sh[k] <<= 4;
+                              }
+                            else
+                              {
+                                sh[0] =
+                                        sh[0] << 4
+                                    |
+                                        findmasterpal(cursti, cursti->hlt.pal + (k >> 8 & 255));
+                                sh[1] =
+                                        sh[1] << 4
+                                    |
+                                        cursti->hlt.pal[k >> 8 & 255].a >> 4;
+                                sh[2] =
+                                        sh[2] << 4
+                                    |
+                                        findmasterpal(cursti, cursti->sel.pal + (k & 255));
+                                sh[3] =
+                                        sh[3] << 4
+                                    |
+                                        cursti->sel.pal[k & 255].a >> 4;
+                              } /*if*/
+                          } /*for*/
+                        for (j = 0; j < 4; j++)
+                            wdshort(sh[j]);
                       } /*for*/
-                    for (j = 0; j < 4; j++)
-                        wdshort(sh[j]);
-                  } /*for*/
-              } /*if*/
-            if (cursti->numbuttons)
-              {
-                wdbyte(3);
-                wdbyte(cursti->numbuttons);
-                for (i = 0; i < cursti->numbuttons; i++)
+                  } /*if*/
+                if (cursti->numbuttons)
                   {
-                    const button * const b = &cursti->buttons[i];
-                    char nm1[10], nm2[10];
-                    wdstr(b->name);
-                    wdshort(0);
-                    wdbyte(b->autoaction ? 1 : 0);
-                    wdbyte(b->grp);
-                    wdshort(b->r.x0);
-                    wdshort(b->r.y0);
-                    wdshort(b->r.x1);
-                    wdshort(b->r.y1);
-                    if ((b->r.y0 & 1) || (b->r.y1 & 1))
-                        fprintf
-                          (
-                            stderr,
-                            "WARN: Button y coordinates are odd for button %s: %dx%d-%dx%d;"
-                                " they may not display properly.\n",
-                            b->name,
-                            b->r.x0,
-                            b->r.y0,
-                            b->r.x1,
-                            b->r.y1
-                          );
-                    sprintf(nm1, "%d", i ? i : (cursti->numbuttons));
-                    sprintf(nm2, "%d", (i + 1 != cursti->numbuttons) ? (i + 2) : 1);
-                    // fprintf(stderr,"BUTTON NAVIGATION FOR %s: up=%s down=%s left=%s right=%s (%s %s)\n",b->name,b->up,b->down,b->left,b->right,nm1,nm2);
-                  /* fixme: no constraints on length of button names */
-                    wdstr(b->up ? b->up : nm1);
-                    wdstr(b->down ? b->down : nm2);
-                    wdstr(b->left ? b->left : nm1);
-                    wdstr(b->right ? b->right : nm2);
-                  } /*for*/
+                    wdbyte(3);
+                    wdbyte(cursti->numbuttons);
+                    for (i = 0; i < cursti->numbuttons; i++)
+                      {
+                        const button * const b = &cursti->buttons[i];
+                        char nm1[10], nm2[10];
+                        wdstr(b->name);
+                        wdshort(0);
+                        wdbyte(b->autoaction ? 1 : 0);
+                        wdbyte(b->grp);
+                        wdshort(b->r.x0);
+                        wdshort(b->r.y0);
+                        wdshort(b->r.x1);
+                        wdshort(b->r.y1);
+                        if ((b->r.y0 & 1) || (b->r.y1 & 1))
+                            fprintf
+                              (
+                                stderr,
+                                "WARN: Button y coordinates are odd for button %s: %dx%d-%dx%d;"
+                                    " they may not display properly.\n",
+                                b->name,
+                                b->r.x0,
+                                b->r.y0,
+                                b->r.x1,
+                                b->r.y1
+                              );
+                        sprintf(nm1, "%d", i ? i : (cursti->numbuttons));
+                        sprintf(nm2, "%d", (i + 1 != cursti->numbuttons) ? (i + 2) : 1);
+                        // fprintf(stderr,"BUTTON NAVIGATION FOR %s: up=%s down=%s left=%s right=%s (%s %s)\n",b->name,b->up,b->down,b->left,b->right,nm1,nm2);
+                      /* fixme: no constraints on length of button names */
+                        wdstr(b->up ? b->up : nm1);
+                        wdstr(b->down ? b->down : nm2);
+                        wdstr(b->left ? b->left : nm1);
+                        wdstr(b->right ? b->right : nm2);
+                      } /*for*/
+                  } /*if*/
+              /* fprintf(stderr,"INFO: Private sector size %d\n",wdest-sector); */
+                swrite(fdo, sector, pdl);
+              }
+            else
+              {
+                if (cursti->numbuttons)
+                  {
+                    fprintf(stderr, "WARN: Button info not being passed to dvdauthor.\n");
+                  } /*if*/
               } /*if*/
-          /* fprintf(stderr,"INFO: Private sector size %d\n",wdest-sector); */
-            swrite(fdo, sector, pdl);
           } /*if mode == DVD_SUB*/
         // header_size is 12 before while starts
       /* header_size includes first byte of PES data, i.e. substream ID */
@@ -727,10 +741,10 @@ static void mux(bool eoinput)
           /* write header */
             c = htonl(0x100 + MPID_PACK);
             swrite(fdo, &c, 4);
-            mkpackh(gts, muxrate, 0);
-            fixgts(&gts, &nextgts);
+            mkpackh(lastgts, muxrate, 0);
+            fixgts(&lastgts, &nextgts);
 /*
-  fprintf(stderr, "system time: %d 0x%lx %d\n", gts, ftell(fds), frame);
+  fprintf(stderr, "system time: %d 0x%lx %d\n", lastgts, ftell(fds), frame);
   fprintf(stderr, "spts=%d\n", spts);
 */
             swrite(fdo, header, 10);
@@ -806,7 +820,7 @@ static void mux(bool eoinput)
           } /*if*/
         freestinfo(cursti);
       } /*while*/
-  } /*mux*/
+  } /*muxnext*/
 
 static void textsub_statistics()
   {
@@ -826,6 +840,16 @@ int main(int argc,char **argv)
     unsigned short int b, vss;
     unsigned char psbuf[psbufs], ncnt;
     int optch;
+#ifdef HAVE_GETOPT_LONG
+    const static struct option longopts[]={
+        {"nodvdauthor-data", 0, 0, 1},
+        {"nomux", 0, 0, 2},
+        {0, 0, 0, 0}
+    };
+#define GETOPTFUNC(x,y,z) getopt_long(x,y,z,longopts,NULL)
+#else
+#define GETOPTFUNC(x,y,z) getopt(x,y,z)
+#endif
 
     default_video_format = get_video_format();
     init_locale();
@@ -868,14 +892,11 @@ int main(int argc,char **argv)
         fprintf(stderr, "INFO: no default video format, must explicitly specify NTSC or PAL\n");
 #endif
       } /*if*/
-    gts = 0;
-    nextgts = 0;
     tofs = -1;
-    progr = false;
     debug = 0;
     ncnt = 0;
     substr = 0; /* default */
-    while (-1 != (optch = getopt(argc, argv, "hm:s:v:P")))
+    while (-1 != (optch = GETOPTFUNC(argc, argv, "hm:s:v:P")))
       {
         switch (optch)
           {
@@ -914,10 +935,16 @@ int main(int argc,char **argv)
             debug = strtounsigned(optarg, "verbosity");
         break;
         case 'P':
-            progr = true;
+            show_progress = true;
         break;
         case 'h':
             usage();
+        break;
+        case 1: /* --nodvdauthor-data */
+            dodvdauthor_data = false;
+        break;
+        case 2: /* --nomux */
+            domux = false;
         break;
         default:
             fprintf(stderr, "WARN: Getopt returned %d\n",optch);
@@ -925,6 +952,11 @@ int main(int argc,char **argv)
         break;
           } /*switch*/
       } /*while*/
+    if (argc - optind != 1)
+      {
+        fprintf(stderr, "WARN: Only one argument expected\n");
+        usage();
+      } /*if*/
 
     switch(mode)
       {
@@ -949,14 +981,12 @@ int main(int argc,char **argv)
         secsize = 2324;
     break;
       } /*switch*/
-    if (argc - optind != 1)
-      {
-        fprintf(stderr, "WARN: Only one argument expected\n");
-        usage();
-      } /*if*/
     fdi = 0; /* stdin */
     fdo = 1; /* stdout */
-    win32_setmode(fdi,O_BINARY);
+    if (domux)
+      {
+        win32_setmode(fdi,O_BINARY);
+      } /*if*/
     win32_setmode(fdo,O_BINARY);
     if (spumux_parse(argv[optind]))
         return -1;
@@ -981,18 +1011,19 @@ int main(int argc,char **argv)
     vss = 0;
     frame = 0;
     lps = 0;
-    gts = 0;
+    lastgts = 0;
+    nextgts = 0;
     subno = -1;
-    while (true)
+    while (domux)
       {
-        mux(false);
+        muxnext(false);
         if (sread(fdi, &c, 4) != 4)
             goto eoi;
         ch = ntohl(c); /* header ID */
         if (ch == 0x100 + MPID_PACK)
           {
 l_01ba:
-            if (progr) /* show progress */
+            if (show_progress) /* show progress */
               {
                 if (lps % 1024 * 1024 * 10 < secsize)
                     fprintf(stderr, "INFO: %" PRIu64 " bytes of data written\r", lps);
@@ -1001,20 +1032,20 @@ l_01ba:
                 fprintf(stderr, "INFO: pack_start_code\n");
             if (sread(fdi, psbuf, psbufs) != psbufs)
                 break;
-            gts = getgts(psbuf);
-            if (gts != -1)
+            lastgts = getgts(psbuf);
+            if (lastgts != -1)
               {
-                mux(false);
-                fixgts(&gts, &nextgts);
+                muxnext(false);
+                fixgts(&lastgts, &nextgts);
                 muxrate = getmuxr(psbuf);
               }
             else
               {
                 if (debug >- 1)
                     fprintf(stderr, "WARN: Incorrect pack header\n");
-                gts = nextgts;
+                lastgts = nextgts;
               } /*if*/
-            mkpackh(gts, muxrate, 0);
+            mkpackh(lastgts, muxrate, 0);
             swrite(fdo, &c, 4);
             swrite(fdo, header, psbufs);
           }
@@ -1126,9 +1157,8 @@ l_01ba:
             goto l_01ba;
           } /*if*/
       } /*while*/
-
  eoi:
-    mux(true); // end of input
+    muxnext(true); // end of input
 /*    fprintf(stderr, "max_sub_size=%d\n", max_sub_size); */
     if (subno != 0xffff)
       {

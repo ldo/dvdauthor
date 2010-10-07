@@ -21,6 +21,8 @@
 <arg>-s <replaceable>stream</replaceable></arg>
 <arg>-v <replaceable>level</replaceable></arg>
 <arg>-P</arg>
+<arg>--nomux</arg>
+<arg>--nodvdauthor-data</arg>
 <arg choice="req"><replaceable>file</replaceable></arg>
 <arg choice="req">&lt <replaceable>mpeg</replaceable></arg>
 <arg choice="req">&gt <replaceable>mpeg-with-subtitles</replaceable></arg>
@@ -50,6 +52,15 @@ Sets the verbosity level.
 <glossentry><glossterm>-P</glossterm>
 <glossdef><para>
 Enables a progress bar.
+</para></glossdef></glossentry>
+<glossentry><glossterm>--nomux</glossterm>
+<glossdef><para>
+Disables reading of an MPEG stream from standard input. Instead, the output will
+contain only the subpicture stream.
+</para></glossdef></glossentry>
+<glossentry><glossterm>--nodvdauthor-data</glossterm>
+<glossdef><para>
+Disables passing of color and button info to dvdauthor.
 </para></glossdef></glossentry>
 </glosslist>
 <para>
