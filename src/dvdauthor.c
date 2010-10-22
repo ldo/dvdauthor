@@ -1930,7 +1930,7 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
         fprintf(stderr, "ERR:  No .IFO files to process\n");
         exit(1);
       } /*if*/
-    if (menus->vg->numvobs)
+    if (menus->vg->numvobs != 0)
       {
         fprintf(stderr, "INFO: Creating menu for TOC\n");
         snprintf(fbuf, sizeof fbuf, "%s/VIDEO_TS.VOB", vtsdir);
@@ -1941,6 +1941,8 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
         FixVobus(fbuf, menus->vg, &ws, VTYPE_VMGM);
       }
     else
+      /* unconditional because there will always be at least one PGC,
+        namely the FPC (explicit or default) */
       {
         set_video_format_attr(menus->vg, VTYPE_VMGM); /* for the sake of buildtimeeven */
       } /*if*/
@@ -1988,13 +1990,13 @@ void dvdauthor_vts_gen(struct menugroup *menus, struct pgcgroup *titles, const c
         snprintf(realfbase, sizeof realfbase, "%s/VIDEO_TS/VTS_%02d", fbase, vtsnum);
         fbase = realfbase;
       } /*if*/
-    if (menus->vg->numvobs)
+    if (menus->vg->numvobs != 0)
       {
         FindVobus(fbase, menus->vg, VTYPE_VTSM);
         MarkChapters(menus->vg);
         setattr(menus->vg, VTYPE_VTSM);
       }
-    else
+    else if (menus->vg->numallpgcs != 0)
       {
         set_video_format_attr(menus->vg, VTYPE_VTSM); /* for the sake of buildtimeeven */
       } /*if*/
