@@ -13,7 +13,7 @@ mkdir ../$dstdir/ || exit 1
 cp -a ./ ../$dstdir/dvdauthor/
 cd ../$dstdir/dvdauthor
 ./clean
-rm -rf .git
+rm -rf .git .gitignore
 ./bootstrap
 (cd src; flex -s -B -Cem -odvdvml.c -Pdvdvm dvdvml.l)
 (cd src; bison -o dvdvmy.c -d -p dvdvm dvdvmy.y)
