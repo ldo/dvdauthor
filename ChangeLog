@@ -1,4 +1,4 @@
-0.6.18+: ??
+0.7.0: 2010 October 23
 	Reworked subtitle file reading so it can now deal with encodings like UTF-16
 	Default encoding for subtitle files is no longer ISO-8859-1, but taken from
 		user's locale
