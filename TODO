@@ -19,7 +19,7 @@ DVDAUTHOR
 
 SPUMUX
 
-. handle multiple scripts in spumux
+. rework subtitle rendering to use Pango
 
 . deal with 16 color subtitles
 
