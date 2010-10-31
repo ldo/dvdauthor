@@ -30,7 +30,8 @@ spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) \
     $(FRIBIDI_LIBS) $(FONTCONFIG_LIBS) $(LIBICONV)
 
 spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h common.h conffile.h conffile.c
-spuunmux_LDADD = $(LIBICONV) -lpng -lz -lm
+spuunmux_CFLAGS = @LIBPNG_CFLAGS@ $(AM_CFLAGS)
+spuunmux_LDADD = $(LIBICONV) @LIBPNG_LIBS@
 
 mpeg2desc_SOURCES = mpeg2desc.c compat.c
 mpeg2desc_LDADD = $(LIBICONV)

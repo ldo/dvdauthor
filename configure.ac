@@ -29,6 +29,10 @@ AC_CHECK_FUNCS( \
     setmode \
 )
 
+PKG_CHECK_MODULES(LIBPNG, [libpng])
+AC_SUBST(LIBPNG_CFLAGS)
+AC_SUBST(LIBPNG_LIBS)
+
 usemagick=0
 
 AC_CHECK_PROGS(MAGICKCONFIG, [Magick-config])
@@ -67,11 +71,8 @@ if test "$usemagick" != 1; then
 fi
 
 if test "$usemagick" != 1; then
-    AC_CHECK_LIB(z, zlibVersion, test, AC_MSG_ERROR([You must have libz(-devel) installed]))
-
-    AC_CHECK_LIB(png, png_sig_cmp, test, AC_MSG_ERROR([You must have libpng(-devel) installed]), -lz -lm)
-    MAGICK_CPPFLAGS=
-    MAGICK_LIBS="-lpng -lz -lm"
+    MAGICK_CPPFLAGS="$LIBPNG_CFLAGS"
+    MAGICK_LIBS="$LIBPNG_LIBS"
 fi
 
 AC_SUBST(MAGICK_CPPFLAGS)
