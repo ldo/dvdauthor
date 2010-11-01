@@ -1708,7 +1708,7 @@ subtitle_elt *sub_read_line_jacosub(subtitle_elt * current)
                     if (!sub_fgets(directive, LINE_LEN))
                         return NULL;
                     trail_space(directive);
-                    strncat(line2, directive, LINE_LEN);
+                    strncat(line2, directive, sizeof(line2)-strlen(line2)-1);
                     break;
                   } /*if*/
           /* fallthrough */
