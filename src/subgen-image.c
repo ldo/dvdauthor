@@ -543,11 +543,13 @@ ui_found:
                   (
                         tri == -1
                     ||
+                        (
                             s->img.pal[(tri >> 16) & 0xFF].a == 0
                         &&
                             s->hlt.pal[(tri >> 8) & 0xFF].a == 0
                         &&
                             s->sel.pal[tri & 0xFF].a == 0
+                        )
                   )
                   {
                     spare = k;

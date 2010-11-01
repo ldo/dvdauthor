@@ -2139,9 +2139,11 @@ sub_data *sub_read_file(const char *filename, float movie_fps)
       (
             suboverlap_enabled == 2
         ||
+            (
                 suboverlap_enabled
             &&
                 (sub_format == SUB_JACOSUB || sub_format == SUB_SSA)
+            )
       )
       {
       // here we manage overlapping subtitles

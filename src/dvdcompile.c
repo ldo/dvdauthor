@@ -647,9 +647,9 @@ static unsigned char *compilecs
             if
               (
                     (
-                        i2 > 0 && i2 < 128 /* jump to non-entry menu */
+                        (i2 > 0 && i2 < 128) /* jump to non-entry menu */
                     ||
-                        i2 == 0 && i1 == 1 /* jump to VMGM */
+                        (i2 == 0 && i1 == 1) /* jump to VMGM */
                     )
                 &&
                     ismenu == VTYPE_VTS
@@ -759,9 +759,9 @@ static unsigned char *compilecs
               (
                   i1 >= 2 /*jump to titleset*/
               ||
-                  i1 == 1 /*jump to VMGM*/ && i2 >= 128 /*title*/
+                  (i1 == 1 /*jump to VMGM*/ && i2 >= 128) /*title*/
               ||
-                  ismenu == VTYPE_VMGM && i2 >= 128 && cs->i3 /*chapter/program/cell*/
+                  (ismenu == VTYPE_VMGM && i2 >= 128 && cs->i3) /*chapter/program/cell*/
               )
               {
                 //  VMGM    TS  TPGC    CHXX
@@ -1033,7 +1033,7 @@ static unsigned char *compilecs
                     (
                         cs->i1 >= 2 /*titleset*/
                     ||
-                        cs->i1 == 0 /*no VMGM/titleset*/ && ismenu != VTYPE_VMGM
+                        (cs->i1 == 0 /*no VMGM/titleset*/ && ismenu != VTYPE_VMGM)
                     )
               )
               {
@@ -1154,7 +1154,7 @@ static unsigned int negateif(unsigned int ifs)
   /* negates the comparison op part of a value returned from extractif. */
   {
     return
-            ifs & 0x8ffffff /* remove comparison op */
+            (ifs & 0x8ffffff) /* remove comparison op */
         |
             negatecompare((ifs >> 24) & 7) << 24; /* replace with opposite comparison */
   } /*negateif*/
@@ -1413,9 +1413,11 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
                 ||
                     (b[8 + 1] & 0xf) == 7
                 ||
+                    (
                         (b[8 + 1] & 0xf) == 1
                     &&
                         (b[8 + 7] & 0x1f) != 0
+                    )
                 )
             &&
                 countreferences(buf, *end, curline + 1) == 0
@@ -1451,9 +1453,11 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
                 ||
                     (b[8 + 1] & 0x7f) == 7
                 ||
+                    (
                         (b[8 + 1] & 0x7f) == 1
                     &&
                         (b[8 + 7] & 0x1f) != 0
+                    )
                 )
             &&
                 countreferences(buf, *end, curline + 1) == 0

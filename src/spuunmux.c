@@ -1335,7 +1335,7 @@ l_01ba:
                           (
                                 cbuf[next_word] == stream_number + 32 /* DVD-Video stream nr */
                             ||
-                                cbuf[next_word] == 0x70 && cbuf[next_word + 1] == stream_number
+                                (cbuf[next_word] == 0x70 && cbuf[next_word + 1] == stream_number)
                                   /* SVCD stream nr */
                           )
                           {

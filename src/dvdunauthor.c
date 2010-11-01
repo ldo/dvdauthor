@@ -905,7 +905,7 @@ static void findpalette(int vob, const pgcit_t *pgcs, const uint32_t **palette, 
                 |
                     p->playback_time.second << 8
                 |
-                    p->playback_time.frame_u & 0x3f;
+                    (p->playback_time.frame_u & 0x3f);
             if (!(*palette) || ptime > *length)
               {
                 if (*palette && memcmp(*palette, p->palette, 16 * sizeof(uint32_t)))

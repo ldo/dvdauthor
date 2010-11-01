@@ -1140,9 +1140,9 @@ colorspec parse_color
                 paren = true;
                 break;
               }
-            else if (c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c >= 'A' && c <= 'Z')
+            else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z'))
               {
-                if (c > 'f' && c <= 'z' || c > 'F' && c <= 'Z')
+                if ((c > 'f' && c <= 'z') || (c > 'F' && c <= 'Z'))
                   {
                     nonhex = true;
                   } /*if*/

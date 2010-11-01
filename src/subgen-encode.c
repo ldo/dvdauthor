@@ -123,7 +123,7 @@ static void svcd_rotate(stinfo *s)
         for (i = 0; i < s->xd * s->yd; i++)
             s->fimg[i] = s->fimg[i] - j & 3;
         for (i = 0; i < 4; i++)
-            p[i] = s->pal[i + j & 3];
+            p[i] = s->pal[(i + j) & 3];
         memcpy(s->pal, p, 4 * sizeof(colorspec));
       } /*if*/
   } /*svcd_rotate*/

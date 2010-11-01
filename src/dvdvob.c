@@ -365,7 +365,7 @@ static void transpose_ts(unsigned char *buf, pts_t tsoffs)
                     buf[17 + sysoffs] == MPID_PRIVATE1
                       /* audio or subpicture stream */
                 ||
-                    buf[17 + sysoffs] >= MPID_AUDIO_FIRST && buf[17 + sysoffs] <= MPID_VIDEO_LAST
+                    (buf[17 + sysoffs] >= MPID_AUDIO_FIRST && buf[17 + sysoffs] <= MPID_VIDEO_LAST)
                       /* audio or video stream */
                 )
             &&
