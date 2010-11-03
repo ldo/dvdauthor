@@ -11,7 +11,7 @@ manpages:
 	docbook2man root.sgml
 
 $(man1_MANS):
-	make manpages
+	$(MAKE) manpages
 
 .PHONY: html
 
@@ -20,6 +20,6 @@ html:
 	docbook2html -d html.dsl root.sgml
 
 index.html:
-	make html
+	$(MAKE) html
 
 MAINTAINERCLEANFILES = $(man1_MANS)
