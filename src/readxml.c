@@ -257,6 +257,19 @@ has_nonws_body:
             xmlFree((xmlChar *)v);
           }
         break;
+      /* give better messages for some other node types: */
+        case XML_READER_TYPE_ENTITY_REFERENCE:
+            fprintf(stderr, "ERR:  Invalid XML entity reference\n");
+            exit(1);
+        break;
+        case XML_READER_TYPE_PROCESSING_INSTRUCTION:
+            fprintf(stderr, "ERR:  Invalid XML processing instruction\n");
+            exit(1);
+        break;
+        case XML_READER_TYPE_DOCUMENT_TYPE:
+            fprintf(stderr, "ERR:  Invalid XML document type\n");
+            exit(1);
+        break;
         default:
             fprintf(stderr, "ERR:  Unknown XML node type %d\n", xmlTextReaderNodeType(f));
             exit(1);
