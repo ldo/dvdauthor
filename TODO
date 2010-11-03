@@ -4,8 +4,6 @@ DVDAUTHOR
 
 . moving buttons
 
-. make it a library
-
 . improve (and test) audio gap detection
 
 . resurrect buttongroup code
@@ -16,6 +14,9 @@ DVDAUTHOR
 
 . allow jumppad to span multiple pgc's
 
+. multiangle support!
+
+. make it a library?
 
 SPUMUX
 
@@ -23,9 +24,9 @@ SPUMUX
 
 . deal with 16 color subtitles
 
-. librarify spumux
-
 . add way to map color->color for generating select images
+
+. librarify spumux?
 
 
 DOCUMENTATION
