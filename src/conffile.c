@@ -57,9 +57,9 @@ static char * xdg_make_home_relative
         strncpy(result, home, result_len);
         if (result[strlen(result) - 1] != '/')
           {
-            strncat(result, "/", result_len);
+            strconcat(result, result_len, "/");
           } /*if*/
-        strncat(result, path, result_len);
+        strconcat(result, result_len, path);
       }
     while (false);
     return
@@ -213,9 +213,9 @@ static int xdg_for_each_config_found_try_component
         thispath[dirpath_len] = 0;
         if (dirpath_len != 0 && dirpath[dirpath_len - 1] != '/')
           {
-            strncat(thispath, "/", thispath_maxlen);
+            strconcat(thispath, thispath_maxlen, "/");
           } /*if*/
-        strncat(thispath, context->itempath, thispath_maxlen);
+        strconcat(thispath, thispath_maxlen, context->itempath);
         if (stat(thispath, &statinfo) == 0)
           {
             status = context->action(thispath, context->actionarg);

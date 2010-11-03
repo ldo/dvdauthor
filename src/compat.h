@@ -121,6 +121,15 @@ extern const char * default_charset;
 
 #endif /*HAVE_ICONV*/
 
+void strconcat
+  (
+    char * dest,
+    size_t maxdestlen,
+    const char * src
+  );
+  /* appends null-terminated src onto dest, ensuring length of contents
+    of latter (including terminating null) do not exceed maxdestlen. */
+
 unsigned int strtounsigned
   (
     const char * s,

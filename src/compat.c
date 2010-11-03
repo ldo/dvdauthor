@@ -14,6 +14,26 @@
     Useful string stuff
 */
 
+void strconcat
+  (
+    char * dest,
+    size_t maxdestlen,
+    const char * src
+  )
+  /* appends null-terminated src onto dest, ensuring length of contents
+    of latter (including terminating null) do not exceed maxdestlen. */
+  {
+    const size_t destlen = strlen(dest);
+    size_t srclen = strlen(src);
+    assert(destlen < maxdestlen);
+    if (srclen > maxdestlen - 1 - destlen)
+      {
+        srclen = maxdestlen - 1 - destlen;
+      } /*if*/
+    memcpy(dest + destlen, src, srclen);
+    dest[destlen + srclen] = 0;
+  } /*strconcat*/
+
 unsigned int strtounsigned
   (
     const char * s,
