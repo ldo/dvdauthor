@@ -65,7 +65,7 @@ static int genjumppad(unsigned char *buf, vtypes ismenu, int entry, const struct
   {
     unsigned char *cbuf = buf;
     int i, j, k;
-    if (jumppad && ismenu == VTYPE_VTSM && entry == 7)
+    if (jumppad && ismenu == VTYPE_VTSM && entry == 7 /* root menu? */)
       {
         // *** VTSM jumppad
         write8(cbuf,0x61,0x00,0x00,0x0E,0x00,0x0F,0x00,0x00); cbuf+=8; // g[14]=g[15];
@@ -96,7 +96,7 @@ static int genjumppad(unsigned char *buf, vtypes ismenu, int entry, const struct
               } /*for*/
           } /*for*/
       }
-    else if (jumppad && ismenu == VTYPE_VMGM && entry == 2)
+    else if (jumppad && ismenu == VTYPE_VMGM && entry == 2 /* title menu */)
       {
         // *** VMGM jumppad
         // remap all VMGM TITLE X -> TITLESET X TITLE Y

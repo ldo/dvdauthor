@@ -488,7 +488,7 @@ static unsigned char *compilecs
                       /* put new value/regnr into audio/subpicture/angle field as appropriate */
                     buf += 8;
                   }
-                else
+                else /* complex expression */
                   {
                     const int r = nexttarget(0);
                     buf = compileexpr(buf, r, cs->param);
@@ -520,7 +520,7 @@ static unsigned char *compilecs
                           /* SetHL_BTNN direct */
                     buf += 8;
                   }
-                else
+                else /* complex expression */
                   {
                     const int r = nexttarget(0);
                     buf = compileexpr(buf, r, cs->param);
@@ -761,7 +761,7 @@ static unsigned char *compilecs
               ||
                   i1 == 1 /*jump to VMGM*/ && i2 >= 128 /*title*/
               ||
-                  ismenu == VTYPE_VMGM && i2 >= 128 && cs->i3 /*chapter/program/cell*/
+                  ismenu == VTYPE_VMGM && i2 >= 128 /*title*/ && cs->i3 /*chapter/program/cell*/
               )
               {
                 //  VMGM    TS  TPGC    CHXX
@@ -781,12 +781,22 @@ static unsigned char *compilecs
                   {
                     if (!i1)
                         i1 = 1; /* make VMGM explicit */
-                    write8(buf, 0x71, 0x00, 0x00, 0x0F, i2, i1, 0x00, 0x00); buf += 8;
-                    write8(buf, 0x71, 0x00, 0x00, 0x0E, 0x00, cs->i3, 0x00, 0x00); buf += 8;
-                    write8(buf, 0x30, ismenu != VTYPE_VTS ? 0x06 : 0x08, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00); buf += 8;
+                    write8(buf, 0x71, 0x00, 0x00, 0x0F, i2, i1, 0x00, 0x00);
+                      /* g15 = i2 << 8 | i1 */
+                    buf += 8;
+                    write8(buf, 0x71, 0x00, 0x00, 0x0E, 0x00, cs->i3, 0x00, 0x00);
+                      /* g14 = cs->i3 */
+                    buf += 8;
+                    write8(buf, 0x30, ismenu != VTYPE_VTS ? 0x06 : 0x08, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00);
+                      /* JumpSS/CallSS VMGM menu entry title */
+                    buf += 8;
                   }
                 else
                   {
+                  /* JumpTT allows directly jumping from VMGM to any titleset, but that
+                    requires global title numbers, not titleset-local title numbers,
+                    and I only work these out later when putting together the final VMGM,
+                    which is why I can't handle it here without the jumppad */
                     fprintf(stderr, "ERR:  That form of jumping is not allowed\n");
                     return 0;
                   } /*if*/
@@ -927,7 +937,23 @@ static unsigned char *compilecs
                         return 0;
                       } /*if*/
                   } /*if*/
-                write8(buf, 0x30, ismenu == VTYPE_VMGM ? 0x02 : (cs->i3 ? 0x05 : 0x03), 0x00, cs->i3, 0x00, i2 - 128, 0x00, 0x00);
+                write8
+                  (
+                    buf,
+                    0x30,
+                    ismenu == VTYPE_VMGM ?
+                        0x02 /*JumpTT*/
+                    : cs->i3 ?
+                        0x05 /*JumpVTS_PTT*/
+                    :
+                        0x03 /*JumpVTS_TT*/,
+                    0x00,
+                    cs->i3, /* chapter if present */
+                    0x00,
+                    i2 - 128, /* title nr */
+                    0x00,
+                    0x00
+                  );
                 buf += 8;
               } /*if*/
           }
