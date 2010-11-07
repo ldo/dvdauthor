@@ -46,6 +46,10 @@ static char * xdg_make_home_relative
       {
         if (home == 0 || home[0] != '/')
           {
+          /* abort now because caller doesn't check for errors */
+            fprintf(stderr, "ERR:  I have no $HOME\n");
+            exit(1);
+          /* following more appropriate in a library routine */
             errno = ENOENT;
             break;
           } /*if*/
