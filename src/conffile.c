@@ -46,10 +46,6 @@ static char * xdg_make_home_relative
       {
         if (home == 0 || home[0] != '/')
           {
-          /* abort now because caller doesn't check for errors */
-            fprintf(stderr, "ERR:  I have no $HOME\n");
-            exit(1);
-          /* following more appropriate in a library routine */
             errno = ENOENT;
             break;
           } /*if*/
@@ -80,6 +76,11 @@ static char * xdg_get_config_home(void)
     if (result == 0)
       {
         to_dispose = xdg_make_home_relative(".config");
+        if (to_dispose == 0)
+          {
+            return
+                result;
+          }
         result = to_dispose;
       } /*if*/
     if (result != 0 && to_dispose == 0)
@@ -252,7 +253,7 @@ static int xdg_for_each_config_found
     context.actionarg = actionarg;
     do /*once*/
       {
-        if (forwards)
+        if (home_path != 0 && forwards)
           {
             status = xdg_for_each_config_found_try_component
               (
@@ -273,7 +274,7 @@ static int xdg_for_each_config_found
           );
         if (status != 0)
             break;
-        if (!forwards)
+        if (home_path != 0 && !forwards)
           {
             status = xdg_for_each_config_found_try_component
               (
@@ -286,7 +287,8 @@ static int xdg_for_each_config_found
           } /*if*/
       }
     while (false);
-    free((void *)home_path);
+    if (home_path != 0)
+        free((void *)home_path);
     free((void *)search_path);
     return
         status;
