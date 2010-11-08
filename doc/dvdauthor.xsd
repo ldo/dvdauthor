@@ -12,6 +12,8 @@
     </xsd:documentation>
   </xsd:annotation>
 
+  <xsd:include schemaLocation="common.xsd"/>
+
   <xsd:element name="dvdauthor" type="DvdauthorType"/>
 
   <xsd:complexType name="DvdauthorType">
@@ -20,7 +22,8 @@
       <xsd:element name="titleset" type="TitlesetType" minOccurs="0" maxOccurs="unbounded"/>
     </xsd:sequence>
     <xsd:attribute name="dest" type="xsd:string"/>
-    <xsd:attribute name="jumppad" type="xsd:string"/>
+    <xsd:attribute name="jumppad" type="isOnType"/>
+    <xsd:attribute name="allgprm" type="isOnType"/>
   </xsd:complexType>
 
   <xsd:complexType name="VmgmType">
@@ -143,6 +146,7 @@
       <xsd:enumeration value="audio"/>
       <xsd:enumeration value="angle"/>
       <xsd:enumeration value="ptt"/>
+      <xsd:enumeration value="notitle"/>
     </xsd:restriction>
   </xsd:simpleType>
   
@@ -164,8 +168,7 @@
     </xsd:annotation>
     <xsd:union>
       <xsd:simpleType>
-        <xsd:restriction base="xsd:integer">
-          <xsd:minInclusive value="1"/>
+        <xsd:restriction base="xsd:unsignedByte">
           <xsd:maxInclusive value="254"/>
         </xsd:restriction>
       </xsd:simpleType>
@@ -178,7 +181,7 @@
   </xsd:simpleType>
 
   <xsd:complexType name="ButtonType">
-	<xsd:simpleContent>
+    <xsd:simpleContent>
       <xsd:extension base="xsd:string">
         <xsd:attribute name="name" type="xsd:string"/>
       </xsd:extension>
@@ -190,9 +193,24 @@
   </xsd:complexType>
 
   <xsd:complexType name="VobType">
+    <xsd:sequence>
+      <xsd:element name="cell" type="CellType" minOccurs="0"/>
+    </xsd:sequence>
     <xsd:attribute name="file" type="xsd:string"/>
     <xsd:attribute name="chapters" type="xsd:string"/>
     <xsd:attribute name="pause" type="PauseType"/>
+  </xsd:complexType>
+
+  <xsd:complexType name="CellType">
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="start" type="xsd:string"/>
+        <xsd:attribute name="end" type="xsd:string"/>
+        <xsd:attribute name="chapter" type="isOnType"/>
+        <xsd:attribute name="program" type="isOnType"/>
+        <xsd:attribute name="pause" type="PauseType"/>
+      </xsd:extension>
+    </xsd:simpleContent>
   </xsd:complexType>
   
 </xsd:schema>

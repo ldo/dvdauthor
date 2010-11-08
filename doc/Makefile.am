@@ -1,5 +1,5 @@
 man1_MANS = dvdauthor.1 dvddirdel.1 dvdunauthor.1 mpeg2desc.1 spumux.1 spuunmux.1
-dist_pkgdata_DATA = dvdauthor.xsd spumux.xsd
+dist_pkgdata_DATA = common.xsd dvdauthor.xsd spumux.xsd
 
 
 EXTRA_DIST = $(man1_MANS)

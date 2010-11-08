@@ -1,5 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-
 
   <xsd:annotation>
     <xsd:documentation xml:lang="en">
@@ -12,12 +12,22 @@
     </xsd:documentation>
   </xsd:annotation>
 
+  <xsd:include schemaLocation="common.xsd"/>
+
   <xsd:element name="subpictures" type="SubpicturesType"/>
 
   <xsd:complexType name="SubpicturesType">
     <xsd:sequence>
       <xsd:element name="stream" type="StreamType"/>
     </xsd:sequence>
+    <xsd:attribute name="format">
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:token">
+          <xsd:enumeration value="NTSC"/>
+          <xsd:enumeration value="PAL"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:attribute>
   </xsd:complexType>
 
   <xsd:complexType name="StreamType">
@@ -42,7 +52,7 @@
     <xsd:attribute name="highlight" type="xsd:string"/>
     <xsd:attribute name="select" type="xsd:string"/>
     <xsd:attribute name="transparent" type="xsd:string"/>
-    <xsd:attribute name="force" type="xsd:string"/>
+    <xsd:attribute name="force" type="isOnType"/>
     <xsd:attribute name="autooutline" type="xsd:string"/>
     <xsd:attribute name="outlinewidth" type="xsd:string"/>
     <!-- [ autoorder="rows" | autoorder="columns" ] -->
@@ -80,8 +90,19 @@
     <xsd:attribute name="filename" type="xsd:string"/>
     <xsd:attribute name="characterset" type="xsd:string"/>
     <xsd:attribute name="fontsize" type="xsd:string"/>
-    <xsd:attribute name="force" type="xsd:string"/>
+    <xsd:attribute name="force" type="isOnType"/>
     <xsd:attribute name="font" type="xsd:string"/>
+    <xsd:attribute name="fill-color" type="xsd:string"/>
+    <xsd:attribute name="outline-color" type="xsd:string"/>
+    <xsd:attribute name="outline-thickness" type="xsd:float"/>
+    <xsd:attribute name="shadow-color" type="xsd:string"/>
+    <xsd:attribute name="shadow-offset">
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:token">
+          <xsd:pattern value="[+-][0-9]+, [+-][0-9]+"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:attribute>
     <xsd:attribute name="horizontal-alignment" type="xsd:string"/>
     <xsd:attribute name="vertical-alignment" type="xsd:string"/>
     <xsd:attribute name="left-margin" type="xsd:string"/>
@@ -92,6 +113,14 @@
     <xsd:attribute name="movie-fps" type="xsd:string"/>
     <xsd:attribute name="movie-width" type="xsd:string"/>
     <xsd:attribute name="movie-height" type="xsd:string"/>
+    <xsd:attribute name="aspect">
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:token">
+          <xsd:enumeration value="16:9"/>
+          <xsd:enumeration value="4:3"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:attribute>
   </xsd:complexType>
 
 </xsd:schema>
