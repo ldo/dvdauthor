@@ -1080,6 +1080,7 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
     const cell_adr_t *cells;
     int numcells,i,j,totalsect,numsect;
     clock_t start,now,clkpsec;
+    struct tms unused_tms;
 
     cptr = titlef ? ifo->vts_c_adt : ifo->menu_c_adt;
     if (cptr)
@@ -1106,7 +1107,7 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
     for (i = 0; i < numcells; i++)
         totalsect += cells[i].last_sector - cells[i].start_sector + 1;
     clkpsec = sysconf(_SC_CLK_TCK);
-    start = times(NULL);
+    start = times(&unused_tms);
     
     for (i = 0; i < numcells; i++)
       {
@@ -1158,7 +1159,7 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
             int rl = cells[i].last_sector + 1 - b;
             if (rl > BIGBLOCKSECT)
                 rl = BIGBLOCKSECT;
-            now = times(NULL);
+            now = times(&unused_tms);
             if (now-start > 3 * clkpsec && numsect > 0)
               {
                 const int rmn = (totalsect - numsect) * (now - start) / (numsect * clkpsec);
