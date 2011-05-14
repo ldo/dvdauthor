@@ -27,7 +27,7 @@ spumux_SOURCES = subgen.c subgen.h rgb.h \
     conffile.c conffile.h compat.c compat.h common.h \
     subrender.c subrender.h subreader.c subreader.h subfont.c subfont.h
 spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) \
-    $(FRIBIDI_LIBS) $(FONTCONFIG_LIBS) $(LIBICONV)
+    $(FRIBIDI_LIBS) $(FONTCONFIG_LIBS) $(LIBICONV) -lm
 
 spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h common.h conffile.h conffile.c
 spuunmux_CFLAGS = @LIBPNG_CFLAGS@ $(AM_CFLAGS)
