@@ -802,6 +802,26 @@ static void dvdauthor_allgprm(const char *s)
         dvdauthor_enable_allgprm();
 }
 
+static dvdauthor_video_format
+  (
+    const char * s
+  )
+  {
+    if (!strcmp(s, "ntsc") || !strcmp(s, "NTSC"))
+      {
+        default_video_format = VF_NTSC;
+      }
+    else if (!strcmp(s, "pal") || !strcmp(s, "PAL"))
+      {
+        default_video_format = VF_PAL;
+      }
+    else
+      {
+        fprintf(stderr, "ERR:  Unrecognized video format \"%s\"\n", s);
+        parser_err = true;
+      } /*if*/
+  } /*dvdauthor_video_format*/
+
 static void getfbase()
   {
     if (!writeoutput)
@@ -1340,6 +1360,7 @@ static struct elemattr attrs[]={
     {"dvdauthor","dest",dvdauthor_outputdir},
     {"dvdauthor","jumppad",dvdauthor_jumppad},
     {"dvdauthor","allgprm",dvdauthor_allgprm},
+    {"dvdauthor","format",dvdauthor_video_format},
 
     {"menus","lang",menus_lang},
 

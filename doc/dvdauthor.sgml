@@ -193,7 +193,7 @@ LANGUAGE DESCRIPTION for the format of <replaceable>commandlist.</replaceable></
 Here is the basic structure of the control file:
 </para>
 <synopsis>
-&lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"]&gt;
+&lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"] [format="ntsc|pal"]&gt;
    &lt;vmgm&gt;
       [&lt;fpc&gt;<replaceable>commands;</replaceable>&lt;/fpc&gt;]
       &lt;menus [lang="<replaceable>language-code</replaceable>"]&gt;
