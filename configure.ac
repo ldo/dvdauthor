@@ -13,7 +13,6 @@ AC_HEADER_STDBOOL
 
 have_dvdread=false
 AC_CHECK_LIB(dvdread, DVDOpenFile, have_dvdread=true)
-AM_CONDITIONAL(HAVE_DVDREAD, $have_dvdread)
 
 AC_CHECK_LIB(gnugetopt, getopt_long)
 
@@ -119,6 +118,18 @@ AS_HELP_STRING([--enable-localize-filenames], [specifies that filenames are to b
 [
 AC_DEFINE(LOCALIZE_FILENAMES, 1, [Whether to localize filenames])
 ])
+
+AC_ARG_ENABLE([dvdunauthor],
+AS_HELP_STRING([--disable-dvdunauthor], [don't build dvdunauthor (which requires libdvdread). If not specified and libdvdread cannot be found, an error occurs])
+)
+AS_IF([test "x$enable_dvdunauthor" != xno],
+[AS_IF([test "x$have_dvdread" = xfalse],
+[AC_MSG_ERROR([missing libdvdread])]
+)
+],
+[have_dvdread=false]
+)
+AM_CONDITIONAL(HAVE_DVDREAD, $have_dvdread)
 
 dnl AM_LANGINFO_CODESET
 
