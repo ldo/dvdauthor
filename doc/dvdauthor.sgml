@@ -97,6 +97,16 @@ systems by avoiding extra filesystem accesses.</para>
 <listitem><para>The destination directory to store the DVD-Video file structure in.
 If -O is specified, then any existing directory is deleted.</para></listitem></varlistentry>
 
+<varlistentry><term><literal>-x <replaceable>xml-control-file</replaceable></literal></term>
+<listitem><para>Specifies the control file describing the output structure to create.</para></listitem></varlistentry>
+
+</variablelist>
+
+<para>Note that the remaining command-line options are <emphasis>deprecated</emphasis>. Use the
+XML control file instead.</para>
+
+<variablelist>
+
 <varlistentry><term><literal>-j</literal></term><term><literal>--jumppad</literal></term>
 <listitem><para>Enables the creation of jumppads, which allow greater flexibility in choosing jump/call desinations.</para></listitem></varlistentry>
 
@@ -438,7 +448,7 @@ The language is quite simple and roughly looks like C.
 
 <para>The DVD virtual machine processes 16 bit values.  It supports up
 to 16 general purpose registers; however <command>dvdauthor</command>
-reserves 3 for internal use.  Thus register 0-12 are avaialable for
+reserves 3 for internal use.  Thus register 0-12 are available for
 use and are referred to as <literal>g0</literal> through
 <literal>g12</literal>.</para>
 
@@ -543,10 +553,10 @@ example:</para>
 
 <itemizedlist>
 
-<listitem><synopsis>g3=s7;</synopsis></listitem>
+<listitem><synopsis>g3 = s7;</synopsis></listitem>
 <listitem><synopsis>{
-  audio=1;
-  subtitle=65;
+  audio = 1;
+  subtitle = 65;
   jump vmgm menu 3;
 }</synopsis></listitem>
 
@@ -561,7 +571,7 @@ example:</para>
 <variablelist>
 
 <varlistentry>
-<term><literal><replaceable>VARIABLE</replaceable>=<replaceable>EXPRESSION</replaceable>;</literal></term>
+<term><literal><replaceable>VARIABLE</replaceable> = <replaceable>EXPRESSION</replaceable>;</literal></term>
 <listitem><para>Sets a variable equal to the result of an equation.</para></listitem></varlistentry>
 
 <varlistentry>
