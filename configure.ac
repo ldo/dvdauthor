@@ -96,10 +96,12 @@ if test -n "$FREETYPECONFIG"; then
     CPPFLAGS="$CPPFLAGS $FREETYPE_CPPFLAGS"
     AC_CHECK_HEADERS(ft2build.h)
     CPPFLAGS="$ac_save_CPPFLAGS"
+    AC_SUBST(FREETYPE_CPPFLAGS)
+    AC_SUBST(FREETYPE_LIBS)
+else
+    AC_MSG_ERROR([freetype not found])
 fi
 
-AC_SUBST(FREETYPE_CPPFLAGS)
-AC_SUBST(FREETYPE_LIBS)
 
 AC_ARG_ENABLE([default-video-format],
 AS_HELP_STRING([--enable-default-video-format=format], [specify a default video format, either NTSC or PAL, to be used if no configuration or input setting is given]),
