@@ -32,7 +32,12 @@
 <refsect1>
 	<title>DESCRIPTION</title>
 	<para>
-	<command>dvddirdel</command> deletes a previously authored DVD directory structure in DIR
+	<command>dvddirdel</command> safely deletes a previously authored DVD directory structure
+	in DIR. Only items that look like part of a DVD-Video directory structure are removed.
+	</para>
+	<para>
+	If you just want to replace an existing output directory with a new one, dvdauthor(1)
+	can do that directly with its -O option.
 	</para>
 </refsect1>
 <refsect1>

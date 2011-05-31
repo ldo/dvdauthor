@@ -95,7 +95,8 @@ systems by avoiding extra filesystem accesses.</para>
 <varlistentry><term><literal>-o <replaceable>output-dir</replaceable></literal></term>
 <term><literal>-O <replaceable>output-dir</replaceable></literal></term>
 <listitem><para>The destination directory to store the DVD-Video file structure in.
-If -O is specified, then any existing directory is deleted.</para></listitem></varlistentry>
+If -O is specified, then any existing directory is (safely) deleted (only items that
+look like part of a DVD-Video structure are removed).</para></listitem></varlistentry>
 
 <varlistentry><term><literal>-x <replaceable>xml-control-file</replaceable></literal></term>
 <listitem><para>Specifies the control file describing the output structure to create.</para></listitem></varlistentry>
