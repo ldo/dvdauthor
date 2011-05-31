@@ -539,10 +539,9 @@ static void muxnext(bool eoinput)
                 if (debug > -1)
                   {
                     fprintf(stderr,\
-                            "ERR:  Sub with too short or negative duration on line %d, skipping\n",\
+                            "WARN:  Sub with too short or negative duration on line %d, skipping\n",\
                             spuindex - 1);
                   } /*if*/
-                exit(1);
                 nr_subtitles_skipped++;
                 continue;
               } /*if*/

@@ -20,7 +20,7 @@
   <refnamediv>
     <refname>dvdunauthor</refname>
 	<refpurpose>
-	Removes DVD-Video file structure
+	Decodes DVD-Video file structure
 	</refpurpose>
 </refnamediv>
 <refsynopsisdiv>
