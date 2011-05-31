@@ -159,7 +159,7 @@ static int jumppgc(unsigned char *buf,int pgc,vtypes ismenu,int entry,const stru
 static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgroup *group,int pgc,vtypes ismenu,int entry)
 /* generates a PGC entry for an IFO file in buf. */
   {
-    const struct vobgroup *va = (ismenu != VTYPE_VTS ? ws->menus->vg : ws->titles->vg);
+    const struct vobgroup *va = (ismenu != VTYPE_VTS ? ws->menus->mg_vg : ws->titles->pg_vg);
     const struct pgc * const thispgc = group->pgcs[pgc];
     int i, j, d;
 

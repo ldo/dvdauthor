@@ -204,7 +204,7 @@ static int get_pgc_duration_seconds(const struct pgcgroup *va, int c)
     // an exact multiple of 90090*units; if so, then the last entry of the
     // TMAPT table cannot be properly computed, because that entry will have
     // fallen off the end of the VOBU table
-    return pts_ticks_to_seconds(va->vg, getptsspan(va->pgcs[c]) - 1);
+    return pts_ticks_to_seconds(va->pg_vg, getptsspan(va->pgcs[c]) - 1);
   } /*get_pgc_duration_seconds*/
 
 static int secunit(int ns)
@@ -281,15 +281,15 @@ static void CreateTMAPT(FILE *h, const struct pgcgroup *va)
           /* write VTS_TMAP entries */
             const struct vobuinfo *vobu1;
             // I don't know why I ever did this
-            // ptsbase = -getframepts(va->vg);
+            // ptsbase = -getframepts(va->pg_vg);
             ptsbase = 0; // this matches Bullitt
-            vobu1 = globalfindvobu(thispgc, ptsbase + pts_seconds_to_ticks(va->vg, units));
+            vobu1 = globalfindvobu(thispgc, ptsbase + pts_seconds_to_ticks(va->pg_vg, units));
             for (j = 0; j < numtmapt; j++)
               {
                 const struct vobuinfo * const vobu2 = globalfindvobu
                   (
                     thispgc,
-                    ptsbase + pts_seconds_to_ticks(va->vg, (j + 2) * units)
+                    ptsbase + pts_seconds_to_ticks(va->pg_vg, (j + 2) * units)
                   );
                 write4(buf, vobu1->sector);
                 if (!vobu2 || vobu1->vobcellid != vobu2->vobcellid)
@@ -552,7 +552,7 @@ static bool needmenus(const struct menugroup *mg)
 {
     if (!mg ) return false;
     if( !mg->numgroups ) return false;
-    if( !mg->groups[0].pg->numpgcs ) return false;
+    if( !mg->groups[0].pg->numpgcs ) return false; /* fixme: what about checking rest of groups? */
     return true;
 }
 
@@ -588,33 +588,33 @@ static void WriteIFO(FILE *h, const struct workset *ws)
     if (jumppad || forcemenus)
       {
         write4(buf + 0xD8, nextsector); // VTSM_C_ADT
-        nextsector += CreateCellAddressTable(0, ws->menus->vg);
+        nextsector += CreateCellAddressTable(0, ws->menus->mg_vg);
 
         write4(buf + 0xDC, nextsector); // VTSM_VOBU_ADMAP
-        nextsector += numsectVOBUAD(ws->menus->vg);
+        nextsector += numsectVOBUAD(ws->menus->mg_vg);
       } /*if*/
 
     write4(buf + 0xE0, nextsector); // VTS_C_ADT
-    nextsector += CreateCellAddressTable(0, ws->titles->vg);
+    nextsector += CreateCellAddressTable(0, ws->titles->pg_vg);
 
     write4(buf + 0xE4, nextsector); // VTS_VOBU_ADMAP
-    nextsector += numsectVOBUAD(ws->titles->vg);
+    nextsector += numsectVOBUAD(ws->titles->pg_vg);
 
     write4(buf + 28, nextsector - 1); /* last sector of IFO */
     if (jumppad || forcemenus)
       {
         write4(buf + 0xC0, nextsector); /* start sector of menu VOB */
-        nextsector += getvoblen(ws->menus->vg);
+        nextsector += getvoblen(ws->menus->mg_vg);
       } /*if*/
     write4(buf + 0xC4, nextsector); /* start sector of title VOB */
     if (ws->titles->numpgcs)
-        nextsector += getvoblen(ws->titles->vg);
+        nextsector += getvoblen(ws->titles->pg_vg);
     nextsector += read4(buf + 28); /* offset by last sector of IFO */
     write4(buf + 12, nextsector); /* gives last sector of title set (last sector of BUP) */
 
     if (jumppad || forcemenus)
-        BuildAVInfo(buf + 256, ws->menus->vg);
-    BuildAVInfo(buf + 512, ws->titles->vg);
+        BuildAVInfo(buf + 256, ws->menus->mg_vg);
+    BuildAVInfo(buf + 512, ws->titles->pg_vg);
     nfwrite(buf, 2048, h);
 
     // sect 1: VTS_PTT_SRPT
@@ -631,11 +631,11 @@ static void WriteIFO(FILE *h, const struct workset *ws)
 
     if (jumppad || forcemenus)
       {
-        CreateCellAddressTable(h, ws->menus->vg);
-        CreateVOBUAD(h, ws->menus->vg);
+        CreateCellAddressTable(h, ws->menus->mg_vg);
+        CreateVOBUAD(h, ws->menus->mg_vg);
       } /*if*/
-    CreateCellAddressTable(h, ws->titles->vg);
-    CreateVOBUAD(h, ws->titles->vg);
+    CreateCellAddressTable(h, ws->titles->pg_vg);
+    CreateVOBUAD(h, ws->titles->pg_vg);
   } /*WriteIFO*/
 
 void WriteIFOs(const char *fbase, const struct workset *ws)
@@ -732,11 +732,11 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
         write4(buf + 0xd8, nextsector);
           /* sector pointer to VMGM_C_ADT (menu cell address table) */
           /* I make it follow VMG_VTS_ATRT */
-        nextsector += CreateCellAddressTable(0, ws->menus->vg); /* how much room it will need */
+        nextsector += CreateCellAddressTable(0, ws->menus->mg_vg); /* how much room it will need */
 
         write4(buf + 0xdc, nextsector);
           /* sector pointer to VMGM_VOBU_ADMAP (menu VOBU address map) */
-        nextsector += numsectVOBUAD(ws->menus->vg);
+        nextsector += numsectVOBUAD(ws->menus->mg_vg);
       } /*if*/
 
     write4(buf + 0x1c, nextsector - 1); /* last sector of IFO */
@@ -744,15 +744,15 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
     if (jumppad || forcemenus)
       {
         write4(buf + 0xc0, nextsector); /* start sector of menu VOB */
-        vtsstart += getvoblen(ws->menus->vg);
+        vtsstart += getvoblen(ws->menus->mg_vg);
       } /*if*/
     write4(buf + 0xc, vtsstart - 1); /* last sector of VMG set (last sector of BUP) */
 
     if (forcemenus)
-        BuildAVInfo(buf + 256, ws->menus->vg);
+        BuildAVInfo(buf + 256, ws->menus->mg_vg);
 
   /* create FPC at 0x400 as promised */
-    buf[0x407] = (getratedenom(ws->menus->vg) == 90090 ? 3 : 1) << 6;
+    buf[0x407] = (getratedenom(ws->menus->mg_vg) == 90090 ? 3 : 1) << 6;
       // only set frame rate XXX: should check titlesets if there is no VMGM menu
     buf[0x4e5] = 0xec; /* offset to command table, low byte */
     offset = 0x4f4; /* commands start here, after 8-byte header of command table */
@@ -854,8 +854,8 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
 
     if (jumppad || forcemenus)
       {
-        CreateCellAddressTable(h, ws->menus->vg); /* actually generate VMGM_C_ADT */
-        CreateVOBUAD(h, ws->menus->vg); /* generate VMGM_VOBU_ADMAP */
+        CreateCellAddressTable(h, ws->menus->mg_vg); /* actually generate VMGM_C_ADT */
+        CreateVOBUAD(h, ws->menus->mg_vg); /* generate VMGM_VOBU_ADMAP */
       } /*if*/
     fflush(h);
     if (errno != 0)

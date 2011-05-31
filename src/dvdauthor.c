@@ -1722,7 +1722,7 @@ struct pgcgroup *pgcgroup_new(vtypes type)
     memset(ps,0,sizeof(struct pgcgroup));
     ps->pstype=type;
     if (type == VTYPE_VTS)
-        ps->vg=vobgroup_new();
+        ps->pg_vg = vobgroup_new();
     return ps;
   }
 
@@ -1737,7 +1737,7 @@ void pgcgroup_free(struct pgcgroup *pg)
                 pgc_free(pg->pgcs[i]);
             free(pg->pgcs);
           } /*if*/
-        vobgroup_free(pg->vg);
+        vobgroup_free(pg->pg_vg);
         free(pg);
       } /*if*/
   } /*pgcgroup_free*/
@@ -1753,29 +1753,29 @@ void pgcgroup_add_pgc(struct pgcgroup *ps,struct pgc *p)
 
 int pgcgroup_set_video_attr(struct pgcgroup *va,int attr,const char *s)
 {
-    return vobgroup_set_video_attr(va->vg,attr,s);
+    return vobgroup_set_video_attr(va->pg_vg,attr,s);
 }
 
 int pgcgroup_set_audio_attr(struct pgcgroup *va,int attr,const char *s,int ch)
 {
-    return vobgroup_set_audio_attr(va->vg,attr,s,ch);
+    return vobgroup_set_audio_attr(va->pg_vg,attr,s,ch);
 }
 
 int pgcgroup_set_subpic_attr(struct pgcgroup *va,int attr,const char *s,int ch)
 {
-    return vobgroup_set_subpic_attr(va->vg,attr,s,ch);
+    return vobgroup_set_subpic_attr(va->pg_vg,attr,s,ch);
 }
 
 int pgcgroup_set_subpic_stream(struct pgcgroup *va,int ch,const char *m,int id)
 {
-    return vobgroup_set_subpic_stream(va->vg,ch,m,id);
+    return vobgroup_set_subpic_stream(va->pg_vg,ch,m,id);
 }
 
 struct menugroup *menugroup_new()
 {
     struct menugroup *mg=malloc(sizeof(struct menugroup));
     memset(mg,0,sizeof(struct menugroup));
-    mg->vg=vobgroup_new();
+    mg->mg_vg = vobgroup_new();
     return mg;
 }
 
@@ -1790,7 +1790,7 @@ void menugroup_free(struct menugroup *mg)
                 pgcgroup_free(mg->groups[i].pg);
             free(mg->groups);
           } /*if*/
-        vobgroup_free(mg->vg);
+        vobgroup_free(mg->mg_vg);
         free(mg);
       } /*if*/
   } /*menugroup_free*/
@@ -1813,22 +1813,22 @@ void menugroup_add_pgcgroup(struct menugroup *mg, const char *lang, struct pgcgr
 
 int menugroup_set_video_attr(struct menugroup *va,int attr,const char *s)
 {
-    return vobgroup_set_video_attr(va->vg,attr,s);
+    return vobgroup_set_video_attr(va->mg_vg,attr,s);
 }
 
 int menugroup_set_audio_attr(struct menugroup *va,int attr,const char *s,int ch)
 {
-    return vobgroup_set_audio_attr(va->vg,attr,s,ch);
+    return vobgroup_set_audio_attr(va->mg_vg,attr,s,ch);
 }
 
 int menugroup_set_subpic_attr(struct menugroup *va,int attr,const char *s,int ch)
 {
-    return vobgroup_set_subpic_attr(va->vg,attr,s,ch);
+    return vobgroup_set_subpic_attr(va->mg_vg,attr,s,ch);
 }
 
 int menugroup_set_subpic_stream(struct menugroup *va,int ch,const char *m,int id)
 {
-    return vobgroup_set_subpic_stream(va->vg,ch,m,id);
+    return vobgroup_set_subpic_stream(va->mg_vg,ch,m,id);
 }
 
 void dvdauthor_enable_jumppad()
@@ -1870,7 +1870,7 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
     for (i = 0; i < menus->numgroups; i++)
       {
         validatesummary(menus->groups[i].pg);
-        pgcgroup_createvobs(menus->groups[i].pg, menus->vg);
+        pgcgroup_createvobs(menus->groups[i].pg, menus->mg_vg);
         forceaddentry(menus->groups[i].pg, 4); /* entry=title */
       } /*for*/
     fprintf(stderr, "INFO: dvdauthor creating table of contents\n");
@@ -1930,21 +1930,21 @@ void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fb
         fprintf(stderr, "ERR:  No .IFO files to process\n");
         exit(1);
       } /*if*/
-    if (menus->vg->numvobs != 0)
+    if (menus->mg_vg->numvobs != 0)
       {
         fprintf(stderr, "INFO: Creating menu for TOC\n");
         snprintf(fbuf, sizeof fbuf, "%s/VIDEO_TS.VOB", vtsdir);
-        FindVobus(fbuf, menus->vg, VTYPE_VMGM);
-        MarkChapters(menus->vg);
-        setattr(menus->vg, VTYPE_VMGM);
+        FindVobus(fbuf, menus->mg_vg, VTYPE_VMGM);
+        MarkChapters(menus->mg_vg);
+        setattr(menus->mg_vg, VTYPE_VMGM);
         fprintf(stderr, "\n");
-        FixVobus(fbuf, menus->vg, &ws, VTYPE_VMGM);
+        FixVobus(fbuf, menus->mg_vg, &ws, VTYPE_VMGM);
       }
     else
       /* unconditional because there will always be at least one PGC,
         namely the FPC (explicit or default) */
       {
-        set_video_format_attr(menus->vg, VTYPE_VMGM); /* for the sake of buildtimeeven */
+        set_video_format_attr(menus->mg_vg, VTYPE_VMGM); /* for the sake of buildtimeeven */
       } /*if*/
   /* (re)generate VMG IFO */
     snprintf(fbuf, sizeof fbuf, "%s/VIDEO_TS.IFO", vtsdir);
@@ -1973,12 +1973,12 @@ void dvdauthor_vts_gen(struct menugroup *menus, struct pgcgroup *titles, const c
     for (i = 0; i < menus->numgroups; i++)
       {
         validatesummary(menus->groups[i].pg);
-        pgcgroup_createvobs(menus->groups[i].pg, menus->vg);
+        pgcgroup_createvobs(menus->groups[i].pg, menus->mg_vg);
         forceaddentry(menus->groups[i].pg, 0x80); /* entry=ptt? */
         checkaddentry(menus->groups[i].pg, 0x08); /* entry=root */
       } /*for*/
     validatesummary(titles);
-    pgcgroup_createvobs(titles, titles->vg);
+    pgcgroup_createvobs(titles, titles->pg_vg);
     if (titles->numpgcs == 0)
       {
         fprintf(stderr, "ERR:  no titles defined\n");
@@ -1990,26 +1990,26 @@ void dvdauthor_vts_gen(struct menugroup *menus, struct pgcgroup *titles, const c
         snprintf(realfbase, sizeof realfbase, "%s/VIDEO_TS/VTS_%02d", fbase, vtsnum);
         fbase = realfbase;
       } /*if*/
-    if (menus->vg->numvobs != 0)
+    if (menus->mg_vg->numvobs != 0)
       {
-        FindVobus(fbase, menus->vg, VTYPE_VTSM);
-        MarkChapters(menus->vg);
-        setattr(menus->vg, VTYPE_VTSM);
+        FindVobus(fbase, menus->mg_vg, VTYPE_VTSM);
+        MarkChapters(menus->mg_vg);
+        setattr(menus->mg_vg, VTYPE_VTSM);
       }
-    else if (menus->vg->numallpgcs != 0)
+    else if (menus->mg_vg->numallpgcs != 0)
       {
-        set_video_format_attr(menus->vg, VTYPE_VTSM); /* for the sake of buildtimeeven */
+        set_video_format_attr(menus->mg_vg, VTYPE_VTSM); /* for the sake of buildtimeeven */
       } /*if*/
-    FindVobus(fbase, titles->vg, VTYPE_VTS);
-    MarkChapters(titles->vg);
-    setattr(titles->vg, VTYPE_VTS);
-    if (!menus->vg->numvobs) // for undefined menus, we'll just copy the video type of the title
+    FindVobus(fbase, titles->pg_vg, VTYPE_VTS);
+    MarkChapters(titles->pg_vg);
+    setattr(titles->pg_vg, VTYPE_VTS);
+    if (!menus->mg_vg->numvobs) // for undefined menus, we'll just copy the video type of the title
       {
-        menus->vg->vd = titles->vg->vd;
+        menus->mg_vg->vd = titles->pg_vg->vd;
       } /*if*/
     fprintf(stderr, "\n");
     WriteIFOs(fbase, &ws);
-    if (menus->vg->numvobs)
-        FixVobus(fbase, menus->vg, &ws, VTYPE_VTSM);
-    FixVobus(fbase, titles->vg, &ws, VTYPE_VTS);
+    if (menus->mg_vg->numvobs)
+        FixVobus(fbase, menus->mg_vg, &ws, VTYPE_VTSM);
+    FixVobus(fbase, titles->pg_vg, &ws, VTYPE_VTS);
   } /*dvdauthor_vts_gen*/

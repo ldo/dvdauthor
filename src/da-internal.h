@@ -190,7 +190,7 @@ struct pgcgroup { /* common info across a set of menus or a set of titles (<menu
     int numpgcs;
     int allentries; /* mask of entry types present */
     int numentries; /* number of entry types present */
-    struct vobgroup *vg; /* only for pstype==VTYPE_VTS, otherwise shared menugroup.vg field is used */
+    struct vobgroup *pg_vg; /* only for pstype==VTYPE_VTS, otherwise shared menugroup.vg field is used */
 };
 
 struct langgroup { /* contents of a <menus> directive */
@@ -201,7 +201,7 @@ struct langgroup { /* contents of a <menus> directive */
 struct menugroup { /* contents specific to all collections of <menus> directives, either VTSM or VMGM */
     int numgroups; /* length of groups array */
     struct langgroup *groups; /* array, one entry per <menus> directive */
-    struct vobgroup *vg; /* common among all groups[i]->pg elements */
+    struct vobgroup *mg_vg; /* common among all groups[i]->pg elements */
       /* fixme: I don't think this works right with multiple <menus> ,,, </menus> sections,
         which the XML does allow */
 };
