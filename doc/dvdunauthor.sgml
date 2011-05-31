@@ -32,7 +32,10 @@
 <refsect1>
 	<title>DESCRIPTION</title>
 	<para>
-	<command>dvdunauthor</command> removes the DVD-Video file structure
+	<command>dvdunauthor</command> decodes the specified DVD-Video directory structure,
+	putting into the current directory an XML control file and corresponding MPEG-2
+	files (with a .vob extension) that <command>dvdauthor</command> can (hopefully)
+	interpret to recreate the DVD-Video directory structure.
 	</para>
 </refsect1>
 <refsect1>
@@ -50,7 +53,9 @@
 <refsect1>
 	<title>BUGS</title>
 	<para>
-	None.
+	Depends on libdvdread to decode the DVD-Video structure and to report any
+	errors trying to do so. But libdvdread will sometimes just exit without
+	reporting any error.
 	</para>
 </refsect1>
 <refsect1>
