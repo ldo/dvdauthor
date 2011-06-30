@@ -784,11 +784,14 @@ static void printpts(pts_t pts)
     fprintf(stderr,"%d.%03d",(int)(pts/90000),(int)((pts/90)%1000));
   }
 
-enum { CR_BEGIN0,   CR_BEGIN1,    CR_BEGIN2,    CR_BEGIN3, CR_SKIP0,
-       CR_SKIP1,    CR_NEXTOFFS0, CR_NEXTOFFS1, CR_WAIT,   CR_CMD,
-       CR_SKIPWAIT, CR_COL0,      CR_COL1,      CR_CHGARG, CR_CHGLN0,
-       CR_CHGLN1,   CR_CHGLN2,    CR_CHGLN3,    CR_CHGPX0, CR_CHGPX1,
-       CR_CHGPX2 };
+enum /* states for SPU parser */
+  {
+    CR_BEGIN0,   CR_BEGIN1,    CR_BEGIN2,    CR_BEGIN3, CR_SKIP0,
+    CR_SKIP1,    CR_NEXTOFFS0, CR_NEXTOFFS1, CR_WAIT,   CR_CMD,
+    CR_SKIPWAIT, CR_COL0,      CR_COL1,      CR_CHGARG, CR_CHGLN0,
+    CR_CHGLN1,   CR_CHGLN2,    CR_CHGLN3,    CR_CHGPX0, CR_CHGPX1,
+    CR_CHGPX2,
+  };
 
 static char *readpstr(const unsigned char *b, int *i)
 /* extracts a null-terminated string beginning at b[*i], advances *i past it and returns

@@ -190,7 +190,7 @@ struct pgcgroup { /* common info across a set of menus or a set of titles (<menu
     int numpgcs;
     int allentries; /* mask of entry types present */
     int numentries; /* number of entry types present */
-    struct vobgroup *pg_vg; /* only for pstype==VTYPE_VTS, otherwise shared menugroup.vg field is used */
+    struct vobgroup *pg_vg; /* only for pstype==VTYPE_VTS, otherwise shared menugroup.mg_vg field is used */
 };
 
 struct langgroup { /* contents of a <menus> directive */
@@ -238,10 +238,10 @@ struct toc_summary {
     int numvts;
 };
 
-struct workset {
-    const struct toc_summary *titlesets;
-    const struct menugroup *menus;
-    const struct pgcgroup *titles;
+struct workset { /* overall parameters for generation of a domain (VMG or VTS) */
+    const struct toc_summary *titlesets; /* VMG only */
+    const struct menugroup *menus; /* VMG and VTS */
+    const struct pgcgroup *titles; /* VTS only */
 };
 
 /* following implemented in dvdauthor.c */

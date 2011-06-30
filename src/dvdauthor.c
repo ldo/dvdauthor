@@ -1850,7 +1850,7 @@ void dvdauthor_enable_allgprm()
 }
 
 void dvdauthor_vmgm_gen(struct pgc *fpc, struct menugroup *menus, const char *fbase)
-  /* generates a VMG, taking into account all already-generated titlesets. */
+  /* generates the VMG, taking into account all already-generated titlesets. */
   {
     DIR *d;
     struct dirent *de;
