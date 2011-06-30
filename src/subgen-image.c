@@ -434,7 +434,8 @@ static bool pickbuttongroups(stinfo *s, int ng, int useimg)
                 fprintf
                   (
                     stderr,
-                    "ERR:  Button coordinates out of range: (%d,%d)-(%d,%d)\n",
+                    "ERR:  Button coordinates out of range (%d,%d): (%d,%d)-(%d,%d)\n",
+                    s->xd, s->yd,
                     b->r.x0, b->r.y0, b->r.x1, b->r.y1
                   );
             exit(1);
