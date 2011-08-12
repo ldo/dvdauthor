@@ -661,7 +661,7 @@ static int write_png
     png_set_packing(png_ptr);
     if (out_buf != NULL)
       {
-        unsigned int x0 = s->x0, y0 = s->y0, xd = s->xd, yd = s->yd;
+        unsigned int xd = s->xd, yd = s->yd;
         png_byte *row_pointers[576]; /* big enough for both PAL and NTSC */
         if (full_size)
           {
@@ -686,8 +686,6 @@ static int write_png
                     *to++ = *temp++;
                   } /*for*/
               } /*for*/
-            y0 = 0;
-            x0 = 0;
             yd = subheight;
             xd = subwidth;
             free(out_buf);

@@ -835,9 +835,9 @@ static void textsub_statistics()
 int main(int argc,char **argv)
 {
     int fdi;
-    unsigned int c, ch, a, frame;
-    unsigned short int b, vss;
-    unsigned char psbuf[psbufs], ncnt;
+    unsigned int c, ch, a;
+    unsigned short int b;
+    unsigned char psbuf[psbufs];
     int optch;
 #ifdef HAVE_GETOPT_LONG
     const static struct option longopts[]={
@@ -893,7 +893,6 @@ int main(int argc,char **argv)
       } /*if*/
     tofs = -1;
     debug = 0;
-    ncnt = 0;
     substr = 0; /* default */
     while (-1 != (optch = GETOPTFUNC(argc, argv, "hm:s:v:P")))
       {
@@ -1007,8 +1006,6 @@ int main(int argc,char **argv)
     newsti = getnextsub();
     max_sub_size = 0;
     header_size = 12; /* first PES header extension will have PTS data and a PES extension */
-    vss = 0;
-    frame = 0;
     lps = 0;
     lastgts = 0;
     nextgts = 0;
