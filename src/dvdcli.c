@@ -340,9 +340,9 @@ static void usage()
                 fprintf(stderr, "ERR:  TOC cannot have titles\n");            \
                 return 1;                                                     \
               } /*if*/                                                        \
-            if (!vc)                                                          \
+            if (!va[istitle])                                                          \
               {                                                               \
-                va[istitle] = vc = pgcgroup_new((int)istoc + 1 - (int)istitle); \
+                va[istitle] = pgcgroup_new((int)istoc + 1 - (int)istitle); \
               } /*if*/
 
 #define MAINDEFPGC                                                   \
@@ -432,7 +432,6 @@ int main(int argc, char **argv)
 
     while (true)
       {
-        struct pgcgroup *vc = va[istitle];
         int c = GETOPTFUNC(argc, argv, "f:o:O:v:a:s:hc:Cp:Pmtb:Ti:e:x:jgn");
         if (c == -1)
             break;
@@ -518,19 +517,19 @@ int main(int argc, char **argv)
         case 'a':
             NOXML
             MAINDEF
-            parseaudioopts(vc, optarg);
+            parseaudioopts(va[istitle], optarg);
         break;
         
         case 'v':
             NOXML
             MAINDEF
-            parsevideoopts(vc, optarg);
+            parsevideoopts(va[istitle], optarg);
         break;
 
         case 's':
             NOXML
             MAINDEF
-            parsesubpictureopts(vc, optarg);
+            parsesubpictureopts(va[istitle], optarg);
         break;
 
         case 'b':
