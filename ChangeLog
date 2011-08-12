@@ -2,6 +2,7 @@
 	No longer silently fail to build dvdunauthor if libdvdread is not present;
 		must be explicitly disabled with --disable-dvdunauthor, otherwise configure
 		reports an error
+	Allow format specification at top level of dvdauthor control file
 
 0.7.0: 2010 October 23
 	Reworked subtitle file reading so it can now deal with encodings like UTF-16
