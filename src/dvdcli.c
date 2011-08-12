@@ -335,14 +335,14 @@ static void usage()
                 fprintf(stderr, "ERR:  Must first specify -t, -m, or -x.\n"); \
                 return 1;                                                     \
               } /*if*/                                                        \
-            if (istoc && curva)                                               \
+            if (istoc && istitle)                                             \
               {                                                               \
                 fprintf(stderr, "ERR:  TOC cannot have titles\n");            \
                 return 1;                                                     \
               } /*if*/                                                        \
             if (!vc)                                                          \
               {                                                               \
-                va[curva] = vc = pgcgroup_new((int)istoc + 1 - curva);        \
+                va[istitle] = vc = pgcgroup_new((int)istoc + 1 - (int)istitle); \
               } /*if*/
 
 #define MAINDEFPGC                                                   \
@@ -358,7 +358,7 @@ static void usage()
 #define FLUSHPGC                                                     \
             if (curpgc)                                              \
               {                                                      \
-                pgcgroup_add_pgc(va[curva], curpgc);                 \
+                pgcgroup_add_pgc(va[istitle], curpgc);               \
                 curpgc = 0;                                          \
               } /*if*/
 
@@ -368,10 +368,9 @@ int main(int argc, char **argv)
     struct menugroup *mg;
     char *fbase = 0; /* output directory name */
     char * xmlfile = 0; /* name of XML control file, if any */
-    int curva = 1; /* index into va */
+    bool istitle = true; /* index into va */
     bool istoc = false, /* true if doing VMG, false if doing titleset */
         usedtocflag = false; /* indicates that istoc can no longer be changed */
-    int l;
     struct pgc *curpgc = 0,* fpc = 0;
     struct source *curvob = 0;
 #ifdef HAVE_GETOPT_LONG
@@ -433,7 +432,7 @@ int main(int argc, char **argv)
 
     while (true)
       {
-        struct pgcgroup *vc = va[curva];
+        struct pgcgroup *vc = va[istitle];
         int c = GETOPTFUNC(argc, argv, "f:o:O:v:a:s:hc:Cp:Pmtb:Ti:e:x:jgn");
         if (c == -1)
             break;
@@ -500,7 +499,7 @@ int main(int argc, char **argv)
             FLUSHPGC
             usedtocflag = true; // force -T to occur before -m
             hadchapter = chapters_neither; /* reset for new menu */
-            curva = 0;
+            istitle = false;
         break;
 
         case 't':
@@ -513,7 +512,7 @@ int main(int argc, char **argv)
             FLUSHPGC
             usedtocflag = true;
             hadchapter = chapters_neither; /* reset for new title */
-            curva = 1;
+            istitle = true;
         break;
             
         case 'a':
@@ -566,7 +565,7 @@ int main(int argc, char **argv)
         case 'e':
             NOXML
             MAINDEFPGC
-            if (curva)
+            if (istitle)
               {
                 fprintf(stderr, "ERR:  Cannot specify an entry for a title.\n");
                 return 1;
@@ -621,7 +620,7 @@ int main(int argc, char **argv)
                 fprintf(stderr, "ERR:  cannot list -c twice for one file.\n");
                 return 1;
               } /*if*/
-            MAINDEFVOB;
+            MAINDEFVOB
             hadchapter = chapters_chapters;
             if (optarg)
                 parsechapters(optarg, curvob, 0);
@@ -646,7 +645,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "ERR:  Chapters defined without a file source.\n");
             return 1;
           } /*if*/
-        FLUSHPGC;
+        FLUSHPGC
         if (!va[0])
           {
             va[0] = pgcgroup_new(istoc ? VTYPE_VMGM : VTYPE_VTSM);
@@ -671,7 +670,7 @@ int main(int argc, char **argv)
           } /*if*/
         if (fbase)
           {
-            l = strlen(fbase);
+            const int l = strlen(fbase);
             if (l && fbase[l - 1] == '/')
                 fbase[l - 1] = 0;
           } /*if*/
@@ -802,7 +801,7 @@ static void dvdauthor_allgprm(const char *s)
         dvdauthor_enable_allgprm();
 }
 
-static dvdauthor_video_format
+static void dvdauthor_video_format
   (
     const char * s
   )
