@@ -1648,7 +1648,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     memcpy(mp2hdr[index].buf, buf + dptr + len - 3, 3);
                     audiodesc_set_audio_attr(&thisvob->audch[audch].ad, &thisvob->audch[audch]. adwarn, AUDIO_SAMPLERATE, "48khz");
                   } /*if*/
-              /* at this point, pts1 is the duration of the audio in the packet */
+              /* at this point, pts1 is the duration of the audio in the packet (0 for subpicture) */
                 if (haspts)
                   {
                     pts0 = readpts(buf + 23 + sysoffs);
@@ -1707,8 +1707,9 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                             fprintf
                               (
                                 stderr,
-                                "WARN: Audio pts for channel %d moves backwards by %"
+                                "WARN: %s pts for channel %d moves backwards by %"
                                     PRId64 "; please remultiplex input.\n",
+                                audch >= 32 ? "Subpicture" : "Audio",
                                 audch,
                                 ach->audpts[ach->numaudpts - 1].pts[1] - pts0
                               );
