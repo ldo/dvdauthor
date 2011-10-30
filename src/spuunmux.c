@@ -35,6 +35,7 @@
 #include "compat.h"
 
 #include <fcntl.h>
+#include <errno.h>
 
 #include <netinet/in.h>
 
@@ -566,142 +567,153 @@ static int write_png
   /* outputs the contents of s as a PNG file, converting pixels to colours
     according to map. */
   {
-    unsigned int a, x, y;
-    bool nonzero;
-    unsigned char *out_buf, *temp;
-    FILE *fp;
-    png_structp png_ptr;
-    png_infop info_ptr;
+    int status = -1; /* to begin with */
+    unsigned char *out_buf = NULL;
+    FILE *fp = NULL;
+    png_structp png_ptr = NULL;
+    png_infop info_ptr = NULL;
     const unsigned short subwidth = svcd_adjust ? 704 : 720;
     const unsigned short subheight = video_format == VF_NTSC ? 480 : 576;
-    temp = out_buf = malloc(s->xd * s->yd * 4);
-    nonzero = false;
-    for (y = 0; y < s->yd; y++)
+    do /*once*/
       {
-        for (x = 0; x < s->xd; x++)
+        out_buf = malloc(s->xd * s->yd * 4);
+        if (out_buf == NULL)
           {
-            const unsigned char cix =
-                cmap_find(x + s->x0, y + s->y0, map, nummap, s->img[y * s->xd + x]);
-            *temp++ = current_palette[cix & 15].r;
-            *temp++ = current_palette[cix & 15].g;
-            *temp++ = current_palette[cix & 15].b;
-            *temp++ = (cix >> 4) * 17;
-            if (cix & 0xf0)
-                nonzero = true;
-          } /*for*/
-      } /*for*/
-    if (!nonzero)
-      {
-      /* all transparent, don't bother writing any image */
-        free(out_buf);
-        return 1;
-      } /*if*/
-    fp = fopen(file_name, "wb");
-    if (!fp)
-      {
-        fprintf(stderr, "ERR:  unable to open/create file: %s\n", file_name);
-        return -1;
-      } /*if*/
-    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (!png_ptr)
-        return -1;
-    info_ptr = png_create_info_struct(png_ptr);
-    if (!info_ptr)
-      {
-        png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
-        return -1;
-      } /*if*/
-    if (setjmp(png_jmpbuf(png_ptr)))
-      {
-        png_destroy_write_struct(&png_ptr, &info_ptr);
-        fclose(fp);
-        return -1;
-      } /*if*/
-    png_init_io(png_ptr, fp);
-  /* turn on or off filtering, and/or choose specific filters */
-    png_set_filter(png_ptr, 0, PNG_FILTER_NONE);
-  /* set the zlib compression level */
-    png_set_compression_level(png_ptr, Z_BEST_COMPRESSION);
-  /* set other zlib parameters */
-    png_set_compression_mem_level(png_ptr, 8);
-    png_set_compression_strategy(png_ptr, Z_DEFAULT_STRATEGY);
-    png_set_compression_window_bits(png_ptr, 15);
-    png_set_compression_method(png_ptr, 8);
-    if (full_size)
-      {
-        png_set_IHDR
-          (
-            /*png_ptr =*/ png_ptr,
-            /*info_ptr =*/ info_ptr,
-            /*width =*/ subwidth,
-            /*height =*/ subheight,
-            /*bit_depth =*/ 8,
-            /*color_type =*/ PNG_COLOR_TYPE_RGB_ALPHA,
-            /*interlace_method =*/ PNG_INTERLACE_NONE,
-            /*compression_method =*/ PNG_COMPRESSION_TYPE_DEFAULT,
-            /*filter_method =*/ PNG_FILTER_TYPE_DEFAULT
-          );
-      }
-    else
-      {
-        png_set_IHDR
-          (
-            /*png_ptr =*/ png_ptr,
-            /*info_ptr =*/ info_ptr,
-            /*width =*/ s->xd,
-            /*height =*/ s->yd,
-            /*bit_depth =*/ 8,
-            /*color_type =*/ PNG_COLOR_TYPE_RGB_ALPHA,
-            /*interlace_method =*/ PNG_INTERLACE_NONE,
-            /*compression_method =*/ PNG_COMPRESSION_TYPE_DEFAULT,
-            /*filter_method =*/ PNG_FILTER_TYPE_DEFAULT
-          );
-      } /*if*/
-    png_write_info(png_ptr, info_ptr);
-    png_set_packing(png_ptr);
-    if (out_buf != NULL)
-      {
-        unsigned int xd = s->xd, yd = s->yd;
-        png_byte *row_pointers[576]; /* big enough for both PAL and NTSC */
-        if (full_size)
+            fprintf(stderr, "ERR:  unable allocate %d-byte PNG buffer\n", s->xd * s->yd * 4);
+            break;
+          } /*if*/
           {
-            unsigned char *image;
-            temp = out_buf;
-            image = malloc(subwidth * subheight * 4);
-            memset(image, 0, subwidth * subheight * 4);    // fill image full transparent
-            // insert image on the correct position
-            for (y = s->y0; y < s->y0 + s->yd; y++)
+            unsigned char *temp = out_buf;
+            bool nonzero = false;
+            unsigned int x, y;
+            for (y = 0; y < s->yd; y++)
               {
-                unsigned char *to = &image[y * subwidth * 4 + s->x0 * 4];
-                if (y >= subheight)
-                  {
-                    fprintf(stderr, "WARN: subtitle %s truncated\n", file_name);
-                    break;
-                  } /*if*/
                 for (x = 0; x < s->xd; x++)
                   {
-                    *to++ = *temp++;
-                    *to++ = *temp++;
-                    *to++ = *temp++;
-                    *to++ = *temp++;
+                    const unsigned char cix =
+                        cmap_find(x + s->x0, y + s->y0, map, nummap, s->img[y * s->xd + x]);
+                    *temp++ = current_palette[cix & 15].r;
+                    *temp++ = current_palette[cix & 15].g;
+                    *temp++ = current_palette[cix & 15].b;
+                    *temp++ = (cix >> 4) * 17;
+                    if (cix & 0xf0)
+                        nonzero = true;
                   } /*for*/
               } /*for*/
-            yd = subheight;
-            xd = subwidth;
-            free(out_buf);
-            out_buf = image;
-          } /*if*/
-        for (a = 0; a < yd; a++)
+            if (!nonzero)
+              {
+              /* all transparent, don't bother writing any image */
+                status = 1;
+                break;
+              } /*if*/
+          }
+        fp = fopen(file_name, "wb");
+        if (fp == NULL)
           {
-            row_pointers[a] = out_buf + a * (xd * 4);
-          } /*for*/
-        png_write_image(png_ptr, row_pointers);
+            fprintf(stderr, "ERR:  error %s trying to open/create file: %s\n", strerror(errno), file_name);
+            break;
+          } /*if*/
+        png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+        if (png_ptr == NULL)
+            break;
+        info_ptr = png_create_info_struct(png_ptr);
+        if (info_ptr == NULL)
+            break;
+        if (setjmp(png_jmpbuf(png_ptr)))
+            break;
+        png_init_io(png_ptr, fp);
+        png_set_filter(png_ptr, 0, PNG_FILTER_NONE);
+        png_set_compression_level(png_ptr, Z_BEST_COMPRESSION);
+        png_set_compression_mem_level(png_ptr, 8);
+        png_set_compression_strategy(png_ptr, Z_DEFAULT_STRATEGY);
+        png_set_compression_window_bits(png_ptr, 15);
+        png_set_compression_method(png_ptr, 8);
+        if (full_size)
+          {
+            png_set_IHDR
+              (
+                /*png_ptr =*/ png_ptr,
+                /*info_ptr =*/ info_ptr,
+                /*width =*/ subwidth,
+                /*height =*/ subheight,
+                /*bit_depth =*/ 8,
+                /*color_type =*/ PNG_COLOR_TYPE_RGB_ALPHA,
+                /*interlace_method =*/ PNG_INTERLACE_NONE,
+                /*compression_method =*/ PNG_COMPRESSION_TYPE_DEFAULT,
+                /*filter_method =*/ PNG_FILTER_TYPE_DEFAULT
+              );
+          }
+        else
+          {
+            png_set_IHDR
+              (
+                /*png_ptr =*/ png_ptr,
+                /*info_ptr =*/ info_ptr,
+                /*width =*/ s->xd,
+                /*height =*/ s->yd,
+                /*bit_depth =*/ 8,
+                /*color_type =*/ PNG_COLOR_TYPE_RGB_ALPHA,
+                /*interlace_method =*/ PNG_INTERLACE_NONE,
+                /*compression_method =*/ PNG_COMPRESSION_TYPE_DEFAULT,
+                /*filter_method =*/ PNG_FILTER_TYPE_DEFAULT
+              );
+          } /*if*/
+        png_write_info(png_ptr, info_ptr);
+        png_set_packing(png_ptr);
+          {
+            unsigned int xd = s->xd, yd = s->yd;
+            png_byte *row_pointers[576]; /* big enough for both PAL and NTSC */
+            unsigned int a, x, y;
+            if (full_size)
+              {
+                unsigned char *image;
+                const unsigned char *temp = out_buf;
+                image = malloc(subwidth * subheight * 4);
+                memset(image, 0, subwidth * subheight * 4);    // fill image full transparent
+                // insert image on the correct position
+                for (y = s->y0; y < s->y0 + s->yd; y++)
+                  {
+                    unsigned char *to = &image[y * subwidth * 4 + s->x0 * 4];
+                    if (y >= subheight)
+                      {
+                        fprintf(stderr, "WARN: subtitle %s truncated\n", file_name);
+                        break;
+                      } /*if*/
+                    for (x = 0; x < s->xd; x++)
+                      {
+                        *to++ = *temp++;
+                        *to++ = *temp++;
+                        *to++ = *temp++;
+                        *to++ = *temp++;
+                      } /*for*/
+                  } /*for*/
+                yd = subheight;
+                xd = subwidth;
+                free(out_buf);
+                out_buf = image;
+              } /*if*/
+            for (a = 0; a < yd; a++)
+              {
+                row_pointers[a] = out_buf + a * (xd * 4);
+              } /*for*/
+            png_write_image(png_ptr, row_pointers);
+          }
         png_write_end(png_ptr, info_ptr);
-        free(out_buf);
+      /* all successfully done */
+        status = 0;
+      }
+    while (false);
+    if (png_ptr != NULL)
+      {
+        png_destroy_write_struct(&png_ptr, &info_ptr);
       } /*if*/
-    png_destroy_write_struct(&png_ptr, &info_ptr);
-    fclose(fp);
-    return 0;
+    if (fp != NULL)
+      {
+        fclose(fp);
+      } /*if*/
+    free(out_buf);
+    return
+        status;
   } /*write_png*/
 
 static void write_pts(const char *preamble, int pts)
