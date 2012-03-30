@@ -137,7 +137,10 @@ dnl AM_LANGINFO_CODESET
 
 AM_ICONV
 
-AM_PATH_XML2(2.6.0, , AC_MSG_ERROR([You must have libxml2 >= 2.6.0 installed]))
+ifdef([AM_PATH_XML2],
+    [AM_PATH_XML2(2.6.0, , AC_MSG_ERROR([You must have libxml2 >= 2.6.0 installed]))],
+    [errprint([You must have libxml2 (>= 2.6.0) installed
+])m4_exit(1)AC_MSG_ERROR([You must have libxml2 (>= 2.6.0) installed])])
 
 AC_CHECK_DECLS(O_BINARY, , , [ #include <fcntl.h> ] )
 
