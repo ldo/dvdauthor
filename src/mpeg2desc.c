@@ -34,6 +34,7 @@
 
 #include <netinet/in.h>
 
+#include "common.h"
 
 // #define SHOWDATA
 
@@ -372,14 +373,14 @@ int main(int argc,char **argv)
         int disppos=pos-4;
         switch( ntohl(hdr) ) {
             // start codes:
-        case 0x100: // picture header
+        case 0x100 + MPID_PICTURE: // picture header
             forceread(buf,4,stdin);
             if( outputenglish )
                 printf("%08x: picture hdr, frametype=%c, temporal=%d\n",disppos,frametype[(buf[1]>>3)&7],(buf[0]<<2)|(buf[1]>>6));
             forceread(&hdr,4,stdin);
             break;
 
-        case 0x1b3: // sequence header
+        case 0x100 + MPID_SEQUENCE: // sequence header
             forceread(buf,8,stdin);
             if( outputenglish )
                 printf("%08x: sequence hdr: %dx%d, a/f:%02x, bitrate=%d\n"
@@ -396,7 +397,7 @@ int main(int argc,char **argv)
             forceread(&hdr,4,stdin);
             break;
 
-        case 0x1b5: // extension header
+        case 0x100 + MPID_EXTENSION: // extension header
             forceread(buf,1,stdin);
             switch( buf[0]>>4 ) {
             case 1:
@@ -432,13 +433,13 @@ int main(int argc,char **argv)
             forceread(&hdr,4,stdin);
             break;
 
-        case 0x1b7: // end of sequence
+        case 0x100 + MPID_SEQUENCE_END: // end of sequence
             if( outputenglish )
                 printf("%08x: end of sequence\n",disppos);
             forceread(&hdr,4,stdin);
             break;
 
-        case 0x1b8: // group of pictures
+        case 0x100 + MPID_GOP: // group of pictures
             forceread(buf,4,stdin);
             if( outputenglish ) {
                 printf("%08x: GOP: %s%d:%02d:%02d.%02d, %s%s\n"
@@ -455,13 +456,13 @@ int main(int argc,char **argv)
             forceread(&hdr,4,stdin);
             break;
 
-        case 0x1b9: // end of program stream
+        case 0x100 + MPID_PROGRAM_END: // end of program stream
             if( outputenglish )
                 printf("%08x: end of program stream\n",disppos);
             forceread(&hdr,4,stdin);
             break;
 
-        case 0x1ba: // mpeg_pack_header
+        case 0x100 + MPID_PACK: // mpeg_pack_header
         {
             uint32_t scr,scrhi,scrext;
             int64_t fulltime;
@@ -502,58 +503,58 @@ int main(int argc,char **argv)
             break;
         }
 
-        case 0x1bb: // mpeg_system_header
-        case 0x1bd:
-        case 0x1be:
-        case 0x1bf:
-        case 0x1c0:
-        case 0x1c1:
-        case 0x1c2:
-        case 0x1c3:
-        case 0x1c4:
-        case 0x1c5:
-        case 0x1c6:
-        case 0x1c7:
-        case 0x1c8:
-        case 0x1c9:
-        case 0x1ca:
-        case 0x1cb:
-        case 0x1cc:
-        case 0x1cd:
-        case 0x1ce:
-        case 0x1cf:
-        case 0x1d0:
-        case 0x1d1:
-        case 0x1d2:
-        case 0x1d3:
-        case 0x1d4:
-        case 0x1d5:
-        case 0x1d6:
-        case 0x1d7:
-        case 0x1d8:
-        case 0x1d9:
-        case 0x1da:
-        case 0x1db:
-        case 0x1dc:
-        case 0x1dd:
-        case 0x1de:
-        case 0x1df:
-        case 0x1e0:
-        case 0x1e1:
-        case 0x1e2:
-        case 0x1e3:
-        case 0x1e4:
-        case 0x1e5:
-        case 0x1e6:
-        case 0x1e7:
-        case 0x1e8:
-        case 0x1e9:
-        case 0x1ea:
-        case 0x1eb:
-        case 0x1ec:
-        case 0x1ed:
-        case 0x1ee:
-        case 0x1ef:
+        case 0x100 + MPID_SYSTEM: // mpeg_system_header
+        case 0x100 + MPID_PRIVATE1:
+        case 0x100 + MPID_PAD:
+        case 0x100 + MPID_PRIVATE2:
+        case 0x100 + MPID_AUDIO_FIRST:
+        case 0x100 + MPID_AUDIO_FIRST + 1:
+        case 0x100 + MPID_AUDIO_FIRST + 2:
+        case 0x100 + MPID_AUDIO_FIRST + 3:
+        case 0x100 + MPID_AUDIO_FIRST + 4:
+        case 0x100 + MPID_AUDIO_FIRST + 5:
+        case 0x100 + MPID_AUDIO_FIRST + 6:
+        case 0x100 + MPID_AUDIO_FIRST + 7:
+        case 0x100 + MPID_AUDIO_FIRST + 8:
+        case 0x100 + MPID_AUDIO_FIRST + 9:
+        case 0x100 + MPID_AUDIO_FIRST + 10:
+        case 0x100 + MPID_AUDIO_FIRST + 11:
+        case 0x100 + MPID_AUDIO_FIRST + 12:
+        case 0x100 + MPID_AUDIO_FIRST + 13:
+        case 0x100 + MPID_AUDIO_FIRST + 14:
+        case 0x100 + MPID_AUDIO_FIRST + 15:
+        case 0x100 + MPID_AUDIO_FIRST + 16:
+        case 0x100 + MPID_AUDIO_FIRST + 17:
+        case 0x100 + MPID_AUDIO_FIRST + 18:
+        case 0x100 + MPID_AUDIO_FIRST + 19:
+        case 0x100 + MPID_AUDIO_FIRST + 20:
+        case 0x100 + MPID_AUDIO_FIRST + 21:
+        case 0x100 + MPID_AUDIO_FIRST + 22:
+        case 0x100 + MPID_AUDIO_FIRST + 23:
+        case 0x100 + MPID_AUDIO_FIRST + 24:
+        case 0x100 + MPID_AUDIO_FIRST + 25:
+        case 0x100 + MPID_AUDIO_FIRST + 26:
+        case 0x100 + MPID_AUDIO_FIRST + 27:
+        case 0x100 + MPID_AUDIO_FIRST + 28:
+        case 0x100 + MPID_AUDIO_FIRST + 29:
+        case 0x100 + MPID_AUDIO_FIRST + 30:
+        case 0x100 + MPID_AUDIO_FIRST + 31: /*MPID_AUDIO_LAST*/
+        case 0x100 + MPID_VIDEO_FIRST:
+        case 0x100 + MPID_VIDEO_FIRST + 1:
+        case 0x100 + MPID_VIDEO_FIRST + 2:
+        case 0x100 + MPID_VIDEO_FIRST + 3:
+        case 0x100 + MPID_VIDEO_FIRST + 4:
+        case 0x100 + MPID_VIDEO_FIRST + 5:
+        case 0x100 + MPID_VIDEO_FIRST + 6:
+        case 0x100 + MPID_VIDEO_FIRST + 7:
+        case 0x100 + MPID_VIDEO_FIRST + 8:
+        case 0x100 + MPID_VIDEO_FIRST + 9:
+        case 0x100 + MPID_VIDEO_FIRST + 10:
+        case 0x100 + MPID_VIDEO_FIRST + 11:
+        case 0x100 + MPID_VIDEO_FIRST + 12:
+        case 0x100 + MPID_VIDEO_FIRST + 13:
+        case 0x100 + MPID_VIDEO_FIRST + 14:
+        case 0x100 + MPID_VIDEO_FIRST + 15: /*MPID_VIDEO_LAST*/
         {
             unsigned char c;
             int ext=0,extra=0,readlen,dowrite=1;
@@ -561,30 +562,30 @@ int main(int argc,char **argv)
             c=ntohl(hdr);
             if( outputenglish )
                 printf("%08x: ",disppos);
-            if( c == 0xBB ) {
+            if( c == MPID_SYSTEM ) {
                 if( outputenglish )
                     printf("system header");
-            } else if( c == 0xBD ) {
+            } else if( c == MPID_PRIVATE1 ) {
                 if (outputenglish)
                     printf("pes private1");
                 ext=1;
-            } else if( c == 0xBE ) {
+            } else if( c == MPID_PAD ) {
                 if( outputenglish )
                     printf("pes padding");
-            } else if( c == 0xBF ) {
+            } else if( c == MPID_PRIVATE2 ) {
                 if( outputenglish )
                     printf("pes private2");
-            } else if( c >= 0xC0 && c <= 0xDF ) {
+            } else if( c >= MPID_AUDIO_FIRST && c <= MPID_AUDIO_LAST ) {
                 if( outputenglish )
-                    printf("pes audio %d",c-0xC0);
+                    printf("pes audio %d",c-MPID_AUDIO_FIRST);
                 if( audiodrop ) {
                     dowrite=0;
                     audiodrop--;
                 }
                 ext=1;
-            } else if( c >= 0xE0 && c <= 0xEF ) {
+            } else if( c >= MPID_VIDEO_FIRST && c <= MPID_VIDEO_LAST ) {
                 if( outputenglish )
-                    printf("pes video %d",c-0xE0);
+                    printf("pes video %d",c-MPID_VIDEO_FIRST);
                 ext=1;
             }
             forceread(buf,2,stdin); // pes packet length
@@ -592,7 +593,7 @@ int main(int argc,char **argv)
             readlen=forceread(buf,(extra>sizeof(buf))?sizeof(buf):extra,stdin);
             extra-=readlen;
             if( outputenglish ) {
-                if (ntohl(hdr) == 0x1bd) // private stream 1
+                if (ntohl(hdr) == 0x100 + MPID_PRIVATE1) // private stream 1
                   {
                     const int sid = buf[3 + buf[2]]; /* substream ID is first byte after header */
                     switch (sid & 0xf8)
@@ -616,7 +617,7 @@ int main(int argc,char **argv)
                     break;
                       } /*switch*/
                   }
-                else if (ntohl(hdr) == 0x1bf) // private stream 2
+                else if (ntohl(hdr) == 0x100 + MPID_PRIVATE2) // private stream 2
                   {
                     const int sid = buf[0];
                     switch (sid)

@@ -33,7 +33,7 @@ spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h common.h conffile.h conffi
 spuunmux_CFLAGS = @LIBPNG_CFLAGS@ $(AM_CFLAGS)
 spuunmux_LDADD = $(LIBICONV) @LIBPNG_LIBS@
 
-mpeg2desc_SOURCES = mpeg2desc.c compat.c
+mpeg2desc_SOURCES = common.h mpeg2desc.c compat.c
 mpeg2desc_LDADD = $(LIBICONV)
 
 edit = sed \
