@@ -59,3 +59,6 @@ mjpegtools: http://mjpeg.sourceforge.net
         for DVD-Video navigation packets
 mpucoder's site on dvd specs: http://www.mpucoder.com/DVD/
         details on the DVD-Video format
+Inside DVD-Video wikibook: <http://en.wikibooks.org/wiki/Inside_DVD-Video>
+        an attempt to document everything that is publicly known about the
+        DVD-Video spec in a readable form
