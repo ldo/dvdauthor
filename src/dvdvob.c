@@ -1962,7 +1962,7 @@ static pts_t pabs(pts_t pts)
     return pts;
   } /*pabs*/
 
-static int findnearestvobu(struct vobgroup *pg, struct vob *va, pts_t pts)
+static int findnearestvobu(struct vob *va, pts_t pts)
   /* returns the index of the VOBU closest in time to pts. */
   {
     int l = 0, h = va->numvobus - 1, i;
@@ -1999,7 +1999,7 @@ void MarkChapters(struct vobgroup *va)
             for (k = 0; k < thissource->numcells; k++)
               {
                 int v;
-                v = findnearestvobu(va, thissource->vob, thissource->cells[k].startpts);
+                v = findnearestvobu(thissource->vob, thissource->cells[k].startpts);
                 if (v >= 0 && v < thissource->vob->numvobus)
                   {
                     if (thissource->cells[k].ischapter != CELL_NEITHER) /* from Wolfgang Wershofen */
@@ -2029,7 +2029,7 @@ void MarkChapters(struct vobgroup *va)
                   } /*if*/
                 if (thissource->cells[k].endpts >= 0)
                   {
-                    v = findnearestvobu(va, thissource->vob, thissource->cells[k].endpts);
+                    v = findnearestvobu(thissource->vob, thissource->cells[k].endpts);
                     if (v >= 0 && v < thissource->vob->numvobus)
                         thissource->vob->vobu[v].vobcellid = 1; /* another cell should start here */
                   }
