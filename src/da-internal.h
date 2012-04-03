@@ -116,6 +116,9 @@ struct cell {
     int pauselen;
     int scellid; /* ID assigned to cell */
     int ecellid; /* ID assigned to next cell */
+      /* DVD-Video spec allows for cells to be grouped into programs nonsequentially,
+        and for the same cell to be part of more than one program. dvdauthor doesn't
+        currently support any of that, so cell IDs will always be sequential. */
     struct vm_statement *commands;
 };
 
