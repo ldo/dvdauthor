@@ -1347,7 +1347,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     has_gop(buf)
               )
               {
-                // create VOBU
+                // create VOBU, from Martin Crossley
                 if (!hadfirstvobu)
                   { /* let user know the first time this happens */
                     fprintf

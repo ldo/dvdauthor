@@ -202,7 +202,7 @@ struct menugroup { /* contents specific to all collections of <menus> directives
     int numgroups; /* length of groups array */
     struct langgroup *groups; /* array, one entry per <menus> directive */
     struct vobgroup *mg_vg; /* common among all groups[i]->pg elements */
-      /* fixme: I don't think this works right with multiple <menus> ,,, </menus> sections,
+      /* fixme: I don't think this works right with multiple <menus> ... </menus> sections,
         which the XML does allow */
 };
 
