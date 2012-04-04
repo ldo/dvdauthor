@@ -38,8 +38,9 @@
 
 // #define SHOWDATA
 
-int pos=0;
-int queuedlen=0;
+static int
+    inputpos = 0,
+    queuedlen = 0;
 
 const char * const frametype = "0IPB4567";
 
@@ -50,29 +51,37 @@ const char * const frametype = "0IPB4567";
 
 #define BUFLEN (65536)
 
-struct fdbuf {
+struct fdbuf
+  {
     int pos,len;
     struct fdbuf *next;
     unsigned char buf[BUFLEN];
-};
+  };
 
-struct ofd {
+#define MAX_FILES 256
+  /* how many output files I can write at once -- can't have
+    more than this number of MPEG streams anyway */
+
+struct ofd
+  {
     int fd;
     char *fname;
     struct fdbuf *firstbuf,**lastbufptr;
     int len;
     bool isvalid;
-} outputfds[256];
+  } outputfds[MAX_FILES];
 
-static int ofdlist[256],numofd;
+static int ofdlist[MAX_FILES], numofd;
 
-static int firstpts[256];
+static int firstpts[256]; /* indexed by stream id */
 
 static bool
     closing = false,
     outputmplex = false;
 
-static fd_set rfd,wfd;
+static fd_set
+  /* should be local to dowork routine */
+    rfd, wfd;
 
 static int64_t readpts(const unsigned char *buf)
   {
@@ -120,23 +129,22 @@ static bool hasbecomevalid(int stream, const struct ofd *o)
 
 static bool dowork(bool checkin)
   {
-    int i,n=-1;
+    int highestfd = -1;
     struct timeval tv;
-    
     if (!numofd)
         return checkin;
     if (checkin)
       {
-        FD_SET(STDIN_FILENO,&rfd);
-        n = STDIN_FILENO;
+        FD_SET(STDIN_FILENO, &rfd);
+        highestfd = STDIN_FILENO;
       }
     else
       {
-        FD_CLR(STDIN_FILENO,&rfd);
+        FD_CLR(STDIN_FILENO, &rfd);
       } /*if*/
     while (true)
       {
-        int minq=-1;
+        int i ,minq=-1;
         for (i = 0; i < numofd; i++)
           {
             struct ofd *o=&outputfds[ofdlist[i]];
@@ -164,13 +172,13 @@ static bool dowork(bool checkin)
                   } /*if*/
                 if ((o->len > 0 && o->isvalid) || o->len >= 4)
                   {
-                    if (o->fd > n)
-                        n = o->fd;
-                    FD_SET(o->fd,&wfd);
+                    if (o->fd > highestfd)
+                        highestfd = o->fd;
+                    FD_SET(o->fd, &wfd);
                   }
                 else
                   {
-                    FD_CLR(o->fd,&wfd);
+                    FD_CLR(o->fd, &wfd);
                     if (closing)
                       {
                         close(o->fd);
@@ -183,41 +191,42 @@ static bool dowork(bool checkin)
         // queued up, then don't process anymore
         if (minq >= WAITLEN)
           {
-            FD_CLR(STDIN_FILENO,&rfd);
+            FD_CLR(STDIN_FILENO, &rfd);
             break;
           }
         else if (minq >= 0 || outputmplex) // as long as one file is open, continue
             break;
         sleep(1);
       } /*while*/
-    if (n == -1)
+    if (highestfd == -1)
         return false;
     tv.tv_sec = 1; // set timeout to 1 second just in case any files need to be opened
     tv.tv_usec = 0;
-    i = select(n+1,&rfd,&wfd,NULL,&tv);
-    if (i > 0)
+    if (select(highestfd + 1, &rfd, &wfd, NULL, &tv) > 0)
       {
+        int i;
         for (i = 0; i < numofd; i++)
           {
             struct ofd * const o = &outputfds[ofdlist[i]];
             if (o->fd >= 0 && FD_ISSET(o->fd, &wfd))
               {
                 struct fdbuf * const f = o->firstbuf;
+                int written;
                 if (!o->isvalid && hasbecomevalid(ofdlist[i],o))
                     o->isvalid = true;
                 if (o->isvalid)
-                    n = write(o->fd,f->buf+f->pos,f->len-f->pos);
-                else if (f->len-f->pos > 0)
-                    n = 1;
+                    written = write(o->fd,f->buf+f->pos,f->len-f->pos);
+                else if (f->len - f->pos > 0)
+                    written = 1;
                 else
-                    n = 0;
-                if (n == -1)
+                    written = 0;
+                if (written == -1)
                   {
                     fprintf(stderr,"Error writing to fifo: %s\n",strerror(errno));
                     exit(1);
                   } /*if*/
-                queuedlen -= n;
-                f->pos += n;
+                queuedlen -= written;
+                f->pos += written;
                 if (f->pos == f->len)
                   {
                     o->firstbuf = f->next;
@@ -225,14 +234,22 @@ static bool dowork(bool checkin)
                         o->lastbufptr = &o->firstbuf;
                     free(f);
                   } /*if*/
-                o->len -= n;
+                o->len -= written;
               } /*if*/
           } /*for*/
-        if (FD_ISSET( STDIN_FILENO, &rfd))
+        if (FD_ISSET(STDIN_FILENO, &rfd))
             return true;
       } /*if*/
     return false;
   } /*dowork*/
+
+static void flushwork(void)
+  /* flushes the work queue. */
+  {
+    closing = true;
+    while (queuedlen)
+        dowork(false);
+  } /*flushwork*/
 
 static int forceread(void *ptr,int len,FILE *h)
   {
@@ -240,12 +257,10 @@ static int forceread(void *ptr,int len,FILE *h)
     if (fread(ptr,1,len,h) != len)
       {
         fprintf(stderr,"Could not read\n");
-        closing = true;
-        while (queuedlen)
-            dowork(false);
+        flushwork();
         exit(1);
       } /*if*/
-    pos += len;
+    inputpos += len;
     return len;
   } /*forceread*/
 
@@ -255,13 +270,11 @@ static void forceread1(void *ptr,FILE *h)
     if (v < 0)
       {
         fprintf(stderr,"Could not read\n");
-        closing = true;
-        while (queuedlen)
-            dowork(false);
+        flushwork();
         exit(1);
       } /*if*/
     ((unsigned char *)ptr)[0] = v;
-    pos += 1;
+    inputpos += 1;
   } /*forceread1*/
 
 static void writetostream(int stream,unsigned char *buf,int len)
@@ -306,9 +319,8 @@ int main(int argc,char **argv)
     bool outputenglish = true, skiptohdr = false, nounknown = false;
     int outputstream = 0, oc, i,audiodrop=0;
 
-    for( oc=0; oc<256; oc++ )
-        outputfds[oc].fd=-1;
-
+    for (oc = 0; oc < MAX_FILES; oc++)
+        outputfds[oc].fd = -1;
     while (-1 != (oc = getopt(argc,argv,"ha:v:o:msd:u")))
       {
         switch (oc)
@@ -316,7 +328,6 @@ int main(int argc,char **argv)
         case 'd':
             audiodrop = strtounsigned(optarg, "audio drop count");
         break;
-
         case 'a':
         case 'v':
             if (outputstream)
@@ -364,7 +375,7 @@ int main(int argc,char **argv)
     if (outputstream)
       {
         outputenglish = false;
-        outputfds[outputstream].fd=STDOUT_FILENO;
+        outputfds[outputstream].fd = STDOUT_FILENO;
       } /*if*/
     if (outputmplex)
       {
@@ -376,7 +387,7 @@ int main(int argc,char **argv)
         outputenglish = false;
       } /*if*/
     numofd = 0;
-    for (oc = 0; oc < 256; oc++)
+    for (oc = 0; oc < MAX_FILES; oc++)
         if (outputfds[oc].fd != -1)
           {
             ofdlist[numofd++] = oc;
@@ -394,7 +405,7 @@ int main(int argc,char **argv)
     forceread(&hdr,4,stdin);
     while (true)
       {
-        int disppos = pos - 4;
+        const int disppos = inputpos - 4; /* where packet actually started */
         switch (ntohl(hdr))
           {
       // start codes:
