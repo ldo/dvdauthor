@@ -73,9 +73,11 @@ struct ofd
     struct fdbuf *firstbuf,**lastbufptr; /* queue of buffers awaiting writing */
     int len;
     bool isvalid;
-  } outputfds[MAX_FILES];
+  } outputfds[256]; /* files to write, indexed by stream id */
 
-static int ofdlist[MAX_FILES], numofd;
+static int
+    ofdlist[MAX_FILES], /* indexes of used entries in outputfds */
+    numofd; /* contiguous used size of ofdlist */
 
 static int firstpts[256]; /* indexed by stream id */
 
@@ -330,7 +332,7 @@ int main(int argc,char **argv)
     int audiodrop = 0;
       {
         int outputstream = 0, oc, i;
-        for (oc = 0; oc < MAX_FILES; oc++)
+        for (oc = 0; oc < 256; oc++)
             outputfds[oc].fd = FD_CLOSED;
         while (-1 != (oc = getopt(argc,argv,"ha:v:o:msd:u")))
           {
@@ -346,7 +348,7 @@ int main(int argc,char **argv)
                     fprintf(stderr,"can only output one stream to stdout at a time\n; use -o to output more than\none stream\n");
                     exit(1);
                   } /*if*/
-                outputstream = (oc == 'a' ? 0xc0 :0xe0) + strtounsigned(optarg, "stream id");
+                outputstream = (oc == 'a' ? MPID_AUDIO_FIRST : MPID_VIDEO_FIRST) + strtounsigned(optarg, "stream id");
             break;
             case 'm':
                 outputmplex = true;
@@ -362,7 +364,7 @@ int main(int argc,char **argv)
                   } /*if*/
                 outputfds[outputstream].fd = FD_TOOPEN;
                 outputfds[outputstream].fname = optarg;
-                outputstream=0;
+                outputstream = 0;
             break;
             case 'u':
                 nounknown = true;
