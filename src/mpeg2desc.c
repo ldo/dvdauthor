@@ -302,7 +302,7 @@ int main(int argc,char **argv)
   {
     unsigned int hdr=0;
     bool mpeg2 = true;
-    unsigned char c,buf[200];
+    unsigned char buf[200];
     bool outputenglish = true, skiptohdr = false, nounknown = false;
     int outputstream = 0, oc, i,audiodrop=0;
 
@@ -387,9 +387,9 @@ int main(int argc,char **argv)
           } /*if; for*/
     FD_ZERO(&rfd);
     FD_ZERO(&wfd);    
-    for (i=0; i<256; i++)
+    for (i = 0; i < 256; i++)
       {
-        firstpts[i]=-1;
+        firstpts[i] = -1;
       } /*for*/
     forceread(&hdr,4,stdin);
     while (true)
@@ -597,56 +597,57 @@ int main(int argc,char **argv)
         case 0x100 + MPID_VIDEO_FIRST + 14:
         case 0x100 + MPID_VIDEO_FIRST + 15: /*MPID_VIDEO_LAST*/
           {
-            unsigned char c;
-            int ext=0,extra=0,readlen,dowrite=1;
-            c=ntohl(hdr);
+            bool has_extension = false;
+            int extra=0,readlen;
+            bool dowrite = true;
+            const int packetid = ntohl(hdr);
             if (outputenglish)
                 printf("%08x: ",disppos);
-            if (c == MPID_SYSTEM)
+            if (packetid == MPID_SYSTEM)
               {
                 if (outputenglish)
                     printf("system header");
               }
-            else if (c == MPID_PRIVATE1)
+            else if (packetid == MPID_PRIVATE1)
               {
                 if (outputenglish)
                     printf("pes private1");
-                ext=1;
+                has_extension = true;
               }
-            else if (c == MPID_PAD)
+            else if (packetid == MPID_PAD)
               {
                 if (outputenglish)
                     printf("pes padding");
               }
-            else if (c == MPID_PRIVATE2)
+            else if (packetid == MPID_PRIVATE2)
               {
                 if (outputenglish)
                     printf("pes private2");
               }
-            else if (c >= MPID_AUDIO_FIRST && c <= MPID_AUDIO_LAST)
+            else if (packetid >= MPID_AUDIO_FIRST && packetid <= MPID_AUDIO_LAST)
               {
                 if (outputenglish)
-                    printf("pes audio %d",c-MPID_AUDIO_FIRST);
+                    printf("pes audio %d", packetid - MPID_AUDIO_FIRST);
                 if (audiodrop)
                   {
-                    dowrite=0;
+                    dowrite = false;
                     audiodrop--;
                   } /*if*/
-                ext = 1;
+                has_extension = true;
               }
-            else if (c >= MPID_VIDEO_FIRST && c <= MPID_VIDEO_LAST)
+            else if (packetid >= MPID_VIDEO_FIRST && packetid <= MPID_VIDEO_LAST)
               {
                 if (outputenglish)
-                    printf("pes video %d",c-MPID_VIDEO_FIRST);
-                ext = 1;
+                    printf("pes video %d", packetid - MPID_VIDEO_FIRST);
+                has_extension = true;
               } /*if*/
             forceread(buf,2,stdin); // pes packet length
             extra = buf[0] << 8 | buf[1];
-            readlen = forceread(buf,(extra>sizeof(buf))?sizeof(buf):extra,stdin);
+            readlen = forceread(buf, extra > sizeof buf ? sizeof buf : extra, stdin);
             extra -= readlen;
             if (outputenglish)
               {
-                if (ntohl(hdr) == 0x100 + MPID_PRIVATE1) // private stream 1
+                if (packetid == 0x100 + MPID_PRIVATE1) // private stream 1
                   {
                     const int sid = buf[3 + buf[2]]; /* substream ID is first byte after header */
                     switch (sid & 0xf8)
@@ -670,7 +671,7 @@ int main(int argc,char **argv)
                     break;
                       } /*switch*/
                   }
-                else if (ntohl(hdr) == 0x100 + MPID_PRIVATE2) // private stream 2
+                else if (packetid == 0x100 + MPID_PRIVATE2) // private stream 2
                   {
                     const int sid = buf[0];
                     switch (sid)
@@ -687,7 +688,7 @@ int main(int argc,char **argv)
                       } /*switch*/
                   } /*if*/
                 printf("; length=%d",extra+readlen);
-                if (ext)
+                if (has_extension)
                   {
                     int eptr=3;
                     int hdr=0, has_pts, has_dts, has_std=0, std=0, std_scale=0;
@@ -795,13 +796,13 @@ int main(int argc,char **argv)
                   } /*if*/
                 printf("\n");
               } /*if*/
-            if (outputmplex && ext)
+            if (outputmplex && has_extension)
               {
-                if ((buf[1] & 128) != 0 && firstpts[c] == -1)
-                    firstpts[c] = readpts(buf+3);
+                if ((buf[1] & 128) != 0 && firstpts[packetid] == -1)
+                    firstpts[packetid] = readpts(buf+3);
                 if (firstpts[0xC0] != -1 && firstpts[0xE0] != -1)
                   {
-                    printf("%d\n",firstpts[0xE0]-firstpts[0xC0]);
+                    printf("%d\n", firstpts[0xE0] - firstpts[0xC0]);
                     fflush(stdout);
                     close(1);
                     outputmplex = false;
@@ -810,7 +811,7 @@ int main(int argc,char **argv)
                   } /*if*/
               } /*if*/
 #ifdef SHOWDATA
-            if (ext && outputenglish)
+            if (has_extension && outputenglish)
               {
                 int i = 3 + buf[2], j;
                 printf("  ");
@@ -819,7 +820,7 @@ int main(int argc,char **argv)
                 printf("\n");
               } /*if*/
 #endif
-            if (ext)
+            if (has_extension)
               {
                 if (dowrite)
                     writetostream(ntohl(hdr)&255,buf+3+buf[2],readlen-3-buf[2]);
@@ -839,6 +840,7 @@ int main(int argc,char **argv)
         default:
             do
               {
+                unsigned char c;
                 if (outputenglish && !nounknown)
                     printf("%08x: unknown hdr: %08x\n",disppos,ntohl(hdr));
                 hdr >>= 8;
