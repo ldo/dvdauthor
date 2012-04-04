@@ -41,7 +41,7 @@
 int pos=0;
 int queuedlen=0;
 
-char *frametype="0IPB4567";
+const char * const frametype = "0IPB4567";
 
 #define SCRTIME 27000000
 #define PTSTIME 90000
@@ -74,209 +74,229 @@ static bool
 
 static fd_set rfd,wfd;
 
+static int64_t readpts(const unsigned char *buf)
+  {
+    return
+            (int64_t)((buf[0] & 0xf) >> 1) << 30
+        |
+            ((int64_t)buf[1] << 8 | buf[2]) >> 1 << 15
+        |
+            ((int64_t)buf[3] << 8 | buf[4]) >> 1;
+  } /*readpts*/
 
-int64_t readpts(unsigned char *buf)
-{
-    int64_t a1,a2,a3,pts;
-    
-    a1=(buf[0]&0xf)>>1;
-    a2=((buf[1]<<8)|buf[2])>>1;
-    a3=((buf[3]<<8)|buf[4])>>1;
-    pts=(((int64_t)a1)<<30)|
-        (a2<<15)|
-        a3;
-    return pts;
-}
-
-bool hasbecomevalid(int stream,struct ofd *o)
-{
+static bool hasbecomevalid(int stream, const struct ofd *o)
+  {
     unsigned char quad[4];
-    struct fdbuf *f1=o->firstbuf,*f2;
+    const struct fdbuf * const f1 = o->firstbuf;
+    const struct fdbuf *f2;
     int i;
     unsigned int realquad;
 
-    if( f1 )
-        f2=f1->next;
+    if (f1)
+        f2 = f1->next;
     else
-        f2=0;
-    for( i=0; i<4; i++ ) {
-        if( f1->len-f1->pos-i > 0 )
-            quad[i]=f1->buf[f1->pos+i];
+        f2 = 0;
+    for (i = 0; i < 4; i++)
+      {
+        if (f1->len - f1->pos-i > 0)
+            quad[i] = f1->buf[f1->pos + i];
         else
-            quad[i]=f2->buf[f2->pos+i-(f1->len-f1->pos)];
-    }
-    realquad=(quad[0]<<24)|
-        (quad[1]<<16)|
-        (quad[2]<<8)|
-        quad[3];
-    if( stream>=0xC0 && stream<0xE0 && (realquad&0xFFE00000)==0xFFE00000 )
+            quad[i] = f2->buf[f2->pos + i - (f1->len - f1->pos)];
+      } /*for*/
+    realquad =
+            quad[0] << 24
+        |
+            quad[1] << 16
+        |
+            quad[2] << 8
+        |
+            quad[3];
+    if (stream >= 0xC0 && stream < 0xE0 && (realquad & 0xFFE00000) == 0xFFE00000)
         return true;
-    if( stream>=0xE0 && realquad==0x1B3 )
+    if (stream >= 0xE0 && realquad == 0x1B3)
         return true;
     return false;
-}
+  } /*hasbecomevalid*/
 
-bool dowork(bool checkin)
-{
+static bool dowork(bool checkin)
+  {
     int i,n=-1;
     struct timeval tv;
     
-    if( !numofd )
+    if (!numofd)
         return checkin;
-    if( checkin ) {
+    if (checkin)
+      {
         FD_SET(STDIN_FILENO,&rfd);
-        n=STDIN_FILENO;
-    } else {
+        n = STDIN_FILENO;
+      }
+    else
+      {
         FD_CLR(STDIN_FILENO,&rfd);
-    }
-    while (true) {
+      } /*if*/
+    while (true)
+      {
         int minq=-1;
-        for( i=0; i<numofd; i++ ) {
+        for (i = 0; i < numofd; i++)
+          {
             struct ofd *o=&outputfds[ofdlist[i]];
-
-            if( o->fd != -1 ) {
-                if( o->fd == -2 ) {
+            if (o->fd != -1)
+              {
+                if (o->fd == -2)
+                  {
                     int fd;
-                    fd=open(o->fname,O_CREAT|O_WRONLY|O_NONBLOCK,0666);
-                    if( fd == -1 && errno == ENXIO ) {
+                    fd = open(o->fname, O_CREAT|O_WRONLY|O_NONBLOCK,0666);
+                    if (fd == -1 && errno == ENXIO)
+                      {
                         continue;
-                    }
-                    if( fd == -1 ) {
+                      } /*if*/
+                    if (fd == -1)
+                      {
                         fprintf(stderr,"Cannot open %s: %s\n",o->fname,strerror(errno));
                         exit(1);
-                    }
-                    o->fd=fd;
-                }
+                      } /*if*/
+                    o->fd = fd;
+                  } /*if*/
                 // at this point, fd >= 0 
-                if( minq == -1 || o->len < minq ) {
+                if (minq == -1 || o->len < minq)
+                  {
                     minq=o->len;
-                }
-                if( (o->len > 0 && o->isvalid) || o->len >= 4 ) {
-                    if( o->fd>n )
-                        n=o->fd;
+                  } /*if*/
+                if ((o->len > 0 && o->isvalid) || o->len >= 4)
+                  {
+                    if (o->fd > n)
+                        n = o->fd;
                     FD_SET(o->fd,&wfd);
-                } else {
+                  }
+                else
+                  {
                     FD_CLR(o->fd,&wfd);
-                    if( closing ) {
+                    if (closing)
+                      {
                         close(o->fd);
                         o->fd=-1;
-                    }
-                }
-            }
-        }
+                      } /*if*/
+                  } /*if*/
+              } /*if*/
+          } /*for*/
         // if all the open files have more then WAITLEN bytes of data
         // queued up, then don't process anymore
-        if( minq >= WAITLEN ) {
+        if (minq >= WAITLEN)
+          {
             FD_CLR(STDIN_FILENO,&rfd);
             break;
-        } else if( minq >= 0 || outputmplex ) // as long as one file is open, continue
+          }
+        else if (minq >= 0 || outputmplex) // as long as one file is open, continue
             break;
         sleep(1);
-    }
-    if( n == -1 )
+      } /*while*/
+    if (n == -1)
         return false;
-    tv.tv_sec=1; // set timeout to 1 second just in case any files need to be opened
-    tv.tv_usec=0;
-    i=select(n+1,&rfd,&wfd,NULL,&tv);
-    if( i > 0 ) {
-        for( i=0; i<numofd; i++ ) {
-            struct ofd *o=&outputfds[ofdlist[i]];
-            if( o->fd >= 0 && FD_ISSET( o->fd, &wfd ) ) {
-                struct fdbuf *f=o->firstbuf;
-                if( !o->isvalid && hasbecomevalid(ofdlist[i],o) )
+    tv.tv_sec = 1; // set timeout to 1 second just in case any files need to be opened
+    tv.tv_usec = 0;
+    i = select(n+1,&rfd,&wfd,NULL,&tv);
+    if (i > 0)
+      {
+        for (i = 0; i < numofd; i++)
+          {
+            struct ofd * const o = &outputfds[ofdlist[i]];
+            if (o->fd >= 0 && FD_ISSET(o->fd, &wfd))
+              {
+                struct fdbuf * const f = o->firstbuf;
+                if (!o->isvalid && hasbecomevalid(ofdlist[i],o))
                     o->isvalid = true;
-
-                if( o->isvalid )
-                    n=write(o->fd,f->buf+f->pos,f->len-f->pos);
-                else if( f->len-f->pos > 0 )
-                    n=1;
+                if (o->isvalid)
+                    n = write(o->fd,f->buf+f->pos,f->len-f->pos);
+                else if (f->len-f->pos > 0)
+                    n = 1;
                 else
-                    n=0;
-
-                if( n == -1 ) {
+                    n = 0;
+                if (n == -1)
+                  {
                     fprintf(stderr,"Error writing to fifo: %s\n",strerror(errno));
                     exit(1);
-                }
-                queuedlen-=n;
-                f->pos+=n;
-                if( f->pos == f->len ) {
-                    o->firstbuf=f->next;
-                    if( o->lastbufptr == &f->next )
-                        o->lastbufptr=&o->firstbuf;
+                  } /*if*/
+                queuedlen -= n;
+                f->pos += n;
+                if (f->pos == f->len)
+                  {
+                    o->firstbuf = f->next;
+                    if (o->lastbufptr == &f->next)
+                        o->lastbufptr = &o->firstbuf;
                     free(f);
-                }
-                o->len-=n;
-            }
-        }
-        if( FD_ISSET( STDIN_FILENO, &rfd ) )
+                  } /*if*/
+                o->len -= n;
+              } /*if*/
+          } /*for*/
+        if (FD_ISSET( STDIN_FILENO, &rfd))
             return true;
-    }
+      } /*if*/
     return false;
-}
+  } /*dowork*/
 
-int forceread(void *ptr,int len,FILE *h)
-{
-    while(!dowork(true));
-    if( fread(ptr,1,len,h) != len ) {
+static int forceread(void *ptr,int len,FILE *h)
+  {
+    while (!dowork(true));
+    if (fread(ptr,1,len,h) != len)
+      {
         fprintf(stderr,"Could not read\n");
         closing = true;
-        while( queuedlen )
+        while (queuedlen)
             dowork(false);
         exit(1);
-    }
-    pos+=len;
+      } /*if*/
+    pos += len;
     return len;
-}
+  } /*forceread*/
 
-int forceread1(void *ptr,FILE *h)
-{
-    int v=fgetc(h);
-
-    if( v<0 ) {
+static void forceread1(void *ptr,FILE *h)
+  {
+    int v = fgetc(h);
+    if (v < 0)
+      {
         fprintf(stderr,"Could not read\n");
         closing = true;
-        while( queuedlen )
+        while (queuedlen)
             dowork(false);
         exit(1);
-    }
-    ((unsigned char *)ptr)[0]=v;
-    pos+=1;
-    return 1;
-}
+      } /*if*/
+    ((unsigned char *)ptr)[0] = v;
+    pos += 1;
+  } /*forceread1*/
 
-void writetostream(int stream,unsigned char *buf,int len)
-{
-    struct ofd *o=&outputfds[stream];
-
-    if( o->fd == -1 )
+static void writetostream(int stream,unsigned char *buf,int len)
+  {
+    struct ofd * const o = &outputfds[stream];
+    if (o->fd == -1)
         return;
-
-    while( len > 0 ) {
+    while (len > 0)
+      {
         int thislen;
         struct fdbuf *fb;
-        if( !o->lastbufptr[0] ) {
-            o->lastbufptr[0]=malloc(sizeof(struct fdbuf));
-            o->lastbufptr[0]->pos=0;
-            o->lastbufptr[0]->len=0;
-            o->lastbufptr[0]->next=0;
-        }
-        fb=o->lastbufptr[0];
-        thislen=BUFLEN-fb->len;
-        if( !thislen ) {
-            o->lastbufptr=&fb->next;
+        if (!o->lastbufptr[0])
+          {
+            o->lastbufptr[0] = malloc(sizeof(struct fdbuf));
+            o->lastbufptr[0]->pos = 0;
+            o->lastbufptr[0]->len = 0;
+            o->lastbufptr[0]->next = 0;
+          } /*if*/
+        fb = o->lastbufptr[0];
+        thislen = BUFLEN - fb->len;
+        if (!thislen)
+          {
+            o->lastbufptr = &fb->next;
             continue;
-        }
-        if( thislen > len )
-            thislen=len;
-        
-        o->len+=thislen;
+          } /*if*/
+        if (thislen > len)
+            thislen = len;
+        o->len += thislen;
         memcpy(fb->buf+fb->len,buf,thislen);
-        fb->len+=thislen;
-        len-=thislen;
-        buf+=thislen;
-        queuedlen+=thislen;
-    }
-}
+        fb->len += thislen;
+        len -= thislen;
+        buf += thislen;
+        queuedlen += thislen;
+      } /*while*/
+  } /*writetostream*/
 
 int main(int argc,char **argv)
   {
