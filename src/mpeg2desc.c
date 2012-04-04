@@ -600,7 +600,7 @@ int main(int argc,char **argv)
             bool has_extension = false;
             int extra=0,readlen;
             bool dowrite = true;
-            const int packetid = ntohl(hdr);
+            const int packetid = ntohl(hdr) & 255;
             if (outputenglish)
                 printf("%08x: ",disppos);
             if (packetid == MPID_SYSTEM)
