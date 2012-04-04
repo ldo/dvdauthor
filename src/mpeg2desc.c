@@ -39,8 +39,8 @@
 // #define SHOWDATA
 
 static int
-    inputpos = 0,
-    queuedlen = 0;
+    inputpos = 0, /* position in stdin */
+    queuedlen = 0; /* total nr bytes awaiting writing to output files */
 
 const char * const frametype = "0IPB4567";
 
@@ -94,6 +94,9 @@ static int64_t readpts(const unsigned char *buf)
   } /*readpts*/
 
 static bool hasbecomevalid(int stream, const struct ofd *o)
+  /* checks if there is a valid packet header at the start of the data to be
+    written to the specified output stream. Assumes there is at least 4 bytes
+    of data waiting to be written. */
   {
     unsigned char quad[4];
     const struct fdbuf * const f1 = o->firstbuf;
@@ -127,7 +130,12 @@ static bool hasbecomevalid(int stream, const struct ofd *o)
     return false;
   } /*hasbecomevalid*/
 
-static bool dowork(bool checkin)
+static bool dowork
+  (
+    bool checkin /* whether to check if bytes are available to be read from stdin */
+  )
+  /* writes pending packets to output streams. This is done concurrently to allow
+    for use with pipes. Returns true iff stdin has input available. */
   {
     int highestfd = -1;
     struct timeval tv;
@@ -144,10 +152,10 @@ static bool dowork(bool checkin)
       } /*if*/
     while (true)
       {
-        int i ,minq=-1;
+        int i, minq = -1;
         for (i = 0; i < numofd; i++)
           {
-            struct ofd *o=&outputfds[ofdlist[i]];
+            struct ofd *o = &outputfds[ofdlist[i]];
             if (o->fd != -1)
               {
                 if (o->fd == -2)
@@ -168,7 +176,7 @@ static bool dowork(bool checkin)
                 // at this point, fd >= 0 
                 if (minq == -1 || o->len < minq)
                   {
-                    minq=o->len;
+                    minq = o->len;
                   } /*if*/
                 if ((o->len > 0 && o->isvalid) || o->len >= 4)
                   {
@@ -212,12 +220,12 @@ static bool dowork(bool checkin)
               {
                 struct fdbuf * const f = o->firstbuf;
                 int written;
-                if (!o->isvalid && hasbecomevalid(ofdlist[i],o))
+                if (!o->isvalid && hasbecomevalid(ofdlist[i], o))
                     o->isvalid = true;
                 if (o->isvalid)
-                    written = write(o->fd,f->buf+f->pos,f->len-f->pos);
+                    written = write(o->fd, f->buf + f->pos, f->len - f->pos);
                 else if (f->len - f->pos > 0)
-                    written = 1;
+                    written = 1; /* discard one byte while waiting for valid packet */
                 else
                     written = 0;
                 if (written == -1)
@@ -229,6 +237,7 @@ static bool dowork(bool checkin)
                 f->pos += written;
                 if (f->pos == f->len)
                   {
+                  /* finished writing buffer at head of queue */
                     o->firstbuf = f->next;
                     if (o->lastbufptr == &f->next)
                         o->lastbufptr = &o->firstbuf;
@@ -251,36 +260,36 @@ static void flushwork(void)
         dowork(false);
   } /*flushwork*/
 
-static int forceread(void *ptr,int len,FILE *h)
+static void forceread(void *ptr, int len)
+  /* reads the specified number of bytes from standard input, finishing processing
+    if EOF is reached. */
   {
-    while (!dowork(true));
-    if (fread(ptr,1,len,h) != len)
+    while (!dowork(true))
+      /* flush output queues while waiting for more input */;
+    if (fread(ptr, 1, len, stdin) != len)
       {
         fprintf(stderr,"Could not read\n");
         flushwork();
         exit(1);
       } /*if*/
     inputpos += len;
-    return len;
   } /*forceread*/
 
-static void forceread1(void *ptr,FILE *h)
+static unsigned char forceread1(void)
+  /* reads one  byte from standard input, finishing processing
+    if EOF is reached. */
   {
-    int v = fgetc(h);
-    if (v < 0)
-      {
-        fprintf(stderr,"Could not read\n");
-        flushwork();
-        exit(1);
-      } /*if*/
-    ((unsigned char *)ptr)[0] = v;
-    inputpos += 1;
+    unsigned char c;
+    forceread(&c, 1);
+    return c;
   } /*forceread1*/
 
-static void writetostream(int stream,unsigned char *buf,int len)
+static void writetostream(int stream, unsigned char *buf, int len)
+  /* queues more data to be written to the output file for the specified stream id,
+    if I am writing it. */
   {
     struct ofd * const o = &outputfds[stream];
-    if (o->fd == -1)
+    if (o->fd == -1) /* not extracting this stream */
         return;
     while (len > 0)
       {
@@ -303,7 +312,7 @@ static void writetostream(int stream,unsigned char *buf,int len)
         if (thislen > len)
             thislen = len;
         o->len += thislen;
-        memcpy(fb->buf+fb->len,buf,thislen);
+        memcpy(fb->buf + fb->len, buf, thislen);
         fb->len += thislen;
         len -= thislen;
         buf += thislen;
@@ -402,7 +411,7 @@ int main(int argc,char **argv)
       {
         firstpts[i] = -1;
       } /*for*/
-    forceread(&hdr,4,stdin);
+    forceread(&hdr,4);
     while (true)
       {
         const int disppos = inputpos - 4; /* where packet actually started */
@@ -410,14 +419,14 @@ int main(int argc,char **argv)
           {
       // start codes:
         case 0x100 + MPID_PICTURE: // picture header
-            forceread(buf,4,stdin);
+            forceread(buf,4);
             if (outputenglish)
                 printf("%08x: picture hdr, frametype=%c, temporal=%d\n",disppos,frametype[(buf[1]>>3)&7],(buf[0]<<2)|(buf[1]>>6));
-            forceread(&hdr,4,stdin);
+            forceread(&hdr,4);
         break;
 
         case 0x100 + MPID_SEQUENCE: // sequence header
-            forceread(buf,8,stdin);
+            forceread(buf,8);
             if (outputenglish)
                 printf("%08x: sequence hdr: %dx%d, a/f:%02x, bitrate=%d\n"
                        ,disppos
@@ -427,34 +436,34 @@ int main(int argc,char **argv)
                        ,(buf[4]<<10)|(buf[5]<<2)|(buf[6]>>6)
                     );
             if (buf[7] & 2)
-                forceread(buf+8,64,stdin);
+                forceread(buf+8,64);
             if (buf[7] & 1)
-                forceread(buf+8,64,stdin);
-            forceread(&hdr,4,stdin);
+                forceread(buf+8,64);
+            forceread(&hdr,4);
         break;
 
         case 0x100 + MPID_EXTENSION: // extension header
-            forceread(buf,1,stdin);
+            forceread(buf,1);
             switch (buf[0] >> 4)
               {
             case 1:
                 if (outputenglish)
                     printf("%08x: sequence extension hdr\n",disppos);
-                forceread(buf+1,5,stdin);
+                forceread(buf+1,5);
             break;
             case 2:
                 if (outputenglish)
                     printf("%08x: sequence display extension hdr\n",disppos);
-                forceread(buf+1,(buf[0]&1)?7:3,stdin);
+                forceread(buf+1,(buf[0]&1)?7:3);
             break;
             case 7:
                 if (outputenglish)
                     printf("%08x: picture display extension hdr\n",disppos);
             break;
             case 8:
-                forceread(buf+1,4,stdin);
+                forceread(buf+1,4);
                 if (buf[4] & 64)
-                    forceread(buf+5,2,stdin);
+                    forceread(buf+5,2);
                 if (outputenglish)
                   {
                     printf("%08x: picture coding extension hdr%s%s\n",
@@ -468,17 +477,17 @@ int main(int argc,char **argv)
                     printf("%08x: extension hdr %x\n",disppos,buf[0]>>4);
             break;
               } /*switch*/
-            forceread(&hdr,4,stdin);
+            forceread(&hdr,4);
         break;
 
         case 0x100 + MPID_SEQUENCE_END: // end of sequence
             if (outputenglish)
                 printf("%08x: end of sequence\n",disppos);
-            forceread(&hdr,4,stdin);
+            forceread(&hdr,4);
         break;
 
         case 0x100 + MPID_GOP: // group of pictures
-            forceread(buf,4,stdin);
+            forceread(buf,4);
             if (outputenglish)
               {
                 printf("%08x: GOP: %s%d:%02d:%02d.%02d, %s%s\n"
@@ -492,23 +501,23 @@ int main(int argc,char **argv)
                        ,buf[3]&32?", broken":""
                     );
               } /*if*/
-            forceread(&hdr,4,stdin);
+            forceread(&hdr,4);
         break;
 
         case 0x100 + MPID_PROGRAM_END: // end of program stream
             if (outputenglish)
                 printf("%08x: end of program stream\n",disppos);
-            forceread(&hdr,4,stdin);
+            forceread(&hdr,4);
         break;
 
         case 0x100 + MPID_PACK: // mpeg_pack_header
           {
             uint32_t scr,scrhi,scrext;
             int64_t fulltime;
-            forceread(buf,8,stdin);
+            forceread(buf,8);
             if ((buf[0] & 0xC0) == 0x40)
               {
-                forceread(buf+8,2,stdin);
+                forceread(buf+8,2);
                 scrhi = (buf[0] & 0x20) >> 5;
                 scr =
                         (buf[0] & 0x18) << 27
@@ -551,7 +560,7 @@ int main(int argc,char **argv)
               } /*if*/
             if (outputenglish)
                 printf("%08x: mpeg%c pack hdr, %" PRId64 ".%03" PRId64 " sec\n",disppos,mpeg2?'2':'1',fulltime/SCRTIME,(fulltime%SCRTIME)/(SCRTIME/1000));
-            forceread(&hdr,4,stdin);
+            forceread(&hdr,4);
           }
         break;
 
@@ -652,9 +661,10 @@ int main(int argc,char **argv)
                     printf("pes video %d", packetid - MPID_VIDEO_FIRST);
                 has_extension = true;
               } /*if*/
-            forceread(buf,2,stdin); // pes packet length
+            forceread(buf,2); // pes packet length
             extra = buf[0] << 8 | buf[1];
-            readlen = forceread(buf, extra > sizeof buf ? sizeof buf : extra, stdin);
+            readlen = extra > sizeof buf ? sizeof buf : extra;
+            forceread(buf, readlen);
             extra -= readlen;
             if (outputenglish)
               {
@@ -839,24 +849,23 @@ int main(int argc,char **argv)
 
             while (extra)
               {
-                readlen = forceread(buf,(extra>sizeof(buf))?sizeof(buf):extra,stdin);
+                readlen = extra > sizeof buf ? sizeof(buf) : extra;
+                forceread(buf, readlen);
                 if (dowrite)
                     writetostream(ntohl(hdr)&255,buf,readlen);
                 extra -= readlen;
               } /*while*/
-            forceread(&hdr,4,stdin);
+            forceread(&hdr,4);
           }
         break;
 
         default:
             do
               {
-                unsigned char c;
                 if (outputenglish && !nounknown)
                     printf("%08x: unknown hdr: %08x\n",disppos,ntohl(hdr));
                 hdr >>= 8;
-                forceread1(&c,stdin);
-                hdr |= c << 24;
+                hdr |= forceread1() << 24;
               }
             while ((ntohl(hdr) & 0xffffff00) != 0x100);
         break;
