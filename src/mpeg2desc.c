@@ -62,11 +62,15 @@ struct fdbuf
   /* how many output files I can write at once -- can't have
     more than this number of MPEG streams anyway */
 
+/* values for ofd.fd: */
+#define FD_TOOPEN (-2) /* open file named ofd.fname on first write */
+#define FD_CLOSED (-1)
+
 struct ofd
   {
     int fd;
     char *fname;
-    struct fdbuf *firstbuf,**lastbufptr;
+    struct fdbuf *firstbuf,**lastbufptr; /* queue of buffers awaiting writing */
     int len;
     bool isvalid;
   } outputfds[MAX_FILES];
@@ -110,7 +114,7 @@ static bool hasbecomevalid(int stream, const struct ofd *o)
         f2 = 0;
     for (i = 0; i < 4; i++)
       {
-        if (f1->len - f1->pos-i > 0)
+        if (f1->len - f1->pos - i > 0)
             quad[i] = f1->buf[f1->pos + i];
         else
             quad[i] = f2->buf[f2->pos + i - (f1->len - f1->pos)];
@@ -123,9 +127,9 @@ static bool hasbecomevalid(int stream, const struct ofd *o)
             quad[2] << 8
         |
             quad[3];
-    if (stream >= 0xC0 && stream < 0xE0 && (realquad & 0xFFE00000) == 0xFFE00000)
+    if (stream >= MPID_AUDIO_FIRST && stream <= MPID_AUDIO_LAST && (realquad & 0xFFE00000) == 0xFFE00000)
         return true;
-    if (stream >= 0xE0 && realquad == 0x1B3)
+    if (stream >= MPID_VIDEO_FIRST && stream <= MPID_VIDEO_LAST && realquad == 0x100 + MPID_SEQUENCE)
         return true;
     return false;
   } /*hasbecomevalid*/
@@ -156,15 +160,15 @@ static bool dowork
         for (i = 0; i < numofd; i++)
           {
             struct ofd *o = &outputfds[ofdlist[i]];
-            if (o->fd != -1)
+            if (o->fd != FD_CLOSED)
               {
-                if (o->fd == -2)
+                if (o->fd == FD_TOOPEN)
                   {
                     int fd;
-                    fd = open(o->fname, O_CREAT|O_WRONLY|O_NONBLOCK,0666);
+                    fd = open(o->fname, O_CREAT | O_WRONLY | O_NONBLOCK, 0666);
                     if (fd == -1 && errno == ENXIO)
                       {
-                        continue;
+                        continue; /* try again later, in case pipe not created yet */
                       } /*if*/
                     if (fd == -1)
                       {
@@ -190,7 +194,7 @@ static bool dowork
                     if (closing)
                       {
                         close(o->fd);
-                        o->fd=-1;
+                        o->fd = FD_CLOSED;
                       } /*if*/
                   } /*if*/
               } /*if*/
@@ -207,7 +211,7 @@ static bool dowork
         sleep(1);
       } /*while*/
     if (highestfd == -1)
-        return false;
+        return false; /* nothing to do */
     tv.tv_sec = 1; // set timeout to 1 second just in case any files need to be opened
     tv.tv_usec = 0;
     if (select(highestfd + 1, &rfd, &wfd, NULL, &tv) > 0)
@@ -289,7 +293,7 @@ static void writetostream(int stream, unsigned char *buf, int len)
     if I am writing it. */
   {
     struct ofd * const o = &outputfds[stream];
-    if (o->fd == -1) /* not extracting this stream */
+    if (o->fd == FD_CLOSED) /* not extracting this stream */
         return;
     while (len > 0)
       {
@@ -329,7 +333,7 @@ int main(int argc,char **argv)
     int outputstream = 0, oc, i,audiodrop=0;
 
     for (oc = 0; oc < MAX_FILES; oc++)
-        outputfds[oc].fd = -1;
+        outputfds[oc].fd = FD_CLOSED;
     while (-1 != (oc = getopt(argc,argv,"ha:v:o:msd:u")))
       {
         switch (oc)
@@ -358,8 +362,8 @@ int main(int argc,char **argv)
                 fprintf(stderr,"no stream selected for '%s'\n",optarg);
                 exit(1);
               } /*if*/
-            outputfds[outputstream].fd=-2;
-            outputfds[outputstream].fname=optarg;
+            outputfds[outputstream].fd = FD_TOOPEN;
+            outputfds[outputstream].fname = optarg;
             outputstream=0;
         break;
         case 'u':
@@ -668,7 +672,7 @@ int main(int argc,char **argv)
             extra -= readlen;
             if (outputenglish)
               {
-                if (packetid == 0x100 + MPID_PRIVATE1) // private stream 1
+                if (packetid == MPID_PRIVATE1) // private stream 1
                   {
                     const int sid = buf[3 + buf[2]]; /* substream ID is first byte after header */
                     switch (sid & 0xf8)
@@ -692,7 +696,7 @@ int main(int argc,char **argv)
                     break;
                       } /*switch*/
                   }
-                else if (packetid == 0x100 + MPID_PRIVATE2) // private stream 2
+                else if (packetid == MPID_PRIVATE2) // private stream 2
                   {
                     const int sid = buf[0];
                     switch (sid)
@@ -708,7 +712,7 @@ int main(int argc,char **argv)
                     break;
                       } /*switch*/
                   } /*if*/
-                printf("; length=%d",extra+readlen);
+                printf("; length=%d", extra + readlen);
                 if (has_extension)
                   {
                     int eptr=3;
@@ -844,7 +848,7 @@ int main(int argc,char **argv)
             if (has_extension)
               {
                 if (dowrite)
-                    writetostream(ntohl(hdr)&255,buf+3+buf[2],readlen-3-buf[2]);
+                    writetostream(packetid, buf + 3 + buf[2], readlen - 3 - buf[2]);
               } /*if*/
 
             while (extra)
@@ -852,7 +856,7 @@ int main(int argc,char **argv)
                 readlen = extra > sizeof buf ? sizeof(buf) : extra;
                 forceread(buf, readlen);
                 if (dowrite)
-                    writetostream(ntohl(hdr)&255,buf,readlen);
+                    writetostream(packetid, buf, readlen);
                 extra -= readlen;
               } /*while*/
             forceread(&hdr,4);
