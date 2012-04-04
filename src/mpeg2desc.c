@@ -417,13 +417,18 @@ int main(int argc,char **argv)
           } /*for*/
       }
       {
-        unsigned int hdr = 0;
-        bool mpeg2 = true;
+        unsigned int hdr;
         unsigned char buf[200];
-        forceread(&hdr,4);
+        bool mpeg2 = true;
+        bool fetchhdr = true;
         while (true)
           {
-            const int disppos = inputpos - 4; /* where packet actually started */
+            const int disppos = inputpos; /* where packet actually started */
+            if (fetchhdr)
+              {
+                forceread(&hdr,4);
+              } /*if*/
+            fetchhdr = true; /* initial assumption */
             switch (ntohl(hdr))
               {
           // start codes:
@@ -431,7 +436,6 @@ int main(int argc,char **argv)
                 forceread(buf,4);
                 if (outputenglish)
                     printf("%08x: picture hdr, frametype=%c, temporal=%d\n",disppos,frametype[(buf[1]>>3)&7],(buf[0]<<2)|(buf[1]>>6));
-                forceread(&hdr,4);
             break;
 
             case 0x100 + MPID_SEQUENCE: // sequence header
@@ -448,7 +452,6 @@ int main(int argc,char **argv)
                     forceread(buf+8,64);
                 if (buf[7] & 1)
                     forceread(buf+8,64);
-                forceread(&hdr,4);
             break;
 
             case 0x100 + MPID_EXTENSION: // extension header
@@ -486,13 +489,11 @@ int main(int argc,char **argv)
                         printf("%08x: extension hdr %x\n",disppos,buf[0]>>4);
                 break;
                   } /*switch*/
-                forceread(&hdr,4);
             break;
 
             case 0x100 + MPID_SEQUENCE_END: // end of sequence
                 if (outputenglish)
                     printf("%08x: end of sequence\n",disppos);
-                forceread(&hdr,4);
             break;
 
             case 0x100 + MPID_GOP: // group of pictures
@@ -510,13 +511,11 @@ int main(int argc,char **argv)
                            ,buf[3]&32?", broken":""
                         );
                   } /*if*/
-                forceread(&hdr,4);
             break;
 
             case 0x100 + MPID_PROGRAM_END: // end of program stream
                 if (outputenglish)
                     printf("%08x: end of program stream\n",disppos);
-                forceread(&hdr,4);
             break;
 
             case 0x100 + MPID_PACK: // mpeg_pack_header
@@ -569,7 +568,6 @@ int main(int argc,char **argv)
                   } /*if*/
                 if (outputenglish)
                     printf("%08x: mpeg%c pack hdr, %" PRId64 ".%03" PRId64 " sec\n",disppos,mpeg2?'2':'1',fulltime/SCRTIME,(fulltime%SCRTIME)/(SCRTIME/1000));
-                forceread(&hdr,4);
               }
             break;
 
@@ -864,7 +862,6 @@ int main(int argc,char **argv)
                         writetostream(packetid, buf, readlen);
                     extra -= readlen;
                   } /*while*/
-                forceread(&hdr,4);
               }
             break;
 
@@ -877,6 +874,7 @@ int main(int argc,char **argv)
                     hdr |= forceread1() << 24;
                   }
                 while ((ntohl(hdr) & 0xffffff00) != 0x100);
+                fetchhdr = false; /* already got it */
             break;
               } /*switch*/
           } /*while*/
