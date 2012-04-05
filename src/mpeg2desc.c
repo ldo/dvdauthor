@@ -33,8 +33,6 @@
 // this is needed for FreeBSD and Windows
 #include <sys/time.h>
 
-#include <netinet/in.h>
-
 #include "common.h"
 
 // #define SHOWDATA
@@ -340,7 +338,7 @@ static void process_packets
     bool recursed
   )
   {
-    unsigned int hdr;
+    unsigned char hdr[4];
     unsigned char buf[200];
     bool fetchhdr = true;
     while (true)
@@ -350,10 +348,17 @@ static void process_packets
         int hdrid;
         if (fetchhdr)
           {
-            readinput(&hdr, 4, false);
+            readinput(hdr, 4, false);
           } /*if*/
         fetchhdr = true; /* initial assumption */
-        hdrid = ntohl(hdr);
+        hdrid =
+                hdr[0] << 24
+            |
+                hdr[1] << 16
+            |
+                hdr[2] << 8
+            |
+                hdr[3];
         switch (hdrid)
           {
       // start codes:
@@ -853,14 +858,22 @@ static void process_packets
           {
             do
               {
-                unsigned char c;
                 if (!recursed && outputenglish && !nounknown)
-                    printf("%08x: unknown hdr: %08x\n", disppos, ntohl(hdr));
-                hdr >>= 8;
-                readinput(&c, 1, true);
-                hdr |= (unsigned int)c << 24;
+                    printf("%08x: unknown hdr: %08x\n", disppos, hdrid);
+                hdr[0] = hdr[1];
+                hdr[1] = hdr[2];
+                hdr[2] = hdr[3];
+                readinput(hdr + 3, 1, false);
+                hdrid =
+                        hdr[0] << 24
+                    |
+                        hdr[1] << 16
+                    |
+                        hdr[2] << 8
+                    |
+                        hdr[3];
               }
-            while ((ntohl(hdr) & 0xffffff00) != 0x100);
+            while ((hdrid & 0xffffff00) != 0x100);
             fetchhdr = false; /* already got it */
           } /*if*/
       } /*while*/
