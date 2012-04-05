@@ -276,16 +276,19 @@ static void forceread(void *ptr, int len, bool required)
     nrbytes = fread(ptr, 1, len, stdin);
     if (nrbytes != len)
       {
+        bool success = true;
         if (nrbytes < 0)
           {
             fprintf(stderr, "Error %d reading: %s\n", errno, strerror(errno));
+            success = false;
           }
         else if (nrbytes < len && required)
           {
             fprintf(stderr, "Unexpected read EOF\n");
+            success = false;
           } /*if*/
         flushwork();
-        exit(1);
+        exit(success ? 0 : 1);
       } /*if*/
     inputpos += len;
   } /*forceread*/
