@@ -25,6 +25,7 @@
 
 #include "compat.h"
 
+#include <setjmp.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -38,7 +39,7 @@
 
 // #define SHOWDATA
 
-static int
+static unsigned int
     inputpos = 0, /* position in stdin */
     queuedlen = 0; /* total nr bytes awaiting writing to output files */
 
@@ -82,8 +83,12 @@ static int
 static int firstpts[256]; /* indexed by stream id */
 
 static bool
+    outputenglish = true,
+    nounknown = false,
     closing = false,
     outputmplex = false;
+static int
+    audiodrop = 0;
 
 static fd_set
   /* should be local to dowork routine */
@@ -293,15 +298,6 @@ static void forceread(void *ptr, int len, bool required)
     inputpos += len;
   } /*forceread*/
 
-static unsigned char forceread1(bool required)
-  /* reads one  byte from standard input, finishing processing
-    if EOF is reached. */
-  {
-    unsigned char c;
-    forceread(&c, 1, required);
-    return c;
-  } /*forceread1*/
-
 static void writetostream(int stream, unsigned char *buf, int len)
   /* queues more data to be written to the output file for the specified stream id,
     if I am writing it. */
@@ -338,10 +334,539 @@ static void writetostream(int stream, unsigned char *buf, int len)
       } /*while*/
   } /*writetostream*/
 
+static void process_packets
+  (
+    void (*readinput)(void *ptr, int len, bool required),
+    bool recursed
+  )
+  {
+    unsigned int hdr;
+    unsigned char buf[200];
+    bool fetchhdr = true;
+    while (true)
+      {
+        const int disppos = fetchhdr ? inputpos : inputpos - 4; /* where packet actually started */
+        bool handled = true;
+        int hdrid;
+        if (fetchhdr)
+          {
+            readinput(&hdr, 4, false);
+          } /*if*/
+        fetchhdr = true; /* initial assumption */
+        hdrid = ntohl(hdr);
+        switch (hdrid)
+          {
+      // start codes:
+        case 0x100 + MPID_PICTURE: // picture header
+            readinput(buf, 4, true);
+            if (outputenglish)
+                printf
+                  (
+                    "%08x: picture hdr, frametype=%c, temporal=%d\n",
+                    disppos,
+                    frametype[buf[1] >> 3 & 7],
+                    buf[0] << 2 | buf[1] >> 6
+                  );
+        break;
+
+        case 0x100 + MPID_SEQUENCE: // sequence header
+            readinput(buf, 8, true);
+            if (outputenglish)
+                printf
+                  (
+                    "%08x: sequence hdr: %dx%d, a/f:%02x, bitrate=%d\n",
+                    disppos,
+                    buf[0] << 4 | buf[1] >> 4,
+                    buf[1] << 8 & 0xf00 | buf[2],
+                    buf[3],
+                    buf[4] << 10 | buf[5] << 2 | buf[6] >> 6
+                  );
+            if (buf[7] & 2)
+                readinput(buf + 8, 64, true);
+            if (buf[7] & 1)
+                readinput(buf + 8, 64, true);
+        break;
+
+        case 0x100 + MPID_EXTENSION: // extension header
+            readinput(buf, 1, true);
+            switch (buf[0] >> 4)
+              {
+            case 1:
+                if (outputenglish)
+                    printf("%08x: sequence extension hdr\n", disppos);
+                readinput(buf + 1, 5, true);
+            break;
+            case 2:
+                if (outputenglish)
+                    printf("%08x: sequence display extension hdr\n", disppos);
+                readinput(buf + 1, (buf[0] & 1) ? 7 : 3, true);
+            break;
+            case 7:
+                if (outputenglish)
+                    printf("%08x: picture display extension hdr\n", disppos);
+            break;
+            case 8:
+                readinput(buf + 1, 4, true);
+                if (buf[4] & 64)
+                    readinput(buf + 5, 2, true);
+                if (outputenglish)
+                  {
+                    printf
+                      (
+                        "%08x: picture coding extension hdr%s%s\n",
+                        disppos,
+                        (buf[3] & 0x80) ? ", top" : ", bottom",
+                        (buf[3] & 2) ? ", repeat" : ""
+                     );
+                  } /*if*/
+            break;
+            default:
+                if (outputenglish)
+                    printf("%08x: extension hdr %x\n", disppos, buf[0] >> 4);
+            break;
+              } /*switch*/
+        break;
+
+        case 0x100 + MPID_SEQUENCE_END: // end of sequence
+            if (outputenglish)
+                printf("%08x: end of sequence\n", disppos);
+        break;
+
+        case 0x100 + MPID_GOP: // group of pictures
+            readinput(buf, 4, true);
+            if (outputenglish)
+              {
+                printf
+                  (
+                    "%08x: GOP: %s%d:%02d:%02d.%02d, %s%s\n",
+                    disppos,
+                    buf[0] & 128 ? "drop, " : "",
+                    buf[0] >> 2 & 31,
+                    (buf[0] << 4 | buf[1] >> 4) & 63,
+                    (buf[1] << 3 | buf[2] >> 5) & 63,
+                    (buf[2] << 1 | buf[3] >> 7) & 63,
+                    buf[3] & 64 ? "closed" : "open",
+                    buf[3] & 32 ? ", broken" : ""
+                    );
+              } /*if*/
+        break;
+
+        case 0x100 + MPID_PROGRAM_END: // end of program stream
+            if (outputenglish)
+                printf("%08x: end of program stream\n", disppos);
+        break;
+
+        case 0x100 + MPID_PACK: // mpeg_pack_header
+          {
+            uint32_t scr,scrhi,scrext;
+            int64_t fulltime;
+            bool mpeg2 = true;
+            readinput(buf, 8, true);
+            if ((buf[0] & 0xC0) == 0x40)
+              {
+                readinput(buf + 8, 2, true);
+                scrhi = (buf[0] & 0x20) >> 5;
+                scr =
+                        (buf[0] & 0x18) << 27
+                    |
+                        (buf[0] & 3) << 28
+                    |
+                        buf[1] << 20
+                    |
+                        (buf[2] & 0xf8) << 12
+                    |
+                        (buf[2] & 3) << 13
+                    |
+                        buf[3] << 5
+                    |
+                        (buf[4] & 0xf8) >> 3;
+                scrext =
+                        (buf[4] & 3) << 7
+                    |
+                        buf[5] >> 1;
+                if (scrext >= 300 && outputenglish)
+                  {
+                    printf("WARN: scrext in pack hdr > 300: %u\n", scrext);
+                  } /*if*/
+                fulltime = (int64_t)scrhi << 32 | (int64_t)scr;
+                fulltime *= 300;
+                fulltime += scrext;
+                mpeg2 = true;
+              }
+            else if ((buf[0] & 0xF0) == 0x20)
+              {
+                mpeg2 = false;
+                fulltime = readpts(buf);
+                fulltime *= 300;
+              }
+            else
+              {
+                if (outputenglish)
+                    printf("WARN: unknown pack header version\n");
+                fulltime = 0;
+              } /*if*/
+            if (outputenglish)
+                printf
+                  (
+                    "%08x: mpeg%c pack hdr, %" PRId64 ".%03" PRId64 " sec\n",
+                    disppos,
+                    mpeg2 ? '2' : '1',
+                    fulltime / SCRTIME,
+                    (fulltime % SCRTIME) / (SCRTIME / 1000)
+                  );
+          }
+        break;
+        default:
+            handled = false;
+        break;
+      } /*switch*/
+        if
+          (
+                !handled
+            && 
+                !recursed
+            &&
+                (
+                    hdrid == 0x100 + MPID_SYSTEM
+                ||
+                    hdrid == 0x100 + MPID_PRIVATE1
+                ||
+                    hdrid == 0x100 + MPID_PAD
+                ||
+                    hdrid == 0x100 + MPID_PRIVATE2
+                || 
+                    hdrid >= 0x100 + MPID_AUDIO_FIRST && hdrid <= 0x100 + MPID_AUDIO_LAST
+                ||
+                    hdrid >= 0x100 + MPID_VIDEO_FIRST && hdrid <= 0x100 + MPID_VIDEO_LAST
+                )
+          )
+          {
+            bool has_extension = false;
+            unsigned int headerlen, packetlen, contentoffs;
+            int readlen;
+            bool dowrite = !recursed;
+            const int packetid = hdrid & 255;
+            if (outputenglish)
+                printf("%08x: ", disppos);
+            if (packetid == MPID_SYSTEM)
+              {
+                if (outputenglish)
+                    printf("system header");
+              }
+            else if (packetid == MPID_PRIVATE1)
+              {
+                if (outputenglish)
+                    printf("pes private1");
+                has_extension = true;
+              }
+            else if (packetid == MPID_PAD)
+              {
+                if (outputenglish)
+                    printf("pes padding");
+              }
+            else if (packetid == MPID_PRIVATE2)
+              {
+                if (outputenglish)
+                    printf("pes private2");
+              }
+            else if (packetid >= MPID_AUDIO_FIRST && packetid <= MPID_AUDIO_LAST)
+              {
+                if (outputenglish)
+                    printf("pes audio %d", packetid - MPID_AUDIO_FIRST);
+                if (audiodrop)
+                  {
+                    dowrite = false;
+                    audiodrop--;
+                  } /*if*/
+                has_extension = true;
+              }
+            else if (packetid >= MPID_VIDEO_FIRST && packetid <= MPID_VIDEO_LAST)
+              {
+                if (outputenglish)
+                    printf("pes video %d", packetid - MPID_VIDEO_FIRST);
+                has_extension = true;
+              } /*if*/
+            readinput(buf, 2, true); // pes packet length
+            packetlen = buf[0] << 8 | buf[1];
+            readlen = packetlen > sizeof buf ? sizeof buf : packetlen;
+            readinput(buf, readlen, true);
+            packetlen -= readlen;
+            headerlen = buf[2]; /* length of packet header */
+            contentoffs = 3 + headerlen; /* beginning of packet content */
+            if (outputenglish)
+              {
+                if (packetid == MPID_PRIVATE1) // private stream 1
+                  {
+                    const int sid = buf[contentoffs]; /* substream ID is first byte after header */
+                    switch (sid & 0xf8)
+                      {
+                    case 0x20:
+                    case 0x28:
+                    case 0x30:
+                    case 0x38:
+                        printf(", subpicture %d", sid & 0x1f);
+                    break;
+                    case 0x80:
+                        printf(", AC3 audio %d", sid & 7);
+                    break;
+                    case 0x88:
+                        printf(", DTS audio %d", sid & 7);
+                    case 0xa0:
+                        printf(", LPCM audio %d", sid & 7);
+                    break;
+                    default:
+                        printf(", substream id 0x%02x", sid);
+                    break;
+                      } /*switch*/
+                  }
+                else if (packetid == MPID_PRIVATE2) // private stream 2
+                  {
+                    const int sid = buf[0];
+                    switch (sid)
+                      {
+                    case 0:
+                        printf(", PCI");
+                    break;
+                    case 1:
+                        printf(", DSI");
+                    break;
+                    default:
+                        printf(", substream id 0x%02x", sid);
+                    break;
+                      } /*switch*/
+                  } /*if*/
+                printf("; length=%d", packetlen + readlen);
+                if (has_extension)
+                  {
+                    int eptr = 3;
+                    bool has_std = false, has_pts, has_dts;
+                    int hdroffs, std=0, std_scale=0;
+                    const bool mpeg2 = (buf[0] & 0xC0) == 0x80;
+                    if (mpeg2)
+                      {
+                        hdroffs = contentoffs;
+                        eptr = 3;
+                        has_pts = (buf[1] & 128) != 0;
+                        has_dts = (buf[1] & 64) != 0;
+                      }
+                    else
+                      {
+                        hdroffs = 0;
+                        while (buf[hdroffs] == 0xff && hdroffs < sizeof(buf))
+                            hdroffs++;
+                        if ((buf[hdroffs] & 0xC0) == 0x40)
+                          {
+                            has_std = true;
+                            std_scale = (buf[hdroffs] & 32) ? 1024 : 128;
+                            std = ((buf[hdroffs] & 31) * 256 + buf[hdroffs + 1]) * std_scale;
+                            hdroffs += 2;
+                          } /*if*/
+                        eptr = hdroffs;
+                        has_pts = (buf[hdroffs] & 0xE0) == 0x20;
+                        has_dts = (buf[hdroffs] & 0xF0) == 0x30;
+                      } /*if*/
+                    printf("; hdr=%d", hdroffs);
+                    if (has_pts)
+                      {
+                        int64_t pts;
+                        pts = readpts(buf + eptr);
+                        eptr += 5;
+                        printf
+                          (
+                            "; pts %" PRId64 ".%03" PRId64 " sec",
+                            pts / PTSTIME,
+                            (pts % PTSTIME) / (PTSTIME / 1000)
+                          );
+                      } /*if*/
+                    if (has_dts)
+                      {
+                        int64_t dts;
+                        dts = readpts(buf + eptr);
+                        eptr += 5;
+                        printf
+                          (
+                            "; dts %" PRId64 ".%03" PRId64 " sec",
+                            dts / PTSTIME,
+                            (dts % PTSTIME) / (PTSTIME / 1000)
+                          );
+                      } /*if*/
+                    if (mpeg2)
+                      {
+                        if (buf[1] & 32)
+                          {
+                            printf("; escr");
+                            eptr += 6;
+                          } /*if*/
+                        if (buf[1] & 16)
+                          {
+                            printf("; es");
+                            eptr += 2;
+                          } /*if*/
+                        if (buf[1] & 4)
+                          {
+                            printf("; ci");
+                            eptr++;
+                          } /*if*/
+                        if (buf[1] & 2)
+                          {
+                            printf("; crc");
+                            eptr += 2;
+                          } /*if*/
+                        if (buf[1] & 1)
+                          {
+                            int pef = buf[eptr];
+                            eptr++;
+                            printf("; (pext)");
+                            if (pef & 128)
+                              {
+                                printf("; user");
+                                eptr += 16;
+                              } /*if*/
+                            if (pef & 64)
+                              {
+                                printf("; pack");
+                                eptr++;
+                              } /*if*/
+                            if (pef & 32)
+                              {
+                                printf("; ppscf");
+                                eptr += 2;
+                              } /*if*/
+                            if (pef & 16)
+                              {
+                                std_scale = (buf[eptr] & 32) ? 1024 : 128;
+                                printf
+                                  (
+                                    "; pstd=%d (scale=%d)",
+                                    ((buf[eptr] & 31) * 256 + buf[eptr + 1]) * std_scale,
+                                    std_scale
+                                  );
+                                eptr += 2;
+                              } /*if*/
+                            if (pef & 1)
+                              {
+                                printf("; (pext2)");
+                                eptr += 2;
+                              } /*if*/
+                          } /*if*/
+                      }
+                    else
+                      {
+                        if (has_std)
+                            printf("; pstd=%d (scale=%d)", std, std_scale);
+                      } /*if*/
+                  } /*if*/
+                printf("\n");
+              } /*if*/
+            if (outputmplex && has_extension)
+              {
+                if ((buf[1] & 128) != 0 && firstpts[packetid] == -1)
+                    firstpts[packetid] = readpts(buf + 3);
+                if (firstpts[MPID_AUDIO_FIRST] != -1 && firstpts[MPID_VIDEO_FIRST] != -1)
+                  {
+                    printf("%d\n", firstpts[MPID_VIDEO_FIRST] - firstpts[MPID_AUDIO_FIRST]);
+                    fflush(stdout);
+                    close(1);
+                    outputmplex = false;
+                    if (!numofd)
+                        exit(0);
+                  } /*if*/
+              } /*if*/
+#ifdef SHOWDATA
+            if (has_extension && outputenglish)
+              {
+                int j;
+                printf("  ");
+                for (j=0; j<16; j++)
+                    printf(" %02x", buf[j + contentoffs]);
+                printf("\n");
+              } /*if*/
+#endif
+            if (!recursed)
+              {
+                if (has_extension && dowrite)
+                  {
+                    writetostream(packetid, buf + contentoffs, readlen - contentoffs);
+                  } /*if*/
+                if (outputenglish && packetid >= MPID_VIDEO_FIRST && packetid <= MPID_VIDEO_LAST)
+                  {
+                  /* look inside PES packet to report on details of video packets */
+                    unsigned int remaining = readlen;
+                    jmp_buf resume;
+                  /* GCC extension! nested routine */
+                    void bufread(void *ptr, int len, bool required)
+                      {
+                        const unsigned int tocopy = remaining > len ? len : remaining;
+                        if (tocopy != 0)
+                          {
+                            memcpy(ptr, buf + contentoffs, tocopy);
+                            ptr = (unsigned char *)ptr + tocopy;
+                            len -= tocopy;
+                            contentoffs += tocopy;
+                            remaining -= tocopy;
+                            inputpos += tocopy;
+                          } /*if*/
+                        if (len != 0)
+                          {
+                          /* read more of packet */
+                            if (packetlen < len)
+                              {
+                                if (false /*required*/)
+                                  {
+                                    fprintf(stderr, "Unexpected nested read EOF\n");
+                                  } /*if*/
+                                longjmp(resume, 1);
+                              } /*if*/
+                            readinput(ptr, len, required);
+                            if (dowrite)
+                              {
+                                writetostream(packetid, ptr, len);
+                              } /*if*/
+                            packetlen -= len;
+                          } /*if*/
+                      } /*bufread*/
+                    inputpos -= remaining; /* rewind to start of packet content */
+                    if (!setjmp(resume))
+                      {
+                        process_packets(bufread, true);
+                      } /*if*/
+                  }
+                else
+                  {
+                    while (packetlen != 0)
+                      {
+                        readlen = packetlen > sizeof buf ? sizeof(buf) : packetlen;
+                        readinput(buf, readlen, true);
+                        if (dowrite)
+                          {
+                            writetostream(packetid, buf, readlen);
+                          } /*if*/
+                        packetlen -= readlen;
+                      } /*while*/
+                  } /*if*/
+              } /*if*/
+            handled = true;
+          } /*if*/
+        if (!handled)
+          {
+            do
+              {
+                unsigned char c;
+                if (!recursed && outputenglish && !nounknown)
+                    printf("%08x: unknown hdr: %08x\n", disppos, ntohl(hdr));
+                hdr >>= 8;
+                readinput(&c, 1, true);
+                hdr |= (unsigned int)c << 24;
+              }
+            while ((ntohl(hdr) & 0xffffff00) != 0x100);
+            fetchhdr = false; /* already got it */
+          } /*if*/
+      } /*while*/
+  } /*process_packets*/
+
 int main(int argc,char **argv)
   {
-    bool outputenglish = true, skiptohdr = false, nounknown = false;
-    int audiodrop = 0;
+    bool skiptohdr = false;
     fputs(PACKAGE_HEADER("mpeg2desc"), stderr);
       {
         int outputstream = 0, oc, i;
@@ -429,504 +954,5 @@ int main(int argc,char **argv)
             firstpts[i] = -1;
           } /*for*/
       }
-      {
-        unsigned int hdr;
-        unsigned char buf[200];
-        bool fetchhdr = true;
-        while (true)
-          {
-            const int disppos = fetchhdr ? inputpos : inputpos - 4; /* where packet actually started */
-            if (fetchhdr)
-              {
-                forceread(&hdr, 4, false);
-              } /*if*/
-            fetchhdr = true; /* initial assumption */
-            switch (ntohl(hdr))
-              {
-          // start codes:
-            case 0x100 + MPID_PICTURE: // picture header
-                forceread(buf, 4, true);
-                if (outputenglish)
-                    printf
-                      (
-                        "%08x: picture hdr, frametype=%c, temporal=%d\n",
-                        disppos,
-                        frametype[buf[1] >> 3 & 7],
-                        buf[0] << 2 | buf[1] >> 6
-                      );
-            break;
-
-            case 0x100 + MPID_SEQUENCE: // sequence header
-                forceread(buf, 8, true);
-                if (outputenglish)
-                    printf
-                      (
-                        "%08x: sequence hdr: %dx%d, a/f:%02x, bitrate=%d\n",
-                        disppos,
-                        buf[0] << 4 | buf[1] >> 4,
-                        buf[1] << 8 & 0xf00 | buf[2],
-                        buf[3],
-                        buf[4] << 10 | buf[5] << 2 | buf[6] >> 6
-                      );
-                if (buf[7] & 2)
-                    forceread(buf + 8, 64, true);
-                if (buf[7] & 1)
-                    forceread(buf + 8, 64, true);
-            break;
-
-            case 0x100 + MPID_EXTENSION: // extension header
-                forceread(buf, 1, true);
-                switch (buf[0] >> 4)
-                  {
-                case 1:
-                    if (outputenglish)
-                        printf("%08x: sequence extension hdr\n", disppos);
-                    forceread(buf + 1, 5, true);
-                break;
-                case 2:
-                    if (outputenglish)
-                        printf("%08x: sequence display extension hdr\n", disppos);
-                    forceread(buf + 1, (buf[0] & 1) ? 7 : 3, true);
-                break;
-                case 7:
-                    if (outputenglish)
-                        printf("%08x: picture display extension hdr\n", disppos);
-                break;
-                case 8:
-                    forceread(buf + 1, 4, true);
-                    if (buf[4] & 64)
-                        forceread(buf + 5, 2, true);
-                    if (outputenglish)
-                      {
-                        printf
-                          (
-                            "%08x: picture coding extension hdr%s%s\n",
-                            disppos,
-                            (buf[3] & 0x80) ? ", top" : ", bottom",
-                            (buf[3] & 2) ? ", repeat" : ""
-                         );
-                      } /*if*/
-                break;
-                default:
-                    if (outputenglish)
-                        printf("%08x: extension hdr %x\n", disppos, buf[0] >> 4);
-                break;
-                  } /*switch*/
-            break;
-
-            case 0x100 + MPID_SEQUENCE_END: // end of sequence
-                if (outputenglish)
-                    printf("%08x: end of sequence\n", disppos);
-            break;
-
-            case 0x100 + MPID_GOP: // group of pictures
-                forceread(buf, 4, true);
-                if (outputenglish)
-                  {
-                    printf
-                      (
-                        "%08x: GOP: %s%d:%02d:%02d.%02d, %s%s\n",
-                        disppos,
-                        buf[0] & 128 ? "drop, " : "",
-                        buf[0] >> 2 & 31,
-                        (buf[0] << 4 | buf[1] >> 4) & 63,
-                        (buf[1] << 3 | buf[2] >> 5) & 63,
-                        (buf[2] << 1 | buf[3] >> 7) & 63,
-                        buf[3] & 64 ? "closed" : "open",
-                        buf[3] & 32 ? ", broken" : ""
-                        );
-                  } /*if*/
-            break;
-
-            case 0x100 + MPID_PROGRAM_END: // end of program stream
-                if (outputenglish)
-                    printf("%08x: end of program stream\n", disppos);
-            break;
-
-            case 0x100 + MPID_PACK: // mpeg_pack_header
-              {
-                uint32_t scr,scrhi,scrext;
-                int64_t fulltime;
-                bool mpeg2 = true;
-                forceread(buf, 8, true);
-                if ((buf[0] & 0xC0) == 0x40)
-                  {
-                    forceread(buf + 8, 2, true);
-                    scrhi = (buf[0] & 0x20) >> 5;
-                    scr =
-                            (buf[0] & 0x18) << 27
-                        |
-                            (buf[0] & 3) << 28
-                        |
-                            buf[1] << 20
-                        |
-                            (buf[2] & 0xf8) << 12
-                        |
-                            (buf[2] & 3) << 13
-                        |
-                            buf[3] << 5
-                        |
-                            (buf[4] & 0xf8) >> 3;
-                    scrext =
-                            (buf[4] & 3) << 7
-                        |
-                            buf[5] >> 1;
-                    if (scrext >= 300 && outputenglish)
-                      {
-                        printf("WARN: scrext in pack hdr > 300: %u\n", scrext);
-                      } /*if*/
-                    fulltime = (int64_t)scrhi << 32 | (int64_t)scr;
-                    fulltime *= 300;
-                    fulltime += scrext;
-                    mpeg2 = true;
-                  }
-                else if ((buf[0] & 0xF0) == 0x20)
-                  {
-                    mpeg2 = false;
-                    fulltime = readpts(buf);
-                    fulltime *= 300;
-                  }
-                else
-                  {
-                    if (outputenglish)
-                        printf("WARN: unknown pack header version\n");
-                    fulltime = 0;
-                  } /*if*/
-                if (outputenglish)
-                    printf
-                      (
-                        "%08x: mpeg%c pack hdr, %" PRId64 ".%03" PRId64 " sec\n",
-                        disppos,
-                        mpeg2 ? '2' : '1',
-                        fulltime / SCRTIME,
-                        (fulltime % SCRTIME) / (SCRTIME / 1000)
-                      );
-              }
-            break;
-
-            case 0x100 + MPID_SYSTEM: // mpeg_system_header
-            case 0x100 + MPID_PRIVATE1:
-            case 0x100 + MPID_PAD:
-            case 0x100 + MPID_PRIVATE2:
-            case 0x100 + MPID_AUDIO_FIRST:
-            case 0x100 + MPID_AUDIO_FIRST + 1:
-            case 0x100 + MPID_AUDIO_FIRST + 2:
-            case 0x100 + MPID_AUDIO_FIRST + 3:
-            case 0x100 + MPID_AUDIO_FIRST + 4:
-            case 0x100 + MPID_AUDIO_FIRST + 5:
-            case 0x100 + MPID_AUDIO_FIRST + 6:
-            case 0x100 + MPID_AUDIO_FIRST + 7:
-            case 0x100 + MPID_AUDIO_FIRST + 8:
-            case 0x100 + MPID_AUDIO_FIRST + 9:
-            case 0x100 + MPID_AUDIO_FIRST + 10:
-            case 0x100 + MPID_AUDIO_FIRST + 11:
-            case 0x100 + MPID_AUDIO_FIRST + 12:
-            case 0x100 + MPID_AUDIO_FIRST + 13:
-            case 0x100 + MPID_AUDIO_FIRST + 14:
-            case 0x100 + MPID_AUDIO_FIRST + 15:
-            case 0x100 + MPID_AUDIO_FIRST + 16:
-            case 0x100 + MPID_AUDIO_FIRST + 17:
-            case 0x100 + MPID_AUDIO_FIRST + 18:
-            case 0x100 + MPID_AUDIO_FIRST + 19:
-            case 0x100 + MPID_AUDIO_FIRST + 20:
-            case 0x100 + MPID_AUDIO_FIRST + 21:
-            case 0x100 + MPID_AUDIO_FIRST + 22:
-            case 0x100 + MPID_AUDIO_FIRST + 23:
-            case 0x100 + MPID_AUDIO_FIRST + 24:
-            case 0x100 + MPID_AUDIO_FIRST + 25:
-            case 0x100 + MPID_AUDIO_FIRST + 26:
-            case 0x100 + MPID_AUDIO_FIRST + 27:
-            case 0x100 + MPID_AUDIO_FIRST + 28:
-            case 0x100 + MPID_AUDIO_FIRST + 29:
-            case 0x100 + MPID_AUDIO_FIRST + 30:
-            case 0x100 + MPID_AUDIO_FIRST + 31: /*MPID_AUDIO_LAST*/
-            case 0x100 + MPID_VIDEO_FIRST:
-            case 0x100 + MPID_VIDEO_FIRST + 1:
-            case 0x100 + MPID_VIDEO_FIRST + 2:
-            case 0x100 + MPID_VIDEO_FIRST + 3:
-            case 0x100 + MPID_VIDEO_FIRST + 4:
-            case 0x100 + MPID_VIDEO_FIRST + 5:
-            case 0x100 + MPID_VIDEO_FIRST + 6:
-            case 0x100 + MPID_VIDEO_FIRST + 7:
-            case 0x100 + MPID_VIDEO_FIRST + 8:
-            case 0x100 + MPID_VIDEO_FIRST + 9:
-            case 0x100 + MPID_VIDEO_FIRST + 10:
-            case 0x100 + MPID_VIDEO_FIRST + 11:
-            case 0x100 + MPID_VIDEO_FIRST + 12:
-            case 0x100 + MPID_VIDEO_FIRST + 13:
-            case 0x100 + MPID_VIDEO_FIRST + 14:
-            case 0x100 + MPID_VIDEO_FIRST + 15: /*MPID_VIDEO_LAST*/
-              {
-                bool has_extension = false;
-                unsigned int headerlen, packetlen, contentoffs;
-                int readlen;
-                bool dowrite = true;
-                const int packetid = ntohl(hdr) & 255;
-                if (outputenglish)
-                    printf("%08x: ", disppos);
-                if (packetid == MPID_SYSTEM)
-                  {
-                    if (outputenglish)
-                        printf("system header");
-                  }
-                else if (packetid == MPID_PRIVATE1)
-                  {
-                    if (outputenglish)
-                        printf("pes private1");
-                    has_extension = true;
-                  }
-                else if (packetid == MPID_PAD)
-                  {
-                    if (outputenglish)
-                        printf("pes padding");
-                  }
-                else if (packetid == MPID_PRIVATE2)
-                  {
-                    if (outputenglish)
-                        printf("pes private2");
-                  }
-                else if (packetid >= MPID_AUDIO_FIRST && packetid <= MPID_AUDIO_LAST)
-                  {
-                    if (outputenglish)
-                        printf("pes audio %d", packetid - MPID_AUDIO_FIRST);
-                    if (audiodrop)
-                      {
-                        dowrite = false;
-                        audiodrop--;
-                      } /*if*/
-                    has_extension = true;
-                  }
-                else if (packetid >= MPID_VIDEO_FIRST && packetid <= MPID_VIDEO_LAST)
-                  {
-                    if (outputenglish)
-                        printf("pes video %d", packetid - MPID_VIDEO_FIRST);
-                    has_extension = true;
-                  } /*if*/
-                forceread(buf, 2, true); // pes packet length
-                packetlen = buf[0] << 8 | buf[1];
-                readlen = packetlen > sizeof buf ? sizeof buf : packetlen;
-                forceread(buf, readlen, true);
-                packetlen -= readlen;
-                headerlen = buf[2]; /* length of packet header */
-                contentoffs = 3 + headerlen; /* beginning of packet content */
-                if (outputenglish)
-                  {
-                    if (packetid == MPID_PRIVATE1) // private stream 1
-                      {
-                        const int sid = buf[contentoffs]; /* substream ID is first byte after header */
-                        switch (sid & 0xf8)
-                          {
-                        case 0x20:
-                        case 0x28:
-                        case 0x30:
-                        case 0x38:
-                            printf(", subpicture %d", sid & 0x1f);
-                        break;
-                        case 0x80:
-                            printf(", AC3 audio %d", sid & 7);
-                        break;
-                        case 0x88:
-                            printf(", DTS audio %d", sid & 7);
-                        case 0xa0:
-                            printf(", LPCM audio %d", sid & 7);
-                        break;
-                        default:
-                            printf(", substream id 0x%02x", sid);
-                        break;
-                          } /*switch*/
-                      }
-                    else if (packetid == MPID_PRIVATE2) // private stream 2
-                      {
-                        const int sid = buf[0];
-                        switch (sid)
-                          {
-                        case 0:
-                            printf(", PCI");
-                        break;
-                        case 1:
-                            printf(", DSI");
-                        break;
-                        default:
-                            printf(", substream id 0x%02x", sid);
-                        break;
-                          } /*switch*/
-                      } /*if*/
-                    printf("; length=%d", packetlen + readlen);
-                    if (has_extension)
-                      {
-                        int eptr = 3;
-                        bool has_std = false, has_pts, has_dts;
-                        int hdroffs, std=0, std_scale=0;
-                        const bool mpeg2 = (buf[0] & 0xC0) == 0x80;
-                        if (mpeg2)
-                          {
-                            hdroffs = contentoffs;
-                            eptr = 3;
-                            has_pts = (buf[1] & 128) != 0;
-                            has_dts = (buf[1] & 64) != 0;
-                          }
-                        else
-                          {
-                            hdroffs = 0;
-                            while (buf[hdroffs] == 0xff && hdroffs < sizeof(buf))
-                                hdroffs++;
-                            if ((buf[hdroffs] & 0xC0) == 0x40)
-                              {
-                                has_std = true;
-                                std_scale = (buf[hdroffs] & 32) ? 1024 : 128;
-                                std = ((buf[hdroffs] & 31) * 256 + buf[hdroffs + 1]) * std_scale;
-                                hdroffs += 2;
-                              } /*if*/
-                            eptr = hdroffs;
-                            has_pts = (buf[hdroffs] & 0xE0) == 0x20;
-                            has_dts = (buf[hdroffs] & 0xF0) == 0x30;
-                          } /*if*/
-                        printf("; hdr=%d", hdroffs);
-                        if (has_pts)
-                          {
-                            int64_t pts;
-                            pts = readpts(buf + eptr);
-                            eptr += 5;
-                            printf
-                              (
-                                "; pts %" PRId64 ".%03" PRId64 " sec",
-                                pts / PTSTIME,
-                                (pts % PTSTIME) / (PTSTIME / 1000)
-                              );
-                          } /*if*/
-                        if (has_dts)
-                          {
-                            int64_t dts;
-                            dts = readpts(buf + eptr);
-                            eptr += 5;
-                            printf
-                              (
-                                "; dts %" PRId64 ".%03" PRId64 " sec",
-                                dts / PTSTIME,
-                                (dts % PTSTIME) / (PTSTIME / 1000)
-                              );
-                          } /*if*/
-                        if (mpeg2)
-                          {
-                            if (buf[1] & 32)
-                              {
-                                printf("; escr");
-                                eptr += 6;
-                              } /*if*/
-                            if (buf[1] & 16)
-                              {
-                                printf("; es");
-                                eptr += 2;
-                              } /*if*/
-                            if (buf[1] & 4)
-                              {
-                                printf("; ci");
-                                eptr++;
-                              } /*if*/
-                            if (buf[1] & 2)
-                              {
-                                printf("; crc");
-                                eptr += 2;
-                              } /*if*/
-                            if (buf[1] & 1)
-                              {
-                                int pef = buf[eptr];
-                                eptr++;
-                                printf("; (pext)");
-                                if (pef & 128)
-                                  {
-                                    printf("; user");
-                                    eptr += 16;
-                                  } /*if*/
-                                if (pef & 64)
-                                  {
-                                    printf("; pack");
-                                    eptr++;
-                                  } /*if*/
-                                if (pef & 32)
-                                  {
-                                    printf("; ppscf");
-                                    eptr += 2;
-                                  } /*if*/
-                                if (pef & 16)
-                                  {
-                                    std_scale = (buf[eptr] & 32) ? 1024 : 128;
-                                    printf
-                                      (
-                                        "; pstd=%d (scale=%d)",
-                                        ((buf[eptr] & 31) * 256 + buf[eptr + 1]) * std_scale,
-                                        std_scale
-                                      );
-                                    eptr += 2;
-                                  } /*if*/
-                                if (pef & 1)
-                                  {
-                                    printf("; (pext2)");
-                                    eptr += 2;
-                                  } /*if*/
-                              } /*if*/
-                          }
-                        else
-                          {
-                            if (has_std)
-                                printf("; pstd=%d (scale=%d)", std, std_scale);
-                          } /*if*/
-                      } /*if*/
-                    printf("\n");
-                  } /*if*/
-                if (outputmplex && has_extension)
-                  {
-                    if ((buf[1] & 128) != 0 && firstpts[packetid] == -1)
-                        firstpts[packetid] = readpts(buf + 3);
-                    if (firstpts[MPID_AUDIO_FIRST] != -1 && firstpts[MPID_VIDEO_FIRST] != -1)
-                      {
-                        printf("%d\n", firstpts[MPID_VIDEO_FIRST] - firstpts[MPID_AUDIO_FIRST]);
-                        fflush(stdout);
-                        close(1);
-                        outputmplex = false;
-                        if (!numofd)
-                            exit(0);
-                      } /*if*/
-                  } /*if*/
-    #ifdef SHOWDATA
-                if (has_extension && outputenglish)
-                  {
-                    int j;
-                    printf("  ");
-                    for (j=0; j<16; j++)
-                        printf(" %02x", buf[j + contentoffs]);
-                    printf("\n");
-                  } /*if*/
-    #endif
-                if (has_extension)
-                  {
-                    if (dowrite)
-                        writetostream(packetid, buf + contentoffs, readlen - contentoffs);
-                  } /*if*/
-
-                while (packetlen != 0)
-                  {
-                    readlen = packetlen > sizeof buf ? sizeof(buf) : packetlen;
-                    forceread(buf, readlen, true);
-                    if (dowrite)
-                        writetostream(packetid, buf, readlen);
-                    packetlen -= readlen;
-                  } /*while*/
-              }
-            break;
-
-            default:
-                do
-                  {
-                    if (outputenglish && !nounknown)
-                        printf("%08x: unknown hdr: %08x\n", disppos, ntohl(hdr));
-                    hdr >>= 8;
-                    hdr |= forceread1(true) << 24;
-                  }
-                while ((ntohl(hdr) & 0xffffff00) != 0x100);
-                fetchhdr = false; /* already got it */
-            break;
-              } /*switch*/
-          } /*while*/
-      }
+    process_packets(forceread, false);
   } /*main*/
