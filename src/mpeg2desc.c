@@ -658,7 +658,8 @@ int main(int argc,char **argv)
             case 0x100 + MPID_VIDEO_FIRST + 15: /*MPID_VIDEO_LAST*/
               {
                 bool has_extension = false;
-                int extra=0,readlen;
+                unsigned int headerlen, packetlen;
+                int readlen;
                 bool dowrite = true;
                 const int packetid = ntohl(hdr) & 255;
                 if (outputenglish)
@@ -702,15 +703,16 @@ int main(int argc,char **argv)
                     has_extension = true;
                   } /*if*/
                 forceread(buf, 2, true); // pes packet length
-                extra = buf[0] << 8 | buf[1];
-                readlen = extra > sizeof buf ? sizeof buf : extra;
+                packetlen = buf[0] << 8 | buf[1];
+                readlen = packetlen > sizeof buf ? sizeof buf : packetlen;
                 forceread(buf, readlen, true);
-                extra -= readlen;
+                packetlen -= readlen;
+                headerlen = buf[2];
                 if (outputenglish)
                   {
                     if (packetid == MPID_PRIVATE1) // private stream 1
                       {
-                        const int sid = buf[3 + buf[2]]; /* substream ID is first byte after header */
+                        const int sid = buf[3 + headerlen]; /* substream ID is first byte after header */
                         switch (sid & 0xf8)
                           {
                         case 0x20:
@@ -748,36 +750,37 @@ int main(int argc,char **argv)
                         break;
                           } /*switch*/
                       } /*if*/
-                    printf("; length=%d", extra + readlen);
+                    printf("; length=%d", packetlen + readlen);
                     if (has_extension)
                       {
                         int eptr = 3;
                         bool has_std = false, has_pts, has_dts;
-                        int hdr=0, std=0, std_scale=0;
+                        int hdroffs, std=0, std_scale=0;
                         const bool mpeg2 = (buf[0] & 0xC0) == 0x80;
                         if (mpeg2)
                           {
-                            hdr = buf[2] + 3;
+                            hdroffs = headerlen + 3;
                             eptr = 3;
                             has_pts = (buf[1] & 128) != 0;
                             has_dts = (buf[1] & 64) != 0;
                           }
                         else
                           {
-                            while (buf[hdr] == 0xff && hdr < sizeof(buf))
-                                hdr++;
-                            if ((buf[hdr] & 0xC0) == 0x40)
+                            hdroffs = 0;
+                            while (buf[hdroffs] == 0xff && hdroffs < sizeof(buf))
+                                hdroffs++;
+                            if ((buf[hdroffs] & 0xC0) == 0x40)
                               {
                                 has_std = true;
-                                std_scale = (buf[hdr] & 32) ? 1024 : 128;
-                                std = ((buf[hdr] & 31) * 256 + buf[hdr + 1]) * std_scale;
-                                hdr += 2;
+                                std_scale = (buf[hdroffs] & 32) ? 1024 : 128;
+                                std = ((buf[hdroffs] & 31) * 256 + buf[hdroffs + 1]) * std_scale;
+                                hdroffs += 2;
                               } /*if*/
-                            eptr = hdr;
-                            has_pts = (buf[hdr] & 0xE0) == 0x20;
-                            has_dts = (buf[hdr] & 0xF0) == 0x30;
+                            eptr = hdroffs;
+                            has_pts = (buf[hdroffs] & 0xE0) == 0x20;
+                            has_dts = (buf[hdroffs] & 0xF0) == 0x30;
                           } /*if*/
-                        printf("; hdr=%d",hdr);
+                        printf("; hdr=%d", hdroffs);
                         if (has_pts)
                           {
                             int64_t pts;
@@ -865,7 +868,7 @@ int main(int argc,char **argv)
                         else
                           {
                             if (has_std)
-                                printf("; pstd=%d (scale=%d)",std, std_scale);
+                                printf("; pstd=%d (scale=%d)", std, std_scale);
                           } /*if*/
                       } /*if*/
                     printf("\n");
@@ -887,7 +890,7 @@ int main(int argc,char **argv)
     #ifdef SHOWDATA
                 if (has_extension && outputenglish)
                   {
-                    int i = 3 + buf[2], j;
+                    int i = 3 + headerlen, j;
                     printf("  ");
                     for (j=0; j<16; j++)
                         printf(" %02x",buf[j+i]);
@@ -897,16 +900,16 @@ int main(int argc,char **argv)
                 if (has_extension)
                   {
                     if (dowrite)
-                        writetostream(packetid, buf + 3 + buf[2], readlen - 3 - buf[2]);
+                        writetostream(packetid, buf + 3 + headerlen, readlen - 3 - headerlen);
                   } /*if*/
 
-                while (extra)
+                while (packetlen != 0)
                   {
-                    readlen = extra > sizeof buf ? sizeof(buf) : extra;
+                    readlen = packetlen > sizeof buf ? sizeof(buf) : packetlen;
                     forceread(buf, readlen, true);
                     if (dowrite)
                         writetostream(packetid, buf, readlen);
-                    extra -= readlen;
+                    packetlen -= readlen;
                   } /*while*/
               }
             break;
