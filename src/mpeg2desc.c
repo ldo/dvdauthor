@@ -432,7 +432,6 @@ int main(int argc,char **argv)
       {
         unsigned int hdr;
         unsigned char buf[200];
-        bool mpeg2 = true;
         bool fetchhdr = true;
         while (true)
           {
@@ -548,6 +547,7 @@ int main(int argc,char **argv)
               {
                 uint32_t scr,scrhi,scrext;
                 int64_t fulltime;
+                bool mpeg2 = true;
                 forceread(buf, 8, true);
                 if ((buf[0] & 0xC0) == 0x40)
                   {
@@ -751,12 +751,12 @@ int main(int argc,char **argv)
                     printf("; length=%d", extra + readlen);
                     if (has_extension)
                       {
-                        int eptr=3;
+                        int eptr = 3;
                         bool has_std = false, has_pts, has_dts;
                         int hdr=0, std=0, std_scale=0;
-                        if ((buf[0] & 0xC0) == 0x80)
+                        const bool mpeg2 = (buf[0] & 0xC0) == 0x80;
+                        if (mpeg2)
                           {
-                            mpeg2 = true;
                             hdr = buf[2] + 3;
                             eptr = 3;
                             has_pts = (buf[1] & 128) != 0;
@@ -764,10 +764,9 @@ int main(int argc,char **argv)
                           }
                         else
                           {
-                            mpeg2 = false;
                             while (buf[hdr] == 0xff && hdr < sizeof(buf))
                                 hdr++;
-                            if((buf[hdr] & 0xC0) == 0x40)
+                            if ((buf[hdr] & 0xC0) == 0x40)
                               {
                                 has_std = true;
                                 std_scale = (buf[hdr] & 32) ? 1024 : 128;
@@ -782,7 +781,7 @@ int main(int argc,char **argv)
                         if (has_pts)
                           {
                             int64_t pts;
-                            pts = readpts(buf+eptr);
+                            pts = readpts(buf + eptr);
                             eptr += 5;
                             printf
                               (
@@ -794,7 +793,7 @@ int main(int argc,char **argv)
                         if (has_dts)
                           {
                             int64_t dts;
-                            dts = readpts(buf+eptr);
+                            dts = readpts(buf + eptr);
                             eptr += 5;
                             printf
                               (
