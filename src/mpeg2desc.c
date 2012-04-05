@@ -439,7 +439,7 @@ int main(int argc,char **argv)
             const int disppos = inputpos; /* where packet actually started */
             if (fetchhdr)
               {
-                forceread(&hdr,4, false);
+                forceread(&hdr, 4, false);
               } /*if*/
             fetchhdr = true; /* initial assumption */
             switch (ntohl(hdr))
@@ -448,19 +448,27 @@ int main(int argc,char **argv)
             case 0x100 + MPID_PICTURE: // picture header
                 forceread(buf, 4, true);
                 if (outputenglish)
-                    printf("%08x: picture hdr, frametype=%c, temporal=%d\n",disppos,frametype[(buf[1]>>3)&7],(buf[0]<<2)|(buf[1]>>6));
+                    printf
+                      (
+                        "%08x: picture hdr, frametype=%c, temporal=%d\n",
+                        disppos,
+                        frametype[buf[1] >> 3 & 7],
+                        buf[0] << 2 | buf[1] >> 6
+                      );
             break;
 
             case 0x100 + MPID_SEQUENCE: // sequence header
                 forceread(buf, 8, true);
                 if (outputenglish)
-                    printf("%08x: sequence hdr: %dx%d, a/f:%02x, bitrate=%d\n"
-                           ,disppos
-                           ,(buf[0]<<4)|(buf[1]>>4)
-                           ,((buf[1]<<8)&0xf00)|(buf[2])
-                           ,buf[3]
-                           ,(buf[4]<<10)|(buf[5]<<2)|(buf[6]>>6)
-                        );
+                    printf
+                      (
+                        "%08x: sequence hdr: %dx%d, a/f:%02x, bitrate=%d\n",
+                        disppos,
+                        buf[0] << 4 | buf[1] >> 4,
+                        buf[1] << 8 & 0xf00 | buf[2],
+                        buf[3],
+                        buf[4] << 10 | buf[5] << 2 | buf[6] >> 6
+                      );
                 if (buf[7] & 2)
                     forceread(buf + 8, 64, true);
                 if (buf[7] & 1)
@@ -473,17 +481,17 @@ int main(int argc,char **argv)
                   {
                 case 1:
                     if (outputenglish)
-                        printf("%08x: sequence extension hdr\n",disppos);
+                        printf("%08x: sequence extension hdr\n", disppos);
                     forceread(buf + 1, 5, true);
                 break;
                 case 2:
                     if (outputenglish)
-                        printf("%08x: sequence display extension hdr\n",disppos);
+                        printf("%08x: sequence display extension hdr\n", disppos);
                     forceread(buf + 1, (buf[0] & 1) ? 7 : 3, true);
                 break;
                 case 7:
                     if (outputenglish)
-                        printf("%08x: picture display extension hdr\n",disppos);
+                        printf("%08x: picture display extension hdr\n", disppos);
                 break;
                 case 8:
                     forceread(buf + 1, 4, true);
@@ -491,44 +499,49 @@ int main(int argc,char **argv)
                         forceread(buf + 5, 2, true);
                     if (outputenglish)
                       {
-                        printf("%08x: picture coding extension hdr%s%s\n",
-                               disppos,
-                               (buf[3]&0x80)?", top":", bottom",
-                               (buf[3]&2)?", repeat":"");
+                        printf
+                          (
+                            "%08x: picture coding extension hdr%s%s\n",
+                            disppos,
+                            (buf[3] & 0x80) ? ", top" : ", bottom",
+                            (buf[3] & 2) ? ", repeat" : ""
+                         );
                       } /*if*/
                 break;
                 default:
                     if (outputenglish)
-                        printf("%08x: extension hdr %x\n",disppos,buf[0]>>4);
+                        printf("%08x: extension hdr %x\n", disppos, buf[0] >> 4);
                 break;
                   } /*switch*/
             break;
 
             case 0x100 + MPID_SEQUENCE_END: // end of sequence
                 if (outputenglish)
-                    printf("%08x: end of sequence\n",disppos);
+                    printf("%08x: end of sequence\n", disppos);
             break;
 
             case 0x100 + MPID_GOP: // group of pictures
                 forceread(buf, 4, true);
                 if (outputenglish)
                   {
-                    printf("%08x: GOP: %s%d:%02d:%02d.%02d, %s%s\n"
-                           ,disppos
-                           ,buf[0]&128?"drop, ":""
-                           ,(buf[0]>>2)&31
-                           ,((buf[0]<<4)|(buf[1]>>4))&63
-                           ,((buf[1]<<3)|(buf[2]>>5))&63
-                           ,((buf[2]<<1)|(buf[3]>>7))&63
-                           ,buf[3]&64?"closed":"open"
-                           ,buf[3]&32?", broken":""
+                    printf
+                      (
+                        "%08x: GOP: %s%d:%02d:%02d.%02d, %s%s\n",
+                        disppos,
+                        buf[0] & 128 ? "drop, " : "",
+                        buf[0] >> 2 & 31,
+                        (buf[0] << 4 | buf[1] >> 4) & 63,
+                        (buf[1] << 3 | buf[2] >> 5) & 63,
+                        (buf[2] << 1 | buf[3] >> 7) & 63,
+                        buf[3] & 64 ? "closed" : "open",
+                        buf[3] & 32 ? ", broken" : ""
                         );
                   } /*if*/
             break;
 
             case 0x100 + MPID_PROGRAM_END: // end of program stream
                 if (outputenglish)
-                    printf("%08x: end of program stream\n",disppos);
+                    printf("%08x: end of program stream\n", disppos);
             break;
 
             case 0x100 + MPID_PACK: // mpeg_pack_header
@@ -560,7 +573,7 @@ int main(int argc,char **argv)
                             buf[5] >> 1;
                     if (scrext >= 300 && outputenglish)
                       {
-                        printf("WARN: scrext in pack hdr > 300: %u\n",scrext);
+                        printf("WARN: scrext in pack hdr > 300: %u\n", scrext);
                       } /*if*/
                     fulltime = (int64_t)scrhi << 32 | (int64_t)scr;
                     fulltime *= 300;
@@ -580,7 +593,14 @@ int main(int argc,char **argv)
                     fulltime = 0;
                   } /*if*/
                 if (outputenglish)
-                    printf("%08x: mpeg%c pack hdr, %" PRId64 ".%03" PRId64 " sec\n",disppos,mpeg2?'2':'1',fulltime/SCRTIME,(fulltime%SCRTIME)/(SCRTIME/1000));
+                    printf
+                      (
+                        "%08x: mpeg%c pack hdr, %" PRId64 ".%03" PRId64 " sec\n",
+                        disppos,
+                        mpeg2 ? '2' : '1',
+                        fulltime / SCRTIME,
+                        (fulltime % SCRTIME) / (SCRTIME / 1000)
+                      );
               }
             break;
 
@@ -642,7 +662,7 @@ int main(int argc,char **argv)
                 bool dowrite = true;
                 const int packetid = ntohl(hdr) & 255;
                 if (outputenglish)
-                    printf("%08x: ",disppos);
+                    printf("%08x: ", disppos);
                 if (packetid == MPID_SYSTEM)
                   {
                     if (outputenglish)
@@ -749,7 +769,7 @@ int main(int argc,char **argv)
                             if((buf[hdr] & 0xC0) == 0x40)
                               {
                                 has_std = 1;
-                                std_scale = ((buf[hdr]&32)?1024:128);
+                                std_scale = (buf[hdr] & 32) ? 1024 : 128;
                                 std = ((buf[hdr] & 31) * 256 + buf[hdr + 1]) * std_scale;
                                 hdr += 2;
                               }
@@ -765,14 +785,24 @@ int main(int argc,char **argv)
                             int64_t pts;
                             pts = readpts(buf+eptr);
                             eptr += 5;
-                            printf("; pts %" PRId64 ".%03" PRId64 " sec",pts/PTSTIME,(pts%PTSTIME)/(PTSTIME/1000));
+                            printf
+                              (
+                                "; pts %" PRId64 ".%03" PRId64 " sec",
+                                pts / PTSTIME,
+                                (pts % PTSTIME) / (PTSTIME / 1000)
+                              );
                           } /*if*/
                         if (has_dts)
                           {
                             int64_t dts;
                             dts = readpts(buf+eptr);
                             eptr += 5;
-                            printf("; dts %" PRId64 ".%03" PRId64 " sec",dts/PTSTIME,(dts%PTSTIME)/(PTSTIME/1000));
+                            printf
+                              (
+                                "; dts %" PRId64 ".%03" PRId64 " sec",
+                                dts / PTSTIME,
+                                (dts % PTSTIME) / (PTSTIME / 1000)
+                              );
                           } /*if*/
                         if (mpeg2)
                           {
@@ -819,7 +849,12 @@ int main(int argc,char **argv)
                                 if (pef & 16)
                                   {
                                     std_scale = (buf[eptr] & 32) ? 1024 : 128;
-                                    printf("; pstd=%d (scale=%d)",((buf[eptr]&31)*256+buf[eptr+1])*std_scale, std_scale);
+                                    printf
+                                      (
+                                        "; pstd=%d (scale=%d)",
+                                        ((buf[eptr] & 31) * 256 + buf[eptr + 1]) * std_scale,
+                                        std_scale
+                                      );
                                     eptr += 2;
                                   } /*if*/
                                 if (pef & 1)
@@ -840,10 +875,10 @@ int main(int argc,char **argv)
                 if (outputmplex && has_extension)
                   {
                     if ((buf[1] & 128) != 0 && firstpts[packetid] == -1)
-                        firstpts[packetid] = readpts(buf+3);
-                    if (firstpts[0xC0] != -1 && firstpts[0xE0] != -1)
+                        firstpts[packetid] = readpts(buf + 3);
+                    if (firstpts[MPID_AUDIO_FIRST] != -1 && firstpts[MPID_VIDEO_FIRST] != -1)
                       {
-                        printf("%d\n", firstpts[0xE0] - firstpts[0xC0]);
+                        printf("%d\n", firstpts[MPID_VIDEO_FIRST] - firstpts[MPID_AUDIO_FIRST]);
                         fflush(stdout);
                         close(1);
                         outputmplex = false;
