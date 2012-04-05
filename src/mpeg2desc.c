@@ -752,15 +752,15 @@ int main(int argc,char **argv)
                     if (has_extension)
                       {
                         int eptr=3;
-                        bool has_std = false;
-                        int hdr=0, has_pts, has_dts, std=0, std_scale=0;
+                        bool has_std = false, has_pts, has_dts;
+                        int hdr=0, std=0, std_scale=0;
                         if ((buf[0] & 0xC0) == 0x80)
                           {
                             mpeg2 = true;
                             hdr = buf[2] + 3;
                             eptr = 3;
-                            has_pts = buf[1] & 128;
-                            has_dts = buf[1] & 64;
+                            has_pts = (buf[1] & 128) != 0;
+                            has_dts = (buf[1] & 64) != 0;
                           }
                         else
                           {
@@ -773,9 +773,7 @@ int main(int argc,char **argv)
                                 std_scale = (buf[hdr] & 32) ? 1024 : 128;
                                 std = ((buf[hdr] & 31) * 256 + buf[hdr + 1]) * std_scale;
                                 hdr += 2;
-                              }
-                            else
-                                has_std = false;
+                              } /*if*/
                             eptr = hdr;
                             has_pts = (buf[hdr] & 0xE0) == 0x20;
                             has_dts = (buf[hdr] & 0xF0) == 0x30;
