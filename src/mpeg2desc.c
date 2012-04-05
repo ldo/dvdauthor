@@ -266,27 +266,36 @@ static void flushwork(void)
         dowork(false);
   } /*flushwork*/
 
-static void forceread(void *ptr, int len)
+static void forceread(void *ptr, int len, bool required)
   /* reads the specified number of bytes from standard input, finishing processing
     if EOF is reached. */
   {
+    int nrbytes;
     while (!dowork(true))
       /* flush output queues while waiting for more input */;
-    if (fread(ptr, 1, len, stdin) != len)
+    nrbytes = fread(ptr, 1, len, stdin);
+    if (nrbytes != len)
       {
-        fprintf(stderr,"Could not read\n");
+        if (nrbytes < 0)
+          {
+            fprintf(stderr, "Error %d reading: %s\n", errno, strerror(errno));
+          }
+        else if (nrbytes < len && required)
+          {
+            fprintf(stderr, "Unexpected read EOF\n");
+          } /*if*/
         flushwork();
         exit(1);
       } /*if*/
     inputpos += len;
   } /*forceread*/
 
-static unsigned char forceread1(void)
+static unsigned char forceread1(bool required)
   /* reads one  byte from standard input, finishing processing
     if EOF is reached. */
   {
     unsigned char c;
-    forceread(&c, 1);
+    forceread(&c, 1, required);
     return c;
   } /*forceread1*/
 
@@ -426,20 +435,20 @@ int main(int argc,char **argv)
             const int disppos = inputpos; /* where packet actually started */
             if (fetchhdr)
               {
-                forceread(&hdr,4);
+                forceread(&hdr,4, false);
               } /*if*/
             fetchhdr = true; /* initial assumption */
             switch (ntohl(hdr))
               {
           // start codes:
             case 0x100 + MPID_PICTURE: // picture header
-                forceread(buf,4);
+                forceread(buf, 4, true);
                 if (outputenglish)
                     printf("%08x: picture hdr, frametype=%c, temporal=%d\n",disppos,frametype[(buf[1]>>3)&7],(buf[0]<<2)|(buf[1]>>6));
             break;
 
             case 0x100 + MPID_SEQUENCE: // sequence header
-                forceread(buf,8);
+                forceread(buf, 8, true);
                 if (outputenglish)
                     printf("%08x: sequence hdr: %dx%d, a/f:%02x, bitrate=%d\n"
                            ,disppos
@@ -449,33 +458,33 @@ int main(int argc,char **argv)
                            ,(buf[4]<<10)|(buf[5]<<2)|(buf[6]>>6)
                         );
                 if (buf[7] & 2)
-                    forceread(buf+8,64);
+                    forceread(buf + 8, 64, true);
                 if (buf[7] & 1)
-                    forceread(buf+8,64);
+                    forceread(buf + 8, 64, true);
             break;
 
             case 0x100 + MPID_EXTENSION: // extension header
-                forceread(buf,1);
+                forceread(buf, 1, true);
                 switch (buf[0] >> 4)
                   {
                 case 1:
                     if (outputenglish)
                         printf("%08x: sequence extension hdr\n",disppos);
-                    forceread(buf+1,5);
+                    forceread(buf + 1, 5, true);
                 break;
                 case 2:
                     if (outputenglish)
                         printf("%08x: sequence display extension hdr\n",disppos);
-                    forceread(buf+1,(buf[0]&1)?7:3);
+                    forceread(buf + 1, (buf[0] & 1) ? 7 : 3, true);
                 break;
                 case 7:
                     if (outputenglish)
                         printf("%08x: picture display extension hdr\n",disppos);
                 break;
                 case 8:
-                    forceread(buf+1,4);
+                    forceread(buf + 1, 4, true);
                     if (buf[4] & 64)
-                        forceread(buf+5,2);
+                        forceread(buf + 5, 2, true);
                     if (outputenglish)
                       {
                         printf("%08x: picture coding extension hdr%s%s\n",
@@ -497,7 +506,7 @@ int main(int argc,char **argv)
             break;
 
             case 0x100 + MPID_GOP: // group of pictures
-                forceread(buf,4);
+                forceread(buf, 4, true);
                 if (outputenglish)
                   {
                     printf("%08x: GOP: %s%d:%02d:%02d.%02d, %s%s\n"
@@ -522,10 +531,10 @@ int main(int argc,char **argv)
               {
                 uint32_t scr,scrhi,scrext;
                 int64_t fulltime;
-                forceread(buf,8);
+                forceread(buf, 8, true);
                 if ((buf[0] & 0xC0) == 0x40)
                   {
-                    forceread(buf+8,2);
+                    forceread(buf + 8, 2, true);
                     scrhi = (buf[0] & 0x20) >> 5;
                     scr =
                             (buf[0] & 0x18) << 27
@@ -668,10 +677,10 @@ int main(int argc,char **argv)
                         printf("pes video %d", packetid - MPID_VIDEO_FIRST);
                     has_extension = true;
                   } /*if*/
-                forceread(buf,2); // pes packet length
+                forceread(buf, 2, true); // pes packet length
                 extra = buf[0] << 8 | buf[1];
                 readlen = extra > sizeof buf ? sizeof buf : extra;
-                forceread(buf, readlen);
+                forceread(buf, readlen, true);
                 extra -= readlen;
                 if (outputenglish)
                   {
@@ -857,7 +866,7 @@ int main(int argc,char **argv)
                 while (extra)
                   {
                     readlen = extra > sizeof buf ? sizeof(buf) : extra;
-                    forceread(buf, readlen);
+                    forceread(buf, readlen, true);
                     if (dowrite)
                         writetostream(packetid, buf, readlen);
                     extra -= readlen;
@@ -871,7 +880,7 @@ int main(int argc,char **argv)
                     if (outputenglish && !nounknown)
                         printf("%08x: unknown hdr: %08x\n",disppos,ntohl(hdr));
                     hdr >>= 8;
-                    hdr |= forceread1() << 24;
+                    hdr |= forceread1(true) << 24;
                   }
                 while ((ntohl(hdr) & 0xffffff00) != 0x100);
                 fetchhdr = false; /* already got it */
