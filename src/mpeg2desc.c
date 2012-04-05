@@ -752,7 +752,8 @@ int main(int argc,char **argv)
                     if (has_extension)
                       {
                         int eptr=3;
-                        int hdr=0, has_pts, has_dts, has_std=0, std=0, std_scale=0;
+                        bool has_std = false;
+                        int hdr=0, has_pts, has_dts, std=0, std_scale=0;
                         if ((buf[0] & 0xC0) == 0x80)
                           {
                             mpeg2 = true;
@@ -768,13 +769,13 @@ int main(int argc,char **argv)
                                 hdr++;
                             if((buf[hdr] & 0xC0) == 0x40)
                               {
-                                has_std = 1;
+                                has_std = true;
                                 std_scale = (buf[hdr] & 32) ? 1024 : 128;
                                 std = ((buf[hdr] & 31) * 256 + buf[hdr + 1]) * std_scale;
                                 hdr += 2;
                               }
                             else
-                                has_std = 0;
+                                has_std = false;
                             eptr = hdr;
                             has_pts = (buf[hdr] & 0xE0) == 0x20;
                             has_dts = (buf[hdr] & 0xF0) == 0x30;
