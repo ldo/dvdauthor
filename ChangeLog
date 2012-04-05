@@ -3,6 +3,7 @@
 		must be explicitly disabled with --disable-dvdunauthor, otherwise configure
 		reports an error
 	Allow format specification at top level of dvdauthor control file
+	mpeg2desc now reports more details about video frames
 
 0.7.0: 2010 October 23
 	Reworked subtitle file reading so it can now deal with encodings like UTF-16
