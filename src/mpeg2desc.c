@@ -435,7 +435,7 @@ int main(int argc,char **argv)
         bool fetchhdr = true;
         while (true)
           {
-            const int disppos = inputpos; /* where packet actually started */
+            const int disppos = fetchhdr ? inputpos : inputpos - 4; /* where packet actually started */
             if (fetchhdr)
               {
                 forceread(&hdr, 4, false);
@@ -919,7 +919,7 @@ int main(int argc,char **argv)
                 do
                   {
                     if (outputenglish && !nounknown)
-                        printf("%08x: unknown hdr: %08x\n",disppos,ntohl(hdr));
+                        printf("%08x: unknown hdr: %08x\n", disppos, ntohl(hdr));
                     hdr >>= 8;
                     hdr |= forceread1(true) << 24;
                   }
