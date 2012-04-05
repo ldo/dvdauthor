@@ -342,6 +342,7 @@ int main(int argc,char **argv)
   {
     bool outputenglish = true, skiptohdr = false, nounknown = false;
     int audiodrop = 0;
+    fputs(PACKAGE_HEADER("mpeg2desc"), stderr);
       {
         int outputstream = 0, oc, i;
         for (oc = 0; oc < 256; oc++)
