@@ -15,7 +15,7 @@ AC_LANG([C])
 AC_COMPILE_IFELSE(
     [AC_LANG_PROGRAM([], [void nested(void) {}])],
     [echo C compiler allows nested routines; AC_DEFINE([HAVE_NESTED_ROUTINES], [1], [define to 1 if C compiler allows nested routines])],
-    [echo C compiler does not allow nested routines]
+    [echo WARNING: C compiler does not allow nested routines--some functionality will be disabled]
 )
 
 have_dvdread=false
