@@ -658,7 +658,7 @@ int main(int argc,char **argv)
             case 0x100 + MPID_VIDEO_FIRST + 15: /*MPID_VIDEO_LAST*/
               {
                 bool has_extension = false;
-                unsigned int headerlen, packetlen;
+                unsigned int headerlen, packetlen, contentoffs;
                 int readlen;
                 bool dowrite = true;
                 const int packetid = ntohl(hdr) & 255;
@@ -707,12 +707,13 @@ int main(int argc,char **argv)
                 readlen = packetlen > sizeof buf ? sizeof buf : packetlen;
                 forceread(buf, readlen, true);
                 packetlen -= readlen;
-                headerlen = buf[2];
+                headerlen = buf[2]; /* length of packet header */
+                contentoffs = 3 + headerlen; /* beginning of packet content */
                 if (outputenglish)
                   {
                     if (packetid == MPID_PRIVATE1) // private stream 1
                       {
-                        const int sid = buf[3 + headerlen]; /* substream ID is first byte after header */
+                        const int sid = buf[contentoffs]; /* substream ID is first byte after header */
                         switch (sid & 0xf8)
                           {
                         case 0x20:
@@ -759,7 +760,7 @@ int main(int argc,char **argv)
                         const bool mpeg2 = (buf[0] & 0xC0) == 0x80;
                         if (mpeg2)
                           {
-                            hdroffs = headerlen + 3;
+                            hdroffs = contentoffs;
                             eptr = 3;
                             has_pts = (buf[1] & 128) != 0;
                             has_dts = (buf[1] & 64) != 0;
@@ -890,17 +891,17 @@ int main(int argc,char **argv)
     #ifdef SHOWDATA
                 if (has_extension && outputenglish)
                   {
-                    int i = 3 + headerlen, j;
+                    int j;
                     printf("  ");
                     for (j=0; j<16; j++)
-                        printf(" %02x",buf[j+i]);
+                        printf(" %02x", buf[j + contentoffs]);
                     printf("\n");
                   } /*if*/
     #endif
                 if (has_extension)
                   {
                     if (dowrite)
-                        writetostream(packetid, buf + 3 + headerlen, readlen - 3 - headerlen);
+                        writetostream(packetid, buf + contentoffs, readlen - contentoffs);
                   } /*if*/
 
                 while (packetlen != 0)
