@@ -788,6 +788,7 @@ static void process_packets
                   {
                     writetostream(packetid, buf + contentoffs, readlen - contentoffs);
                   } /*if*/
+#if defined(HAVE_NESTED_ROUTINES)
                 if (outputenglish && packetid >= MPID_VIDEO_FIRST && packetid <= MPID_VIDEO_LAST)
                   {
                   /* look inside PES packet to report on details of video packets */
@@ -832,6 +833,7 @@ static void process_packets
                       } /*if*/
                   }
                 else
+#endif
                   {
                     while (packetlen != 0)
                       {
