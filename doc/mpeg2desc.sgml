@@ -48,7 +48,7 @@
 		<term>-a <replaceable class="parameter">stream</replaceable></term>
 		<listitem>
 			<para>
-			Output audio <filename>stream</filename> to stdout
+			Output audio <filename>stream</filename> (0 .. 31) to stdout
 			</para>
 		</listitem>
 	</varlistentry>
@@ -56,7 +56,7 @@
 		<term>-v <replaceable class="parameter">stream</replaceable></term>
 		<listitem>
 			<para>
-			Output video <filename>stream</filename> to stdout
+			Output video <filename>stream</filename> (0 .. 15) to stdout
 			</para>
 		</listitem>
 	</varlistentry>
@@ -81,6 +81,14 @@
 		<listitem>
 			<para>
 			output mplex offset to stdout
+			</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-u</term>
+		<listitem>
+			<para>
+			do not output messages about unrecognized headers
 			</para>
 		</listitem>
 	</varlistentry>
