@@ -815,7 +815,15 @@ static void process_packets
                         if (len != 0)
                           {
                           /* read more of packet */
-                            if (packetlen < len)
+                            const unsigned int toread = packetlen < len ? packetlen : len;
+                            readinput(ptr, toread, required);
+                            if (dowrite)
+                              {
+                                writetostream(packetid, ptr, toread);
+                              } /*if*/
+                            packetlen -= toread;
+                            len -= toread;
+                            if (len != 0)
                               {
                                 if (false /*required*/)
                                   {
@@ -823,12 +831,6 @@ static void process_packets
                                   } /*if*/
                                 longjmp(resume, 1);
                               } /*if*/
-                            readinput(ptr, len, required);
-                            if (dowrite)
-                              {
-                                writetostream(packetid, ptr, len);
-                              } /*if*/
-                            packetlen -= len;
                           } /*if*/
                       } /*bufread*/
                     inputpos -= remaining; /* rewind to start of packet content */
