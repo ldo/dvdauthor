@@ -703,7 +703,7 @@ static const char *sub_readtext(const char *source, char **dest)
         p++, len++;
       } /*while*/
     *dest = (char *)malloc(len + 1);
-    if (!dest)
+    if (!*dest)
       {
         return ERR;
       } /*if*/
