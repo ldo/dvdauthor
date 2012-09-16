@@ -136,12 +136,12 @@ bool delete_output_dir = false;
 static int getratecode(const struct vobgroup *va)
   /* returns the frame rate code if specified, else the default. */
 {
-    if (va->vd.vframerate)
+    if (va->vd.vframerate != 0)
         return va->vd.vframerate;
-    else if (va->vd.vformat || default_video_format)
+    else if (va->vd.vformat != VF_NONE || default_video_format != VF_NONE)
       {
       /* fudge it for calls from menu PGC-generation routines with no video present */
-        return (va->vd.vformat || default_video_format) == VF_PAL ? VR_PAL : VR_NTSC;
+        return (va->vd.vformat != VF_NONE ? va->vd.vformat : default_video_format) == VF_PAL ? VR_PAL : VR_NTSC;
       }
     else
       {
