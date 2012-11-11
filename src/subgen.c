@@ -358,9 +358,9 @@ static const unsigned char * wdest_end;
 
 static void wdest_need(size_t nrbytes)
   {
-    if (wdest + nrbytes >= wdest_end)
+    if (wdest + nrbytes > wdest_end)
       {
-        fprintf(stderr, "ERR:  sector buffer overflow\n");
+        fprintf(stderr, "ERR:  too much data for dvdauthor-data sector buffer\n");
         exit(1);
       } /*if*/
   } /*wdest_need*/
