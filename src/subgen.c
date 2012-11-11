@@ -354,15 +354,27 @@ int calcCb(const colorspec *p)
 }
 
 static unsigned char *wdest;
+static const unsigned char * wdest_end;
+
+static void wdest_need(size_t nrbytes)
+  {
+    if (wdest + nrbytes >= wdest_end)
+      {
+        fprintf(stderr, "ERR:  sector buffer overflow\n");
+        exit(1);
+      } /*if*/
+  } /*wdest_need*/
 
 static void wdbyte(unsigned char c)
 {
+    wdest_need(1);
     wdest[0]=c;
     wdest++;
 }
 
 static void wdshort(unsigned short s)
 {
+    wdest_need(2);
     wdest[0]=s>>8;
     wdest[1]=s;
     wdest+=2;
@@ -370,6 +382,7 @@ static void wdshort(unsigned short s)
 
 static void wdlong(unsigned long l)
 {
+    wdest_need(4);
     wdest[0]=l>>24;
     wdest[1]=l>>16;
     wdest[2]=l>>8;
@@ -605,6 +618,7 @@ static void muxnext(bool eoinput)
                 memset(sector, 0xff, pdl);
 
                 wdest = sector;
+                wdest_end = sector + secsize;
                 wdstr("dvdauthor-data");
                 wdbyte(2); // version
                 wdbyte(1); // subtitle info
