@@ -814,7 +814,7 @@ inline static void vo_update_text_sub
                 prev_line_end = chindex;
                 y += vo_font->height;
               } /*for*/
-            /* Here you could retreive the buffers*/
+            /* Here you could retrieve the buffers*/
           } /*if*/
       }
   } /*vo_update_text_sub*/

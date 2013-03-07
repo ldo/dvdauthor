@@ -1866,7 +1866,7 @@ noshow:
                                 "WARN: Using SCR instead.\n"
                           );
                         firstaudiopts = readscr(vi->sectdata + 4) + 4 * 147;
-                          // 147 is roughly the minumum pts that must transpire between packets;
+                          // 147 is roughly the minimum pts that must transpire between packets;
                           // we give a couple packets of buffer to allow the dvd player to
                           // process the data
                       } /*if*/

@@ -311,7 +311,7 @@ static void usage()
             "\n\t" LONGOPT("--fpc or ") "-F CMD sets the commands to be executed when the disc is first\n"
             "\t    inserted.\n"
             "\n\t" LONGOPT("--jumppad or ") "-j enables the creation of jumppads, which allow greater\n"
-            "\t    flexibility in choosing jump/call desinations.\n"
+            "\t    flexibility in choosing jump/call destinations.\n"
             "\n\t" LONGOPT("--allgprm or ") "-g enables the use of all 16 general purpose registers.\n"
             "\n\t" LONGOPT("--help or ") "-h displays this screen.\n"
         );

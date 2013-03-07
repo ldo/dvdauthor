@@ -2278,7 +2278,7 @@ sub_data *sub_read_file(const char *filename, float movie_fps)
                         // equal to sub_lines. we store in fragment_position the
                         // position of the shortest group, in fragment_length its
                         // length, and in blank_lines_avail the length of the group currently
-                        // examinated
+                        // examined
                         for (i = 0; i < lines_to_add; ++i)
                           {
                             if (placeholder[subs_done][i] == -1)

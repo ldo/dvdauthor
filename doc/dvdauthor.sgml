@@ -109,7 +109,7 @@ XML control file instead.</para>
 <variablelist>
 
 <varlistentry><term><literal>-j</literal></term><term><literal>--jumppad</literal></term>
-<listitem><para>Enables the creation of jumppads, which allow greater flexibility in choosing jump/call desinations.</para></listitem></varlistentry>
+<listitem><para>Enables the creation of jumppads, which allow greater flexibility in choosing jump/call destinations.</para></listitem></varlistentry>
 
 <varlistentry><term><literal>-g</literal></term><term><literal>--allgprm</literal></term>
 <listitem><para>Enable the use of all 16 general purpose registers.  Prohibits the use of jumppad and some complex expressions that require temporary registers.</para></listitem></varlistentry>

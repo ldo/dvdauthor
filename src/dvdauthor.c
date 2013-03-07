@@ -1073,7 +1073,7 @@ static char *makevtsdir(const char *s)
     return strdup(fbuf);
 }
 
-// jumppad requires the existance of a menu to operate
+// jumppad requires the existence of a menu to operate
 // if no languages exist, create an english one
 static void jp_force_menu(struct menugroup *mg, vtypes type)
   {
@@ -1447,7 +1447,7 @@ static void validatesummary(struct pgcgroup *va)
 
             for( j=0; j<8; j++ )
                 if( va->allentries & p->entries & (1<<j) )
-                    fprintf(stderr,"ERR:  Multiple definitions for entry %s, 2nd occurance in PGC #%d\n",entries[j],i);
+                    fprintf(stderr,"ERR:  Multiple definitions for entry %s, 2nd occurrence in PGC #%d\n",entries[j],i);
             err = true;
         }
         if (va->pstype != VTYPE_VTS && (p->entries & ~allowedentries) != 0)

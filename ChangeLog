@@ -108,7 +108,7 @@
 	ensure a row of a subtitle takes less than 1440 bits
 	fix warnings
 	fix 64-bit support (iconv)
-	fix video and sector pts values to be more consistant
+	fix video and sector pts values to be more consistent
 	fix ImageMagick 6.x.x alpha detection
 	improved dvdunauthor by Ralf Engels
 	full sized pts/scr support (for 13+ hours DVD's)
@@ -124,7 +124,7 @@
 	better audio type detection logic
 	clear seamless flag on audio discontinuity
 	only allow <titles> to exist once per titleset
-	use 'name' attribute for buttons and actions in spumux (to be consistant with dvdauthor)
+	use 'name' attribute for buttons and actions in spumux (to be consistent with dvdauthor)
 	dynamically allocate PGC buffer
 	allow up to 2730 titles
 	allow reading from filedescriptors for VOBs, palette, and XML
@@ -174,7 +174,7 @@
 	include XML schemas for XML verification
 
 0.6.7: November 24, 2003
-	autodetect io.h presense for Cygwin
+	autodetect io.h presence for Cygwin
 	have spumux deal with incomplete reads/writes to/from pipes
 	have spumux work with odd sized subtitles
 	allow XML comments in dvd code
