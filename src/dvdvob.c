@@ -1148,6 +1148,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
         int prevvidsect = -1;
         struct vscani vsi;
         struct vfile vf;
+        uint64_t inoffset;
         vsi.lastrefsect = 0;
         for (i = 0; i < 32; i++)
             initremap(crs + i);
@@ -1158,6 +1159,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
 
         fprintf(stderr, "\nSTAT: Processing %s...\n", thisvob->fname);
         vf = varied_open(thisvob->fname, O_RDONLY, "input video file");
+        inoffset = 0;
         memset(mp2hdr, 0, 8 * sizeof(struct mp2info));
         while (true)
           {
@@ -1167,7 +1169,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 writeclose();
                 if (outnum <= 0)
                   { /* menu VOB cannot be split */
-                    fprintf(stderr, "\nERR:  Menu VOB reached 1gb\n");
+                    fprintf(stderr, "\nERR:  Menu VOB reached 1gb at inoffset %#"PRIx64"\n", inoffset);
                     exit(1);
                   } /*if*/
                 outnum++; /* for naming next VOB file */
@@ -1183,13 +1185,18 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                   {
                     if (i == -1)
                       {
-                        fprintf(stderr, "\nERR:  Error %d while reading: %s\n", errno, strerror(errno));
-                        exit(1);
+                        fprintf(stderr, "\nERR:  Error %d while reading at inoffset %#"PRIx64": %s\n", errno, inoffset, strerror(errno));
                       }
                     else if (i > 0) /* shouldn't occur */
-                        fprintf(stderr ,"\nWARN: Partial sector read (%d bytes); discarding data.\n", i);
-                    writeundo();
-                    break;
+                      {
+                        fprintf(stderr, "\nERR:  Partial sector read (%d bytes at inoffset %#"PRIx64")\n", i, inoffset);
+                      }
+                    else
+                      {
+                        writeundo();
+                        break;
+                      } /*if*/
+                    exit(1);
                   } /*if*/
               } /*if*/
             if
@@ -1209,7 +1216,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 int i = 35;
                 if (buf[i] != 2)
                   {
-                    fprintf(stderr, "ERR:  dvd info packet is version %d\n", buf[i]);
+                    fprintf(stderr, "ERR:  dvd info packet at inoffset %#"PRIx64" is unexpected version %d\n", inoffset, buf[i]);
                     exit(1);
                   } /*if*/
                 switch (buf[i + 1]) // packet type
@@ -1277,8 +1284,9 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                                       (
                                         stderr,
                                         "ERR:  Cannot find button '%s' as referenced by"
-                                            " the subtitle\n",
-                                        bn
+                                            " the subtitle at inoffset %#"PRIx64"\n",
+                                        bn,
+                                        inoffset
                                       );
                                     exit(1);
                                   } /*if*/
@@ -1290,7 +1298,9 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                                     fprintf
                                       (
                                         stderr,
-                                        "WARN: Too many button streams; ignoring buttons\n"
+                                        "WARN: Too many button streams at inoffset %#"PRIx64";"
+                                            " ignoring buttons\n",
+                                        inoffset
                                       );
                                     bi = &bitmp; /* place to put discarded data */
                                   }
@@ -1319,7 +1329,8 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                             fprintf
                               (
                                 stderr,
-                                "ERR:  dvd info packet command within subtitle: %d\n",
+                                "ERR:  dvd info packet command within subtitle at inoffset %#"PRIx64": %d\n",
+                                inoffset,
                                 buf[i]
                               );
                             exit(1);
@@ -1330,7 +1341,13 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 break;
                         
                 default:
-                    fprintf(stderr, "ERR:  unknown dvdauthor-data packet type: %d\n", buf[i + 1]);
+                    fprintf
+                      (
+                        stderr,
+                        "ERR:  unknown dvdauthor-data packet type at inoffset %#"PRIx64": %d\n",
+                        inoffset,
+                        buf[i + 1]
+                      );
                     exit(1);
                 } /*switch*/
 
@@ -1352,7 +1369,10 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                   { /* let user know the first time this happens */
                     fprintf
                       (
-                        stderr, "INFO: found video GOP without a preceding VOBU - creating VOBU\n"
+                        stderr,
+                        "INFO: found video GOP at inoffset %#"PRIx64" without a preceding VOBU"
+                            " - creating VOBU\n",
+                        inoffset
                       );
                   } /*if*/
                 fill_in_vobus = true; /* keep doing it from now on */
@@ -1380,14 +1400,16 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     simply treating newscr < lastscr as a warning and continuing */
                   {
                     backoffs -= lastscr; /* adjust to remove SCR discontinuity */
-                    fprintf(stderr, "\nWARN: SCR reset. New back offset = %" PRId64"\n", backoffs);
+                    fprintf(stderr, "\nWARN: SCR reset at inoffset %#"PRIx64". New back offset = %" PRId64"\n", inoffset, backoffs);
                   }
                 else if (newscr < lastscr)
                   {
                     fprintf
                       (
                         stderr,
-                        "ERR:  SCR moves backwards, remultiplex input: %" PRId64" < %" PRId64"\n",
+                        "ERR:  SCR moves backwards at inoffset %#"PRIx64","
+                            " remultiplex input: %" PRId64" < %" PRId64"\n",
+                        inoffset,
                         newscr,
                         lastscr
                       );
@@ -1445,7 +1467,7 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     struct vobuinfo *vi;
                     if (thisvob->numvobus)
                         finishvideoscan(va, vnum, prevvidsect, &vsi);
-                    // fprintf(stderr,"INFO: vobu\n");
+                    // fprintf(stderr, "INFO: vobu at inoffset %#"PRIx64"\n", inoffset);
                     hadfirstvobu = true; /* NAV PACK starts a VOBU */
                     if (thisvob->numvobus == thisvob->maxvobus) /* need more space */
                       {
@@ -1481,7 +1503,12 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
               } /*if*/
             if (!hadfirstvobu)
               {
-                fprintf(stderr, "WARN: Skipping sector, waiting for first VOBU...\n");
+                fprintf
+                  (
+                    stderr,
+                    "WARN: Skipping sector at inoffset %#"PRIx64", waiting for first VOBU...\n",
+                    inoffset
+                  );
                 writeundo(); /* ignore it */
                 continue;
               } /*if*/
@@ -1659,15 +1686,16 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                     fprintf
                       (
                         stderr,
-                        "WARN: Audio channel %d contains sync headers but has no PTS.\n",
-                        audch
+                        "WARN: Audio channel %d contains sync headers at inoffset %#"PRIx64" but has no PTS.\n",
+                        audch,
+                        inoffset
                       );
                   } /*if*/
                 // fprintf(stderr,"aud ch=%d pts %d - %d (%d)\n",audch,pts0,pts1,pts1-pts0);
                 // fprintf(stderr,"pts[%d] %d (%02x %02x %02x %02x %02x)\n",va->numaudpts,pts,buf[23],buf[24],buf[25],buf[26],buf[27]);
                 if (audch < 0 || audch >= 64)
                   {
-                    fprintf(stderr,"WARN: Invalid audio channel %d\n",audch);
+                    fprintf(stderr,"WARN: Invalid audio channel %d at inoffset %#"PRIx64"\n", audch, inoffset);
                   /* and ignore */
                   }
                 else if (haspts)
@@ -1700,7 +1728,15 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                           {
                             if (audch >= 32)
                                 goto noshow; /* not audio */
-                            fprintf(stderr, "WARN: Discontinuity of %" PRId64" in audio channel %d; please remultiplex input.\n", pts0 - ach->audpts[ach->numaudpts - 1].pts[1], audch);
+                            fprintf
+                              (
+                                stderr,
+                                "WARN: Discontinuity of %" PRId64" in audio channel %d"
+                                    " at inoffset %#"PRIx64"; please remultiplex input.\n",
+                                pts0 - ach->audpts[ach->numaudpts - 1].pts[1],
+                                audch,
+                                inoffset
+                              );
                             // fprintf(stderr,"last=%d, this=%d\n",ach->audpts[ach->numaudpts-1].pts[1],pts0);
                           }
                         else if (ach->audpts[ach->numaudpts - 1].pts[1] > pts0)
@@ -1708,10 +1744,11 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                               (
                                 stderr,
                                 "WARN: %s pts for channel %d moves backwards by %"
-                                    PRId64 "; please remultiplex input.\n",
+                                    PRId64 " at inoffset %#"PRIx64"; please remultiplex input.\n",
                                 audch >= 32 ? "Subpicture" : "Audio",
                                 audch,
-                                ach->audpts[ach->numaudpts - 1].pts[1] - pts0
+                                ach->audpts[ach->numaudpts - 1].pts[1] - pts0,
+                                inoffset
                               );
                         else
                             goto noshow;
@@ -1773,6 +1810,7 @@ noshow:
               } /*if*/
             cursect++;
             fsect++;
+            inoffset += 2048;
           } /*while*/
         varied_close(vf);
         if (thisvob->numvobus)
@@ -1862,8 +1900,9 @@ noshow:
                         fprintf
                           (
                             stderr,
-                            "WARN: Cannot detect pts for VOBU if there is no audio or video\n"
-                                "WARN: Using SCR instead.\n"
+                            "WARN: Cannot detect pts for VOBU at inoffset %#"PRIx64" if there is"
+                                " no audio or video\nWARN: Using SCR instead.\n",
+                            inoffset
                           );
                         firstaudiopts = readscr(vi->sectdata + 4) + 4 * 147;
                           // 147 is roughly the minimum pts that must transpire between packets;
@@ -1878,7 +1917,24 @@ noshow:
                         p += frpts - 1;
                         p -= p % frpts;
                         p += thisvob->vobu[i - 1].sectpts[0];
-                        assert(p >= thisvob->vobu[i - 1].sectpts[1]);
+                        if (p < thisvob->vobu[i - 1].sectpts[1])
+                          {
+                            fprintf
+                              (
+                                stderr,
+                                "ERR:  pts %"PRId64" rounded up to %"PRId64" at rate"
+                                    " %"PRId64" lies within previous vob %d"
+                                    " [%"PRId64"..%"PRId64"] at inoffset %#"PRIx64"\n",
+                                firstaudiopts - thisvob->vobu[i - 1].sectpts[0],
+                                p,
+                                frpts,
+                                i - 1,
+                                thisvob->vobu[i - 1].sectpts[0],
+                                thisvob->vobu[i - 1].sectpts[1],
+                                inoffset
+                              );
+                            exit(1);
+                          } /*if*/
                         thisvob->vobu[i - 1].sectpts[1] = p;
                       }
                     else
@@ -1886,8 +1942,9 @@ noshow:
                         fprintf
                           (
                             stderr,
-                            "ERR:  Cannot infer pts for VOBU if there is no audio or video"
-                                " and it is the\nERR:  first VOBU.\n"
+                            "ERR:  Cannot infer pts for VOBU at inoffset %#"PRIx64" if there is"
+                                " no audio or video and it is the\nERR:  first VOBU.\n",
+                            inoffset
                           );
                         exit(1);
                       } /*if*/
@@ -1913,8 +1970,9 @@ noshow:
                         fprintf
                           (
                             stderr,
-                            "ERR:  Audio and video are too poorly synchronised; you must"
-                                " remultiplex.\n"
+                            "ERR:  Audio and video are too poorly synchronised at inoffset"
+                                " %#"PRIx64"; you must remultiplex.\n",
+                            inoffset
                           );
                         exit(1);
                       } /*if*/
