@@ -1925,7 +1925,7 @@ noshow:
                                 "ERR:  pts %"PRId64" rounded up to %"PRId64" at rate"
                                     " %"PRId64" lies within previous vob %d"
                                     " [%"PRId64"..%"PRId64"] at inoffset %#"PRIx64"\n",
-                                firstaudiopts - thisvob->vobu[i - 1].sectpts[0],
+                                firstaudiopts,
                                 p,
                                 frpts,
                                 i - 1,
