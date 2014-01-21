@@ -4,12 +4,12 @@ help=0
 out=0
 for i in "$@"; do
     if [ $out = 1 ]; then
-    WORKDIR="$i"
-    out=0
+        WORKDIR="$i"
+        out=0
     elif [ "x$i" = "x-h" ]; then
-    help=1
+        help=1
     elif [ "x$i" = "x-o" ]; then
-    out=1
+        out=1
     fi
 done
 
