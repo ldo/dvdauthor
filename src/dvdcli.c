@@ -1221,6 +1221,7 @@ static void vob_file(const char *f)
 {
     f = localize_filename(f);
     source_set_filename(curvob, f);
+    free(f);
 }
 
 static void vob_chapters(const char *c)
