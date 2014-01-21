@@ -1052,7 +1052,7 @@ static void audio_channels(const char *c)
         ch[3] = 0;
         c = ch;
       } /*if*/
-    set_audio_attr(AUDIO_CHANNELS, ch, setaudio);
+    set_audio_attr(AUDIO_CHANNELS, c, setaudio);
   }
 
 static void subattr_group_start()
