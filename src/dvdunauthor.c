@@ -491,7 +491,7 @@ static int setvob(unsigned char **vobs, int *numvobs, int vob)
     return r;
   } /*setvob*/
 
-static void FindWith(xmlNodePtr angleNode, const pgcit_t *pgcs, int vob, const cell_playback_t *cp)
+static void FindWith(xmlNodePtr angleNode, const pgcit_t *pgcs, unsigned int vob, const cell_playback_t *cp)
   /* handles interleaving of different titles as an alternative to an angle block. */
   {
     int i, j;
