@@ -107,36 +107,52 @@ static bool hasbecomevalid(int stream, const struct ofd *o)
     written to the specified output stream. Assumes there is at least 4 bytes
     of data waiting to be written. */
   {
-    unsigned char quad[4];
-    const struct fdbuf * const f1 = o->firstbuf;
-    const struct fdbuf *f2;
-    int i;
+    bool valid = false;
     unsigned int realquad;
-
-    if (f1)
-        f2 = f1->next;
-    else
-        f2 = 0;
-    for (i = 0; i < 4; i++)
+    const struct fdbuf * const f1 = o->firstbuf;
+    if (f1 != 0)
       {
-        if (f1->len - f1->pos - i > 0)
-            quad[i] = f1->buf[f1->pos + i];
-        else
-            quad[i] = f2->buf[f2->pos + i - (f1->len - f1->pos)];
-      } /*for*/
-    realquad =
-            quad[0] << 24
-        |
-            quad[1] << 16
-        |
-            quad[2] << 8
-        |
-            quad[3];
-    if (stream >= MPID_AUDIO_FIRST && stream <= MPID_AUDIO_LAST && (realquad & 0xFFE00000) == 0xFFE00000)
-        return true;
-    if (stream >= MPID_VIDEO_FIRST && stream <= MPID_VIDEO_LAST && realquad == 0x100 + MPID_SEQUENCE)
-        return true;
-    return false;
+        unsigned char quad[4];
+        int i;
+        const struct fdbuf * const f2 = f1->next;
+        valid = true; /* next assumption */
+        for (i = 0; valid && i < 4; i++)
+          {
+            if (f1->len - f1->pos - i > 0)
+                quad[i] = f1->buf[f1->pos + i];
+            else if (f2 != 0)
+                quad[i] = f2->buf[f2->pos + i - (f1->len - f1->pos)];
+            else
+                valid = false;
+          } /*for*/
+        if (valid)
+          {
+            realquad =
+                    quad[0] << 24
+                |
+                    quad[1] << 16
+                |
+                    quad[2] << 8
+                |
+                    quad[3];
+          } /*if*/
+      } /*if*/
+    return
+            valid
+        &&
+            (
+                    stream >= MPID_AUDIO_FIRST
+                &&
+                    stream <= MPID_AUDIO_LAST
+                &&
+                    (realquad & 0xFFE00000) == 0xFFE00000
+            ||
+                    stream >= MPID_VIDEO_FIRST
+                &&
+                    stream <= MPID_VIDEO_LAST
+                &&
+                    realquad == 0x100 + MPID_SEQUENCE
+            );
   } /*hasbecomevalid*/
 
 static bool dowork

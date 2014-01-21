@@ -548,7 +548,7 @@ subtitle_elt *sub_read_line_sami(subtitle_elt *current)
     static const char *s = NULL;
   /* to get rid of above, simply use sub_getc and process input one character
     at a time, rather than a whole line at a time */
-    char text[LINE_LEN + 1], *p = NULL;
+    char text[LINE_LEN + 1], *p = text;
     const char *q;
     int state;
     current->lines = current->start = current->end = 0;
