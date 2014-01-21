@@ -444,7 +444,7 @@ static int check_font
     int i;
     error = FT_Select_Charmap(face, FT_ENCODING_UNICODE);
 //  fprintf(stderr, "select unicode charmap: %d\n", error);
-    if (face->charmap == NULL || face->charmap->encoding != FT_ENCODING_UNICODE)
+    if (error != 0 || face->charmap == NULL || face->charmap->encoding != FT_ENCODING_UNICODE)
       {
         WARNING("Unicode charmap not available for this font. Very bad!");
       /* fallback to whatever encoding is available */

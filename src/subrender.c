@@ -262,7 +262,7 @@ inline static void vo_update_text_sub
             int chindex, prevch, wordlen;
             const unsigned char *text;
             int xsize = -vo_font->charspace;
-              /* cancels out extra space left before first word of first line */
+              /* cancels out extra space left before first word of line */
             linesleft--;
             text = (const unsigned char *)the_sub->text[linedone++];
             textlen = strlen((const char *)text);
@@ -326,11 +326,7 @@ inline static void vo_update_text_sub
                         newelt->text[counter] = wordbuf[counter];
                     wordlen = 0;
                     if (chindex == textlen)
-                      {
-                        xsize = -vo_font->charspace;
-                          /* cancels out extra space left before first word of next line */
                         break;
-                      } /*if*/
                     xsize = 0;
                     prevch = curch;
                   }

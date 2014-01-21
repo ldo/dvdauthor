@@ -990,7 +990,7 @@ static int svcddecode()
       } /*if*/
     ofs = i + 2 - 1; // get_next_svcdbits will increment ofs by 1
     ofs1 = ofs + read2(sub + i);
-    i += 2;
+  /* i += 2; */ /* not further used */
     if (debug > 4)
         fprintf(stderr, "cmd: image offsets 0x%x 0x%x\n", ofs, ofs1);
     have_bits = 0;
@@ -1099,7 +1099,6 @@ int main(int argc, char **argv)
     base_name = "sub";
     stream_number = 0;
     palet_file = 0;
-    nrinfiles = 0;
     while ((option = getopt(argc, argv, "o:v:fF:s:p:Vh")) != -1)
       {
         switch (option)

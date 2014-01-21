@@ -230,7 +230,6 @@ int cvd_encode(stinfo *s)
     subo = 4;
     ofs = 4;
 
-    c = 0;
     for(y = 0; y < s->yd; y += 2)
     {
     odd_row_cvd: 

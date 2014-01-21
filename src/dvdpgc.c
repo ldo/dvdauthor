@@ -511,7 +511,6 @@ int CreatePGC(FILE *h, const struct workset *ws, vtypes ismenu)
     in_it = true;
     buf = bigwritebuf;
     memset(buf, 0, bigwritebuflen);
-    ph = 0;
     if (ismenu != VTYPE_VTS) /* create VMGM_PGCI_UT/VTSM_PGCI_UT structure */
       {
         buf[1] = ws->menus->numgroups; // # of language units

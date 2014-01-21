@@ -643,7 +643,7 @@ static void process_packets
                 printf("; length=%d", packetlen + readlen);
                 if (has_extension)
                   {
-                    int eptr = 3;
+                    int eptr;
                     bool has_std = false, has_pts, has_dts;
                     int hdroffs, std=0, std_scale=0;
                     const bool mpeg2 = (buf[0] & 0xC0) == 0x80;
@@ -751,7 +751,7 @@ static void process_packets
                             if (pef & 1)
                               {
                                 printf("; (pext2)");
-                                eptr += 2;
+                              /* eptr += 2; */ /* not further used */
                               } /*if*/
                           } /*if*/
                       }

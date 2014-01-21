@@ -886,7 +886,6 @@ static bool imgfix(stinfo *s)
     useimg = 1;
     if (s->numbuttons)
       {
-        i = 0;
         do
           {
             if (pickbuttongroups(s, 1, useimg))

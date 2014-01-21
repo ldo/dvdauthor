@@ -959,7 +959,6 @@ subtitle_elt *sub_read_line_vplayer(subtitle_elt *current)
         // colon! look, what simple it can be:
         p = &line[plen];
 #endif
-        i = 0;
         if (*p != '|')
           {
             //
@@ -991,7 +990,7 @@ subtitle_elt *sub_read_line_rt(subtitle_elt *current)
     // WARNING: full XML parses can be required for proper parsing
     char line[LINE_LEN + 1];
     int a1, a2, a3, a4, b1, b2, b3, b4;
-    const char *p = NULL, *next = NULL;
+    const char *next = NULL;
     int i, len, plen;
     while (!current->text[0])
       {
@@ -1110,8 +1109,6 @@ subtitle_elt *sub_read_line_rt(subtitle_elt *current)
         current->end = b1 * 360000 + b2 * 6000 + b3 * 100 + b4 / 10;
         if (b1 == 0 && b2 == 0 && b3 == 0 && b4 == 0)
           current->end = current->start + 200;
-        p = line;
-        p += plen;
         i = 0;
         // TODO: I don't know what kind of convention is here for marking
         // multiline subs, maybe <br/> like in xml?
@@ -1119,7 +1116,6 @@ subtitle_elt *sub_read_line_rt(subtitle_elt *current)
         if (next && strlen(next) > 8)
           {
             next += 8; /* skip "<clear/>" tag */
-            i = 0;
             while ((next = sub_readtext(next, &current->text[i])) != 0)
               {
                 if (current->text[i] == ERR)
