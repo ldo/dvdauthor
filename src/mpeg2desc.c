@@ -673,7 +673,7 @@ static void process_packets
                     else
                       {
                         hdroffs = 0;
-                        while (buf[hdroffs] == 0xff && hdroffs < sizeof(buf))
+                        while (hdroffs < sizeof(buf) && buf[hdroffs] == 0xff)
                             hdroffs++;
                         if ((buf[hdroffs] & 0xC0) == 0x40)
                           {
