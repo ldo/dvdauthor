@@ -59,21 +59,7 @@ if test -n "$MAGICKCONFIG"; then
 fi
 
 if test "$usemagick" != 1; then
-    AC_CHECK_PROGS(GMAGICKCONFIG, [GraphicsMagick-config])
-    if test -n "$GMAGICKCONFIG"; then
-        ac_save_CPPFLAGS="$CPPFLAGS"
-        ac_save_LIBS="$LIBS"
-        MAGICK_CPPFLAGS="`$GMAGICKCONFIG --cppflags`"
-        MAGICK_LIBS="`$GMAGICKCONFIG --ldflags` `$GMAGICKCONFIG --libs`"
-        CPPFLAGS="$CPPFLAGS $MAGICK_CPPFLAGS"
-        LIBS="$MAGICK_LIBS $LIBS"
-        AC_CHECK_FUNC(DispatchImage, usemagick=1)
-        CPPFLAGS="$ac_save_CPPFLAGS"
-        LIBS="$ac_save_LIBS"
-        if test "$usemagick" = 1; then
-            AC_DEFINE(HAVE_GMAGICK, 1, [Whether the GraphicsMagick libraries are available])
-        fi
-    fi
+    PKG_CHECK_MODULES([MAGICK], [GraphicsMagick], usemagick=1; [AC_DEFINE(HAVE_GMAGICK, 1, [whether the GraphicsMagick libraries are available])], [:])
 fi
 
 if test "$usemagick" != 1; then
