@@ -20,8 +20,6 @@
  * MA 02110-1301 USA.
  */
 
-#include "config.h"
-
 #include "compat.h"
 
 #include <assert.h>

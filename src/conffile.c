@@ -21,7 +21,6 @@
  * MA 02110-1301 USA.
  */
 
-#include "config.h"
 #include "compat.h"
 #include <errno.h>
 #include "conffile.h"
