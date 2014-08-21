@@ -249,6 +249,15 @@ jumpstatement: JUMP_TOK jtsl jtml jcl SEMICOLON_TOK {
     $$->op=VM_JUMP;
     $$->i3=65536+$3;
 }
+| JUMP_TOK PGC_TOK NUM_TOK SEMICOLON_TOK {
+    if ($3 < 1 || $3 > 128)
+      {
+        yyerror("pgc number out of range");
+      } /*if*/
+    $$=statement_new();
+    $$->op=VM_JUMP;
+    $$->i2=$3;
+}
 | JUMP_TOK CELL_TOK TOP_TOK SEMICOLON_TOK {
     $$=statement_new();
     $$->op=VM_LINK;
