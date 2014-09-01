@@ -18,6 +18,8 @@ AC_COMPILE_IFELSE(
     [echo WARNING: C compiler does not allow nested routines--some functionality will be disabled]
 )
 
+AM_PROG_CC_C_O
+
 have_dvdread=false
 AC_CHECK_LIB(dvdread, DVDOpenFile, have_dvdread=true)
 
@@ -45,8 +47,10 @@ AC_CHECK_PROGS(MAGICKCONFIG, [Magick-config])
 if test -n "$MAGICKCONFIG"; then
     ac_save_CPPFLAGS="$CPPFLAGS"
     ac_save_LIBS="$LIBS"
+    MAGICK_CFLAGS="`$MAGICKCONFIG --cflags`"
     MAGICK_CPPFLAGS="`$MAGICKCONFIG --cppflags`"
     MAGICK_LIBS="`$MAGICKCONFIG --ldflags` `$MAGICKCONFIG --libs`"
+    CFLAGS="$CFLAGS $MAGICK_CFLAGS"
     CPPFLAGS="$CPPFLAGS $MAGICK_CPPFLAGS"
     LIBS="$MAGICK_LIBS $LIBS"
     AC_CHECK_FUNC(ExportImagePixels, usemagick=1, AC_MSG_NOTICE([ImageMagick does not support the function
