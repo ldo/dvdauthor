@@ -154,7 +154,7 @@ statement: jumpstatement {
 ;
 
 jtsl: TITLESET_TOK NUM_TOK {
-    if ($2 < 1 || $2 > 99)
+    if ($2 < 0 || $2 > 99)
       {
         yyerror("titleset number out of range");
       } /*if*/
