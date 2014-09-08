@@ -952,7 +952,10 @@ static void menus_start()
 
 static void menus_lang(const char *lang)
   {
-    strcpy(menulang, lang);
+    if (strlen(lang) > 2)
+        strcpy(menulang, "en");
+    else
+        strcpy(menulang, lang);
       /* fixme: no check for buffer overflow! */
   } /*menus_lang*/
 
