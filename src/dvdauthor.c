@@ -1622,6 +1622,21 @@ void pgc_set_stilltime(struct pgc *p,int still)
     p->pauselen=still;
 }
 
+void pgc_set_prev(struct pgc *p,int prev)
+{
+    p->prev = prev;
+}
+
+void pgc_set_next(struct pgc *p,int next)
+{
+    p->next = next;
+}
+
+void pgc_set_up(struct pgc *p,int up)
+{
+    p->up = up;
+}
+
 int pgc_set_subpic_stream(struct pgc *p,int ch,const char *m,int id)
   /* adds a mapping for the subpicture stream numbered ch (in order of appearance) with
     mode name m to the substream with ID id. */

@@ -65,6 +65,9 @@ void pgc_set_color(struct pgc *p,int index,int color);
 void pgc_set_buttongroup(struct pgc *p,int index,unsigned char *map);
 #endif
 void pgc_set_stilltime(struct pgc *p,int still);
+void pgc_set_prev(struct pgc *p,int prev);
+void pgc_set_next(struct pgc *p,int next);
+void pgc_set_up(struct pgc *p,int up);
 int pgc_set_subpic_stream(struct pgc *p,int ch,const char *m,int id);
 
 /* used to indicate which video/audio/subpicture attribute is being set to a particular

@@ -1183,6 +1183,21 @@ static void pgc_pause(const char *c)
     pgc_set_stilltime(curpgc,parse_pause(c));
 }
 
+static void pgc_prev(const char *c)
+{
+    pgc_set_prev(curpgc,strtounsigned(c, "pgc prev"));
+}
+
+static void pgc_next(const char *c)
+{
+    pgc_set_next(curpgc,strtounsigned(c, "pgc next"));
+}
+
+static void pgc_up(const char *c)
+{
+    pgc_set_up(curpgc,strtounsigned(c, "pgc up"));
+}
+
 static void pgc_end()
 {
     pgcgroup_add_pgc(curgroup,curpgc);
@@ -1400,6 +1415,9 @@ static struct elemattr attrs[]={
     {"pgc","entry",pgc_entry},
     {"pgc","palette",pgc_palette},
     {"pgc","pause",pgc_pause},
+    {"pgc","prev",pgc_prev},
+    {"pgc","next",pgc_next},
+    {"pgc","up",pgc_up},
     {0,0,0}
 };
 

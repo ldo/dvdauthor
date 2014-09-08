@@ -177,6 +177,7 @@ struct pgc { /* describes a program chain corresponding to a <pgc> directive */
     int numbuttons; /* length of buttons array */
     int numchapters,numprograms,numcells,pauselen;
     int entries; /* bit mask of applicable menu entry types, or, in a titleset, nonzero if non-title PGC */
+    int up, prev, next; /* relative navigation support */
     struct source **sources; /* array of <vob> directives seen */
     struct button *buttons; /* array */
     struct vm_statement *prei,*posti;
