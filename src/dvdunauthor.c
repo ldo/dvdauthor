@@ -28,7 +28,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/times.h>
+#include <time.h>
 
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_types.h>
@@ -1076,9 +1076,8 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
     dvd_file_t *vobs;
     const c_adt_t *cptr;
     const cell_adr_t *cells;
-    int numcells,i,j,totalsect,numsect;
-    clock_t start,now,clkpsec;
-    struct tms unused_tms;
+    unsigned int numcells,i,j,totalsect,numsect;
+    time_t start,now;
 
     cptr = titlef ? ifo->vts_c_adt : ifo->menu_c_adt;
     if (cptr)
@@ -1104,8 +1103,7 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
     totalsect = 0;
     for (i = 0; i < numcells; i++)
         totalsect += cells[i].last_sector - cells[i].start_sector + 1;
-    clkpsec = sysconf(_SC_CLK_TCK);
-    start = times(&unused_tms);
+    start = time(NULL);
     
     for (i = 0; i < numcells; i++)
       {
@@ -1157,10 +1155,10 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
             int rl = cells[i].last_sector + 1 - b;
             if (rl > BIGBLOCKSECT)
                 rl = BIGBLOCKSECT;
-            now = times(&unused_tms);
-            if (now-start > 3 * clkpsec && numsect > 0)
+            now = time(NULL);
+            if (difftime(now,start) > 3.0 && numsect > 0)
               {
-                const int rmn = (totalsect - numsect) * (now - start) / (numsect * clkpsec);
+                const int rmn = (totalsect - numsect) * (now - start) / numsect;
                   /* estimate of time remaining */
                 fprintf
                   (
