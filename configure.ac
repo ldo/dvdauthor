@@ -1,6 +1,6 @@
 AC_INIT(DVDAuthor,0.7.1+,dvdauthor-users@lists.sourceforge.net)
 
-AM_CONFIG_HEADER(src/config.h)
+AC_CONFIG_HEADERS(src/config.h)
 AC_CONFIG_AUX_DIR(autotools)
 
 AM_INIT_AUTOMAKE
@@ -41,7 +41,7 @@ AC_SUBST(LIBPNG_LIBS)
 
 usemagick=0
 
-AC_CHECK_PROGS(MAGICKCONFIG, [Magick-config])
+AC_CHECK_PROGS(MAGICKCONFIG, [MagickCore-config])
 if test -n "$MAGICKCONFIG"; then
     ac_save_CPPFLAGS="$CPPFLAGS"
     ac_save_LIBS="$LIBS"

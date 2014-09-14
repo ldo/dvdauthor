@@ -19,6 +19,7 @@
  * MA 02110-1301 USA.
  */
 
+#include "config.h"
 #include "compat.h" /* needed for bool */
 #include "dvdvm.h"
 #include "dvdvmy.h"
