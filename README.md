@@ -5,7 +5,7 @@ dvdauthor is a program that will generate a DVD-Video movie from a valid
 MPEG-2 stream that should play when you put it in a DVD player.
 
 To start you need MPEG-2 files that contain the necessary DVD-Video VOB
-packets. These can be generated with FFmpeg, or by by passing '-f 8' to `mplex`.
+packets. These can be generated with FFmpeg, or by by passing `-f 8` to `mplex`.
 
 How to Use
 ----------
