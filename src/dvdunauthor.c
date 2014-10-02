@@ -1095,8 +1095,17 @@ static void getVobs(dvd_reader_t *dvd, const ifo_handle_t *ifo, int titleset, in
     vobs = DVDOpenFile(dvd, titleset, titlef ? DVD_READ_TITLE_VOBS : DVD_READ_MENU_VOBS);
     if (vobs == NULL)
       {
-      /* error message already output */
-        exit(1);
+        fprintf(stderr, "INFO: No VOBs found for ");
+        if (titleset != 0)
+          {
+            fprintf(stderr, "titleset %d %s", titleset, titlef ? "title" : "menu");
+          }
+        else
+          {
+            fprintf(stderr, "VMGM");
+          } /*if*/
+        fprintf(stderr, "\n");
+        return;
       } /*if*/
 
     numsect = 0;
