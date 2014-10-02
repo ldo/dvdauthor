@@ -230,16 +230,16 @@ jumpstatement: JUMP_TOK jtsl jtml jcl SEMICOLON_TOK {
   /* values already range-checked: */
     $$->i1=$2;
     $$->i2=$3;
-    $$->i3=$4;
+    $$->i3=1*65536*$4;
 }
-| JUMP_TOK CELL_TOK NUM_TOK SEMICOLON_TOK {
+| JUMP_TOK PGC_TOK NUM_TOK SEMICOLON_TOK {
     if ($3 < 1 || $3 > 65535)
       {
-        yyerror("cell number out of range");
+        yyerror("PGC number out of range");
       } /*if*/
     $$=statement_new();
     $$->op=VM_JUMP;
-    $$->i3=2*65536+$3;
+    $$->i3=0*65536+$3;
 }
 | JUMP_TOK PROGRAM_TOK NUM_TOK SEMICOLON_TOK {
     if ($3 < 1 || $3 > 65535)
@@ -248,7 +248,16 @@ jumpstatement: JUMP_TOK jtsl jtml jcl SEMICOLON_TOK {
       } /*if*/
     $$=statement_new();
     $$->op=VM_JUMP;
-    $$->i3=65536+$3;
+    $$->i3=2*65536+$3;
+}
+| JUMP_TOK CELL_TOK NUM_TOK SEMICOLON_TOK {
+    if ($3 < 1 || $3 > 65535)
+      {
+        yyerror("cell number out of range");
+      } /*if*/
+    $$=statement_new();
+    $$->op=VM_JUMP;
+    $$->i3=3*65536+$3;
 }
 | JUMP_TOK CELL_TOK TOP_TOK SEMICOLON_TOK {
     $$=statement_new();

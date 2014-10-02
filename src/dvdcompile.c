@@ -626,8 +626,8 @@ static unsigned char *compilecs
           {
             int i1 = cs->i1; /* if nonzero, 1 for VMGM, or titleset nr + 1 */
             int i2 = cs->i2; /* menu number or menu entry ID + 120 or title number + 128 */
-          /* cs->i3 is chapter number if nonzero and less than 65536;
-            or program number + 65536; or cell number + 131072 */
+          /* cs->i3 is PGC number if nonzero and less than 65536; or chapter number + 65536;
+            or program number + 131072; or cell number + 196608 */
 
           /* check for various disallowed combinations */
             if (i1 == 1 && ismenu == VTYPE_VMGM)
@@ -677,7 +677,7 @@ static unsigned char *compilecs
                 &&
                     i2 < 128 /* jump to non-entry menu */
                 &&
-                    cs->i3 /* chapter/cell/program specified */
+                    (cs->i3 & 65535) /* PGC/chapter/cell/program specified */
                 &&
                     ismenu != VTYPE_VTS
               )
@@ -713,7 +713,7 @@ static unsigned char *compilecs
                 &&
                     !i2 /*same PGC*/
                 &&
-                    !cs->i3 /*no chapter/cell/program*/
+                    !(cs->i3 & 65535) /*no PGC/chapter/cell/program*/
               )
               {
                 //  VTS NONE    NOPGC   NOCH
@@ -759,7 +759,7 @@ static unsigned char *compilecs
               ||
                   i1 == 1 /*jump to VMGM*/ && i2 >= 128 /*title*/
               ||
-                  ismenu == VTYPE_VMGM && i2 >= 128 /*title*/ && cs->i3 /*chapter/program/cell*/
+                  ismenu == VTYPE_VMGM && i2 >= 128 /*title*/ && (cs->i3 & 65535) != 0 /*chapter/program/cell*/
               )
               {
                 //  VMGM    TS  TPGC    CHXX
@@ -826,7 +826,7 @@ static unsigned char *compilecs
                     fprintf(stderr, "ERR:  Cannot jump to a chapter from a FPC\n");
                     return 0;
                   } /*if*/
-                if (cs->i3 < 65536 && ismenu != VTYPE_VTS)
+                if (cs->i3 >> 16 == 1 && ismenu != VTYPE_VTS)
                   {
                     fprintf(stderr, "ERR:  Menus do not have chapters\n");
                     return 0;
@@ -834,18 +834,22 @@ static unsigned char *compilecs
                 switch (cs->i3 >> 16)
                   {
                 case 0:
+                    numc = curgroup->numpgcs;
+                    des = "pgc";
+                break;
+                case 1:
                     numc = curpgc->numchapters;
                     des = "chapter";
                 break;
-                case 1:
+                case 2:
                     numc = curpgc->numprograms;
                     des = "program";
                 break;
-                case 2:
+                case 3:
                     numc = curpgc->numcells;
                     des = "cell";
                 break;
-                default:
+                default: /* shouldn't occur! */
                     numc = 0;
                     des = "<err>";
                 break;
@@ -855,7 +859,7 @@ static unsigned char *compilecs
                     fprintf(stderr, "ERR:  Cannot jump to %s %d, only %d exist\n", des, cs->i3 & 65535, numc);
                     return 0;
                   } /*if*/
-                write8(buf, 0x20, 0x05 + (cs->i3 >> 16), 0x00, 0x00, 0x00, 0x00, 0x00, cs->i3); // LinkPTTN pttn, LinkPGCN pgn, or LinkCN cn
+                write8(buf, 0x20, 0x04 + (cs->i3 >> 16), 0x00, 0x00, 0x00, 0x00, 0x00, cs->i3); // LinkPGCN pgcn, LinkPTTN pttn, LinkPGCN pgn, or LinkCN cn
                 buf += 8;
               }
             else if (i2 < 128) /* menu */
@@ -922,13 +926,13 @@ static unsigned char *compilecs
                           );
                         return 0;
                       } /*if*/
-                    if (cs->i3 && cs->i3 > ws->titles->pgcs[i2 - 128 - 1]->numchapters)
+                    if ((cs->i3 & 65535) != 0 && (cs->i3 & 65535) > ws->titles->pgcs[i2 - 128 - 1]->numchapters)
                       {
                         fprintf
                           (
                             stderr,
                             "ERR:  Cannot jump to chapter %d of title %d, only %d exist\n",
-                            cs->i3,
+                            cs->i3 & 65535,
                             i2 - 128,
                             ws->titles->pgcs[i2 - 128 - 1]->numchapters
                           );
@@ -941,7 +945,7 @@ static unsigned char *compilecs
                     0x30,
                     ismenu == VTYPE_VMGM ?
                         0x02 /*JumpTT*/
-                    : cs->i3 ?
+                    : (cs->i3 & 65535) != 0 ?
                         0x05 /*JumpVTS_PTT*/
                     :
                         0x03 /*JumpVTS_TT*/,

@@ -623,6 +623,10 @@ domain, or you can access them by titleset
 instead.</para></listitem></varlistentry>
 
 <varlistentry>
+<term><literal>pgc <replaceable>Z</replaceable></literal></term>
+<listitem><para>Targets a PGC in the current VMGM or titleset.</para></listitem></varlistentry>
+
+<varlistentry>
 <term><literal>chapter <replaceable>Z</replaceable></literal></term>
 
 <listitem><para>Targets a chapter in the current title.</para></listitem></varlistentry>
