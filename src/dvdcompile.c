@@ -653,20 +653,20 @@ static unsigned char *compilecs
                     ismenu == VTYPE_VTS
               )
               {
-                //  VTS NONE    MPGC    NOCH
-                //  VTS VMGM    MPGC    NOCH
-                //  VTS TS  MPGC    NOCH
-                //  VTS NONE    MPGC    CHXX
-                //  VTS VMGM    MPGC    CHXX
-                //  VTS TS  MPGC    CHXX
-                //  VTS NONE    MEPGC   NOCH
-                //  VTS VMGM    MEPGC   NOCH
-                //  VTS TS  MEPGC   NOCH
-                //  VTS NONE    MEPGC   CHXX
-                //  VTS VMGM    MEPGC   CHXX
-                //  VTS TS  MEPGC   CHXX
-                //  VTS VMGM    NOPGC   NOCH
-                //  VTS VMGM    NOPGC   CHXX
+                //  VTS     NONE    MPGC    NOCH
+                //  VTS     VMGM    MPGC    NOCH
+                //  VTS     TS      MPGC    NOCH
+                //  VTS     NONE    MPGC    CHXX
+                //  VTS     VMGM    MPGC    CHXX
+                //  VTS     TS      MPGC    CHXX
+                //  VTS     NONE    MEPGC   NOCH
+                //  VTS     VMGM    MEPGC   NOCH
+                //  VTS     TS      MEPGC   NOCH
+                //  VTS     NONE    MEPGC   CHXX
+                //  VTS     VMGM    MEPGC   CHXX
+                //  VTS     TS      MEPGC   CHXX
+                //  VTS     VMGM    NOPGC   NOCH
+                //  VTS     VMGM    NOPGC   CHXX
 
                 fprintf(stderr, "ERR:  Cannot jump to a menu from a title, use 'call' instead\n");
                 return 0;
@@ -683,27 +683,27 @@ static unsigned char *compilecs
               )
               {
                 //  VMGM    NONE    MPGC    CHXX
-                //  VMGM    TS  MPGC    CHXX
+                //  VMGM    TS      MPGC    CHXX
                 //  VMGM    NONE    MEPGC   CHXX
-                //  VMGM    TS  MEPGC   CHXX
+                //  VMGM    TS      MEPGC   CHXX
                 //  VTSM    NONE    MPGC    CHXX
                 //  VTSM    VMGM    MPGC    CHXX
-                //  VTSM    TS  MPGC    CHXX
+                //  VTSM    TS      MPGC    CHXX
                 //  VTSM    NONE    MEPGC   CHXX
                 //  VTSM    VMGM    MEPGC   CHXX
-                //  VTSM    TS  MEPGC   CHXX
+                //  VTSM    TS      MEPGC   CHXX
                 fprintf(stderr, "ERR:  Cannot specify chapter when jumping to another menu\n");
                 return 0;
               } /*if*/
             if (i1 /*VMGM/titleset*/ && !i2 /*no PGC*/)
               {
                 //  VTSM    VMGM    NOPGC   CHXX
-                //  VTS TS  NOPGC   CHXX
-                //  VTSM    TS  NOPGC   CHXX
-                //  VMGM    TS  NOPGC   CHXX
-                //  VTS TS  NOPGC   NOCH
-                //  VTSM    TS  NOPGC   NOCH
-                //  VMGM    TS  NOPGC   NOCH
+                //  VTS     TS      NOPGC   CHXX
+                //  VTSM    TS      NOPGC   CHXX
+                //  VMGM    TS      NOPGC   CHXX
+                //  VTS     TS      NOPGC   NOCH
+                //  VTSM    TS      NOPGC   NOCH
+                //  VMGM    TS      NOPGC   NOCH
                 fprintf(stderr, "ERR:  Cannot omit menu/title if specifying vmgm/titleset\n");
                 return 0;
               } /*if*/
@@ -716,7 +716,7 @@ static unsigned char *compilecs
                     !(cs->i3 & 65535) /*no PGC/chapter/cell/program*/
               )
               {
-                //  VTS NONE    NOPGC   NOCH
+                //  VTS     NONE    NOPGC   NOCH
                 //  VTSM    NONE    NOPGC   NOCH
                 //  VMGM    NONE    NOPGC   NOCH
                 fprintf(stderr, "ERR:  Nop jump statement\n");
@@ -747,8 +747,8 @@ static unsigned char *compilecs
                     i2 < 128 /*entry PGC*/
               )
               {
-                //  VTSM    TS  MEPGC   NOCH
-                //  VMGM    TS  MEPGC   NOCH
+                //  VTSM    TS      MEPGC   NOCH
+                //  VMGM    TS      MEPGC   NOCH
                 if (i2 == 120) /* "default" entry means "root" */
                     i2 = 123;
                 write8(buf, 0x30, 0x06, 0x00, 0x01, i1 - 1, 0x80 + (i2 - 120), 0x00, 0x00); buf += 8; // JumpSS VTSM vts 1 menu
@@ -762,17 +762,17 @@ static unsigned char *compilecs
                   ismenu == VTYPE_VMGM && i2 >= 128 /*title*/ && (cs->i3 & 65535) != 0 /*chapter/program/cell*/
               )
               {
-                //  VMGM    TS  TPGC    CHXX
-                //  VTSM    TS  MPGC    NOCH
-                //  VMGM    TS  MPGC    NOCH
-                //  VTS TS  TPGC    NOCH
-                //  VTSM    TS  TPGC    NOCH
-                //  VMGM    TS  TPGC    NOCH
-                //  VTS TS  TPGC    CHXX
-                //  VTSM    TS  TPGC    CHXX
-                //  VTS VMGM    TPGC    NOCH
+                //  VMGM    TS      TPGC    CHXX
+                //  VTSM    TS      MPGC    NOCH
+                //  VMGM    TS      MPGC    NOCH
+                //  VTS     TS      TPGC    NOCH
+                //  VTSM    TS      TPGC    NOCH
+                //  VMGM    TS      TPGC    NOCH
+                //  VTS     TS      TPGC    CHXX
+                //  VTSM    TS      TPGC    CHXX
+                //  VTS     VMGM    TPGC    NOCH
                 //  VTSM    VMGM    TPGC    NOCH
-                //  VTS VMGM    TPGC    CHXX
+                //  VTS     VMGM    TPGC    CHXX
                 //  VTSM    VMGM    TPGC    CHXX
                 //  VMGM    NONE    TPGC    CHXX
                 if (jumppad)
@@ -818,7 +818,7 @@ static unsigned char *compilecs
                 int numc;
                 const char *des;
 
-                //  VTS NONE    NOPGC   CHXX
+                //  VTS     NONE    NOPGC   CHXX
                 //  VTSM    NONE    NOPGC   CHXX
                 //  VMGM    NONE    NOPGC   CHXX
                 if (curpgc == 0)
@@ -909,9 +909,9 @@ static unsigned char *compilecs
             else
               {
                 //  VMGM    NONE    TPGC    NOCH
-                //  VTS NONE    TPGC    NOCH
+                //  VTS     NONE    TPGC    NOCH
                 //  VTSM    NONE    TPGC    NOCH
-                //  VTS NONE    TPGC    CHXX
+                //  VTS     NONE    TPGC    CHXX
                 //  VTSM    NONE    TPGC    CHXX
                 if (ismenu < VTYPE_VMGM) /* VTS or VTSM */
                   {
