@@ -6,18 +6,15 @@
 # the dvdauthor source tree, and it will create the configure scripts
 # and other related bits and pieces.
 #
-# You would think "autoreconf -i" would do all this, but unfortunately
-# that assumes that a program using iconv also needs gettext as well,
-# which is not true for DVDAuthor. So the autoreconf reports an error
-# that config.rpath does not exist, which is why it has to be explicitly
-# copied below.
+# You would think "autoreconf -i" on its own would be enough, but
+# unfortunately that assumes that a program using iconv also needs
+# gettext as well, which is not true for DVDAuthor. So the autoreconf
+# reports an error that config.rpath does not exist, which is why it
+# has to be explicitly copied below.
 #
 # Created by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 #-
 mkdir autotools
-aclocal
-autoheader
 cp /usr/share/gettext/config.rpath autotools/
-automake --add-missing
-autoconf
+autoreconf -i
 
