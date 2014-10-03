@@ -813,7 +813,7 @@ static unsigned char *compilecs
                     write8(buf, 0x30, 0x06, 0x00, 0x00, 0x00, i2 == 121 ? 0 : (0x40 + i2 - 120), 0x00, 0x00); // JumpSS FP or JumpSS VMGM menu
                 buf += 8;
               }
-            else if (!i1 && !i2 && cs->i3)
+            else if (!i1 && !i2 && (cs->i3 & 65535))
               {
                 int numc;
                 const char *des;

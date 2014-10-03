@@ -230,7 +230,7 @@ jumpstatement: JUMP_TOK jtsl jtml jcl SEMICOLON_TOK {
   /* values already range-checked: */
     $$->i1=$2;
     $$->i2=$3;
-    $$->i3=1*65536*$4;
+    $$->i3=1*65536+$4;
 }
 | JUMP_TOK PGC_TOK NUM_TOK SEMICOLON_TOK {
     if ($3 < 1 || $3 > 65535)
