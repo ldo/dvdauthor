@@ -2,11 +2,15 @@ Makefile
 Makefile.in
 aclocal.m4
 autom4te.cache
-autotools
+autotools/*
+!autotools/config.rpath
 config.log
 config.status
 configure
 dvdauthor.spec
+m4/*
+!m4/iconv.m4
+
 doc/Makefile.in
 doc/*.1
 doc/manpage.*
