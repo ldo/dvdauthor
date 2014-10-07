@@ -1164,7 +1164,7 @@ static unsigned int extractif(const unsigned char *b)
     case 1:
     case 2:
         return
-                (b[1] >> 4) << 24 /* the comparison op and the command to be performed */
+                (b[1] >> 4) << 24 /* the comparison op and direct-operand-2 flag */
             |
                 b[3] << 16 /* operand 1 for the comparison */
             |
@@ -1182,7 +1182,7 @@ static unsigned int negateif(unsigned int ifs)
   /* negates the comparison op part of a value returned from extractif. */
   {
     return
-            ifs & 0x8ffffff /* remove comparison op */
+            ifs & 0x8ffffff /* remove comparison op, leave direct flag and operands */
         |
             negatecompare((ifs >> 24) & 7) << 24; /* replace with opposite comparison */
   } /*negateif*/
@@ -1343,7 +1343,13 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             &&
                 b[7] == curline + 2 // step 1
             &&
-                (b[9] & 0x7f) == 0 /* second instr not conditional and not link */
+                (b[9] & 0x70) == 0 /* second instr not conditional */
+            &&
+                (
+                    (b[8] & 15) == 0 /* not a set */
+                ||
+                    (b[9] & 15) == 0 /* not a link */
+                ) /* not set-and-link in one */
             &&
                 ifcombinable(b[0], b[1], b[8]) // step 2
             &&
