@@ -1294,6 +1294,30 @@ static void deleteinstruction
     memset(*end, 0, 8); // clean up tracks (so pgc structure is not polluted)
   } /*deleteinstruction*/
 
+static void dumpcode
+  (
+    const char * descr,
+    const unsigned char *obuf, /* start of buffer for computing instruction numbers for branches */
+    unsigned char *buf, /* where to insert new compiled code */
+    const unsigned char *end /* points to after last instruction generated */
+  )
+  {
+#ifdef VM_DEBUG
+    const unsigned int nrlines = (end - buf) / 8;
+    unsigned int i, j;
+    fprintf(stderr, "* %s:\n", descr);
+    for (i = 0; i < nrlines; ++i)
+      {
+        fprintf(stderr, " %3d:", i + (buf - obuf) + 1);
+        for (j = 0; j < 8; ++j)
+          {
+            fprintf(stderr, " %02X", buf[i * 8 + j]);
+          } /*for*/
+        fputs("\n", stderr);
+      } /*for*/
+#endif
+  } /*dumpcode*/
+
 void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **end)
   /* does various peephole optimizations on the part of obuf from buf to *end.
     *end will be updated if unnecessary instructions are removed. */
@@ -1330,6 +1354,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             memcpy(b, b + 8, 8); // move statement
             memset(b + 8, 0, 8); // replace with nop
             applyif(b, ifs);
+            dumpcode("vm_optimize: jump over one => inverse conditional", obuf, buf, *end);
             goto again;
           } /*if*/
         // 1. this is a NOP instruction
@@ -1362,6 +1387,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
           )
           {
             deleteinstruction(obuf, buf, end, b);
+            dumpcode("vm_optimize: remove nop", obuf, buf, *end);
             goto again;
           } /*if*/
         // if
@@ -1385,6 +1411,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
           {
           /* remove dead code */
             deleteinstruction(obuf, buf, end, b);
+            dumpcode("vm_optimize: remove dead code", obuf, buf, *end);
             goto again;
           } /*if*/
         // if
@@ -1416,6 +1443,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             if (b[8 + 5])
                 b[5] = b[8 + 5];
             deleteinstruction(obuf, buf, end, b + 8);
+            dumpcode("vm_optimize: merge setting of subtitle/angle/audio", obuf, buf, *end);
             goto again;
           } /*if*/
         // if
@@ -1452,6 +1480,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             if (b[8 + 6] == 0)
                 b[8 + 6] = b[4];
             deleteinstruction(obuf, buf, end, b);
+            dumpcode("vm_optimize: merge set button and link", obuf, buf, *end);
             goto again;
           } /*if*/
         // if
@@ -1491,6 +1520,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             b[6] = b[8 + 6];
             b[7] = b[8 + 7];
             deleteinstruction(obuf, buf, end, b + 8);
+            dumpcode("vm_optimize: merge set register and link", obuf, buf, *end);
             goto again;
           } /*if*/
       } /*for*/
@@ -1529,7 +1559,9 @@ unsigned char *vm_compile
           } /*if*/
         gotos[i].code[7] = (labels[j].code - obuf) / 8 + 1;
       } /*for*/
+    dumpcode("vm_compile: before vm_optimize", obuf, buf, end);
     vm_optimize(obuf, buf, &end);
+    dumpcode("vm_compile: after vm_optimize", obuf, buf, end);
     return end;
   } /*vm_compile*/
 
