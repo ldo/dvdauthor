@@ -1343,7 +1343,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             &&
                 b[7] == curline + 2 // step 1
             &&
-                (b[9] & 0x70) == 0 /* second instr not conditional */
+                (b[9] & 0x7f) == 0 /* second instr not conditional and not link */
             &&
                 ifcombinable(b[0], b[1], b[8]) // step 2
             &&
