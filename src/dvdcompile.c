@@ -965,8 +965,7 @@ static unsigned char *compilecs
           {
           /* cs->i1 if nonzero is 1 for VMGM, or titleset nr + 1 */
             int i2 = cs->i2; /* menu number or menu entry ID + 120 or title number + 128 */
-          /* cs->i3 is chapter number if nonzero and less than 65536;
-            or program number + 65536; or cell number + 131072 */
+          /* cs->i3 is chapter number if specified, else zero */
             int i4 = cs->i4; /* resume cell if specified, else zero */
 
             // CALL's from <post> MUST have a resume cell
