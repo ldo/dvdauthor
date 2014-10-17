@@ -212,7 +212,7 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
       {
         // if the first param is a value, then try to move a complex operation farther up or an SPRM access (if SPRM ops are not allowed)
         for (vp = &cs->param->next; *vp; vp = &(vp[0]->next))
-            if (vp[0]->op != VM_VAL || issprmval(vp[0])) /* fixme: should be checking canusesprm here */
+            if (vp[0]->op != VM_VAL || canusesprm < issprmval(vp[0]))
               {
                 v = *vp;
                 *vp = v->next; /* take out from its place in chain */
@@ -240,10 +240,9 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
       {
         for (v = cs->param->next; v; v = v->next) /* process chain of operations */
           {
-            if (v->op == VM_VAL && !issprmval(v))
+            if (v->op == VM_VAL && canusesprm >= issprmval(v))
                 buf = compileop(buf, target, cs->op, v->i1);
-                  /* can simply put value straight into target */
-                  /* fixme: can also do this if canusesprm */
+                  /* can simply put function value straight into target */
             else
               {
                 const int t2 = nexttarget(target);
