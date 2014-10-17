@@ -970,57 +970,57 @@ static unsigned char *compilecs
 
             // CALL's from <post> MUST have a resume cell
             if (!i4)
-                i4 = 1;
+                i4 = 1; /* resume from start if not specified */
             if (ismenu != VTYPE_VTS)
               {
                 //  VTSM    NONE    NOPGC   NOCH
                 //  VMGM    NONE    NOPGC   NOCH
                 //  VTSM    VMGM    NOPGC   NOCH
                 //  VMGM    VMGM    NOPGC   NOCH
-                //  VTSM    TS  NOPGC   NOCH
-                //  VMGM    TS  NOPGC   NOCH
+                //  VTSM    TS      NOPGC   NOCH
+                //  VMGM    TS      NOPGC   NOCH
                 //  VTSM    NONE    NOPGC   CHXX
                 //  VMGM    NONE    NOPGC   CHXX
                 //  VTSM    VMGM    NOPGC   CHXX
                 //  VMGM    VMGM    NOPGC   CHXX
-                //  VTSM    TS  NOPGC   CHXX
-                //  VMGM    TS  NOPGC   CHXX
+                //  VTSM    TS      NOPGC   CHXX
+                //  VMGM    TS      NOPGC   CHXX
                 //  VTSM    NONE    MPGC    NOCH
                 //  VMGM    NONE    MPGC    NOCH
                 //  VTSM    VMGM    MPGC    NOCH
                 //  VMGM    VMGM    MPGC    NOCH
-                //  VTSM    TS  MPGC    NOCH
-                //  VMGM    TS  MPGC    NOCH
+                //  VTSM    TS      MPGC    NOCH
+                //  VMGM    TS      MPGC    NOCH
                 //  VTSM    NONE    MPGC    CHXX
                 //  VMGM    NONE    MPGC    CHXX
                 //  VTSM    VMGM    MPGC    CHXX
                 //  VMGM    VMGM    MPGC    CHXX
-                //  VTSM    TS  MPGC    CHXX
-                //  VMGM    TS  MPGC    CHXX
+                //  VTSM    TS      MPGC    CHXX
+                //  VMGM    TS      MPGC    CHXX
                 //  VTSM    NONE    MEPGC   NOCH
                 //  VMGM    NONE    MEPGC   NOCH
                 //  VTSM    VMGM    MEPGC   NOCH
                 //  VMGM    VMGM    MEPGC   NOCH
-                //  VTSM    TS  MEPGC   NOCH
-                //  VMGM    TS  MEPGC   NOCH
+                //  VTSM    TS      MEPGC   NOCH
+                //  VMGM    TS      MEPGC   NOCH
                 //  VTSM    NONE    MEPGC   CHXX
                 //  VMGM    NONE    MEPGC   CHXX
                 //  VTSM    VMGM    MEPGC   CHXX
                 //  VMGM    VMGM    MEPGC   CHXX
-                //  VTSM    TS  MEPGC   CHXX
-                //  VMGM    TS  MEPGC   CHXX
+                //  VTSM    TS      MEPGC   CHXX
+                //  VMGM    TS      MEPGC   CHXX
                 //  VTSM    NONE    TPGC    NOCH
                 //  VMGM    NONE    TPGC    NOCH
                 //  VTSM    VMGM    TPGC    NOCH
                 //  VMGM    VMGM    TPGC    NOCH
-                //  VTSM    TS  TPGC    NOCH
-                //  VMGM    TS  TPGC    NOCH
+                //  VTSM    TS      TPGC    NOCH
+                //  VMGM    TS      TPGC    NOCH
                 //  VTSM    NONE    TPGC    CHXX
                 //  VMGM    NONE    TPGC    CHXX
                 //  VTSM    VMGM    TPGC    CHXX
                 //  VMGM    VMGM    TPGC    CHXX
-                //  VTSM    TS  TPGC    CHXX
-                //  VMGM    TS  TPGC    CHXX
+                //  VTSM    TS      TPGC    CHXX
+                //  VMGM    TS      TPGC    CHXX
                 fprintf(stderr, "ERR:  Cannot 'call' a menu from another menu, use 'jump' instead\n");
                 return 0;
               } /*if*/
@@ -1028,16 +1028,16 @@ static unsigned char *compilecs
               {
                 //  VTS NONE    NOPGC   NOCH
                 //  VTS VMGM    NOPGC   NOCH
-                //  VTS TS  NOPGC   NOCH
+                //  VTS TS      NOPGC   NOCH
                 //  VTS NONE    NOPGC   CHXX
                 //  VTS VMGM    NOPGC   CHXX
-                //  VTS TS  NOPGC   CHXX
+                //  VTS TS      NOPGC   CHXX
                 //  VTS NONE    TPGC    NOCH
                 //  VTS VMGM    TPGC    NOCH
-                //  VTS TS  TPGC    NOCH
+                //  VTS TS      TPGC    NOCH
                 //  VTS NONE    TPGC    CHXX
                 //  VTS VMGM    TPGC    CHXX
-                //  VTS TS  TPGC    CHXX
+                //  VTS TS      TPGC    CHXX
 
                 fprintf(stderr, "ERR:  Cannot 'call' another title, use 'jump' instead\n");
                 return 0;
@@ -1046,10 +1046,10 @@ static unsigned char *compilecs
               {
                 //  VTS NONE    MPGC    CHXX
                 //  VTS VMGM    MPGC    CHXX
-                //  VTS TS  MPGC    CHXX
+                //  VTS TS      MPGC    CHXX
                 //  VTS NONE    MEPGC   CHXX
                 //  VTS VMGM    MEPGC   CHXX
-                //  VTS TS  MEPGC   CHXX
+                //  VTS TS      MEPGC   CHXX
                 fprintf(stderr, "ERR:  Cannot 'call' a chapter within a menu\n");
                 return 0;
               } /*if*/
