@@ -1261,17 +1261,29 @@ static bool ifcombinable(unsigned char b0 /* actually caller always passes 0 */,
       } /*switch*/
   } /*ifcombinable*/
 
-static int countreferences(const unsigned char *buf, const unsigned char *end, int linenum)
-  /* how many branches are there with destination linenum. Actually caller only cares
-    whether result is zero or not. */
+static bool isreferenced(const unsigned char *buf, const unsigned char *end, int linenum)
+  /* checks if there are any branches with destination linenum. */
   {
     const unsigned char *b;
-    int numref = 0;
-    for (b = buf; b < end; b += 8)
+    bool referenced;
+    for (b = buf;;)
+      {
+        if (b == end)
+          {
+            referenced = false;
+            break;
+          } /*if*/
         if (b[0] == 0 && (b[1] & 15) == 1 && b[7] == linenum)
-            numref++;
-    return numref;
-  } /*countreferences*/
+          /* check for goto -- fixme: should also check for SetTmpPML if I ever implement that */
+          {
+            referenced = true;
+            break;
+          } /*if*/
+        b += 8;
+      } /*for*/
+    return
+        referenced;
+  } /*isreferenced*/
 
 static void deleteinstruction
   (
@@ -1353,7 +1365,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             &&
                 ifcombinable(b[0], b[1], b[8]) // step 2
             &&
-                countreferences(buf, *end, curline + 1) == 0 // step 3
+                !isreferenced(buf, *end, curline + 1) // step 3
           )
           {
             const unsigned int ifs = negateif(extractif(b));
@@ -1388,7 +1400,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
                 (
                     b + 8 != *end /* more instructions after this */
                 ||
-                    countreferences(buf, *end, curline) == 0 /* no references here */
+                    !isreferenced(buf, *end, curline) /* no references here */
                 )
           )
           {
@@ -1411,7 +1423,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             &&
                 (b[-7] & 15) != 0 /* previous was unconditional transfer */
             &&
-                countreferences(buf, *end, curline) == 0 /* no references here */
+                !isreferenced(buf, *end, curline) /* no references here */
            /* fixme: should also remove in the case where jump was to this instruction */
           )
           {
@@ -1439,7 +1451,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             &&
                 b[1] == b[9] // step 2 & 3
             &&
-                countreferences(buf, *end, curline + 1) == 0
+                !isreferenced(buf, *end, curline + 1)
           )
           {
             if (b[8 + 3])
@@ -1480,7 +1492,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
                         (b[8 + 7] & 0x1f) != 0
                 )
             &&
-                countreferences(buf, *end, curline + 1) == 0
+                !isreferenced(buf, *end, curline + 1)
           )
           {
             if (b[8 + 6] == 0)
@@ -1519,7 +1531,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
                         (b[8 + 7] & 0x1f) != 0
                 )
             &&
-                countreferences(buf, *end, curline + 1) == 0
+                !isreferenced(buf, *end, curline + 1)
           )
           {
             b[1] = b[8 + 1];
