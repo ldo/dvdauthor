@@ -158,7 +158,7 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
     Returns pointer to after generated code. */
   {
     struct vm_statement *v, **vp;
-    int isassoc, canusesprm;
+    bool isassoc, canusesprm;
     if (cs->op == VM_VAL) /* simple value reference */
         return compileop(buf, target, VM_VAL, cs->i1); /* assign value to target */
 
@@ -175,9 +175,9 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
     canusesprm = cs->op == VM_AND || cs->op == VM_OR || cs->op == VM_XOR;
       /* operations where the source may be an SPRM (also VM_VAL, but that was already dealt with) */
 
-    // if the target is an operator, move it to the front
     if (isassoc)
       {
+      /* if one of the source operands is the destination register, move it to the front */
         for (vp = &cs->param->next; *vp; vp = &(vp[0]->next))
             if (vp[0]->op == VM_VAL && vp[0]->i1 == target - 256)
               {
@@ -209,11 +209,10 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
       } /*if*/
         
     if (isassoc && cs->param->op == VM_VAL && cs->param->i1 != target - 256)
-      /* fixme: should "isassoc" be "canusesprm" instead? */
       {
         // if the first param is a value, then try to move a complex operation farther up or an SPRM access (if SPRM ops are not allowed)
         for (vp = &cs->param->next; *vp; vp = &(vp[0]->next))
-            if (vp[0]->op != VM_VAL || issprmval(vp[0]))
+            if (vp[0]->op != VM_VAL || issprmval(vp[0])) /* fixme: should be checking canusesprm here */
               {
                 v = *vp;
                 *vp = v->next; /* take out from its place in chain */
@@ -244,6 +243,7 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
             if (v->op == VM_VAL && !issprmval(v))
                 buf = compileop(buf, target, cs->op, v->i1);
                   /* can simply put value straight into target */
+                  /* fixme: can also do this if canusesprm */
             else
               {
                 const int t2 = nexttarget(target);
@@ -823,7 +823,7 @@ static unsigned char *compilecs
                 //  VMGM    NONE    NOPGC   CHXX
                 if (curpgc == 0)
                   {
-                    fprintf(stderr, "ERR:  Cannot jump to a chapter from a FPC\n");
+                    fprintf(stderr, "ERR:  Cannot jump to a chapter from FPC\n");
                     return 0;
                   } /*if*/
                 if (cs->i3 >> 16 == 1 && ismenu != VTYPE_VTS)
@@ -898,7 +898,7 @@ static unsigned char *compilecs
                   } /*if*/
                 if (ismenu == VTYPE_VMGM)
                   {
-                    // In case we are jumping from a FP to VMGM, we need to use a JumpSS
+                    // In case we are jumping from FP to VMGM, we need to use a JumpSS
                     // instruction
                     write8(buf, 0x30, 0x06, 0x00, i2 & 127, 0x00, 0xc0, 0x00, 0x00); // JumpSS VMGM pgcn
                   }
@@ -1300,6 +1300,7 @@ static void dumpcode
     unsigned char *buf, /* where to insert new compiled code */
     const unsigned char *end /* points to after last instruction generated */
   )
+  /* dumps out compiled code for debugging. */
   {
 #ifdef VM_DEBUG
     const unsigned int nrlines = (end - buf) / 8;
