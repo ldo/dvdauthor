@@ -1435,8 +1435,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
         // 1. this instruction sets subtitle/angle/audio
         // 2. the next instruction sets subtitle/angle/audio
         // 3. they both set them the same way (i.e. immediate/indirect)
-        // 4. if either includes a comparison or link, they both include the same
-        // 5. there are no references to the second instruction
+        // 4. there are no references to the second instruction
         // then
         // combine
         if
@@ -1445,18 +1444,11 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             &&
                 (b[0] & 0xEF) == 0x41 /* SetSTN */
             &&
-                (b[1] & 0xf0) == 0
-                  /* fixme: allow merging of linked versions, but not conditional
-                    versions for now, until I add checks to ensure comparison doesn't
-                    involve registers changed by set */
+                b[1] == 0 // step 1
             &&
-                b[0] == b[8] // step 2 & 3
+                b[0] == b[8]
             &&
-                b[1] == b[9]
-            &&
-                b[6] == b[14]
-            &&
-                b[7] == b[15]
+                b[1] == b[9] // step 2 & 3
             &&
                 !isreferenced(buf, *end, curline + 1)
           )
