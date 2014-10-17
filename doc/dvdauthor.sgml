@@ -539,7 +539,7 @@ in a &lt;![CDATA[ ... ]]&gt; section.</para>
 <variablelist>
 
 <varlistentry><term><literal>random(<replaceable>EXPRESSION</replaceable>)</literal></term>
-<listitem><para>Computes a psuedo-random number, between 1 and the
+<listitem><para>Computes a pseudo-random number, between 1 and the
 supplied number, inclusively.</para> </listitem></varlistentry>
 
 </variablelist>
