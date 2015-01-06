@@ -20,7 +20,7 @@
  #t)
 
 ;;Default extension for filenames?
-(define %html-ext% 
+(define %html-ext%
   ".html")
 
 ; === Rendering ===

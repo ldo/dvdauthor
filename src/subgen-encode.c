@@ -143,11 +143,11 @@ int svcd_encode(stinfo *s)
     else
     {
     store_2(0x2600);
-    } 
- 
+    }
+
     if (debug > 2)
     fprintf(stderr,\
-                "sd: %d   xd: %d  yd: %d  x0: %d  y0: %d\n", s->sd, s->xd, s->yd, s->x0, s->y0); 
+                "sd: %d   xd: %d  yd: %d  x0: %d  y0: %d\n", s->sd, s->xd, s->yd, s->x0, s->y0);
 
     store_2(s->x0);
     store_2(s->y0);
@@ -159,14 +159,14 @@ int svcd_encode(stinfo *s)
     store_1(calcCr(&epal[c]));
     store_1(calcCb(&epal[c]));
     store_1(epal[c].a);
-    } 
- 
+    }
+
     store_1(0); //?????
- 
+
     l2o = subo;
     subo += 2;
     y = 0;
- odd_row: 
+ odd_row:
     for(; y<s->yd; y += 2)
     {
     for(x = 0; x<s->xd;x++)
@@ -187,7 +187,7 @@ int svcd_encode(stinfo *s)
         }
         store_align();
     }
- 
+
     if (!(y&1))
     {
     if (!(subo&1))
@@ -201,8 +201,8 @@ int svcd_encode(stinfo *s)
     sub[l2o] = (subo - l2o - 2) >> 8;
     sub[l2o+1] = (subo - l2o - 2);
     goto odd_row;
-    } 
- 
+    }
+
     store_1( 0 );// no additional commands
     c = 0;
     while (subo&3)
@@ -223,14 +223,14 @@ int cvd_encode(stinfo *s)
     unsigned int x, y, c, d;
     colorspec *epal=s->pal;
     int ofs, ofs1=0;
- 
+
     store_init();
     subo = 4;
     ofs = 4;
 
     for(y = 0; y < s->yd; y += 2)
     {
-    odd_row_cvd: 
+    odd_row_cvd:
     for(x = 0; x < s->xd;)
         {
             d = s->fimg[y * s->xd + x];
@@ -243,24 +243,24 @@ int cvd_encode(stinfo *s)
                 store_align();
                 continue;
             }
-       
+
             while(c > 3)
             {
                 store_nibble(12 + d);
                 c -= 3;
             }
-   
+
             store_nibble((c << 2) + d);
         }
     }
- 
+
     if(!(y & 1))
     {
     y = 1;
     ofs1 = subo;
     goto odd_row_cvd;
-    }  
- 
+    }
+
     sub[2] = subo >> 8;
     sub[3] = subo;
 
@@ -269,7 +269,7 @@ int cvd_encode(stinfo *s)
     store_1( 0 );
     store_1( 0 );
     store_1( 0 );
- 
+
 /* set pallette 0-3 */
     for(c = 0; c < 4; c++)
     {
@@ -286,7 +286,7 @@ int cvd_encode(stinfo *s)
     store_1( calcCb(&epal[c]) );
 
     } /* end for pallette 0-3 */
- 
+
 /* sethighlight  pallette  */
     for(c = 0; c < 4; c++)
     {
@@ -313,12 +313,12 @@ int cvd_encode(stinfo *s)
     store_trinibble( 0x17f );
     store_bits(s->x0,10);
     store_bits(s->y0,10);
- 
+
 /* xd, yd */
     store_trinibble( 0x1ff );
     store_bits(s->x0+s->xd-1,10);
     store_bits(s->y0+s->yd-1,10);
- 
+
 /* 0x37 is pallette.a 0-3 contrast */
     store_2( 0x37ff );
 //nco = 0x00;
@@ -338,24 +338,24 @@ int cvd_encode(stinfo *s)
     store_2( 0x3fff );
     store_2( 0xfff0 );
 
-/* ofs is 4 ? is offset in bitmap to first field data (interlace) */ 
+/* ofs is 4 ? is offset in bitmap to first field data (interlace) */
     store_2( 0x47ff );
     store_2( ofs );
- 
+
 /* ofs1 is offset to other field in bitmap (interlace) */
     store_2( 0x4fff );
     store_2( ofs1 );
- 
+
 /* unknown!!! (in RX too!) setting all to 0xff keeps the pic on screen! */
     store_1( 0x0c );
     store_1( 0 );
     store_1( 0 );
     store_1( 0 );
- 
+
 /* sd, time in display, duration */
     store_1( 0x04 );
     store_bits( s->sd, 24 );
- 
+
 // IA3
 //0: 02 68 02 24
 //1: 08 61 08 1d
@@ -447,9 +447,9 @@ static void dvd_encode_row(int y,int xd,unsigned char *icptr)
     /*
       One special case,
       encoding a count of zero using the 16-bit format,
-      indicates the same pixel value until the end of the line. 
+      indicates the same pixel value until the end of the line.
     */
-    
+
     if( xd != new_pos )
     {
         int count=xd-new_pos;
@@ -507,7 +507,7 @@ int dvd_encode(stinfo *s)
   is the color of the pixel.
 */
 
-    icptr = s->fimg;  
+    icptr = s->fimg;
 //icptr = img;// use if call to imgfix() commented out
 
     store_init();
@@ -527,7 +527,7 @@ int dvd_encode(stinfo *s)
         dvd_encode_row(y,s->xd,icptr);
 
     /* start first command block */
-/* 
+/*
    control area starts here, with same pointer
    SP_DCSQT
    Sub-Picture Display Control SeQuence Table
@@ -556,9 +556,9 @@ int dvd_encode(stinfo *s)
 
     /* remember position, will set later */
     next_command_ptr = subo;
-    subo+=2; // pointer to next command block, 2 bytes, to be filled in from next command block. 
+    subo+=2; // pointer to next command block, 2 bytes, to be filled in from next command block.
 
-    
+
     if( s->forced )
         store_1(SPU_FSTA_DSP); /* command 0, forced start display, 1 byte. */
     else
@@ -622,7 +622,7 @@ int dvd_encode(stinfo *s)
             store_1(SPU_CMD_END);
             next_command_ptr = subo;
         }
-            
+
         store_2(duration);
 
         /* last block, point to self */

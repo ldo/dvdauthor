@@ -207,7 +207,7 @@ static unsigned char *compileexpr(unsigned char *buf, int target, struct vm_stat
           } /*if*/
         return buf;
       } /*if*/
-        
+
     if (isassoc && cs->param->op == VM_VAL && cs->param->i1 != target - 256)
       {
         // if the first param is a value, then try to move a complex operation farther up or an SPRM access (if SPRM ops are not allowed)
@@ -496,7 +496,7 @@ static unsigned char *compilecs
                     buf += 8;
                   } /*if*/
             break;
-                
+
             case 128 + 8: // button
                 if (cs->param->op == VM_VAL && !(cs->param->i1 >= -128 && cs->param->i1 < 0))
                   {
@@ -526,7 +526,7 @@ static unsigned char *compilecs
                     buf += 8;
                   } /*if*/
                 break;
-                
+
             default:
                 fprintf(stderr, "ERR:  Cannot set SPRM %d\n", cs->i1 - 128);
                 return 0;
@@ -592,7 +592,7 @@ static unsigned char *compilecs
             lastif = true; // make sure reference statement is generated
           }
         break;
-            
+
         case VM_GOTO:
             if (numgotos == MAXGOTOS)
               {
@@ -605,7 +605,7 @@ static unsigned char *compilecs
             write8(buf, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
             buf += 8;
         break;
-            
+
         case VM_BREAK:
             write8(buf, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
             buf += 8;
@@ -1205,7 +1205,7 @@ static void applyif(unsigned char *b,unsigned int ifs)
         b[7] = ifs; /* assume ifs >> 8 & 255 is zero! */
         b[6] = ifs >> 16;
         b[1] |= (ifs >> 24) << 4;
-    break;        
+    break;
 
     case 6:
     case 7:
@@ -1387,7 +1387,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
                 b[2] == 0
             &&
                 b[3] == 0
-            && 
+            &&
                 b[4] == 0
             &&
                 b[5] == 0
@@ -1481,7 +1481,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             &&
                 (
                     (b[8 + 1] & 0xf) == 5
-                || 
+                ||
                     (b[8 + 1] & 0xf) == 6
                 ||
                     (b[8 + 1] & 0xf) == 7
@@ -1518,7 +1518,7 @@ void vm_optimize(const unsigned char *obuf, unsigned char *buf, unsigned char **
             &&
                 (
                     (b[8 + 1] & 0x7f) == 4
-                || 
+                ||
                     (b[8 + 1] & 0x7f) == 5
                 ||
                     (b[8 + 1] & 0x7f) == 6

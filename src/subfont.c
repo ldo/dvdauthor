@@ -456,7 +456,7 @@ static int check_font
     if (FT_IS_SCALABLE(face))
       {
         const int horiz_resolution =
-            widescreen ? 
+            widescreen ?
                 54 /* = 72 * (4 / 3) / (16 / 9) */
             :
                 72;

@@ -304,7 +304,7 @@ static int genpgc(unsigned char *buf,const struct workset *ws,const struct pgcgr
                     cd = cdd;
                   } /*if*/
               } /*for; for*/
-        
+
         write2(buf + 228, d); /* offset to commands */
         if (cd - (buf + d) - 8 > 128 * 8) // can only have 128 commands
           {

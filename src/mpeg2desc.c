@@ -198,7 +198,7 @@ static bool dowork
                       } /*if*/
                     o->fd = fd;
                   } /*if*/
-                // at this point, fd >= 0 
+                // at this point, fd >= 0
                 if (minq == -1 || o->len < minq)
                   {
                     minq = o->len;
@@ -544,7 +544,7 @@ static void process_packets
         if
           (
                 !handled
-            && 
+            &&
                 !recursed
             &&
                 (
@@ -555,7 +555,7 @@ static void process_packets
                     hdrid == 0x100 + MPID_PAD
                 ||
                     hdrid == 0x100 + MPID_PRIVATE2
-                || 
+                ||
                     hdrid >= 0x100 + MPID_AUDIO_FIRST && hdrid <= 0x100 + MPID_AUDIO_LAST
                 ||
                     hdrid >= 0x100 + MPID_VIDEO_FIRST && hdrid <= 0x100 + MPID_VIDEO_LAST
@@ -981,7 +981,7 @@ int main(int argc,char **argv)
                 outputfds[oc].isvalid = !skiptohdr;
               } /*if; for*/
         FD_ZERO(&rfd);
-        FD_ZERO(&wfd);    
+        FD_ZERO(&wfd);
         for (i = 0; i < 256; i++)
           {
             firstpts[i] = -1;

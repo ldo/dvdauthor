@@ -619,7 +619,7 @@ static void WriteIFO(FILE *h, const struct workset *ws)
 
     // sect 1: VTS_PTT_SRPT
     Create_PTT_SRPT(h, ws->titles);
-   
+
     // sect 2: VTS_PGCI
     CreatePGC(h, ws, VTYPE_VTS);
 
@@ -865,4 +865,3 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
       } /*if*/
     fclose(h);
   } /*TocGen*/
-

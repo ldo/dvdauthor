@@ -54,7 +54,7 @@
   <xsd:complexType name="MenusType">
     <xsd:complexContent>
       <xsd:extension base="TitlesType">
-        <xsd:attribute name="lang" type="xsd:string"/> 
+        <xsd:attribute name="lang" type="xsd:string"/>
       </xsd:extension>
     </xsd:complexContent>
   </xsd:complexType>
@@ -82,14 +82,14 @@
       <xsd:enumeration value="16:9"/>
     </xsd:restriction>
   </xsd:simpleType>
-  
+
   <xsd:simpleType name="VideoCaptionType">
     <xsd:restriction base="xsd:string">
       <xsd:enumeration value="field1"/>
       <xsd:enumeration value="field2"/>
     </xsd:restriction>
   </xsd:simpleType>
-  
+
 
   <xsd:simpleType name="VideoWidescreenType">
     <xsd:restriction base="xsd:string">
@@ -102,9 +102,9 @@
     <xsd:attribute name="format" type="AudioFormatType"/>
     <xsd:attribute name="channels" type="xsd:integer"/>
     <xsd:attribute name="dolby" type="AudioDolbyType"/>
-    <xsd:attribute name="quant" type="AudioQuantType"/> 
-    <xsd:attribute name="samplerate" type="AudioSamplerateType"/> 
-    <xsd:attribute name="lang" type="xsd:string"/> 
+    <xsd:attribute name="quant" type="AudioQuantType"/>
+    <xsd:attribute name="samplerate" type="AudioSamplerateType"/>
+    <xsd:attribute name="lang" type="xsd:string"/>
   </xsd:complexType>
 
   <xsd:simpleType name="AudioSamplerateType">
@@ -137,7 +137,7 @@
       <xsd:enumeration value="drc"/>
     </xsd:restriction>
   </xsd:simpleType>
-  
+
   <xsd:simpleType name="PgcEntryType">
     <xsd:restriction base="xsd:string">
       <xsd:enumeration value="title"/>
@@ -149,16 +149,16 @@
       <xsd:enumeration value="notitle"/>
     </xsd:restriction>
   </xsd:simpleType>
-  
+
   <xsd:complexType name="PgcType">
     <xsd:sequence>
       <xsd:element name="pre" type="xsd:string" minOccurs="0" maxOccurs="1"/>
       <xsd:element name="vob" type="VobType" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="button" type="ButtonType" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="post" type="xsd:string" minOccurs="0" maxOccurs="1"/>
-    </xsd:sequence> 
+    </xsd:sequence>
     <xsd:attribute name="palette" type="xsd:string"/>
-    <xsd:attribute name="pause" type="PauseType"/> 
+    <xsd:attribute name="pause" type="PauseType"/>
     <xsd:attribute name="entry" type="PgcEntryType"/>
   </xsd:complexType>
 
@@ -185,7 +185,7 @@
       <xsd:extension base="xsd:string">
         <xsd:attribute name="name" type="xsd:string"/>
       </xsd:extension>
-    </xsd:simpleContent>    
+    </xsd:simpleContent>
   </xsd:complexType>
 
   <xsd:complexType name="SubpictureType">
@@ -212,5 +212,5 @@
       </xsd:extension>
     </xsd:simpleContent>
   </xsd:complexType>
-  
+
 </xsd:schema>

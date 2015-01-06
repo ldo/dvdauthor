@@ -43,7 +43,7 @@
 <refsect1>
 	<title>USAGE</title>
 	<para>
-	<command>dvddirdel</command> -o DIR 
+	<command>dvddirdel</command> -o DIR
 	</para>
 </refsect1>
 <refsect1>

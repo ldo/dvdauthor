@@ -424,7 +424,7 @@ int vobgroup_set_video_attr(struct vobgroup *va,int attr,const char *s)
             v = 384;
         else
             v = 383;
-       
+
         if (h > 704)
             r = VS_720H;
         else if (h > 352)
@@ -939,7 +939,7 @@ noinfer:
         int j, k;
         bool fnd;
         fnd = false;
-        for (j = 0; j < va->numallpgcs; j++) 
+        for (j = 0; j < va->numallpgcs; j++)
             for (k = 0; k < 4; k++)
                 if (va->allpgcs[j]->subpmap[i][k])
                     fnd = true;

@@ -1,6 +1,6 @@
 %define DISTRO_RH %([ -f /etc/redhat-release ] && sed -e "s/\\(.\\+ release \\)\\(.\\+\\)\\( .\\+\\)/\\2/" /etc/redhat-release)
 %define DISTRO_SUSE %([ -f /etc/SuSE-release ] && grep VERSION /etc/SuSE-release| sed -e "s/VERSION = /SuSE/"|tr -d ".")
- 
+
 
 %define	dvdauthor_version	@PACKAGE_VERSION@
 %define	dvdauthor_release	1
@@ -23,7 +23,7 @@ dvdauthor is a program that will generate a DVD movie from a valid
 mpeg2 stream that should play when you put it in a DVD player.
 
 
-%prep 
+%prep
 %setup -n %{name}-%{dvdauthor_version}
 
 %build

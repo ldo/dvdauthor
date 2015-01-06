@@ -797,7 +797,7 @@ static void write_menu_image
         map[i + 1].y2 = d->buttons[i].y2;
         map[i + 1].color = cc >> 16;
         map[i + 1].contrast = cc;
-      } /*for*/    
+      } /*for*/
     sprintf((char *)nbuf, "%s%05d%c.png", base_name, s->subno, type[0]);
     if (!write_png((char *)nbuf, s, map, nummap))
       {
@@ -1187,7 +1187,7 @@ int main(int argc, char **argv)
           {
             if (strcmp(temp, ".rgb") == 0)
                 rgb = true;
-          } /*if*/        
+          } /*if*/
         fdo = fopen(palet_file, "r");
         if (fdo != NULL)
           {

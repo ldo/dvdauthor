@@ -32,12 +32,12 @@
 %option nounput
 
 blank           [ \t\n]
-ws              {blank}+ 
+ws              {blank}+
 letter          [a-zA-Z_]
 digit           [0-9]
-identifier      {letter}({letter}|{digit})* 
+identifier      {letter}({letter}|{digit})*
 hex_num         0x[0-9a-fA-F]+
-int_num         {digit}+ 
+int_num         {digit}+
 lang_code       \"[a-z]{2}\"
 
 %%
@@ -187,7 +187,7 @@ s{int_num}  { sscanf((char *)yytext+1,"%u",&dvdvmlval.int_val);
           if( dvdvmlval.int_val<0 || dvdvmlval.int_val>23 ) {
             fprintf(stderr,"ERR:  Can only access s0-s23 (%s)\n",yytext);
             return ERROR_TOK;
-          }     
+          }
           return S_TOK; }
 
 {identifier}    { dvdvmlval.str_val = strdup((char *)yytext);

@@ -165,22 +165,22 @@ effort to ensure that will be transparent but there is no guarantee.
 <para>
 
 Spumux is also able to handle text subtitles, which will be rendered to
-graphics by spumux. A lot of different text (must be non-graphic) formats 
+graphics by spumux. A lot of different text (must be non-graphic) formats
 are supported (.sub, .srt, .ssa, .smi, .rt , .txt, .aqt, .jss, .js, ass).
-Spumux will try to determine the format automatically. 
+Spumux will try to determine the format automatically.
 
 </para>
 <para>
 
-If processing text-based subtitles no other streams can be defined, buttons 
-or others need to be processed in another pass with spumux, using another 
+If processing text-based subtitles no other streams can be defined, buttons
+or others need to be processed in another pass with spumux, using another
 xml file.
 
 </para>
 <para>
 
-Following .xml file shows the available tags and their default settings. 
-Only the textsub tag is mandatory, defaults are used if the specific tag 
+Following .xml file shows the available tags and their default settings.
+Only the textsub tag is mandatory, defaults are used if the specific tag
 is not specified.
 
 </para>
@@ -203,18 +203,18 @@ is not specified.
 </synopsis>
 <para>
 
-The textsub tag defines the settings for the text to graphics rendering. 
+The textsub tag defines the settings for the text to graphics rendering.
 
 </para>
 <para>
 
-The filename attribute defines the path and name of the input text subtitle 
+The filename attribute defines the path and name of the input text subtitle
 file, this is the only attribute that is mandatory.
 
 </para>
 <para>
 
-The characterset attribute defines the characterset to be used, available 
+The characterset attribute defines the characterset to be used, available
 charactersets can be found at http://www.gnu.org/software/libiconv.
 
 </para>
@@ -224,9 +224,9 @@ The fontsize attribute defines the size of the font in font units.
 The font attribute defines the font used. Spumux will match the font name
 using Fontconfig if available, else it will use it as a filename on linux
 systems and will look into the windows/fonts and subdirectory spumux of
-the cygwin/mingw home directory and into the execution directory for windows-based 
-execution for the specified font. Looking for free fonts? One listing is 
-here http://www.microsoft.com/typography/links/links.asp?type=free&amp;part=1 
+the cygwin/mingw home directory and into the execution directory for windows-based
+execution for the specified font. Looking for free fonts? One listing is
+here http://www.microsoft.com/typography/links/links.asp?type=free&amp;part=1
 (this is only about fonts, not about operating systems).
 
 </para>
@@ -250,9 +250,9 @@ The default shadow color is black.
 </para>
 <para>
 
-The horizontal-alignment attribute defines the horizontal alignment of the 
+The horizontal-alignment attribute defines the horizontal alignment of the
 subtitles. Options are: "left", "right", "center" and "default".
-The "default" value causes spumux to use the attribute that is in the text 
+The "default" value causes spumux to use the attribute that is in the text
 subtitle file if the format supports such an attribute.
 
 </para>
@@ -264,7 +264,7 @@ Options are: "top", "center" and "bottom".
 </para>
 <para>
 
-The margin attributes define the minimum blank pixel space between the 
+The margin attributes define the minimum blank pixel space between the
 border of the image and the border of the subtitle lines.
 
 </para>
@@ -278,14 +278,14 @@ omitted, both of these default to 29.97 for NTSC and 25 for PAL.
 </para>
 <para>
 
-Having separate subtitle-fps and movie-fps attributes make it possible for 
+Having separate subtitle-fps and movie-fps attributes make it possible for
 spumux to recalculate the subtitle timing if these are not the same.
 
 </para>
 <para>
 
-The movie-width and movie-height attributes define the maximum size of 
-the subtitle page, these shouldn't be larger than the size of the 
+The movie-width and movie-height attributes define the maximum size of
+the subtitle page, these shouldn't be larger than the size of the
 video frame (720x480 for NTSC, 720x576 for PAL), normally they are the same.
 Some DVD players prefer subtitle frames that are 2 or 4 pixels smaller in height.
 If omitted, the default movie width is 720 and the height is 2 pixels less than
