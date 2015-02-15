@@ -4,6 +4,7 @@ AC_CONFIG_HEADERS(src/config.h)
 AC_CONFIG_AUX_DIR(autotools)
 
 AM_INIT_AUTOMAKE
+LT_INIT
 
 AC_PROG_INSTALL
 
@@ -38,6 +39,11 @@ AC_CHECK_FUNCS( \
 PKG_CHECK_MODULES(LIBPNG, [libpng])
 AC_SUBST(LIBPNG_CFLAGS)
 AC_SUBST(LIBPNG_LIBS)
+
+config_static=''
+if test "$enable_shared" = 'no'; then
+    config_static='--static'
+fi
 
 usemagick=0
 
@@ -81,7 +87,7 @@ AC_SUBST(FRIBIDI_LIBS)
 AC_CHECK_PROGS(FREETYPECONFIG, [freetype-config])
 if test -n "$FREETYPECONFIG"; then
     FREETYPE_CPPFLAGS="`$FREETYPECONFIG --cflags`"
-    FREETYPE_LIBS="`$FREETYPECONFIG --libs`"
+    FREETYPE_LIBS="`$FREETYPECONFIG --libs $config_static`"
     AC_DEFINE(HAVE_FREETYPE, 1, [Whether FreeType is available])
 
     ac_save_CPPFLAGS="$CPPFLAGS"
