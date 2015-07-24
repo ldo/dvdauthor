@@ -1435,10 +1435,11 @@ static void validatesummary(struct pgcgroup *va)
 
     for( i=0; i<va->numpgcs; i++ ) {
         struct pgc *p=va->pgcs[i];
+      /* why is this being done? let user specify it if they want
         if( !p->posti && p->numsources ) {
             struct source *s=p->sources[p->numsources-1];
             s->cells[s->numcells-1].pauselen=255;
-        }
+        } */
         if( va->allentries & p->entries ) {
           /* this pgc adds entry menus already seen */
             int j;
