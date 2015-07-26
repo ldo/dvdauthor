@@ -1,4 +1,8 @@
 0.7.1+: ??
+	Various code-quality and build improvements
+	Support “jump pgc n” and other interaction code-generation improvements
+	Improve reliability of dvdunauthor
+	Don’t force infinite pause on last cell of a PGC
 
 0.7.1: 2012 August 20
 	No longer silently fail to build dvdunauthor if libdvdread is not present;
