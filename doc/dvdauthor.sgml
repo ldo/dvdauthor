@@ -204,7 +204,7 @@ LANGUAGE DESCRIPTION for the format of <replaceable>commandlist.</replaceable></
 Here is the basic structure of the control file:
 </para>
 <synopsis>
-&lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"] [format="ntsc|pal"]&gt;
+&lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"] [format="ntsc|pal"] [provider="<replaceable>provider</replaceable>"]&gt;
    &lt;vmgm&gt;
       [&lt;fpc&gt;<replaceable>commands;</replaceable>&lt;/fpc&gt;]
       &lt;menus [lang="<replaceable>language-code</replaceable>"]&gt;
@@ -275,7 +275,7 @@ A breakdown of the control file:
 
 <variablelist>
 
-<varlistentry><term><literal>&lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"]&gt;</literal></term>
+<varlistentry><term><literal>&lt;dvdauthor [dest="<replaceable>output-dir</replaceable>"] [jumppad="1|on|yes" | allgprm="1|on|yes"] [format="ntsc|pal"] [provider="<replaceable>provider</replaceable>"]&gt;</literal></term>
 <listitem><para>
 Initiates dvdauthor.  <literal>dest</literal> denotes the directory where <command>dvdauthor</command> will write the files. This is overridden by the <literal>-o</literal> option. Contains up to one <literal>&lt;vmgm&gt;</literal> tag and any number of <literal>&lt;titleset&gt;</literal>'s.
 </para></listitem></varlistentry>

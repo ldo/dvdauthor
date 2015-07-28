@@ -707,7 +707,7 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
     buf[0x29] = 1; /* volume number */
     buf[0x2a] = 1; /* side ID */
     write2(buf + 0x3e, ws->titlesets->numvts); /* number of title sets */
-    strncpy((char *)(buf + 0x40), PACKAGE_STRING, 31); /* provider ID */
+    strncpy((char *)(buf + 0x40), provider_str, PROVIDER_SIZE - 1); /* provider ID */
     buf[0x86] = 4; /* start address of FP_PGC = 0x400 */
     nextsector = 1;
 

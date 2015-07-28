@@ -3,6 +3,7 @@
 	Support “jump pgc n” and other interaction code-generation improvements
 	Improve reliability of dvdunauthor
 	Don’t force infinite pause on last cell of a PGC
+	Allow specification of provider field in VMG IFO file
 
 0.7.1: 2012 August 20
 	No longer silently fail to build dvdunauthor if libdvdread is not present;

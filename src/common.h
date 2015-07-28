@@ -122,4 +122,9 @@ typedef enum /* attributes of cell */
 }
 #endif
 
+enum
+  {
+    PROVIDER_SIZE = 32, /* length of provider string field in VMG IFO */
+  };
+
 #endif

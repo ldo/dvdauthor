@@ -30,6 +30,7 @@ extern "C" {
 #include "common.h"
 
 extern int default_video_format; /* defined in dvdcli.c */
+extern char provider_str[PROVIDER_SIZE]; /* defined in dvdcli.c */
 
 typedef enum /* type of menu/title */
   { /* note assigned values cannot be changed */
