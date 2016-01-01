@@ -28,6 +28,7 @@
 
   <xsd:complexType name="VmgmType">
     <xsd:sequence>
+      <xsd:element name="fpc" type="xsd:string" minOccurs="0" maxOccurs="1"/>
       <xsd:element name="menus" type="MenusType" minOccurs="0" maxOccurs="1"/>
     </xsd:sequence>
   </xsd:complexType>
@@ -152,6 +153,7 @@
 
   <xsd:complexType name="PgcType">
     <xsd:sequence>
+      <xsd:element name="subpicture" type="SubpictureType" minOccurs="0" maxOccurs="32"/>
       <xsd:element name="pre" type="xsd:string" minOccurs="0" maxOccurs="1"/>
       <xsd:element name="vob" type="VobType" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="button" type="ButtonType" minOccurs="0" maxOccurs="unbounded"/>
@@ -189,12 +191,15 @@
   </xsd:complexType>
 
   <xsd:complexType name="SubpictureType">
+    <xsd:sequence>
+      <xsd:element name="stream" type="StreamType" minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:sequence>
     <xsd:attribute name="lang" type="xsd:string"/>
   </xsd:complexType>
 
   <xsd:complexType name="VobType">
     <xsd:sequence>
-      <xsd:element name="cell" type="CellType" minOccurs="0"/>
+      <xsd:element name="cell" type="CellType" minOccurs="0" maxOccurs="unbounded"/>
     </xsd:sequence>
     <xsd:attribute name="file" type="xsd:string"/>
     <xsd:attribute name="chapters" type="xsd:string"/>
@@ -212,5 +217,35 @@
       </xsd:extension>
     </xsd:simpleContent>
   </xsd:complexType>
+
+  <xsd:complexType name="StreamType">
+    <xsd:attribute name="mode" type="StreamModeType"/>
+    <xsd:attribute name="content" type="StreamContentType"/>
+    <xsd:attribute name="id" type="xsd:integer"/>
+  </xsd:complexType>
+
+  <xsd:simpleType name="StreamModeType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="normal"/>
+      <xsd:enumeration value="widescreen"/>
+      <xsd:enumeration value="letterbox"/>
+      <xsd:enumeration value="panscan"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StreamContentType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="normal"/>
+      <xsd:enumeration value="large"/>
+      <xsd:enumeration value="children"/>
+      <xsd:enumeration value="normal_cc"/>
+      <xsd:enumeration value="large_cc"/>
+      <xsd:enumeration value="children_cc"/>
+      <xsd:enumeration value="forced"/>
+      <xsd:enumeration value="director"/>
+      <xsd:enumeration value="large_director"/>
+      <xsd:enumeration value="children_director"/>
+    </xsd:restriction>
+  </xsd:simpleType>
 
 </xsd:schema>
