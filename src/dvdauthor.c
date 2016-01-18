@@ -1062,13 +1062,19 @@ static char *makevtsdir(const char *s)
   /* returns the full pathname of the VIDEO_TS subdirectory within s if non-NULL,
     else returns NULL. */
 {
-    static char fbuf[1000];
-
-    if( !s )
-        return 0;
-    strcpy(fbuf,s);
-    strcat(fbuf,"/VIDEO_TS");
-    return strdup(fbuf);
+    static const char * subdir = "/VIDEO_TS";
+    char * fbuf;
+    if (s != NULL)
+      {
+        fbuf = malloc(strlen(s) + strlen(subdir) + 1);
+        sprintf(fbuf, "%s%s", s, subdir);
+      }
+    else
+      {
+        fbuf = NULL;
+      } /*if*/
+    return
+        fbuf;
 }
 
 // jumppad requires the existence of a menu to operate
