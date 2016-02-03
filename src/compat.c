@@ -2,6 +2,7 @@
 
 #include "compat.h"
 
+#include <stdarg.h>
 #include <limits.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -116,6 +117,38 @@ char * strndup
         result;
   } /*strndup*/
 #endif /*HAVE_STRNDUP*/
+
+char * sprintf_alloc
+  (
+    const char * format,
+    ...
+  )
+  /* does the equivalent of sprintf(3) on the args, except the output string buffer
+    is dynamically allocated to be exactly big enough to hold the formatted data.
+    The result is the allocated and filled-in string buffer.
+    On failure, the result will be NULL and errno will contain the error. */
+  {
+    char * result = NULL;
+    size_t result_size = 0;
+    bool allocating = false;
+    for (;;)
+      {
+        va_list args;
+        int nrbytes;
+        va_start(args, format);
+        nrbytes = vsnprintf(result, result_size, format, args) + 1;
+        va_end(args);
+        if (allocating)
+            break;
+        result_size = nrbytes;
+        result = malloc(result_size);
+        if (result == NULL)
+            break;
+        allocating = true;
+      } /*for*/
+    return
+        result;
+  } /*sprintf_alloc*/
 
 char * str_extract_until
   (

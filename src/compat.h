@@ -153,6 +153,16 @@ char * strndup
   );
 #endif
 
+char * sprintf_alloc
+  (
+    const char * format,
+    ...
+  );
+  /* does the equivalent of sprintf(3) on the args, except the output string buffer
+    is dynamically allocated to be exactly big enough to hold the formatted data.
+    The result is the allocated and filled-in string buffer.
+    On failure, the result will be NULL and errno will contain the error. */
+
 char * str_extract_until
   (
     const char ** src,
