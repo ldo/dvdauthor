@@ -1421,15 +1421,20 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
             if (fsect == -1)
               {
               /* start a new VOB file */
-                char newname[200];
                 fsect = 0;
                 if (fbase)
                   {
+                    char * newname;
                     if (outnum >= 0)
-                        sprintf(newname, "%s_%d.VOB", fbase, outnum);
+                      {
+                        newname = sprintf_alloc("%s_%d.VOB", fbase, outnum);
+                      }
                     else
-                        strcpy(newname, fbase);
+                      {
+                        newname = strdup(fbase);
+                      } /*if*/
                     writeopen(newname);
+                    free(newname);
                   } /*if*/
               } /*if*/
             if
@@ -2277,16 +2282,20 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
             if (thisvobu->fnum != fnum)
               {
               /* time to start a new output file */
-                char fname[200];
                 if (outvob >= 0)
                     flushclose(outvob);
                 fnum = thisvobu->fnum;
                 if (fbase)
                   {
+                    char * fname;
                     if (fnum == -1)
-                        strcpy(fname, fbase);
+                      {
+                        fname = strdup(fbase);
+                      }
                     else
-                        sprintf(fname, "%s_%d.VOB", fbase, fnum);
+                      {
+                        fname = sprintf_alloc("%s_%d.VOB", fbase, fnum);
+                      } /*if*/
                     outvob = open(fname, O_WRONLY | O_BINARY);
                     if (outvob < 0)
                       {
@@ -2300,6 +2309,7 @@ void FixVobus(const char *fbase,const struct vobgroup *va,const struct workset *
                           );
                         exit(1);
                       } /*if*/
+                    free(fname);
                   } /*if*/
               } /*if*/
 
