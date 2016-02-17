@@ -53,6 +53,7 @@ make
 %doc {COPYING,ChangeLog,INSTALL,README,TODO}
 %{_bindir}/*
 %{_mandir}/man1/*
+%{_mandir}/man7/*
 %{_datadir}/dvdauthor/*
 
 %changelog

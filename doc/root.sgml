@@ -7,6 +7,7 @@
 <!ENTITY mpeg2desc SYSTEM "mpeg2desc.sgml">
 <!ENTITY spumux SYSTEM "spumux.sgml">
 <!ENTITY spuunmux SYSTEM "spuunmux.sgml">
+<!ENTITY videoformat SYSTEM "video_format.sgml">
 
 <!ENTITY dhfirstname "<firstname>Marc</firstname>">
 <!ENTITY dhsurname   "<surname>Leeman</surname>">
@@ -30,5 +31,6 @@
 &mpeg2desc;
 &spumux;
 &spuunmux;
+&videoformat;
 </reference>
 </book>

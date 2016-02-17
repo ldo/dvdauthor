@@ -1,16 +1,17 @@
 man1_MANS = dvdauthor.1 dvddirdel.1 dvdunauthor.1 mpeg2desc.1 spumux.1 spuunmux.1
+man7_MANS = video_format.7
 dist_pkgdata_DATA = common.xsd dvdauthor.xsd spumux.xsd
 
 
-EXTRA_DIST = $(man1_MANS)
+EXTRA_DIST = $(man1_MANS) $(man7_MANS)
 
 .PHONY: manpages
 
 manpages:
-	rm -f $(man1_MANS)
+	rm -f $(man1_MANS) $(man7_MANS)
 	docbook2man root.sgml
 
-$(man1_MANS):
+$(man1_MANS) $(man7_MANS):
 	$(MAKE) manpages
 
 .PHONY: html
@@ -22,4 +23,4 @@ html:
 index.html:
 	$(MAKE) html
 
-MAINTAINERCLEANFILES = $(man1_MANS)
+MAINTAINERCLEANFILES = $(man1_MANS) $(man7_MANS)
