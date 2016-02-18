@@ -4,6 +4,7 @@
 	Improve reliability of dvdunauthor
 	Don’t force infinite pause on last cell of a PGC
 	Allow specification of provider field in VMG IFO file
+	Add video_format(7) man page
 
 0.7.1: 2012 August 20
 	No longer silently fail to build dvdunauthor if libdvdread is not present;
