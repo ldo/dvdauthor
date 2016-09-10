@@ -33,6 +33,9 @@ static unsigned char *
 static size_t
     bigbufsize = 0;
 
+#define MIN_IFO_SECTORS 16
+  /* need to ensure that .IFO and .BUP files end up in different ECC blocks */
+
 static void buf_init()
   /* ensures there's no leftover junk in bigbuf. */
   {
@@ -129,6 +132,31 @@ static void nfwrite(const void *ptr, size_t len, FILE *h)
           } /*if*/
       } /*if*/
   } /*nfwrite*/
+
+static void nfpad(size_t len, FILE *h)
+  /* writes len bytes of padding to h, or turns into a noop if h is null. */
+  {
+    static unsigned char buf[2048];
+    static size_t himark = 0;
+    if (h != NULL)
+      {
+        while (len != 0)
+          {
+            size_t uselen = sizeof buf;
+            if (uselen > len)
+              {
+                uselen = len;
+              } /*if*/
+            if (uselen > himark)
+              {
+                memset(buf + himark, 0, uselen - himark);
+                himark = uselen;
+              } /*if*/
+            nfwrite(buf, uselen, h);
+            len -= uselen;
+          } /*while*/
+      } /*if*/
+  } /*nfpad*/
 
 static const struct vobuinfo *globalfindvobu(const struct pgc *ch, int pts)
   /* finds the VOBU spanning the specified time. */
@@ -562,6 +590,7 @@ static void WriteIFO(FILE *h, const struct workset *ws)
     static unsigned char buf[2048];
     int nextsector;
     const bool forcemenus = needmenus(ws->menus);
+    size_t ifo_pad = 0;
 
     // sect 0: VTS toplevel
     memset(buf, 0, 2048);
@@ -610,6 +639,11 @@ static void WriteIFO(FILE *h, const struct workset *ws)
     if (ws->titles->numpgcs)
         nextsector += getvoblen(ws->titles->pg_vg);
     nextsector += read4(buf + 28); /* offset by last sector of IFO */
+    if (nextsector < MIN_IFO_SECTORS - 1)
+      {
+        ifo_pad = (MIN_IFO_SECTORS - 1 - nextsector) * 2048;
+        nextsector = MIN_IFO_SECTORS - 1;
+      } /*if*/
     write4(buf + 12, nextsector); /* gives last sector of title set (last sector of BUP) */
 
     if (jumppad || forcemenus)
@@ -636,6 +670,7 @@ static void WriteIFO(FILE *h, const struct workset *ws)
       } /*if*/
     CreateCellAddressTable(h, ws->titles->pg_vg);
     CreateVOBUAD(h, ws->titles->pg_vg);
+  /* nfpad(ifo_pad, h); */ /* unneeded, genisoimage will fix it for me */
   } /*WriteIFO*/
 
 void WriteIFOs(const char *fbase, const struct workset *ws)
@@ -697,6 +732,7 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
     int nextsector, offset, i, j, vtsstart;
     const bool forcemenus = needmenus(ws->menus);
     FILE *h;
+    size_t ifo_pad = 0;
 
     h = fopen(fname, "wb");
 
@@ -745,6 +781,11 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
       {
         write4(buf + 0xc0, nextsector); /* start sector of menu VOB */
         vtsstart += getvoblen(ws->menus->mg_vg);
+      } /*if*/
+    if (vtsstart < 2 * MIN_IFO_SECTORS)
+      {
+        ifo_pad = (2 * MIN_IFO_SECTORS - vtsstart) * 2048 / 2;
+        vtsstart = 2 * MIN_IFO_SECTORS;
       } /*if*/
     write4(buf + 0xc, vtsstart - 1); /* last sector of VMG set (last sector of BUP) */
 
@@ -848,8 +889,7 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
     j = 2048 - (j & 2047);
     if (j < 2048)
       { /* pad to next whole sector */
-        memset(buf, 0, j);
-        nfwrite(buf, j, h);
+        nfpad(j, h);
       } /*if*/
 
     if (jumppad || forcemenus)
@@ -857,6 +897,7 @@ void TocGen(const struct workset *ws, const struct pgc *fpc, const char *fname)
         CreateCellAddressTable(h, ws->menus->mg_vg); /* actually generate VMGM_C_ADT */
         CreateVOBUAD(h, ws->menus->mg_vg); /* generate VMGM_VOBU_ADMAP */
       } /*if*/
+  /* nfpad(ifo_pad, h); */ /* unneeded, genisoimage will fix it for me */
     fflush(h);
     if (errno != 0)
       {
