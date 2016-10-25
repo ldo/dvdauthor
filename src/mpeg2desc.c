@@ -988,4 +988,6 @@ int main(int argc,char **argv)
           } /*for*/
       }
     process_packets(forceread, false);
+    return
+        0;
   } /*main*/
