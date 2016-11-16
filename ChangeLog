@@ -6,6 +6,7 @@
 	Allow specification of provider field in VMG IFO file
 	Add video_format(7) man page
 	Add padding to ensure .BUP and .IFO files end up in different ECC blocks
+	Enabled hinting of rendered subtitle text
 
 0.7.1: 2012 August 20
 	No longer silently fail to build dvdunauthor if libdvdread is not present;
