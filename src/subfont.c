@@ -93,9 +93,8 @@ enum
     COLIDX_OUTLINE, /* text outline colour */
     COLIDX_SHADOW /* text shadow colour */
   };
-static int const font_load_flags = FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
-/* static int const font_load_flags = FT_LOAD_NO_HINTING; */ /* Anti-aliasing */
-/* fixme: should probably take out FT_LOAD_NO_HINTING and add FT_LOAD_TARGET_MONO */
+static int const font_load_flags = FT_LOAD_MONOCHROME | FT_LOAD_RENDER;
+  /* worth adding FT_LOAD_TARGET_MONO as well? */
 float text_font_scale_factor = 28.0; /* font size in font units */
 float subtitle_font_thickness = 3.0;  /*2.0*/
 colorspec
