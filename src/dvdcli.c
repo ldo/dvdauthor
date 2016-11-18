@@ -1301,11 +1301,21 @@ static void cell_start()
 
 static void cell_parsestart(const char *f)
   {
+    if (f[0] == 0)
+      {
+        fprintf(stderr,"ERR:  Empty cell start time\n");
+        exit(1);
+      } /*if*/
     cell_starttime = parsechapter(f);
   }
 
 static void cell_parseend(const char *f)
   {
+    if (f[0] == 0)
+      {
+        fprintf(stderr,"ERR:  Empty cell end time\n");
+        exit(1);
+      } /*if*/
     cell_endtime = parsechapter(f);
   }
 
