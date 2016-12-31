@@ -1,4 +1,4 @@
-0.7.1+: ??
+0.7.2: 2016 December 31
 	Various code-quality and build improvements
 	Support “jump pgc n” and other interaction code-generation improvements
 	Improve reliability of dvdunauthor
