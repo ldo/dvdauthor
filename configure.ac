@@ -1,4 +1,4 @@
-AC_INIT(DVDAuthor,0.7.2,dvdauthor-users@lists.sourceforge.net)
+AC_INIT(DVDAuthor,0.7.2+,dvdauthor-users@lists.sourceforge.net)
 
 AC_CONFIG_HEADERS(src/config.h)
 AC_CONFIG_AUX_DIR(autotools)
