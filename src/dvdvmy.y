@@ -155,7 +155,7 @@ statement: jumpstatement {
 ;
 
 jtsl: TITLESET_TOK NUM_TOK {
-    if ($2 < 1 || $2 > 99)
+    if ($2 < 0 || $2 > 99)
       {
         yyerror("titleset number out of range");
       } /*if*/
@@ -258,6 +258,15 @@ jumpstatement: JUMP_TOK jtsl jtml jcl SEMICOLON_TOK {
     $$=statement_new();
     $$->op=VM_JUMP;
     $$->i3=3*65536+$3;
+}
+| JUMP_TOK PGC_TOK NUM_TOK SEMICOLON_TOK {
+    if ($3 < 1 || $3 > 128)
+      {
+        yyerror("pgc number out of range");
+      } /*if*/
+    $$=statement_new();
+    $$->op=VM_JUMP;
+    $$->i2=$3;
 }
 | JUMP_TOK CELL_TOK TOP_TOK SEMICOLON_TOK {
     $$=statement_new();

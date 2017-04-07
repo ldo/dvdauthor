@@ -399,7 +399,9 @@ static bool has_gop(const unsigned char *buf)
         &&
             buf[40] == 1
         &&
-            buf[41] == MPID_VIDEO_FIRST
+            buf[41] >= MPID_VIDEO_FIRST
+        &&
+            buf[41] <= MPID_VIDEO_LAST
       )
       {
         int i = 42;
@@ -1569,7 +1571,9 @@ int FindVobus(const char *fbase, struct vobgroup *va, vtypes ismenu)
                 &&
                     buf[16 + sysoffs] == 1
                 &&
-                    buf[17 + sysoffs] == MPID_VIDEO_FIRST /* only video stream */
+                    buf[17 + sysoffs] >= MPID_VIDEO_FIRST /* only video stream */
+                &&
+                    buf[17 + sysoffs] <= MPID_VIDEO_LAST
               )
               {
                 struct vobuinfo * const vi = &thisvob->vobu[thisvob->numvobus - 1];
