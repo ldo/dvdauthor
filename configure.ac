@@ -2,6 +2,7 @@ AC_INIT(DVDAuthor,0.7.2+,dvdauthor-users@lists.sourceforge.net)
 
 AC_CONFIG_HEADERS(src/config.h)
 AC_CONFIG_AUX_DIR(autotools)
+AC_CONFIG_MACRO_DIRS([m4])
 
 AM_INIT_AUTOMAKE
 LT_INIT
