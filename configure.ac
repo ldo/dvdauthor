@@ -45,12 +45,17 @@ if test "$enable_shared" = 'no'; then
     config_static='--static'
 fi
 
+AC_ARG_WITH([graphicsmagick],
+AS_HELP_STRING([--with-graphicsmagick], [use GraphicsMagick instead of ImageMagick]))
+
 usemagick=0
 
-PKG_CHECK_MODULES([MAGICK], [ImageMagick >= 5.5.7], usemagick=1; AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available]), [:])
-
-if test "$usemagick" != 1; then
-    PKG_CHECK_MODULES([MAGICK], [GraphicsMagick], usemagick=1; [AC_DEFINE(HAVE_GMAGICK, 1, [whether the GraphicsMagick libraries are available])], [:])
+if test "x$with_graphicsmagick" != xyes; then
+    PKG_CHECK_MODULES([MAGICK], [ImageMagick >= 5.5.7], usemagick=1; AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available]), [:])
+else
+    if test "$usemagick" != 1; then
+        PKG_CHECK_MODULES([MAGICK], [GraphicsMagick], usemagick=1; [AC_DEFINE(HAVE_GMAGICK, 1, [whether the GraphicsMagick libraries are available])], [:])
+    fi
 fi
 
 if test "$usemagick" != 1; then
