@@ -47,22 +47,7 @@ fi
 
 usemagick=0
 
-AC_CHECK_PROGS(MAGICKCONFIG, [MagickCore-config])
-if test -n "$MAGICKCONFIG"; then
-    ac_save_CPPFLAGS="$CPPFLAGS"
-    ac_save_LIBS="$LIBS"
-    MAGICK_CPPFLAGS="`$MAGICKCONFIG --cppflags`"
-    MAGICK_LIBS="`$MAGICKCONFIG --ldflags` `$MAGICKCONFIG --libs`"
-    CPPFLAGS="$CPPFLAGS $MAGICK_CPPFLAGS"
-    LIBS="$MAGICK_LIBS $LIBS"
-    AC_CHECK_FUNC(ExportImagePixels, usemagick=1, AC_MSG_NOTICE([ImageMagick does not support the function
-         ExportImagePixels.  Please upgrade to ImageMagick 5.5.7 or newer]))
-    CPPFLAGS="$ac_save_CPPFLAGS"
-    LIBS="$ac_save_LIBS"
-    if test "$usemagick" = 1; then
-        AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available])
-    fi
-fi
+PKG_CHECK_MODULES([MAGICK], [ImageMagick >= 5.5.7], usemagick=1; AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available]), [:])
 
 if test "$usemagick" != 1; then
     PKG_CHECK_MODULES([MAGICK], [GraphicsMagick], usemagick=1; [AC_DEFINE(HAVE_GMAGICK, 1, [whether the GraphicsMagick libraries are available])], [:])
