@@ -45,21 +45,27 @@ if test "$enable_shared" = 'no'; then
     config_static='--static'
 fi
 
-usemagick=0
+use_imagemagick=0
+use_graphicsmagick=0
+AC_ARG_WITH([imagemagick], AS_HELP_STRING([--with-imagemagick], [Use ImageMagick to augment image import formats]), [use_imagemagick=1])
+AC_ARG_WITH([graphicsmagick], AS_HELP_STRING([--with-graphicsmagick], [Use GraphicsMagick to augment image import formats]), [use_graphicsmagick=1])
+if test "$use_imagemagick" = 1 && test "$use_graphicsmagick" = 1; then
+    AC_MSG_ERROR([cannot specify both --with-imagemagick and --with-graphicsmagick], 1)
+fi
 
-PKG_CHECK_MODULES([IMAGEMAGICK], [ImageMagick >= 5.5.7], usemagick=1; AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available]), [:])
-if test "$usemagick" = 1; then
+if test "$use_imagemagick" = 1; then
+    PKG_CHECK_MODULES([IMAGEMAGICK], [ImageMagick >= 5.5.7], [AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available])], [AC_MSG_ERROR([ImageMagick not available])])
     MAGICK_CFLAGS="$IMAGEMAGICK_CFLAGS"
     MAGICK_LIBS="$IMAGEMAGICK_LIBS"
-else
-    PKG_CHECK_MODULES([GRAPHICSMAGICK], [GraphicsMagick], usemagick=1; [AC_DEFINE(HAVE_GMAGICK, 1, [whether the GraphicsMagick libraries are available])], [:])
-    if test "$usemagick" = 1; then
-        MAGICK_CFLAGS="$GRAPHICSMAGICK_CFLAGS"
-        MAGICK_LIBS="$GRAPHICSMAGICK_LIBS"
-    else
-        MAGICK_CFLAGS="$LIBPNG_CFLAGS"
-        MAGICK_LIBS="$LIBPNG_LIBS"
-    fi
+fi
+if test "$use_graphicsmagick" = 1; then
+    PKG_CHECK_MODULES([GRAPHICSMAGICK], [GraphicsMagick], [AC_DEFINE(HAVE_GMAGICK, 1, [whether the GraphicsMagick libraries are available])], [AC_MSG_ERROR([GraphicsMagick not available])])
+    MAGICK_CFLAGS="$GRAPHICSMAGICK_CFLAGS"
+    MAGICK_LIBS="$GRAPHICSMAGICK_LIBS"
+fi
+if test "$use_imagemagick" != 1 && test "$use_graphicsmagick" != 1; then
+    MAGICK_CFLAGS="$LIBPNG_CFLAGS"
+    MAGICK_LIBS="$LIBPNG_LIBS"
 fi
 
 AC_SUBST(MAGICK_CFLAGS)
