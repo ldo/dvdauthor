@@ -47,15 +47,19 @@ fi
 
 usemagick=0
 
-PKG_CHECK_MODULES([MAGICK], [ImageMagick >= 5.5.7], usemagick=1; AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available]), [:])
-
-if test "$usemagick" != 1; then
-    PKG_CHECK_MODULES([MAGICK], [GraphicsMagick], usemagick=1; [AC_DEFINE(HAVE_GMAGICK, 1, [whether the GraphicsMagick libraries are available])], [:])
-fi
-
-if test "$usemagick" != 1; then
-    MAGICK_CFLAGS="$LIBPNG_CFLAGS"
-    MAGICK_LIBS="$LIBPNG_LIBS"
+PKG_CHECK_MODULES([IMAGEMAGICK], [ImageMagick >= 5.5.7], usemagick=1; AC_DEFINE(HAVE_MAGICK, 1, [Whether the ImageMagick libraries are available]), [:])
+if test "$usemagick" = 1; then
+    MAGICK_CFLAGS="$IMAGEMAGICK_CFLAGS"
+    MAGICK_LIBS="$IMAGEMAGICK_LIBS"
+else
+    PKG_CHECK_MODULES([GRAPHICSMAGICK], [GraphicsMagick], usemagick=1; [AC_DEFINE(HAVE_GMAGICK, 1, [whether the GraphicsMagick libraries are available])], [:])
+    if test "$usemagick" = 1; then
+        MAGICK_CFLAGS="$GRAPHICSMAGICK_CFLAGS"
+        MAGICK_LIBS="$GRAPHICSMAGICK_LIBS"
+    else
+        MAGICK_CFLAGS="$LIBPNG_CFLAGS"
+        MAGICK_LIBS="$LIBPNG_LIBS"
+    fi
 fi
 
 AC_SUBST(MAGICK_CFLAGS)
