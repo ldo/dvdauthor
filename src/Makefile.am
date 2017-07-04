@@ -8,7 +8,7 @@ endif
 nodist_bin_SCRIPTS = dvddirdel
 
 AM_CPPFLAGS = -DSYSCONFDIR="\"$(sysconfdir)\"" \
-    @XML_CPPFLAGS@ @MAGICK_CPPFLAGS@ @MAGICK_CFLAGS@ @FREETYPE_CPPFLAGS@ @FRIBIDI_CFLAGS@ @FONTCONFIG_CFLAGS@
+    @XML_CPPFLAGS@ @MAGICK_CFLAGS@ @FREETYPE_CPPFLAGS@ @FRIBIDI_CFLAGS@ @FONTCONFIG_CFLAGS@
 AM_CFLAGS = -Wall
 
 dvdauthor_SOURCES = dvdauthor.c common.h dvdauthor.h da-internal.h \

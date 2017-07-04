@@ -54,11 +54,11 @@ if test "$usemagick" != 1; then
 fi
 
 if test "$usemagick" != 1; then
-    MAGICK_CPPFLAGS="$LIBPNG_CFLAGS"
+    MAGICK_CFLAGS="$LIBPNG_CFLAGS"
     MAGICK_LIBS="$LIBPNG_LIBS"
 fi
 
-AC_SUBST(MAGICK_CPPFLAGS)
+AC_SUBST(MAGICK_CFLAGS)
 AC_SUBST(MAGICK_LIBS)
 
 PKG_CHECK_MODULES([FONTCONFIG], [fontconfig], [AC_DEFINE(HAVE_FONTCONFIG, 1, [whether Fontconfig is available])], [:])
