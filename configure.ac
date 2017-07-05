@@ -47,8 +47,8 @@ fi
 
 use_imagemagick=0
 use_graphicsmagick=0
-AC_ARG_WITH([imagemagick], AS_HELP_STRING([--with-imagemagick], [Use ImageMagick to augment image import formats]), [use_imagemagick=1])
-AC_ARG_WITH([graphicsmagick], AS_HELP_STRING([--with-graphicsmagick], [Use GraphicsMagick to augment image import formats]), [use_graphicsmagick=1])
+AC_ARG_WITH([imagemagick], AS_HELP_STRING([--with-imagemagick], [Use ImageMagick to augment image import formats]), [if test "$withval" != "no"; then use_imagemagick=1; fi])
+AC_ARG_WITH([graphicsmagick], AS_HELP_STRING([--with-graphicsmagick], [Use GraphicsMagick to augment image import formats]), [if test "$withval" != "no"; then use_graphicsmagick=1; fi])
 if test "$use_imagemagick" = 1 && test "$use_graphicsmagick" = 1; then
     AC_MSG_ERROR([cannot specify both --with-imagemagick and --with-graphicsmagick], 1)
 fi
