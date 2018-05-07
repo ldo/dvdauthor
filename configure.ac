@@ -79,10 +79,8 @@ PKG_CHECK_MODULES([FRIBIDI], [fribidi], [AC_DEFINE(HAVE_FRIBIDI, 1, [whether Fri
 AC_SUBST(FRIBIDI_CFLAGS)
 AC_SUBST(FRIBIDI_LIBS)
 
-AC_CHECK_PROGS(FREETYPECONFIG, [freetype-config])
-if test -n "$FREETYPECONFIG"; then
-    FREETYPE_CPPFLAGS="`$FREETYPECONFIG --cflags`"
-    FREETYPE_LIBS="`$FREETYPECONFIG --libs $config_static`"
+PKG_CHECK_MODULES(FREETYPE, [freetype2],[
+    FREETYPE_CPPFLAGS="$FREETYPE_CFLAGS"
     AC_DEFINE(HAVE_FREETYPE, 1, [Whether FreeType is available])
 
     ac_save_CPPFLAGS="$CPPFLAGS"
@@ -91,9 +89,9 @@ if test -n "$FREETYPECONFIG"; then
     CPPFLAGS="$ac_save_CPPFLAGS"
     AC_SUBST(FREETYPE_CPPFLAGS)
     AC_SUBST(FREETYPE_LIBS)
-else
+    ],
     AC_MSG_ERROR([freetype not found])
-fi
+)
 
 
 AC_ARG_ENABLE([default-video-format],
