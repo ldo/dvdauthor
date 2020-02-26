@@ -8,7 +8,7 @@ endif
 nodist_bin_SCRIPTS = dvddirdel
 
 AM_CPPFLAGS = -DSYSCONFDIR="\"$(sysconfdir)\"" \
-    @XML_CPPFLAGS@ @MAGICK_CFLAGS@ @FREETYPE_CPPFLAGS@ @FRIBIDI_CFLAGS@ @FONTCONFIG_CFLAGS@
+    @XML2_CFLAGS@ @MAGICK_CFLAGS@ @FREETYPE_CPPFLAGS@ @FRIBIDI_CFLAGS@ @FONTCONFIG_CFLAGS@
 AM_CFLAGS = -Wall
 
 dvdauthor_SOURCES = dvdauthor.c common.h dvdauthor.h da-internal.h \
@@ -16,17 +16,17 @@ dvdauthor_SOURCES = dvdauthor.c common.h dvdauthor.h da-internal.h \
     dvdifo.c dvdvob.c dvdpgc.c \
     dvdcli.c readxml.c readxml.h \
     conffile.c conffile.h compat.c compat.h rgb.h
-dvdauthor_LDADD = $(LIBICONV) $(XML_LIBS)
+dvdauthor_LDADD = $(LIBICONV) $(XML2_LIBS)
 
 dvdunauthor_SOURCES = dvdunauthor.c dvduncompile.c common.h dvduncompile.h compat.c compat.h
-dvdunauthor_LDADD = $(XML_LIBS) $(LIBICONV) -ldvdread
+dvdunauthor_LDADD = $(XML2_LIBS) $(LIBICONV) -ldvdread
 
 spumux_SOURCES = subgen.c subgen.h rgb.h \
     subgen-parse-xml.c readxml.c readxml.h \
     subgen-encode.c subgen-image.c subglobals.h \
     conffile.c conffile.h compat.c compat.h common.h \
     subrender.c subrender.h subreader.c subreader.h subfont.c subfont.h
-spumux_LDADD = $(XML_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) \
+spumux_LDADD = $(XML2_LIBS) $(MAGICK_LIBS) $(FREETYPE_LIBS) \
     $(FRIBIDI_LIBS) $(FONTCONFIG_LIBS) $(LIBICONV) -lm
 
 spuunmux_SOURCES = spuunmux.c rgb.h compat.c compat.h common.h conffile.h conffile.c
