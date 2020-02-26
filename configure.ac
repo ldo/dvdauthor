@@ -8,6 +8,8 @@ LT_INIT
 
 AC_PROG_INSTALL
 
+PKG_PROG_PKG_CONFIG
+
 AC_SYS_LARGEFILE
 
 AC_HEADER_STDBOOL
@@ -93,6 +95,7 @@ PKG_CHECK_MODULES(FREETYPE, [freetype2],[
     AC_MSG_ERROR([freetype not found])
 )
 
+PKG_CHECK_MODULES([XML2], [libxml-2.0 >= 2.6.0])
 
 AC_ARG_ENABLE([default-video-format],
 AS_HELP_STRING([--enable-default-video-format=format], [specify a default video format, either NTSC or PAL, to be used if no configuration or input setting is given]),
@@ -127,11 +130,6 @@ AM_CONDITIONAL(HAVE_DVDREAD, $have_dvdread)
 dnl AM_LANGINFO_CODESET
 
 AM_ICONV
-
-ifdef([AM_PATH_XML2],
-    [AM_PATH_XML2(2.6.0, , AC_MSG_ERROR([You must have libxml2 >= 2.6.0 installed]))],
-    [errprint([You must have libxml2 (>= 2.6.0) installed
-])m4_exit(1)AC_MSG_ERROR([You must have libxml2 (>= 2.6.0) installed])])
 
 AC_CHECK_DECLS(O_BINARY, , , [ #include <fcntl.h> ] )
 
