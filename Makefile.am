@@ -1,4 +1,6 @@
 SUBDIRS = doc src
+ACLOCAL_AMFLAGS = -I m4
+# as per recommendation at <https://www.gnu.org/software/libtool/manual/html_node/Invoking-libtoolize.html>
 
 noinst_DATA = dvdauthor.spec
 

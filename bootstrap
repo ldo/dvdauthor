@@ -14,7 +14,7 @@
 #
 # Created by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 #-
-mkdir autotools
+mkdir autotools m4
 cp /usr/share/gettext/config.rpath autotools/
 autoreconf -i
 
