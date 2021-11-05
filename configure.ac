@@ -134,4 +134,5 @@ AM_ICONV
 
 AC_CHECK_DECLS(O_BINARY, , , [ #include <fcntl.h> ] )
 
-AC_OUTPUT(Makefile doc/Makefile src/Makefile)
+AC_CONFIG_FILES(Makefile doc/Makefile src/Makefile)
+AC_OUTPUT
